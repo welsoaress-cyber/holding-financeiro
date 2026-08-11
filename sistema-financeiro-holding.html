@@ -1040,6 +1040,8 @@ function viewCartoes(){
 // VIEW: LANÇAMENTOS
 // ============================================================
 let lancFilter = { negocio: "", status: "", conta: "", cartao: "", dataDe: "", dataAte: "" };
+let lancSelecionados = new Set();
+let lancVisibleIds = [];
 function viewLancamentos(){
   let list = [...state.lancamentos].sort((a,b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
   if(lancFilter.negocio) list = list.filter(l => l.negocio === lancFilter.negocio);
@@ -1048,6 +1050,10 @@ function viewLancamentos(){
   if(lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
+  lancVisibleIds = list.map(l => l.id);
+  // limpa da selecao qualquer id que nao existe mais (ja excluido em outra tela, etc.)
+  const idsValidos = new Set(state.lancamentos.map(l=>l.id));
+  Array.from(lancSelecionados).forEach(id => { if(!idsValidos.has(id)) lancSelecionados.delete(id); });
 
   const rows = list.map(l => {
     const origem = contaById(l.contaOrigem);
@@ -1068,7 +1074,9 @@ function viewLancamentos(){
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
     const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId;
-    return `<tr>
+    const marcado = lancSelecionados.has(l.id);
+    return `<tr style="${marcado ? 'background:#EAF1FB;' : ''}">
+      <td style="text-align:center;"><input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}></td>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
@@ -1085,8 +1093,15 @@ function viewLancamentos(){
   const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.dataDe||lancFilter.dataAte;
+  const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   return `
-    <div class="page-header"><div><div class="page-title">Lançamentos</div><div class="page-sub">O coração do sistema — toda receita, despesa e transferência entra aqui. Ordenado da data mais antiga para a mais recente.</div></div><button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button></div>
+    <div class="page-header">
+      <div><div class="page-title">Lançamentos</div><div class="page-sub">O coração do sistema — toda receita, despesa e transferência entra aqui. Ordenado da data mais antiga para a mais recente.</div></div>
+      <div style="display:flex; gap:8px;">
+        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--danger); border-color:var(--danger-soft);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
+        <button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button>
+      </div>
+    </div>
     <div class="panel"><div class="filter-bar">
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
@@ -1094,7 +1109,10 @@ function viewLancamentos(){
       ${state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
       <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
-    </div><div class="panel-body"><table><thead><tr><th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum lançamento encontrado com esse filtro.")}</td></tr>`}</tbody></table></div></div>
+    </div><div class="panel-body"><table><thead><tr>
+      <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
+      <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum lançamento encontrado com esse filtro.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
 
@@ -2145,7 +2163,28 @@ document.addEventListener("click", async e => {
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",dataDe:"",dataAte:""}; renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "toggle-select-lanc"){
+    if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
+    renderView();
+  }
+  else if(action === "toggle-select-all-lanc"){
+    const todosSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(vid => lancSelecionados.has(vid));
+    if(todosSelecionados){ lancVisibleIds.forEach(vid => lancSelecionados.delete(vid)); }
+    else{ lancVisibleIds.forEach(vid => lancSelecionados.add(vid)); }
+    renderView();
+  }
+  else if(action === "excluir-selecionados"){
+    const qtd = lancSelecionados.size;
+    if(qtd === 0) return;
+    if(!confirm(`Excluir ${qtd} lançamento(s) selecionado(s)? Essa ação não pode ser desfeita.`)) return;
+    const ids = Array.from(lancSelecionados);
+    state.lancamentos = state.lancamentos.filter(l => !lancSelecionados.has(l.id));
+    await deleteRows("lancamentos", ids);
+    lancSelecionados.clear();
+    renderApp();
+    showToast(`${ids.length} lançamento(s) excluído(s).`);
+  }
 
   else if(action === "new-conta") modalConta(null);
   else if(action === "new-caixinha") modalCaixinha(id, null);
