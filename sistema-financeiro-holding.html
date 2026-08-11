@@ -295,7 +295,7 @@ const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","carto
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null,
-  pagarUnlocked: false, receberUnlocked: false,
+  pagarUnlocked: false, receberUnlocked: false, ajustesMenuAberto: false,
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
 };
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -769,9 +769,7 @@ function renderApp(){
       ${navItem("contas","▢","Contas")}
       ${navItem("cartoes","💳","Cartões de Crédito")}
       ${navItem("lancamentos","≡","Lançamentos")}
-      ${navItem("ajustes","∿","Ajustes de Saldo")}
-      ${navItem("categorias","🏷️","Categorias")}
-      ${navItem("negocios","🏢","Negócios")}
+      ${navSubmenuAjustes()}
 
       <div class="nav-group-label">Em construção</div>
       ${navItemSoon("Contas Fixas")}
@@ -808,6 +806,24 @@ function navItem(view, icon, label){
   return `<div class="nav-item ${active}" data-action="nav" data-view="${view}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
+}
+const AJUSTES_SUBVIEWS = ["ajustes","categorias","negocios"];
+function navSubmenuAjustes(){
+  const dentroDoSubmenu = AJUSTES_SUBVIEWS.includes(state.view);
+  const aberto = state.ajustesMenuAberto || dentroDoSubmenu;
+  const cabecalhoAtivo = dentroDoSubmenu && !aberto;
+  const subItens = [
+    navItem("ajustes","∿","Ajustes de Saldo"),
+    navItem("categorias","🏷️","Categorias"),
+    navItem("negocios","🏢","Negócios"),
+  ].join("");
+  return `
+    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" style="cursor:pointer;">
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
+      <span class="label" style="color:var(--sidebar-faint); font-size:11px;">${aberto ? "▾" : "▸"}</span>
+    </div>
+    ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
+  `;
 }
 function navItemSoon(label){
   return `<div class="nav-item disabled">
@@ -2155,6 +2171,7 @@ document.addEventListener("click", async e => {
   const subId = el.dataset.sub;
 
   if(action === "nav") setView(el.dataset.view);
+  else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "logout") doLogout();
