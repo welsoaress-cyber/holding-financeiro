@@ -6,319 +6,457 @@
 <title>Holding — Painel Financeiro</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg: #F5F6F8;
-    --panel: #FFFFFF;
-    --ink: #12151C;
-    --ink-soft: #5B6270;
-    --ink-faint: #9AA1AF;
-    --line: #E5E7EC;
-    --sidebar: #10141F;
-    --sidebar-ink: #E7EAF2;
-    --sidebar-faint: #7C8399;
-    --sidebar-active: #1B2233;
-    --accent: #146356;
-    --accent-soft: #E4F1EE;
-    --danger: #C1432E;
-    --danger-soft: #FBEAE6;
-    --warn: #B4790C;
-    --warn-soft: #FBF1DF;
-    --c-toptv: #3B7EC4;
-    --c-uniplay: #8457C9;
-    --c-servnet: #1E9159;
-    --c-precautec: #D8752B;
-    --c-porto: #0D8C82;
-    --c-pessoal: #6B7280;
-    --c-compartilhado: #B8891A;
-    --radius: 10px;
-    --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
+  /* ===== DESIGN SYSTEM — HOLDING ERP ===== */
+  :root {
+    /* Surface palette */
+    --bg:          #F0F2F5;
+    --surface:     #FFFFFF;
+    --surface-2:   #F7F8FA;
+    --border:      #E2E5EA;
+    --border-2:    #C8CDD8;
+
+    /* Ink */
+    --ink:         #111827;
+    --ink-2:       #374151;
+    --ink-3:       #6B7280;
+    --ink-4:       #9CA3AF;
+
+    /* Brand — deep navy + electric teal accent */
+    --brand:       #0F2045;
+    --brand-2:     #162D5C;
+    --brand-3:     #1E3A73;
+    --accent:      #0EA5E9;
+    --accent-dark: #0284C7;
+    --accent-glow: rgba(14,165,233,.12);
+
+    /* Status */
+    --pos:         #059669;
+    --pos-bg:      #ECFDF5;
+    --neg:         #DC2626;
+    --neg-bg:      #FEF2F2;
+    --warn:        #D97706;
+    --warn-bg:     #FFFBEB;
+    --muted-bg:    #F3F4F6;
+    --muted:       #6B7280;
+
+    /* Typography */
+    --font-ui:     'Inter', -apple-system, sans-serif;
+    --font-mono:   'IBM Plex Mono', 'Fira Mono', monospace;
+    --font-num:    'Inter', sans-serif;
+
+    /* Spacing */
+    --r-sm:  6px;
+    --r:     8px;
+    --r-lg:  12px;
+    --r-xl:  16px;
+
+    /* Shadow */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+    --shadow:    0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+    --shadow-xl: 0 20px 48px rgba(0,0,0,.18), 0 4px 12px rgba(0,0,0,.08);
   }
-  *{ box-sizing: border-box; }
-  html, body{ margin:0; padding:0; height:100%; }
-  body{
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
     background: var(--bg);
     color: var(--ink);
-    font-family: var(--font-body);
-    font-size: 14px;
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
-  #app{ display:flex; flex-direction:column; min-height:100vh; }
-  #appBody{ display:flex; flex:1; min-height:0; }
 
-  /* ---- Barra de Módulos ---- */
-  .modbar{
-    background: #0B0F1C;
+  /* ---- Module Bar ---- */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  #appBody { display: flex; flex: 1; min-height: 0; }
+
+  .modbar {
+    background: var(--brand);
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 0;
+    position: relative;
+    z-index: 200;
+    flex-shrink: 0;
     border-bottom: 1px solid rgba(255,255,255,.06);
-    display:flex; align-items:center; gap:0;
-    padding: 0 18px;
-    position: relative; z-index:90;
   }
-  .modbar-btn{
-    display:flex; align-items:center; gap:8px;
-    padding: 11px 16px;
-    color: #C8CEDE; font-size:12.5px; font-weight:600;
-    cursor:pointer; border:none; background:transparent;
+  .modbar-logo {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    letter-spacing: .02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 20px;
+    margin-right: 8px;
+    border-right: 1px solid rgba(255,255,255,.1);
+  }
+  .modbar-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .modbar-btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 0 14px;
+    height: 44px;
+    color: rgba(255,255,255,.65);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ui);
     border-bottom: 2px solid transparent;
-    font-family: var(--font-body);
-    transition: color .12s, border-color .12s;
+    transition: color .15s, border-color .15s, background .15s;
   }
-  .modbar-btn:hover{ color:#fff; }
-  .modbar-btn.active{ color:#3FD68E; border-bottom-color:#3FD68E; }
-  .modbar-logo{
-    font-family: var(--font-display); font-weight:700; font-size:15px;
-    color:#fff; padding: 0 16px 0 4px; border-right:1px solid rgba(255,255,255,.08);
-    margin-right:10px; letter-spacing:-.01em;
-  }
-  .modbar-logo .dot{ width:7px; height:7px; border-radius:50%; background:#3FD68E; display:inline-block; margin-right:5px; }
-  .modpanel{
-    position:absolute; top:100%; left:0; right:0;
-    background:#0B0F1C; border-bottom:1px solid rgba(255,255,255,.08);
-    padding:14px 24px 18px; display:none; z-index:89;
-    box-shadow: 0 8px 24px rgba(0,0,0,.3);
-  }
-  .modpanel.open{ display:block; }
-  .modpanel-title{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#4A5270; margin-bottom:12px; }
-  .modpanel-grid{ display:flex; flex-wrap:wrap; gap:10px; }
-  .modcard{
-    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
-    padding:12px 20px; border-radius:10px; cursor:pointer;
-    border:1px solid rgba(255,255,255,.07);
-    background: rgba(255,255,255,.04);
-    transition: background .12s, border-color .12s;
-    min-width:130px;
-  }
-  .modcard:hover{ background: rgba(255,255,255,.09); border-color:rgba(63,214,142,.35); }
-  .modcard.active{ background: rgba(63,214,142,.08); border-color:rgba(63,214,142,.5); }
-  .modcard-ico{ font-size:20px; line-height:1; }
-  .modcard-nome{ font-size:13px; font-weight:700; color:#E7EAF2; font-family:var(--font-display); }
-  .modcard-desc{ font-size:11px; color:#4A5270; }
-  .modcard.soon{ opacity:.45; cursor:default; }
-  .modcard.soon:hover{ background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); }
-  /* ---- fim Barra de Módulos ---- */
+  .modbar-btn:hover { color: #fff; background: rgba(255,255,255,.05); }
+  .modbar-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  .sidebar{
-    width: 240px;
-    flex-shrink:0;
-    background: var(--sidebar);
-    color: var(--sidebar-ink);
-    display:flex;
-    flex-direction:column;
-    padding: 22px 14px;
-    overflow-y: auto;
-    max-height: 100vh;
-    position: sticky;
-    top: 0;
+  .modpanel {
+    position: absolute;
+    top: 44px; left: 0; right: 0;
+    background: var(--brand-2);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    padding: 20px 24px 24px;
+    display: none;
+    z-index: 199;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
   }
-  .brand{
-    font-family: var(--font-display);
-    font-weight:700;
-    font-size: 17px;
-    letter-spacing: -0.02em;
-    padding: 4px 10px 4px;
-    display:flex;
-    align-items:baseline;
-    gap:8px;
-  }
-  .brand .dot{ width:8px; height:8px; border-radius:50%; background:#3FD68E; display:inline-block; }
-  .brand-sub{
-    font-size:11px;
-    color: var(--sidebar-faint);
-    padding: 0 10px 22px;
-    font-family: var(--font-mono);
-  }
-  .nav-group-label{
+  .modpanel.open { display: block; }
+  .modpanel-title {
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--sidebar-faint);
-    padding: 14px 12px 6px;
+    letter-spacing: .1em;
+    color: rgba(255,255,255,.3);
+    margin-bottom: 14px;
+    font-weight: 600;
   }
-  .nav-item{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    color: var(--sidebar-ink);
-    cursor:pointer;
-    font-size: 13.5px;
-    font-weight:500;
-    transition: background .12s ease;
-    user-select:none;
+  .modpanel-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .modcard {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 14px 18px;
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+    transition: all .15s;
+    min-width: 140px;
   }
-  .nav-item:hover{ background: rgba(255,255,255,.05); }
-  .nav-item.active{ background: var(--sidebar-active); }
-  .nav-item.active .nav-ico{ color:#3FD68E; }
-  .nav-item.disabled{ color: var(--sidebar-faint); cursor:default; }
-  .nav-item.disabled:hover{ background:transparent; }
-  .nav-ico{ font-size:14px; width:16px; text-align:center; }
-  .soon-badge{
-    font-size:9.5px;
-    font-family: var(--font-mono);
+  .modcard:hover { background: rgba(255,255,255,.1); border-color: rgba(14,165,233,.4); }
+  .modcard.active { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.5); }
+  .modcard.soon { opacity: .4; cursor: default; }
+  .modcard.soon:hover { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+  .modcard-ico { font-size: 18px; line-height: 1; margin-bottom: 4px; }
+  .modcard-nome { font-size: 13px; font-weight: 700; color: #E7EDF8; font-family: var(--font-ui); }
+  .modcard-desc { font-size: 11px; color: rgba(255,255,255,.4); }
+
+  /* ---- Sidebar ---- */
+  .sidebar {
+    width: 228px;
+    flex-shrink: 0;
+    background: var(--brand);
+    color: rgba(255,255,255,.85);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: calc(100vh - 44px);
+    position: sticky;
+    top: 0;
+    border-right: 1px solid rgba(255,255,255,.05);
+  }
+  .brand-sub {
+    font-size: 10.5px;
+    color: rgba(255,255,255,.3);
+    padding: 14px 16px 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-bottom: 6px;
+  }
+  .nav-group-label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: rgba(255,255,255,.28);
+    padding: 14px 16px 4px;
+    font-weight: 600;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px 7px 14px;
+    margin: 1px 8px;
+    border-radius: var(--r);
+    color: rgba(255,255,255,.65);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .12s;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+  .nav-item.active { background: rgba(14,165,233,.18); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 12px; }
+  .nav-item.active .nav-ico { color: var(--accent); }
+  .nav-item.disabled { color: rgba(255,255,255,.22); cursor: default; }
+  .nav-item.disabled:hover { background: transparent; }
+  .nav-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+  .soon-badge {
+    font-size: 9px; font-family: var(--font-mono);
     background: rgba(255,255,255,.06);
-    color: var(--sidebar-faint);
+    color: rgba(255,255,255,.25);
     padding: 2px 6px;
     border-radius: 999px;
   }
-  .sidebar-footer{
-    margin-top:auto;
-    padding: 12px 10px 4px;
-    font-size: 11px;
-    color: var(--sidebar-faint);
-    border-top: 1px solid rgba(255,255,255,.08);
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 10px 10px;
+    border-top: 1px solid rgba(255,255,255,.07);
   }
-  .sidebar-lock-btn{
-    display:flex; align-items:center; justify-content:center; gap:6px;
-    width:100%; padding:9px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.05); color: var(--sidebar-ink); font-size:12.5px; font-weight:600;
-    cursor:pointer; margin-bottom:10px; font-family: var(--font-body);
+  .sidebar-lock-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 8px 10px; border-radius: var(--r);
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.04);
+    color: rgba(255,255,255,.6);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; margin-bottom: 6px;
+    font-family: var(--font-ui);
+    transition: all .12s;
   }
-  .sidebar-lock-btn:hover{ background: rgba(255,255,255,.11); }
-  .sidebar-lock-btn.unlocked{ background: rgba(63,214,142,.12); border-color: rgba(63,214,142,.32); color:#3FD68E; }
-  .masked-value{ color: var(--ink-faint); letter-spacing:1px; }
-  .main{ flex:1; min-width:0; padding: 28px 36px 60px; }
-  .page-header{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
-  .page-title{ font-family: var(--font-display); font-size: 24px; font-weight:700; letter-spacing:-0.01em; }
-  .page-sub{ color: var(--ink-soft); font-size: 13px; margin-top:2px; }
-  .btn{
-    font-family: var(--font-body);
-    font-weight:600;
-    font-size: 13px;
-    padding: 9px 16px;
-    border-radius: 8px;
+  .sidebar-lock-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .sidebar-lock-btn.unlocked { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.3); color: var(--accent); }
+  .btn-logout:hover { background: rgba(220,38,38,.15) !important; border-color: rgba(220,38,38,.3) !important; color: #FCA5A5 !important; }
+  .footer-detail { font-size: 10.5px; color: rgba(255,255,255,.25); padding: 6px 4px 0; line-height: 1.6; }
+
+  /* ---- Main content area ---- */
+  .main { flex: 1; min-width: 0; padding: 24px 28px 60px; overflow-x: hidden; }
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-title { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+  .page-sub { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
+
+  /* ---- Buttons ---- */
+  .btn {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 7px 14px;
+    border-radius: var(--r);
     border: 1px solid transparent;
-    cursor:pointer;
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    transition: all .12s ease;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .12s;
+    white-space: nowrap;
   }
-  .btn-primary{ background: var(--accent); color:#fff; }
-  .btn-primary:hover{ background:#0F4A40; }
-  .btn-ghost{ background: transparent; color: var(--ink); border-color: var(--line); }
-  .btn-ghost:hover{ background: #F0F1F4; }
-  .btn-danger-text{ background:transparent; color:var(--danger); border:none; padding:4px 8px; font-size:12.5px; }
-  .btn-sm{ padding:6px 10px; font-size:12px; }
-  .btn-logout{ background: rgba(255,255,255,.08); color: var(--sidebar-ink); border:1px solid rgba(255,255,255,.1); }
-  .btn-logout:hover{ background: rgba(255,50,50,.15); border-color: rgba(255,50,50,.3); }
-  .kpi-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom: 22px; }
-  .kpi-card{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 16px 18px;
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent-dark); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-ghost { background: #fff; color: var(--ink-2); border-color: var(--border-2); box-shadow: var(--shadow-sm); }
+  .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-2); }
+  .btn-danger-text { background: transparent; color: var(--neg); border: none; padding: 4px 8px; font-size: 12px; }
+  .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+
+  /* ---- KPI Cards ---- */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
   }
-  .kpi-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
-  .kpi-value{ font-family: var(--font-mono); font-size: 22px; font-weight:600; letter-spacing:-0.01em; }
-  .kpi-value.pos{ color:#0F5C3F; }
-  .kpi-value.neg{ color: var(--danger); }
-  .kpi-note{ font-size:11.5px; color:var(--ink-faint); margin-top:6px; }
-  .panel{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin-bottom: 20px;
-    overflow:hidden;
+  .kpi-label {
+    font-size: 10.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 6px; font-weight: 600;
   }
-  .panel-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 16px 18px 12px;
-    border-bottom: 1px solid var(--line);
+  .kpi-value { font-family: var(--font-num); font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+  .kpi-value.pos { color: var(--pos); }
+  .kpi-value.neg { color: var(--neg); }
+  .kpi-note { font-size: 11px; color: var(--ink-4); margin-top: 4px; }
+
+  /* ---- Panels ---- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
   }
-  .panel-title{ font-family: var(--font-display); font-weight:600; font-size:15px; }
-  .panel-body{ padding: 6px 18px 18px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  table{ width:100%; border-collapse: collapse; font-size:13px; }
-  thead th{
-    text-align:left;
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .panel-body { padding: 0 18px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ---- Tables ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 600px; }
+  thead th {
+    text-align: left;
     font-size: 10.5px;
     text-transform: uppercase;
-    letter-spacing:.04em;
-    color: var(--ink-soft);
-    padding: 10px 10px;
-    border-bottom: 1px solid var(--line);
-    white-space:nowrap;
+    letter-spacing: .06em;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding: 10px 10px 8px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    background: var(--surface);
   }
-  tbody td{ padding: 11px 10px; border-bottom: 1px solid #EFF0F3; vertical-align:middle; }
-  tbody tr:last-child td{ border-bottom:none; }
-  tbody tr:hover{ background:#FAFBFC; }
-  td.num, th.num{ text-align:right; font-family: var(--font-mono); }
-  .tag{
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:11px; font-weight:600; padding: 3px 9px; border-radius:999px;
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #F7F9FC; }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); font-size: 12px; }
+
+  /* ---- Tags & Status ---- */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 999px;
   }
-  .tag-dot{ width:6px; height:6px; border-radius:50%; }
-  .status-pill{ font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; }
-  .status-pago{ background: var(--accent-soft); color:#0F5C3F; }
-  .status-pendente{ background: var(--warn-soft); color:#8A5C09; }
-  .status-agendado{ background:#EAEDF3; color:#4A5266; }
-  .conc-yes{ color:#0F5C3F; font-weight:600; }
-  .conc-no{ color: var(--ink-faint); }
-  .row-actions{ display:flex; gap:4px; justify-content:flex-end; }
-  .icon-btn{
-    border:none; background:transparent; cursor:pointer; padding:5px 7px; border-radius:6px; color: var(--ink-soft); font-size:13px;
+  .tag-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .status-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .status-pago { background: var(--pos-bg); color: var(--pos); }
+  .status-pendente { background: var(--warn-bg); color: var(--warn); }
+  .status-agendado { background: var(--muted-bg); color: var(--muted); }
+  .conc-yes { color: var(--pos); font-weight: 600; font-size: 11.5px; }
+  .conc-no { color: var(--ink-4); font-size: 11.5px; }
+
+  /* ---- Actions ---- */
+  .row-actions { display: flex; gap: 2px; justify-content: flex-end; }
+  .icon-btn {
+    border: none; background: transparent; cursor: pointer;
+    padding: 4px 6px; border-radius: var(--r-sm); color: var(--ink-4);
+    font-size: 12.5px; transition: all .1s;
   }
-  .icon-btn:hover{ background:#F0F1F4; color:var(--ink); }
-  .icon-btn.danger:hover{ background: var(--danger-soft); color: var(--danger); }
-  .empty-state{ padding: 40px 20px; text-align:center; color: var(--ink-faint); font-size:13px; }
-  .filter-bar{ display:flex; gap:8px; flex-wrap:wrap; padding: 12px 18px 4px; }
-  .filter-bar select, .filter-bar input[type=text]{
-    font-family: var(--font-body); font-size:12.5px; padding:7px 10px; border-radius:7px; border:1px solid var(--line); background:#FCFCFD; color:var(--ink);
+  .icon-btn:hover { background: var(--surface-2); color: var(--ink-2); }
+  .icon-btn.danger:hover { background: var(--neg-bg); color: var(--neg); }
+
+  /* ---- Filter bar ---- */
+  .filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
   }
-  .modal-overlay{
-    position:fixed; inset:0; background: rgba(15,17,22,.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
+  .filter-bar select, .filter-bar input[type=date], .filter-bar input[type=text] {
+    font-family: var(--font-ui); font-size: 12px; padding: 6px 10px;
+    border-radius: var(--r); border: 1px solid var(--border-2);
+    background: var(--surface); color: var(--ink);
+    box-shadow: var(--shadow-sm);
   }
-  .modal{
-    background:#fff; border-radius: 14px; width: 480px; max-width:100%; max-height:88vh; overflow-y:auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  .filter-bar select:focus, .filter-bar input:focus {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent;
   }
-  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding: 18px 20px; border-bottom:1px solid var(--line); }
-  .modal-title{ font-family: var(--font-display); font-weight:700; font-size:16px; }
-  .modal-close{ border:none; background:transparent; font-size:18px; cursor:pointer; color:var(--ink-soft); line-height:1; }
-  .modal-body{ padding: 18px 20px; }
-  .modal-foot{ display:flex; justify-content:flex-end; gap:8px; padding: 14px 20px; border-top:1px solid var(--line); }
-  .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
-  .field input, .field select, .field textarea{
-    width:100%; font-family:var(--font-body); font-size:13.5px; padding:9px 11px; border-radius:8px; border:1px solid var(--line); background:#FCFCFD; color:var(--ink);
+
+  /* ---- Modals ---- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11,20,45,.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500; padding: 20px;
+    backdrop-filter: blur(2px);
   }
-  .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid #146356; outline-offset:1px; border-color:transparent; }
-  .field-row{ display:flex; gap:10px; }
-  .field-row .field{ flex:1; }
-  .checkbox-row{ display:flex; align-items:center; gap:8px; font-size:13px; }
-  .checkbox-row input{ width:auto; }
-  .field-help{ font-size:11px; color:var(--ink-faint); margin-top:4px; }
-  .bar-row{ display:grid; grid-template-columns: 170px 1fr 120px; align-items:center; gap:12px; padding:9px 0; }
-  .bar-track{ height:8px; border-radius:999px; background:#EEF0F3; overflow:hidden; }
-  .bar-fill{ height:100%; border-radius:999px; }
-  .bar-row .val{ font-family:var(--font-mono); font-size:12.5px; text-align:right; }
-  .toast-wrap{ position:fixed; bottom:22px; right:22px; display:flex; flex-direction:column; gap:8px; z-index:200; }
-  .toast{
-    background: var(--ink); color:#fff; padding: 11px 16px; border-radius:9px; font-size:13px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: toast-in .18s ease-out;
-    display:flex; align-items:center; gap:8px;
+  .modal {
+    background: var(--surface); border-radius: var(--r-xl);
+    width: 500px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border);
   }
-  .toast.error{ background: var(--danger); }
-  @keyframes toast-in{ from{ opacity:0; transform: translateY(6px);} to{opacity:1; transform:translateY(0);} }
-  .loading-screen{ display:flex; align-items:center; justify-content:center; height:100vh; width:100%; color: var(--ink-soft); font-family: var(--font-mono); font-size:13px; }
-  table{ min-width: 640px; }
-  @media (max-width: 980px){
-    .kpi-grid{ grid-template-columns: repeat(2,1fr); }
-    .sidebar{ width:64px; }
-    .brand span:not(.dot), .brand-sub, .nav-item span.label, .nav-group-label, .soon-badge{ display:none; }
-    .nav-item{ justify-content:center; }
-    .main{ padding: 16px 12px 50px; }
-    .sidebar-footer{ padding: 10px 4px 4px; }
-    .sidebar-lock-btn{ padding: 9px 4px; font-size:16px; }
-    .sidebar-lock-btn .label, .sidebar-footer .footer-detail{ display:none; }
-    .modal{ width: 94vw; }
-    .page-title{ font-size: 20px; }
-    .kpi-value{ font-size: 18px; }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
   }
+  .modal-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .modal-close { border: none; background: transparent; font-size: 16px; cursor: pointer; color: var(--ink-4); padding: 2px 6px; border-radius: var(--r-sm); transition: all .1s; }
+  .modal-close:hover { background: var(--neg-bg); color: var(--neg); }
+  .modal-body { padding: 18px 20px; }
+  .modal-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+  }
+
+  /* ---- Form fields ---- */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; letter-spacing: .01em; }
+  .field input, .field select, .field textarea {
+    width: 100%; font-family: var(--font-ui); font-size: 13px;
+    padding: 8px 11px; border-radius: var(--r);
+    border: 1px solid var(--border-2);
+    background: var(--surface); color: var(--ink);
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .checkbox-row input { width: auto; }
+  .field-help { font-size: 11px; color: var(--ink-4); margin-top: 4px; line-height: 1.5; }
+
+  /* ---- Charts ---- */
+  .bar-row { display: grid; grid-template-columns: 160px 1fr 110px; align-items: center; gap: 12px; padding: 8px 0; }
+  .bar-track { height: 6px; border-radius: 999px; background: var(--muted-bg); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
+  .bar-row .val { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--ink-2); }
+
+  /* ---- Toast ---- */
+  .toast-wrap { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast {
+    background: var(--ink); color: #fff; padding: 10px 16px;
+    border-radius: var(--r-lg); font-size: 12.5px;
+    box-shadow: var(--shadow-lg); animation: toast-in .18s ease-out;
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    max-width: 360px;
+  }
+  .toast.error { background: var(--neg); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .empty-state { padding: 36px 20px; text-align: center; color: var(--ink-4); font-size: 13px; }
+  .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; width: 100%; color: var(--ink-4); font-family: var(--font-mono); font-size: 13px; }
+  .masked-value { color: var(--ink-4); letter-spacing: 2px; }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 980px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { width: 60px; }
+    .brand-sub, .nav-item .label, .nav-group-label, .soon-badge { display: none; }
+    .nav-item { justify-content: center; padding: 8px 0; }
+    .sidebar-footer { padding: 8px 4px; }
+    .sidebar-lock-btn { padding: 8px 4px; font-size: 15px; }
+    .sidebar-lock-btn .label, .footer-detail { display: none; }
+    .main { padding: 16px 12px 50px; }
+    .modal { width: 94vw; }
+    .page-title { font-size: 18px; }
+  }
+
 </style>
 </head>
 <body>
@@ -387,7 +525,7 @@ function contaLabel(c){
 }
 function negocioCor(nome){
   const n = negocioByNome(nome);
-  return (n && n.cor) || "var(--ink-faint)";
+  return (n && n.cor) || "var(--ink-4)";
 }
 function proximaCorNegocio(){ return PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length]; }
 
@@ -514,16 +652,16 @@ function attachCalculadora(inputId){
   btn.type = "button";
   btn.title = "Calculadora";
   btn.textContent = "🧮";
-  btn.style.cssText = "position:absolute; right:2px; top:50%; transform:translateY(-50%); border:none; background:transparent; cursor:pointer; font-size:15px; padding:6px 8px; border-radius:6px;";
+  btn.style.cssText = "position:absolute; right:2px; top:50%; transform:translateY(-50%); border:none; background:transparent; cursor:pointer; font-size:15px; padding:6px 8px; border-radius:var(--r-sm);";
   wrap.appendChild(btn);
   const pop = document.createElement("div");
-  pop.style.cssText = "display:none; position:absolute; z-index:80; top:100%; right:0; margin-top:6px; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.18); padding:10px; width:206px;";
+  pop.style.cssText = "display:none; position:absolute; z-index:80; top:100%; right:0; margin-top:6px; background:#fff; border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:0 10px 28px rgba(0,0,0,.18); padding:10px; width:206px;";
   const displayId = "calcDisplay_" + inputId;
   pop.innerHTML = `
-    <input type="text" readonly id="${displayId}" value="0" style="width:100%; box-sizing:border-box; text-align:right; font-family:var(--font-mono); font-size:16px; padding:8px; border:1px solid var(--line); border-radius:6px; margin-bottom:8px;">
+    <input type="text" readonly id="${displayId}" value="0" style="width:100%; box-sizing:border-box; text-align:right; font-family:var(--font-mono); font-size:16px; padding:8px; border:1px solid var(--border); border-radius:var(--r-sm); margin-bottom:8px;">
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px;">
-      ${["7","8","9","÷","4","5","6","×","1","2","3","−","C","0",".","+"].map(k=>`<button type="button" data-k="${k}" style="padding:9px 0; border:1px solid var(--line); border-radius:6px; background:#FAFBFC; cursor:pointer; font-size:13px; font-family:var(--font-mono);">${k}</button>`).join("")}
-      <button type="button" data-k="=" style="grid-column:span 4; padding:9px 0; border:none; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; font-weight:600; margin-top:4px; font-size:12.5px;">= Usar valor</button>
+      ${["7","8","9","÷","4","5","6","×","1","2","3","−","C","0",".","+"].map(k=>`<button type="button" data-k="${k}" style="padding:9px 0; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-2); cursor:pointer; font-size:13px; font-family:var(--font-mono);">${k}</button>`).join("")}
+      <button type="button" data-k="=" style="grid-column:span 4; padding:9px 0; border:none; border-radius:var(--r-sm); background:var(--accent); color:#fff; cursor:pointer; font-weight:600; margin-top:4px; font-size:12.5px;">= Usar valor</button>
     </div>
   `;
   wrap.appendChild(pop);
@@ -882,7 +1020,7 @@ function campoValorProtegido(label, name, valor, unlocked, opts){
     return `<div class="field"><label>${label}</label><input id="campo_${name}" ${req} type="number" step="0.01" ${min} name="${name}" value="${valor}">${helpExtra}</div>`;
   }
   return `<div class="field"><label>${label}</label>
-    <input type="text" value="R$ ••••••" disabled style="background:#F0F1F4; color:var(--ink-faint); cursor:not-allowed;">
+    <input type="text" value="R$ ••••••" disabled style="background:var(--surface-2); color:var(--ink-4); cursor:not-allowed;">
     <input type="hidden" name="${name}" value="${valor}">
     <div class="field-help">🔒 Desbloqueie para ver ou alterar este valor.</div>
   </div>`;
@@ -949,7 +1087,7 @@ function renderApp(){
   const master = ehMaster();
   app.innerHTML = `<div id="appBody">
     <aside class="sidebar">
-      <div class="brand-sub" style="padding:0 10px 18px; font-size:11px; color:var(--sidebar-faint); font-family:var(--font-mono);">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 18px; font-size:11px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
       ${master ? `
       <div class="nav-group-label">Visão geral</div>
@@ -1016,7 +1154,7 @@ function navSubmenuAjustes(){
   return `
     <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
-      <span class="label" style="color:var(--sidebar-faint); font-size:11px;">${aberto ? "▾" : "▸"}</span>
+      <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
   `;
@@ -1047,15 +1185,15 @@ function renderLogin(){
   const isLogin = authMode === "login";
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
-      <div style="background:#fff; padding:40px; border-radius:14px; width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <h2 style="font-family:var(--font-display); margin-bottom:4px;">💰 ${isLogin ? "Entrar" : "Criar conta"}</h2>
-        <div style="color:var(--ink-soft); margin-bottom:24px;">${isLogin ? "Acesse seu painel financeiro" : "Comece a controlar suas finanças"}</div>
+      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">💰 ${isLogin ? "Entrar" : "Criar conta"}</h2>
+        <div style="color:var(--ink-3); margin-bottom:24px;">${isLogin ? "Acesse seu painel financeiro" : "Comece a controlar suas finanças"}</div>
         <form id="authForm">
           <div class="field"><label>Email</label><input type="email" id="authEmail" placeholder="seu@email.com" required></div>
           <div class="field"><label>Senha</label><input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
           <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : (isLogin ? "Entrar" : "Criar conta")}</button>
         </form>
-        <div style="text-align:center; margin-top:16px; font-size:13px; color:var(--ink-soft);">
+        <div style="text-align:center; margin-top:16px; font-size:13px; color:var(--ink-3);">
           ${isLogin ? "Não tem conta?" : "Já tem conta?"}
           <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
         </div>
@@ -1087,9 +1225,9 @@ function renderSeletorPerfil(){
   `).join("");
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
-      <div style="background:#fff; padding:40px; border-radius:14px; width:420px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08); text-align:center;">
-        <h2 style="font-family:var(--font-display); margin-bottom:6px;">Quem está usando?</h2>
-        <div style="color:var(--ink-soft); font-size:12.5px; margin-bottom:24px;">${esc(state.user.email)}</div>
+      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:420px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08); text-align:center;">
+        <h2 style="font-family:var(--font-ui); margin-bottom:6px;">Quem está usando?</h2>
+        <div style="color:var(--ink-3); font-size:12.5px; margin-bottom:24px;">${esc(state.user.email)}</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
           <button class="btn btn-primary" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-master">👑 Master (acesso completo)</button>
           ${membros}
@@ -1174,14 +1312,14 @@ function viewDashboard(){
   ).sort((a,b) => a.data.localeCompare(b.data));
 
   const listaItemHTML = (l, tipo) => `
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12.5px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
       <div style="min-width:0;">
         <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(l.descricao)||"—"}</div>
-        <div style="font-size:11px; color:var(--ink-faint);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
+        <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
       </div>
       <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-        <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'#0F5C3F':'var(--danger)'};">${fmtBRL(l.valor)}</span>
-        ${podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:#0F5C3F; font-size:14px;">💲</button>` : ""}
+        <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'var(--pos)':'var(--neg)'};">${fmtBRL(l.valor)}</span>
+        ${podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;">💲</button>` : ""}
       </div>
     </div>`;
 
@@ -1191,13 +1329,13 @@ function viewDashboard(){
   });
   const totalFaturasMes = faturasCartaoMes.reduce((s, {fatura}) => s + fatura.total, 0);
   const faturasCartaoHTML = faturasCartaoMes.map(({cartao: c, fatura: f}) => `
-    <div style="border-top:1px solid #F0F1F4; padding:8px 0;">
+    <div style="border-top:1px solid var(--border); padding:8px 0;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px;">
         <div>
-          <div style="font-weight:600;">💳 ${esc(c.nome)} <span style="font-size:11px; color:var(--ink-faint);">final ${esc(c.ultimosDigitos)}</span></div>
-          <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'} · Limite disp. ${fmtBRL(Number(c.limite||0)-faturaEmAberto(c.id))}</div>
+          <div style="font-weight:600;">💳 ${esc(c.nome)} <span style="font-size:11px; color:var(--ink-4);">final ${esc(c.ultimosDigitos)}</span></div>
+          <div style="font-size:11px; color:var(--ink-4);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'} · Limite disp. ${fmtBRL(Number(c.limite||0)-faturaEmAberto(c.id))}</div>
         </div>
-        <span style="font-family:var(--font-mono); font-weight:700; color:var(--danger);">${fmtBRL(f.total)}</span>
+        <span style="font-family:var(--font-mono); font-weight:700; color:var(--neg);">${fmtBRL(f.total)}</span>
       </div>
       <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">💰 Pagar total</button>
@@ -1209,14 +1347,14 @@ function viewDashboard(){
 
   const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0) + totalFaturasMes;
   const totalReceberMes = receberMes.reduce((s,l) => s+Number(l.valor), 0);
-  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada em aberto. 🎉</div>`;
-  const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada a receber neste mês.</div>`;
+  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada em aberto. 🎉</div>`;
+  const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada a receber neste mês.</div>`;
 
   const barRow = (c, nested) => {
     const sa = saldoContaAteMes(c.id, mv.ano, mv.mes);
     const pct = lockedReceber ? 45 : Math.max(4, Math.round((Math.abs(sa)/maxAbs)*100));
     const inativa = c.ativa === false;
-    const color = inativa ? "var(--ink-faint)" : (lockedReceber ? "var(--ink-faint)" : (nested ? "var(--c-porto)" : "var(--accent)"));
+    const color = inativa ? "var(--ink-4)" : (lockedReceber ? "var(--ink-4)" : (nested ? "var(--c-porto)" : "var(--accent)"));
     const nomeTxt = nested ? `↳ ${esc(c.nome)}` : esc(c.nome);
     return `<div class="bar-row" style="${nested ? 'padding-left:14px;' : ''}">
       <div class="name" style="${nested ? 'font-weight:500; font-size:12px;' : ''}"><span class="tag-dot" style="background:${color}"></span>${nomeTxt}${inativa ? ' <span class="status-pill status-agendado">Inativa</span>' : ""}</div>
@@ -1228,9 +1366,9 @@ function viewDashboard(){
   const topListHTML = (lista, unlocked) => {
     if(!lista.length) return emptyState("Nada lançado neste mês.");
     return lista.map((l,i) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; ${i===0?'':'border-top:1px solid #F0F1F4;'}">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; ${i===0?'':'border-top:1px solid var(--border);'}">
         <div style="min-width:0;"><div style="font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${i+1}. ${esc(l.descricao)}</div>
-        <div style="font-size:11px; color:var(--ink-faint);">${fmtDateBR(l.data)} · ${l.status}${l.negocio ? ' · '+esc(l.negocio) : ''}</div></div>
+        <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)} · ${l.status}${l.negocio ? ' · '+esc(l.negocio) : ''}</div></div>
         <div style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; white-space:nowrap;">${fmtBRL(l.valor)}</div>
       </div>`).join("");
   };
@@ -1240,12 +1378,12 @@ function viewDashboard(){
     <div class="panel" style="margin-bottom:18px;">
       <div class="panel-body" style="padding-top:16px;">
         <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:18px;">
-          <button class="icon-btn" data-action="mes-prev" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">◀</button>
+          <button class="icon-btn" data-action="mes-prev" style="font-size:16px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
           <div style="text-align:center; min-width:200px;">
-            <input type="month" id="mesManualInput" value="${mv.ano}-${String(mv.mes+1).padStart(2,'0')}" style="font-family:var(--font-display); font-weight:700; font-size:16px; border:none; background:transparent; text-align:center; cursor:pointer; color:var(--ink); padding:2px;">
-            <div>${!isMesAtual ? `<span style="font-size:11px; color:var(--ink-faint); cursor:pointer; text-decoration:underline;" data-action="mes-hoje">voltar para hoje</span>` : `<span style="font-size:11px; color:var(--ink-faint);">mês atual</span>`}</div>
+            <input type="month" id="mesManualInput" value="${mv.ano}-${String(mv.mes+1).padStart(2,'0')}" style="font-family:var(--font-ui); font-weight:700; font-size:16px; border:none; background:transparent; text-align:center; cursor:pointer; color:var(--ink); padding:2px;">
+            <div>${!isMesAtual ? `<span style="font-size:11px; color:var(--ink-4); cursor:pointer; text-decoration:underline;" data-action="mes-hoje">voltar para hoje</span>` : `<span style="font-size:11px; color:var(--ink-4);">mês atual</span>`}</div>
           </div>
-          <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">▶</button>
+          <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
           <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
@@ -1267,14 +1405,14 @@ function viewDashboard(){
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
           <div class="panel-title">📥 A Receber — ${NOMES_MESES[mv.mes]}</div>
-          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:#0F5C3F;">${fmtBRL(totalReceberMes)}</div>
+          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--pos);">${fmtBRL(totalReceberMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${receberHTML}</div>
       </div>
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
           <div class="panel-title">📤 A Pagar — ${NOMES_MESES[mv.mes]}</div>
-          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--danger);">${fmtBRL(totalPagarMes)}</div>
+          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--neg);">${fmtBRL(totalPagarMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${pagarHTML}</div>
       </div>
@@ -1304,9 +1442,9 @@ function viewContas(){
   const rowHTML = (c, nested) => {
     const sa = saldoAtual(c.id), sp = saldoProjetado(c.id), nc = naoConciliados(c.id);
     const inativa = c.ativa === false;
-    const nomeCell = nested ? `<span style="color:var(--ink-faint); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong><div style="font-size:11px;color:var(--ink-faint)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
+    const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong><div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
-    return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:#FAFBFC;' : ''}">
+    return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
       <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
       <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(c.saldoInicial, receberDesbloqueado())}</td>
       <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600;">${maskBRL(sa, receberDesbloqueado())}</td>
@@ -1336,22 +1474,22 @@ function viewCartoes(){
     const todasFaturas = faturasAgrupadas(c.id);
     const faturas = todasFaturas.slice(0,6);
     const faturasHTML = faturas.length ? faturas.map(f => `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12px;">
-        <span style="color:var(--ink-soft); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-faint);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border); font-size:12px;">
+        <span style="color:var(--ink-3); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-4);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, pagarDesbloqueado())}</span>
           <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
           <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
         </div>
-      </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-faint); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
-      : `<div style="font-size:12px; color:var(--ink-faint); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
+      </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-4); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
+      : `<div style="font-size:12px; color:var(--ink-4); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
     const cor = PALETA_NEGOCIOS[state.cartoes.indexOf(c) % PALETA_NEGOCIOS.length];
     return `<div class="panel" style="margin-bottom:14px; ${inativo?'opacity:.55;':''}">
-      <div style="padding:16px 18px; border-bottom:1px solid var(--line);">
+      <div style="padding:16px 18px; border-bottom:1px solid var(--border);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
             <div style="display:flex; align-items:center; gap:8px;"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span></div>
-            <div style="font-size:12px; color:var(--ink-faint); margin-top:3px;">${esc(c.bandeira)} · final ${esc(c.ultimosDigitos)} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento} · paga com ${contaLabel(contaById(c.contaPagamentoId))}</div>
+            <div style="font-size:12px; color:var(--ink-4); margin-top:3px;">${esc(c.bandeira)} · final ${esc(c.ultimosDigitos)} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento} · paga com ${contaLabel(contaById(c.contaPagamentoId))}</div>
           </div>
           <div class="row-actions"><button class="btn btn-primary btn-sm" data-action="new-compra-cartao" data-id="${c.id}">+ Compra</button><button class="icon-btn" data-action="edit-cartao" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-cartao" data-id="${c.id}" title="Excluir">🗑</button></div>
         </div>
@@ -1362,7 +1500,7 @@ function viewCartoes(){
           <div class="kpi-card"><div class="kpi-label">Fatura em aberto</div><div class="kpi-value ${lockedPagar?'masked-value':'neg'}" style="font-size:16px;">${maskBRL(emAberto, pagarDesbloqueado())}</div></div>
           <div class="kpi-card"><div class="kpi-label">Limite disponível</div><div class="kpi-value ${lockedPagar?'masked-value':(estourado?'neg':'pos')}" style="font-size:16px;">${lockedPagar ? "R$ ••••••" : fmtBRL(disp)}</div></div>
         </div>
-        <div style="margin-top:10px;"><div style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:2px;">Faturas em aberto — pagamento é por fatura fechada, não por compra</div>${faturasHTML}</div>
+        <div style="margin-top:10px;"><div style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-3); margin-bottom:2px;">Faturas em aberto — pagamento é por fatura fechada, não por compra</div>${faturasHTML}</div>
       </div>
     </div>`;
   };
@@ -1421,7 +1559,7 @@ function viewLancamentos(){
     const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
     let contaTxt;
     if(cartao){
-      contaTxt = `💳 ${esc(cartao.nome)} <span style="color:var(--ink-faint); font-size:11px;">final ${esc(cartao.ultimosDigitos)}</span>${l.dataCompra && l.dataCompra !== l.data ? `<div style="font-size:11px;color:var(--ink-faint)">compra em ${fmtDateBR(l.dataCompra)}</div>` : ""}`;
+      contaTxt = `💳 ${esc(cartao.nome)} <span style="color:var(--ink-4); font-size:11px;">final ${esc(cartao.ultimosDigitos)}</span>${l.dataCompra && l.dataCompra !== l.data ? `<div style="font-size:11px;color:var(--ink-4)">compra em ${fmtDateBR(l.dataCompra)}</div>` : ""}`;
     }else if(l.tipo === "Transferência"){
       contaTxt = `${origem ? contaLabel(origem) : "—"} → ${destino ? contaLabel(destino) : "—"}`;
     }else{
@@ -1435,7 +1573,7 @@ function viewLancamentos(){
     const podeExcluir = podeExcluirNegocio(l.negocio);
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
     const marcado = lancSelecionados.has(l.id);
-    const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-faint); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
+    const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
       const quando = l.inativadoEm ? ` em ${fmtDateBR(l.inativadoEm.slice(0,10))}` : "";
       return `<tr style="opacity:.45; background:#FAF5F5;">
@@ -1444,11 +1582,11 @@ function viewLancamentos(){
         <td style="text-decoration:line-through;">${sinal} ${esc(l.tipo)}</td>
         <td style="text-decoration:line-through;">${l.negocio ? `<span class="tag" style="background:#EEE; color:#999;">${esc(l.negocio)}</span>` : "—"}</td>
         <td style="text-decoration:line-through;">${contaTxt}</td>
-        <td style="text-decoration:line-through;">${esc(l.descricao)}<div style="font-size:11px;color:var(--danger);">Inativado por ${esc(l.inativadoPor||"?")}${quando}</div></td>
+        <td style="text-decoration:line-through;">${esc(l.descricao)}<div style="font-size:11px;color:var(--neg);">Inativado por ${esc(l.inativadoPor||"?")}${quando}</div></td>
         <td class="num" style="text-decoration:line-through;">${fmtBRL(l.valor)}</td>
         <td><span class="status-pill status-agendado">Inativo</span></td>
         <td></td>
-        <td><div class="row-actions">${ehMaster() ? `<button class="icon-btn" data-action="reativar-lanc" data-id="${l.id}" title="Reativar lançamento" style="color:#0F5C3F;">↩</button>` : ""}</div></td>
+        <td><div class="row-actions">${ehMaster() ? `<button class="icon-btn" data-action="reativar-lanc" data-id="${l.id}" title="Reativar lançamento" style="color:var(--pos);">↩</button>` : ""}</div></td>
       </tr>`;
     }
     return `<tr style="${marcado ? 'background:#EAF1FB;' : ''}">
@@ -1457,11 +1595,11 @@ function viewLancamentos(){
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${esc(l.descricao)}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(catTxt)}</div>` : ""}</td>
+      <td>${esc(l.descricao)}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:#0F5C3F;">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
+      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -1475,7 +1613,7 @@ function viewLancamentos(){
     <div class="page-header">
       <div><div class="page-title">${cfg.titulo}</div><div class="page-sub">${cfg.sub}</div></div>
       <div style="display:flex; gap:8px;">
-        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--danger); border-color:var(--danger-soft);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
+        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
         <button class="btn btn-primary" data-action="new-lanc" data-tipo-preset="${cfg.tipoPreset||''}">${cfg.novoLabel}</button>
       </div>
     </div>
@@ -1485,7 +1623,7 @@ function viewLancamentos(){
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
-      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
+      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
       <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
@@ -1503,7 +1641,7 @@ function viewAjustes(){
     return `<tr>
       <td>${fmtDateBR(a.data)}</td>
       <td>${esc(conta?.nome || "Conta removida")}</td>
-      <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600; color:${receberDesbloqueado() ? (a.valor>=0?'#0F5C3F':'var(--danger)') : 'inherit'};">${maskBRL(a.valor, receberDesbloqueado())}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600; color:${receberDesbloqueado() ? (a.valor>=0?'var(--pos)':'var(--neg)') : 'inherit'};">${maskBRL(a.valor, receberDesbloqueado())}</td>
       <td>${esc(a.motivo)}</td>
       <td><div class="row-actions"><button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
@@ -1520,8 +1658,8 @@ function viewAjustes(){
 function viewCategorias(){
   const cards = state.categorias.map(cat => {
     const subRows = (cat.subcategorias||[]).map(sub => `
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 18px 9px 30px; border-top:1px solid #F0F1F4;">
-        <span style="font-size:12.5px; color:var(--ink-soft);">↳ ${esc(sub.nome)}</span>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 18px 9px 30px; border-top:1px solid var(--border);">
+        <span style="font-size:12.5px; color:var(--ink-3);">↳ ${esc(sub.nome)}</span>
         <div class="row-actions"><button class="icon-btn" data-action="edit-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Excluir">🗑</button></div>
       </div>`).join("");
     return `<div class="panel" style="margin-bottom:12px;">
@@ -1544,7 +1682,7 @@ function viewCategorias(){
 function viewNegocios(){
   const rows = state.negocios.map(n => {
     const emUso = state.lancamentos.filter(l => l.negocio === n.nome).length;
-    return `<tr><td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-faint);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
+    return `<tr><td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
   }).join("");
   return `
     <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div>
@@ -1562,10 +1700,10 @@ function viewUsuarios(){
       resumo = `<span class="status-pill status-pago">👑 Master — acesso completo</span>`;
     }else{
       const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
-      const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:#EEF0F3; color:var(--ink-soft); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
+      const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
       const entradasCat = Object.entries(p.categoriasPermitidas || {}).filter(([,v]) => v).map(([cat]) => cat);
-      const catTxt = entradasCat.length ? `<div style="font-size:11px; color:var(--ink-faint); margin-top:4px;">Categorias: ${entradasCat.map(esc).join(", ")}</div>` : "";
-      resumo = (negTags || `<span style="color:var(--ink-faint); font-size:12px;">Nenhum negócio liberado ainda</span>`) + catTxt;
+      const catTxt = entradasCat.length ? `<div style="font-size:11px; color:var(--ink-4); margin-top:4px;">Categorias: ${entradasCat.map(esc).join(", ")}</div>` : "";
+      resumo = (negTags || `<span style="color:var(--ink-4); font-size:12px;">Nenhum negócio liberado ainda</span>`) + catTxt;
     }
     return `<tr>
       <td><strong>${esc(p.nome)}</strong></td>
@@ -1772,7 +1910,7 @@ function modalLancamento(existing, tipoPreset){
         <label>Negócio</label>
         <select name="negocio" id="lancNegocioSelect">${negOptionsHTML(l.negocio)}</select>
         <div class="field-inline-add" id="novoNegocioRow" style="display:none; margin-top:8px;">
-          <input type="text" id="novoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+          <input type="text" id="novoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
           <button type="button" class="btn btn-ghost btn-sm" id="novoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
         </div>
       </div>
@@ -1781,8 +1919,8 @@ function modalLancamento(existing, tipoPreset){
           <label>${l.tipo==='Transferência' ? 'Conta de origem' : 'Conta'}</label>
           <select name="contaOrigem" id="lancContaOrigemSelect">${contaOpts}</select>
           <div class="field-inline-add" id="novaContaOrigemRow" style="display:none; margin-top:8px;">
-            <input type="text" id="novaContaOrigemNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
-            <input type="text" id="novaContaOrigemInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="novaContaOrigemNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <input type="text" id="novaContaOrigemInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
             <button type="button" class="btn btn-ghost btn-sm" id="novaContaOrigemBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
           </div>
         </div>
@@ -1790,8 +1928,8 @@ function modalLancamento(existing, tipoPreset){
           <label>Conta de destino</label>
           <select name="contaDestino" id="lancContaDestinoSelect">${contaDestOpts}</select>
           <div class="field-inline-add" id="novaContaDestinoRow" style="display:none; margin-top:8px;">
-            <input type="text" id="novaContaDestinoNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
-            <input type="text" id="novaContaDestinoInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="novaContaDestinoNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <input type="text" id="novaContaDestinoInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
             <button type="button" class="btn btn-ghost btn-sm" id="novaContaDestinoBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
           </div>
         </div>
@@ -1802,14 +1940,14 @@ function modalLancamento(existing, tipoPreset){
           <div class="field"><label>Categoria</label>
             <select name="categoria" id="lancCategoriaSelect">${catOptionsHTML(l.categoria)}</select>
             <div class="field-inline-add" id="novaCategoriaRow" style="display:none; margin-top:8px;">
-              <input type="text" id="novaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+              <input type="text" id="novaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
               <button type="button" class="btn btn-ghost btn-sm" id="novaCategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar categoria</button>
             </div>
           </div>
           <div class="field"><label>Subcategoria</label>
             <select name="subcategoria" id="lancSubcategoriaSelect">${subcatOptionsHTML(l.categoria, l.subcategoria)}</select>
             <div class="field-inline-add" id="novaSubcategoriaRow" style="display:none; margin-top:8px;">
-              <input type="text" id="novaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+              <input type="text" id="novaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
               <button type="button" class="btn btn-ghost btn-sm" id="novaSubcategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar subcategoria</button>
             </div>
           </div>
@@ -2210,15 +2348,15 @@ function modalPerfil(existing){
       </div>
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
         <div class="field"><label>Permissões por negócio</label>
-          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:8px;">
+          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
             <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
-            <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
+            <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-4); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
           </div>
           <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
         </div>
         <div class="field"><label>Categorias que pode usar</label>
-          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">
-            ${linhasCategoria || `<div style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhuma categoria cadastrada ainda.</div>`}
+          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">
+            ${linhasCategoria || `<div style="text-align:center; color:var(--ink-4); padding:14px;">Nenhuma categoria cadastrada ainda.</div>`}
           </div>
           <div class="field-help">Marcando uma categoria, todas as subcategorias dela ficam liberadas junto — não dá pra liberar só uma subcategoria específica.</div>
         </div>
@@ -2320,14 +2458,14 @@ function modalCompraCartao(cartaoIdPreset){
         <div class="field"><label>Categoria</label>
           <select name="categoria" id="compraCategoriaSelect">${catOptionsHTML("")}</select>
           <div class="field-inline-add" id="compraNovaCategoriaRow" style="display:none; margin-top:8px;">
-            <input type="text" id="compraNovaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="compraNovaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
             <button type="button" class="btn btn-ghost btn-sm" id="compraNovaCategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar categoria</button>
           </div>
         </div>
         <div class="field"><label>Subcategoria</label>
           <select name="subcategoria" id="compraSubcategoriaSelect">${subcatOptionsHTML("", "")}</select>
           <div class="field-inline-add" id="compraNovaSubcategoriaRow" style="display:none; margin-top:8px;">
-            <input type="text" id="compraNovaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="compraNovaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
             <button type="button" class="btn btn-ghost btn-sm" id="compraNovaSubcategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar subcategoria</button>
           </div>
         </div>
@@ -2335,7 +2473,7 @@ function modalCompraCartao(cartaoIdPreset){
       <div class="field"><label>Negócio</label>
         <select name="negocio" id="compraNegocioSelect">${negOptionsHTML("")}</select>
         <div class="field-inline-add" id="compraNovoNegocioRow" style="display:none; margin-top:8px;">
-          <input type="text" id="compraNovoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+          <input type="text" id="compraNovoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
           <button type="button" class="btn btn-ghost btn-sm" id="compraNovoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
         </div>
       </div>
@@ -2550,8 +2688,8 @@ function modalPagarFatura(cartaoId, dataVencimento){
   const unlockedValor = pagarDesbloqueado();
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   const itensHTML = itens.map(l => `
-    <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #F0F1F4; font-size:12px;">
-      <span style="color:var(--ink-soft);">${esc(l.descricao)}</span>
+    <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); font-size:12px;">
+      <span style="color:var(--ink-3);">${esc(l.descricao)}</span>
       <span class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono);">${maskBRL(l.valor, unlockedValor)}</span>
     </div>`).join("");
   openModal(`
@@ -2559,7 +2697,7 @@ function modalPagarFatura(cartaoId, dataVencimento){
     <form id="formPagarFatura"><div class="modal-body">
       <div class="field-help" style="margin-bottom:6px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} lançamento${itens.length===1?'':'s'}</div>
       <div style="max-height:180px; overflow-y:auto; margin-bottom:10px;">${itensHTML}</div>
-      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid var(--line); margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid var(--border); margin-bottom:14px;">
         <strong style="font-size:13px;">Total da fatura</strong>
         <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
       </div>
@@ -2595,23 +2733,23 @@ function modalPagarFaturaMinimo(cartaoId, dataVencimento, totalFatura){
   const minimoSugerido = Math.round(totalFatura * 0.15 * 100) / 100;
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const linhasItens = itens.map(l => `
-    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid #F0F1F4; justify-content:space-between; align-items:center;">
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
       <div style="display:flex; align-items:center; gap:8px; min-width:0;">
         <input type="checkbox" name="item_${l.id}">
-        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-faint);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
       </div>
-      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--danger); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
     </label>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">💳 Pagamento mínimo — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPagarMinimo"><div class="modal-body">
-      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong> · Mínimo sugerido: <strong style="color:var(--danger);">${fmtBRL(minimoSugerido)}</strong> (15%)</div>
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong> · Mínimo sugerido: <strong style="color:var(--neg);">${fmtBRL(minimoSugerido)}</strong> (15%)</div>
       <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
       <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
       <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="1" name="valorPago" value="${minimoSugerido}" id="valorPagoMinimo">
         <div class="field-help">Digite o valor e marque as compras que entram nesse pagamento parcial abaixo.</div></div>
       <div class="field"><label>Compras que entram neste pagamento</label>
-        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">${linhasItens}</div>
+        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
         <div class="field-help">As compras marcadas serão pagas pelo valor acima. As desmarcadas continuam em aberto.</div>
       </div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento</button></div></form>
@@ -2640,12 +2778,12 @@ function modalPagarFaturaParcial(cartaoId, dataVencimento, totalFatura){
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   let totalSelecionado = 0;
   const linhasItens = itens.map(l => `
-    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid #F0F1F4; justify-content:space-between; align-items:center;">
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
       <div style="display:flex; align-items:center; gap:8px; min-width:0;">
         <input type="checkbox" name="item_${l.id}" data-valor="${l.valor}" class="chk-parcial">
-        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-faint);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
       </div>
-      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--danger); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
     </label>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">✏ Pagamento parcial — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -2654,11 +2792,11 @@ function modalPagarFaturaParcial(cartaoId, dataVencimento, totalFatura){
       <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
       <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
       <div class="field"><label>Selecione as compras a pagar</label>
-        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">${linhasItens}</div>
+        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--line); margin-top:10px;">
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
         <strong style="font-size:13px;">Total selecionado</strong>
-        <strong id="totalSelecionadoParcial" style="font-family:var(--font-mono); font-size:15px; color:var(--danger);">${fmtBRL(0)}</strong>
+        <strong id="totalSelecionadoParcial" style="font-family:var(--font-mono); font-size:15px; color:var(--neg);">${fmtBRL(0)}</strong>
       </div>
       <div class="field-help">As compras marcadas serão pagas. As desmarcadas continuam em aberto.</div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento parcial</button></div></form>
@@ -2701,7 +2839,7 @@ function modalDetalheFatura(cartaoId, dataVencimento){
     const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
     return `<tr>
       <td style="white-space:nowrap;">${fmtDateBR(l.dataCompra || l.data)}</td>
-      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(l.categoria)}${l.subcategoria?' › '+esc(l.subcategoria):''}</div>` : ""}</td>
+      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-4)">${esc(l.categoria)}${l.subcategoria?' › '+esc(l.subcategoria):''}</div>` : ""}</td>
       <td>${l.negocio ? esc(l.negocio) : "—"}</td>
       <td style="text-align:center;"><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td class="num ${unlockedValor?'':'masked-value'}">${maskBRL(l.valor, unlockedValor)}</td>
@@ -2714,7 +2852,7 @@ function modalDetalheFatura(cartaoId, dataVencimento){
       <div style="max-height:320px; overflow-y:auto;">
         <table><thead><tr><th>Data compra</th><th>Descrição</th><th>Negócio</th><th style="text-align:center;">Status</th><th class="num">Valor</th></tr></thead><tbody>${rows}</tbody></table>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--line); margin-top:10px;">
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
         <strong style="font-size:13px;">Total da fatura</strong>
         <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
       </div>
@@ -2747,8 +2885,8 @@ function modalExcluirLancamento(l){
       <div class="field-help" style="margin-bottom:14px; font-size:13px;"><strong>${esc(l.descricao)}</strong> (${fmtDateBR(l.data)}) faz parte de uma série ${serieTxt} — ${l.recorrenciaIndex}ª de ${l.recorrenciaTotal} ${totalTxt}. O que você quer excluir?</div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-um" data-id="${l.id}">Excluir apenas este lançamento</button>
-        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-futuros" data-id="${l.id}">Excluir este e os próximos <span style="color:var(--ink-faint); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'} a partir de ${fmtDateBR(l.data)})</span></button>
-        <button class="btn btn-ghost" style="justify-content:flex-start; color:var(--danger);" data-action="del-lanc-todos" data-id="${l.id}">Excluir todos da série <span style="color:var(--ink-faint); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'} no total)</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-futuros" data-id="${l.id}">Excluir este e os próximos <span style="color:var(--ink-4); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'} a partir de ${fmtDateBR(l.data)})</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start; color:var(--neg);" data-action="del-lanc-todos" data-id="${l.id}">Excluir todos da série <span style="color:var(--ink-4); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'} no total)</span></button>
       </div>
     </div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
@@ -2768,12 +2906,12 @@ function modalEscopoEdicaoSerie(existing, data){
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:14px; font-size:13px;">
         <strong>${esc(existing.descricao)}</strong> faz parte de uma série ${serieTxt}. Onde aplicar valor, categoria, conta e negócio (ex: um reajuste)?
-        <br><span style="color:var(--ink-faint);">Data, status e conciliado nunca são copiados — cada ocorrência mantém os seus.</span>
+        <br><span style="color:var(--ink-4);">Data, status e conciliado nunca são copiados — cada ocorrência mantém os seus.</span>
       </div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoUm">Aplicar apenas a este lançamento</button>
-        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoFuturos">Aplicar a este e aos próximos <span style="color:var(--ink-faint); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'})</span></button>
-        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoTodos">Aplicar a todos da série <span style="color:var(--ink-faint); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'})</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoFuturos">Aplicar a este e aos próximos <span style="color:var(--ink-4); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'})</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoTodos">Aplicar a todos da série <span style="color:var(--ink-4); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'})</span></button>
       </div>
     </div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
