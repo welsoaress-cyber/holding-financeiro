@@ -487,16 +487,23 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
+  estProdutos: [], estMovimentos: [], estFornecedores: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
+  moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
 };
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HORIZONTE_ANOS = 5;
 
+// ---- Categorias de estoque para provedor de internet ----
+const EST_CATEGORIAS = ["ONU/ONT","Roteador","Switch","Cabo","Ferramenta","Conector","Torre/Poste","Rack/Gabinete","Fibra Óptica","Eletrônico","Veículo","Consumível","Outro"];
+const EST_UNIDADES = ["un","m","cx","kg","rolo","par","kit","lote"];
+const EST_MOV_TIPOS = ["Entrada","Saída","Transferência","Ajuste","Devolução"];
+
 const MODULOS_CATALOGO = [
   { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
-  { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Produtos, entradas, saídas", ativo:false },
+  { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
   { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM e relacionamento", ativo:false },
   { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
   { id:"rh",        ico:"🏢", nome:"RH",         desc:"Equipe e folha de pagamento", ativo:false },
@@ -751,6 +758,9 @@ const saveCategorias = () => saveRows("categorias", state.categorias);
 const saveNegocios = () => saveRows("negocios", state.negocios);
 const saveCartoes = () => saveRows("cartoes", state.cartoes);
 const savePerfis = () => saveRows("perfis", state.perfis);
+const saveEstProdutos = () => saveRows("est_produtos", state.estProdutos);
+const saveEstMovimentos = () => saveRows("est_movimentos", state.estMovimentos);
+const saveEstFornecedores = () => saveRows("est_fornecedores", state.estFornecedores);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
@@ -807,6 +817,18 @@ async function loadData(){
     }catch(e){
       console.warn("[loadData:config] tabela 'config' ainda não existe no Supabase — usando senha padrão do Master.", e.message || e);
       state.senhaMaster = SENHA_MASTER_PADRAO;
+    }
+
+    // Tabelas de estoque — opcionais/novas
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"]]){
+      try{
+        const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
+        if(error) throw error;
+        state[key] = (data || []).map(row => ({ id: row.id, ...row.dados }));
+      }catch(e){
+        console.warn(`[loadData:${tbl}] tabela ainda não existe — rode o SQL de criação.`, e.message||e);
+        state[key] = [];
+      }
     }
 
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
@@ -1087,8 +1109,16 @@ function renderApp(){
   const master = ehMaster();
   app.innerHTML = `<div id="appBody">
     <aside class="sidebar">
-      <div class="brand-sub" style="padding:0 10px 18px; font-size:11px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "estoque" ? "📦 estoque" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
+      ${state.moduloAtivo === "estoque" ? `
+        <div class="nav-group-label">Estoque</div>
+        ${navItem("est_dashboard","◆","Dashboard")}
+        ${navItem("est_produtos","📦","Produtos")}
+        ${navItem("est_movimentos","↕","Movimentações")}
+        ${navItem("est_fornecedores","🏭","Fornecedores")}
+        ${navItem("est_alertas","🔔","Alertas de Estoque")}
+      ` : `
       ${master ? `
       <div class="nav-group-label">Visão geral</div>
       ${navItem("dashboard","◆","Dashboard")}
@@ -1110,6 +1140,7 @@ function renderApp(){
       ${navItemSoon("Carteira")}
       ${navItemSoon("Rateio de Despesas")}
       ` : ""}
+      `}
 
       <div class="sidebar-footer">
         ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
@@ -1176,6 +1207,12 @@ function renderView(){
   else if(state.view === "categorias") main.innerHTML = viewCategorias();
   else if(state.view === "negocios") main.innerHTML = viewNegocios();
   else if(state.view === "usuarios") main.innerHTML = viewUsuarios();
+  // ---- Módulo Estoque ----
+  else if(state.view === "est_dashboard") main.innerHTML = viewEstDashboard();
+  else if(state.view === "est_produtos") main.innerHTML = viewEstProdutos();
+  else if(state.view === "est_movimentos") main.innerHTML = viewEstMovimentos();
+  else if(state.view === "est_fornecedores") main.innerHTML = viewEstFornecedores();
+  else if(state.view === "est_alertas") main.innerHTML = viewEstAlertas();
 }
 
 // ============================================================
@@ -2952,10 +2989,10 @@ document.addEventListener("click", async e => {
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
     state.modpanelAberto = false;
-    renderModbar();
-    // Módulo financeiro já é o atual — no futuro cada módulo carrega seu próprio sistema
-    if(mod.id === "financeiro"){ setView("dashboard"); }
-    else{ showToast(`Módulo ${mod.nome} em construção.`, "error"); }
+    state.moduloAtivo = mod.id;
+    if(mod.id === "financeiro"){ state.view = "dashboard"; }
+    else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
+    renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
@@ -3147,6 +3184,34 @@ document.addEventListener("click", async e => {
     state.mesVisualizado = { ano: hoje.getFullYear(), mes: hoje.getMonth() };
     renderView();
   }
+  // ---- Estoque ----
+  else if(action === "est-novo-produto") modalEstProduto(null);
+  else if(action === "est-edit-produto") modalEstProduto(estProdutoById(id));
+  else if(action === "est-del-produto"){
+    if(!confirm("Excluir este produto? As movimentações históricas serão mantidas.")) return;
+    state.estProdutos = state.estProdutos.filter(p => p.id !== id);
+    await deleteRow("est_produtos", id);
+    renderView(); showToast("Produto removido.");
+  }
+  else if(action === "est-nova-movimentacao") modalEstMovimentacao("", "Entrada");
+  else if(action === "est-registrar-entrada") modalEstMovimentacao(id, "Entrada");
+  else if(action === "est-registrar-saida") modalEstMovimentacao(id, "Saída");
+  else if(action === "est-del-mov"){
+    if(!confirm("Remover esta movimentação? O saldo do produto será recalculado.")) return;
+    state.estMovimentos = state.estMovimentos.filter(m => m.id !== id);
+    await deleteRow("est_movimentos", id);
+    renderView(); showToast("Movimentação removida.");
+  }
+  else if(action === "est-novo-fornecedor") modalEstFornecedor(null);
+  else if(action === "est-edit-fornecedor") modalEstFornecedor(estFornecedorById(id));
+  else if(action === "est-del-fornecedor"){
+    if(!confirm("Excluir este fornecedor?")) return;
+    state.estFornecedores = state.estFornecedores.filter(f => f.id !== id);
+    await deleteRow("est_fornecedores", id);
+    renderView(); showToast("Fornecedor removido.");
+  }
+  else if(action === "est-filtro-clear"){ estFiltroCategoria = ""; estFiltroTexto = ""; renderView(); }
+  else if(action === "est-movfiltro-clear"){ estMovFiltro = {tipo:"",produto:"",dataDe:"",dataAte:""}; renderView(); }
 });
 
 document.addEventListener("change", e => {
@@ -3157,12 +3222,404 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "filter-categoria"){ lancFilter.categoria = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-de"){ lancFilter.dataDe = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-ate"){ lancFilter.dataAte = e.target.value; renderApp(); }
+  // Estoque filters
+  if(e.target.dataset.action === "est-filtro-cat"){ estFiltroCategoria = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-tipo"){ estMovFiltro.tipo = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-produto"){ estMovFiltro.produto = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-de"){ estMovFiltro.dataDe = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-ate"){ estMovFiltro.dataAte = e.target.value; renderView(); }
   if(e.target.id === "mesManualInput" && e.target.value){
     const [anoStr, mesStr] = e.target.value.split("-");
     state.mesVisualizado = { ano: parseInt(anoStr), mes: parseInt(mesStr) - 1 };
     renderView();
   }
 });
+document.addEventListener("input", e => {
+  if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; renderView(); }
+});
+// ---- Helpers de estoque ----
+function estProdutoById(id){ return state.estProdutos.find(p => p.id === id); }
+function estFornecedorById(id){ return state.estFornecedores.find(f => f.id === id); }
+function estSaldoAtual(produtoId){
+  let saldo = 0;
+  for(const m of state.estMovimentos){
+    if(m.produtoId !== produtoId) continue;
+    if(m.tipo === "Entrada" || m.tipo === "Devolução") saldo += Number(m.qtd);
+    if(m.tipo === "Saída") saldo -= Number(m.qtd);
+    if(m.tipo === "Ajuste") saldo = Number(m.qtdFinal);
+    if(m.tipo === "Transferência" && m.localDestino) {} // apenas muda local, qtd total igual
+  }
+  return saldo;
+}
+function estStatusBadge(saldo, minimo){
+  const pct = minimo > 0 ? saldo / minimo : 1;
+  if(saldo <= 0) return `<span class="status-pill" style="background:#FEE2E2; color:#DC2626;">Zerado</span>`;
+  if(pct <= 1)   return `<span class="status-pill status-pendente">Baixo (${saldo})</span>`;
+  return `<span class="status-pill status-pago">${saldo} ${estProdutoById}</span>`;
+}
+
+// ---- VIEW: DASHBOARD ESTOQUE ----
+function viewEstDashboard(){
+  const totalProdutos = state.estProdutos.length;
+  const totalFornecedores = state.estFornecedores.length;
+  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0) > 0);
+  const zerados = state.estProdutos.filter(p => estSaldoAtual(p.id) <= 0);
+  const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * Number(p.precoUnitario||0), 0);
+  const movsHoje = state.estMovimentos.filter(m => m.data === todayISO()).length;
+  const ultMovs = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0,8);
+
+  const movRow = m => {
+    const prod = estProdutoById(m.produtoId);
+    const cor = {Entrada:"var(--pos)",Saída:"var(--neg)",Devolução:"var(--warn)",Ajuste:"var(--accent)",Transferência:"var(--ink-3)"}[m.tipo]||"var(--ink-3)";
+    return `<tr>
+      <td style="white-space:nowrap; color:var(--ink-3);">${fmtDateBR(m.data)}</td>
+      <td><span style="color:${cor}; font-weight:600; font-size:12px;">● ${esc(m.tipo)}</span></td>
+      <td>${esc(prod?.nome||"—")}</td>
+      <td class="num" style="font-weight:600; color:${m.tipo==='Saída'?'var(--neg)':'var(--pos)'};">${m.tipo==='Saída'?'-':'+'} ${m.qtd} ${esc(prod?.unidade||"un")}</td>
+      <td style="color:var(--ink-3);">${esc(m.motivo||"—")}</td>
+      <td style="color:var(--ink-3); font-size:11.5px;">${esc(m.responsavel||"—")}</td>
+    </tr>`;
+  };
+
+  const alertaRows = alertas.slice(0,5).map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const cor = saldo <= 0 ? "var(--neg)" : "var(--warn)";
+    return `<tr>
+      <td><strong>${esc(p.nome)}</strong><div style="font-size:11px;color:var(--ink-4);">${esc(p.categoria)}</div></td>
+      <td class="num" style="font-weight:700; color:${cor};">${saldo}</td>
+      <td class="num" style="color:var(--ink-4);">${p.estoqueMinimo}</td>
+      <td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button></div></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Estoque — Dashboard</div><div class="page-sub">Visão geral de equipamentos e insumos do provedor</div></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>
+        <button class="btn btn-primary" data-action="est-novo-produto">+ Produto</button>
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns: repeat(5,1fr);">
+      <div class="kpi-card"><div class="kpi-label">Produtos cadastrados</div><div class="kpi-value">${totalProdutos}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(valorTotal)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Movimentações hoje</div><div class="kpi-value">${movsHoje}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Alertas de estoque</div><div class="kpi-value" style="color:${alertas.length?'var(--warn)':'var(--pos)'};">${alertas.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Itens zerados</div><div class="kpi-value" style="color:${zerados.length?'var(--neg)':'var(--pos)'};">${zerados.length}</div></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">🔔 Alertas — estoque abaixo do mínimo</div></div>
+        <div class="panel-body" style="padding-top:6px;">
+          ${alertas.length ? `<table><thead><tr><th>Produto</th><th class="num">Saldo</th><th class="num">Mínimo</th><th></th></tr></thead><tbody>${alertaRows}</tbody></table>` : emptyState("Nenhum alerta. Estoque em dia. ✓")}
+        </div>
+      </div>
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">↕ Últimas movimentações</div></div>
+        <div class="panel-body" style="padding-top:6px;">
+          ${ultMovs.length ? `<table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Motivo</th><th>Responsável</th></tr></thead><tbody>${ultMovs.map(movRow).join("")}</tbody></table>` : emptyState("Nenhuma movimentação registrada ainda.")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: PRODUTOS ----
+let estFiltroCategoria = "", estFiltroTexto = "";
+function viewEstProdutos(){
+  let lista = [...state.estProdutos];
+  if(estFiltroCategoria) lista = lista.filter(p => p.categoria === estFiltroCategoria);
+  if(estFiltroTexto) lista = lista.filter(p => (p.nome+p.codigoInterno+p.modelo+p.fabricante).toLowerCase().includes(estFiltroTexto.toLowerCase()));
+  lista.sort((a,b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome));
+
+  const rows = lista.map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const minimo = Number(p.estoqueMinimo||0);
+    const corSaldo = saldo <= 0 ? "var(--neg)" : saldo <= minimo ? "var(--warn)" : "var(--pos)";
+    const fornecedor = estFornecedorById(p.fornecedorId);
+    return `<tr>
+      <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}</td>
+      <td>${esc(p.codigoInterno||"—")}</td>
+      <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
+      <td style="color:var(--ink-3);">${esc(fornecedor?.nome||"—")}</td>
+      <td class="num" style="font-weight:700; color:${corSaldo}; font-size:14px;">${saldo}</td>
+      <td class="num" style="color:var(--ink-4);">${esc(p.unidade||"un")}</td>
+      <td class="num">${p.estoqueMinimo||"—"}</td>
+      <td class="num">${p.precoUnitario ? fmtBRL(p.precoUnitario) : "—"}</td>
+      <td class="num" style="color:var(--ink-3);">${p.precoUnitario ? fmtBRL(saldo * Number(p.precoUnitario)) : "—"}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="est-registrar-entrada" data-id="${p.id}" title="Registrar entrada" style="color:var(--pos);">▲</button>
+        <button class="icon-btn" data-action="est-registrar-saida" data-id="${p.id}" title="Registrar saída" style="color:var(--neg);">▼</button>
+        <button class="icon-btn" data-action="est-edit-produto" data-id="${p.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="est-del-produto" data-id="${p.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+
+  const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${estFiltroCategoria===c?"selected":""}>${c}</option>`).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s)</div></div>
+      <button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar por nome, código ou modelo..." value="${esc(estFiltroTexto)}" data-action="est-filtro-texto" style="min-width:220px;">
+        <select data-action="est-filtro-cat"><option value="">Todas as categorias</option>${catOptions}</select>
+        ${(estFiltroCategoria||estFiltroTexto)?`<button class="btn btn-ghost btn-sm" data-action="est-filtro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr>
+          <th>Produto</th><th>Código</th><th>Categoria</th><th>Fornecedor</th>
+          <th class="num">Saldo</th><th class="num">Un</th><th class="num">Mín.</th>
+          <th class="num">Preço unit.</th><th class="num">Valor total</th><th></th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: MOVIMENTAÇÕES ----
+let estMovFiltro = { tipo:"", produto:"", dataDe:"", dataAte:"" };
+function viewEstMovimentos(){
+  let lista = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data)||b.id.localeCompare(a.id));
+  if(estMovFiltro.tipo) lista = lista.filter(m => m.tipo === estMovFiltro.tipo);
+  if(estMovFiltro.produto) lista = lista.filter(m => m.produtoId === estMovFiltro.produto);
+  if(estMovFiltro.dataDe) lista = lista.filter(m => m.data >= estMovFiltro.dataDe);
+  if(estMovFiltro.dataAte) lista = lista.filter(m => m.data <= estMovFiltro.dataAte);
+
+  const rows = lista.map(m => {
+    const prod = estProdutoById(m.produtoId);
+    const sinal = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "+" : m.tipo==="Saída" ? "−" : "~";
+    const cor = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "var(--pos)" : m.tipo==="Saída" ? "var(--neg)" : "var(--ink-3)";
+    return `<tr>
+      <td style="white-space:nowrap;">${fmtDateBR(m.data)}</td>
+      <td><span style="color:${cor}; font-weight:600;">${esc(m.tipo)}</span></td>
+      <td>${esc(prod?.nome||"—")}<div style="font-size:11px;color:var(--ink-4);">${esc(prod?.categoria||"")}</div></td>
+      <td class="num" style="font-weight:700; color:${cor};">${sinal} ${m.qtd} ${esc(prod?.unidade||"un")}</td>
+      <td style="color:var(--ink-3);">${esc(m.localOrigem||"—")} ${m.localDestino?`→ ${esc(m.localDestino)}`:""}</td>
+      <td>${esc(m.motivo||"—")}</td>
+      <td style="color:var(--ink-3); font-size:11.5px;">${esc(m.responsavel||"—")}</td>
+      <td>${esc(m.notaFiscal||"—")}</td>
+      <td><div class="row-actions"><button class="icon-btn danger" data-action="est-del-mov" data-id="${m.id}" title="Remover">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+
+  const tipoOpts = EST_MOV_TIPOS.map(t => `<option value="${t}" ${estMovFiltro.tipo===t?"selected":""}>${t}</option>`).join("");
+  const prodOpts = state.estProdutos.map(p => `<option value="${p.id}" ${estMovFiltro.produto===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const temFiltro = estMovFiltro.tipo||estMovFiltro.produto||estMovFiltro.dataDe||estMovFiltro.dataAte;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Movimentações</div><div class="page-sub">Entradas, saídas, transferências e ajustes de estoque</div></div>
+      <button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <select data-action="est-movfiltro-tipo"><option value="">Todos os tipos</option>${tipoOpts}</select>
+        <select data-action="est-movfiltro-produto"><option value="">Todos os produtos</option>${prodOpts}</select>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="est-movfiltro-de" value="${estMovFiltro.dataDe}"> até <input type="date" data-action="est-movfiltro-ate" value="${estMovFiltro.dataAte}"></span>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="est-movfiltro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhuma movimentação encontrada.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: FORNECEDORES ----
+function viewEstFornecedores(){
+  const rows = state.estFornecedores.map(f => {
+    const produtos = state.estProdutos.filter(p => p.fornecedorId === f.id).length;
+    return `<tr>
+      <td style="font-weight:600;">${esc(f.nome)}</td>
+      <td>${esc(f.cnpj||"—")}</td>
+      <td>${esc(f.contato||"—")}</td>
+      <td>${esc(f.telefone||"—")}</td>
+      <td>${esc(f.email||"—")}</td>
+      <td style="text-align:center;">${produtos} produto(s)</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="est-edit-fornecedor" data-id="${f.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="est-del-fornecedor" data-id="${f.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Fornecedores</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
+      <button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: ALERTAS ----
+function viewEstAlertas(){
+  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0));
+  const rows = alertas.map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const minimo = Number(p.estoqueMinimo||0);
+    const fornecedor = estFornecedorById(p.fornecedorId);
+    return `<tr>
+      <td style="font-weight:600;">${esc(p.nome)}</td>
+      <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
+      <td class="num" style="font-weight:700; color:${saldo<=0?'var(--neg)':'var(--warn)'};">${saldo}</td>
+      <td class="num">${minimo}</td>
+      <td class="num" style="color:var(--neg); font-weight:600;">${minimo - saldo}</td>
+      <td>${esc(fornecedor?.nome||"—")}</td>
+      <td>${esc(fornecedor?.telefone||"—")}</td>
+      <td><div class="row-actions"><button class="btn btn-primary btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">🔔 Alertas de Estoque</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
+    </div>
+    ${alertas.length ? `
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Saldo atual</th><th class="num">Mínimo</th><th class="num">Faltam</th><th>Fornecedor</th><th>Contato</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div></div>` : `<div class="panel"><div class="panel-body">${emptyState("Nenhum alerta. Estoque em dia. ✓")}</div></div>`}
+  `;
+}
+
+/* =========================================================================
+   MODAIS DO ESTOQUE
+========================================================================= */
+function modalEstProduto(existing){
+  const isEdit = !!existing;
+  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", fornecedorId:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
+  const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
+  const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar produto":"Novo produto"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstProduto"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome do produto *</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: ONU GPON Huawei HG8145V5"></div>
+        <div class="field"><label>Código interno</label><input type="text" name="codigoInterno" value="${esc(p.codigoInterno)}" placeholder="Ex: ONU-001"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Categoria *</label><select name="categoria">${catOptions}</select></div>
+        <div class="field"><label>Unidade</label><select name="unidade">${unOptions}</select></div>
+        <div class="field"><label>Estoque mínimo</label><input type="number" min="0" name="estoqueMinimo" value="${p.estoqueMinimo}" placeholder="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Modelo</label><input type="text" name="modelo" value="${esc(p.modelo)}" placeholder="Ex: HG8145V5"></div>
+        <div class="field"><label>Fabricante</label><input type="text" name="fabricante" value="${esc(p.fabricante)}" placeholder="Ex: Huawei"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Fornecedor</label><select name="fornecedorId"><option value="">— Nenhum —</option>${fornOptions}</select></div>
+        <div class="field"><label>Preço unitário (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00"></div>
+      </div>
+      <div class="field"><label>Localização no estoque</label><input type="text" name="localizacao" value="${esc(p.localizacao)}" placeholder="Ex: Prateleira A3, Sala técnica"></div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(p.observacoes)}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar produto"}</button></div></form>
+  `);
+  document.getElementById("formEstProduto").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), codigoInterno: fd.get("codigoInterno").trim(),
+      categoria: fd.get("categoria"), unidade: fd.get("unidade"),
+      modelo: fd.get("modelo").trim(), fabricante: fd.get("fabricante").trim(),
+      fornecedorId: fd.get("fornecedorId"),
+      precoUnitario: parseFloat(fd.get("precoUnitario"))||0,
+      estoqueMinimo: parseInt(fd.get("estoqueMinimo"))||0,
+      localizacao: fd.get("localizacao").trim(),
+      observacoes: fd.get("observacoes").trim(),
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.estProdutos.push({ id: uid("ep"), ...data }); }
+    await saveEstProdutos(); closeModal(); renderView(); showToast(isEdit?"Produto atualizado.":"Produto adicionado.");
+  });
+}
+
+function modalEstMovimentacao(presetProdutoId, presetTipo){
+  const prodOptions = state.estProdutos.map(p => `<option value="${p.id}" ${presetProdutoId===p.id?"selected":""}>${esc(p.nome)} — saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")}</option>`).join("");
+  const tipoOptions = EST_MOV_TIPOS.map(t => `<option value="${t}" ${presetTipo===t?"selected":""}>${t}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">↕ Nova movimentação de estoque</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstMov"><div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Data *</label><input required type="date" name="data" value="${todayISO()}"></div>
+        <div class="field"><label>Tipo *</label><select name="tipo" id="estMovTipo">${tipoOptions}</select></div>
+      </div>
+      <div class="field"><label>Produto *</label><select required name="produtoId">${prodOptions||'<option value="">— Cadastre um produto primeiro —</option>'}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Quantidade *</label><input required type="number" min="1" step="1" name="qtd" placeholder="1">
+          <div class="field-help" id="estMovQtdHelp"></div>
+        </div>
+        <div class="field" id="estMovQtdFinalWrap" style="display:none;"><label>Saldo final (ajuste)</label><input type="number" min="0" step="1" name="qtdFinal" placeholder="Saldo correto"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Local de origem</label><input type="text" name="localOrigem" placeholder="Ex: Almoxarifado"></div>
+        <div class="field" id="estMovDestinoWrap"><label>Local de destino</label><input type="text" name="localDestino" placeholder="Ex: Técnico João"></div>
+      </div>
+      <div class="field"><label>Motivo / Descrição</label><input type="text" name="motivo" placeholder="Ex: Instalação cliente, Compra NF 123, Perda"></div>
+      <div class="field-row">
+        <div class="field"><label>Responsável</label><input type="text" name="responsavel" value="${state.perfilAtivo?state.perfilAtivo.nome:'Master'}" placeholder="Nome"></div>
+        <div class="field"><label>Nota Fiscal</label><input type="text" name="notaFiscal" placeholder="Nº da NF (opcional)"></div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Registrar</button></div></form>
+  `);
+  document.getElementById("estMovTipo").addEventListener("change", e => {
+    const isAjuste = e.target.value === "Ajuste";
+    const isTransf = e.target.value === "Transferência";
+    document.getElementById("estMovQtdFinalWrap").style.display = isAjuste ? "block" : "none";
+    document.getElementById("estMovDestinoWrap").style.display = isTransf ? "block" : "none";
+  });
+  document.getElementById("formEstMov").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(!fd.get("produtoId")){ showToast("Selecione um produto.", "error"); return; }
+    const mov = {
+      id: uid("em"), data: fd.get("data"), tipo: fd.get("tipo"),
+      produtoId: fd.get("produtoId"), qtd: parseInt(fd.get("qtd"))||0,
+      qtdFinal: parseInt(fd.get("qtdFinal"))||undefined,
+      localOrigem: fd.get("localOrigem").trim(), localDestino: fd.get("localDestino").trim(),
+      motivo: fd.get("motivo").trim(), responsavel: fd.get("responsavel").trim(),
+      notaFiscal: fd.get("notaFiscal").trim(),
+    };
+    state.estMovimentos.push(mov);
+    await saveEstMovimentos(); closeModal(); renderView();
+    showToast("Movimentação registrada.");
+  });
+}
+
+function modalEstFornecedor(existing){
+  const isEdit = !!existing;
+  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", observacoes:"" };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar fornecedor":"Novo fornecedor"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstForn"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome *</label><input required type="text" name="nome" value="${esc(f.nome)}" placeholder="Razão social ou nome fantasia"></div>
+        <div class="field"><label>CNPJ</label><input type="text" name="cnpj" value="${esc(f.cnpj)}" placeholder="00.000.000/0001-00"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Nome do contato</label><input type="text" name="contato" value="${esc(f.contato)}" placeholder="Nome"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="${esc(f.telefone)}" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email)}" placeholder="fornecedor@email.com"></div>
+      <div class="field"><label>Endereço</label><input type="text" name="endereco" value="${esc(f.endereco)}" placeholder="Rua, número, cidade"></div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(f.observacoes)}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar fornecedor"}</button></div></form>
+  `);
+  document.getElementById("formEstForn").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { nome: fd.get("nome").trim(), cnpj: fd.get("cnpj").trim(), contato: fd.get("contato").trim(), telefone: fd.get("telefone").trim(), email: fd.get("email").trim(), endereco: fd.get("endereco").trim(), observacoes: fd.get("observacoes").trim() };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.estFornecedores.push({ id: uid("ef"), ...data }); }
+    await saveEstFornecedores(); closeModal(); renderView(); showToast(isEdit?"Fornecedor atualizado.":"Fornecedor adicionado.");
+  });
+}
 
 // ============================================================
 // INIT — reage à sessão do Supabase
