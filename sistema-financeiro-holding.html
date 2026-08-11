@@ -330,7 +330,7 @@ function proximaCorNegocio(){ return PALETA_NEGOCIOS[state.negocios.length % PAL
 /* =========================================================================
    PERMISSÕES (Master vê tudo; perfis de membro só o que foi liberado por negócio)
 ========================================================================= */
-function ehMaster(){ return !state.perfilAtivo; }
+function ehMaster(){ return !state.perfilAtivo || state.perfilAtivo.tipo === "master"; }
 function pagarDesbloqueado(){ return ehMaster() || state.pagarUnlocked; }
 function receberDesbloqueado(){ return ehMaster() || state.receberUnlocked; }
 function permissaoNegocio(negocio, acao){
@@ -343,6 +343,11 @@ function podeVerNegocio(negocio){ return permissaoNegocio(negocio, "ver"); }
 function podeEditarNegocio(negocio){ return permissaoNegocio(negocio, "editar"); }
 function podeExcluirNegocio(negocio){ return permissaoNegocio(negocio, "excluir"); }
 function lancamentosVisiveis(lista){ return ehMaster() ? lista : lista.filter(l => podeVerNegocio(l.negocio)); }
+function podeUsarCategoria(nomeCategoria){
+  if(ehMaster()) return true;
+  if(!nomeCategoria || !state.perfilAtivo) return false;
+  return !!(state.perfilAtivo.categoriasPermitidas || {})[nomeCategoria];
+}
 function perfilById(id){ return state.perfis.find(p => p.id === id); }
 
 function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
@@ -562,12 +567,13 @@ async function tratarErroDeSessao(e){
 }
 async function loadData(){
   if(!state.user) return;
+  const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
-    const results = await Promise.all(TABELAS.map(t =>
+    const results = await Promise.all(TABELAS_CORE.map(t =>
       supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
-    results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes, perfis] = results.map(r =>
+    results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
       (r.data || []).map(row => ({ id: row.id, ...row.dados }))
     );
     state.contas = contas;
@@ -576,8 +582,19 @@ async function loadData(){
     state.categorias = categorias;
     state.negocios = negocios;
     state.cartoes = cartoes;
-    state.perfis = perfis;
     state.storageOK = true;
+
+    // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
+    // não trava o resto do app — só fica sem perfis (só o Master existe) até você
+    // rodar o SQL de criação da tabela no Supabase.
+    try{
+      const { data, error } = await supabaseClient.from("perfis").select("id,dados").eq("user_id", state.user.id);
+      if(error) throw error;
+      state.perfis = (data || []).map(row => ({ id: row.id, ...row.dados }));
+    }catch(e){
+      console.warn("[loadData:perfis] tabela 'perfis' ainda não existe no Supabase — rode o SQL de criação.", e.message || e);
+      state.perfis = [];
+    }
 
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
     if(state.categorias.length === 0 && state.negocios.length === 0){
@@ -1325,10 +1342,16 @@ function viewNegocios(){
 // ============================================================
 function viewUsuarios(){
   const rows = state.perfis.map(p => {
-    const entradas = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
-    const resumo = entradas.length
-      ? entradas.map(([neg,perm]) => `<span class="tag" style="background:#EEF0F3; color:var(--ink-soft); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("")
-      : `<span style="color:var(--ink-faint); font-size:12px;">Nenhum negócio liberado ainda</span>`;
+    let resumo;
+    if(p.tipo === "master"){
+      resumo = `<span class="status-pill status-pago">👑 Master — acesso completo</span>`;
+    }else{
+      const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
+      const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:#EEF0F3; color:var(--ink-soft); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
+      const entradasCat = Object.entries(p.categoriasPermitidas || {}).filter(([,v]) => v).map(([cat]) => cat);
+      const catTxt = entradasCat.length ? `<div style="font-size:11px; color:var(--ink-faint); margin-top:4px;">Categorias: ${entradasCat.map(esc).join(", ")}</div>` : "";
+      resumo = (negTags || `<span style="color:var(--ink-faint); font-size:12px;">Nenhum negócio liberado ainda</span>`) + catTxt;
+    }
     return `<tr>
       <td><strong>${esc(p.nome)}</strong></td>
       <td>${resumo}</td>
@@ -1500,13 +1523,14 @@ function modalCaixinha(parentId, existing){
 // MODAL — LANÇAMENTO
 // ============================================================
 function catOptionsHTML(selectedNome){
-  const opts = state.categorias.map(c => `<option value="${esc(c.nome)}" ${selectedNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
-  return `<option value="">— Selecione —</option>${opts}<option value="__nova__">+ Nova categoria...</option>`;
+  const categoriasPermitidas = ehMaster() ? state.categorias : state.categorias.filter(c => podeUsarCategoria(c.nome) || c.nome === selectedNome);
+  const opts = categoriasPermitidas.map(c => `<option value="${esc(c.nome)}" ${selectedNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
+  return `<option value="">— Selecione —</option>${opts}${ehMaster() ? `<option value="__nova__">+ Nova categoria...</option>` : ""}`;
 }
 function subcatOptionsHTML(nomeCategoria, selectedNome){
   const subs = subcategoriasDe(nomeCategoria);
   const opts = subs.map(s => `<option value="${esc(s.nome)}" ${selectedNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
-  return `<option value="">— Nenhuma —</option>${opts}<option value="__nova__">+ Nova subcategoria...</option>`;
+  return `<option value="">— Nenhuma —</option>${opts}${ehMaster() ? `<option value="__nova__">+ Nova subcategoria...</option>` : ""}`;
 }
 function negOptionsHTML(selectedNome){
   const negociosPermitidos = ehMaster() ? state.negocios : state.negocios.filter(n => podeEditarNegocio(n.nome) || n.nome === selectedNome);
@@ -1514,12 +1538,16 @@ function negOptionsHTML(selectedNome){
   return `<option value="">— Selecione —</option>${opts}${ehMaster() ? `<option value="__novo__">+ Novo negócio...</option>` : ""}`;
 }
 
+function contaOptionsComCriacao(selectedId){
+  const opts = contasParaSelecao(selectedId).map(c => `<option value="${c.id}" ${selectedId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  return `${opts}<option value="__nova__">+ Nova conta...</option>`;
+}
 function modalLancamento(existing, tipoPreset){
   const isEdit = !!existing;
   const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
   const unlockedValor = !isEdit || (l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado());
-  const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
-  const contaDestOpts = contasParaSelecao(l.contaDestino).map(c => `<option value="${c.id}" ${l.contaDestino===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  const contaOpts = contaOptionsComCriacao(l.contaOrigem);
+  const contaDestOpts = contaOptionsComCriacao(l.contaDestino);
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar lançamento" : "Novo lançamento"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -1533,7 +1561,26 @@ function modalLancamento(existing, tipoPreset){
           <button type="button" class="btn btn-ghost btn-sm" id="novoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
         </div>
       </div>
-      <div class="field-row"><div class="field"><label>${l.tipo==='Transferência' ? 'Conta de origem' : 'Conta'}</label><select name="contaOrigem">${contaOpts}</select></div><div id="lancDestinoWrap" class="field" style="display:${l.tipo==='Transferência'?'block':'none'}"><label>Conta de destino</label><select name="contaDestino">${contaDestOpts}</select></div></div>
+      <div class="field-row">
+        <div class="field">
+          <label>${l.tipo==='Transferência' ? 'Conta de origem' : 'Conta'}</label>
+          <select name="contaOrigem" id="lancContaOrigemSelect">${contaOpts}</select>
+          <div class="field-inline-add" id="novaContaOrigemRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaContaOrigemNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="novaContaOrigemInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaContaOrigemBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
+          </div>
+        </div>
+        <div id="lancDestinoWrap" class="field" style="display:${l.tipo==='Transferência'?'block':'none'}">
+          <label>Conta de destino</label>
+          <select name="contaDestino" id="lancContaDestinoSelect">${contaDestOpts}</select>
+          <div class="field-inline-add" id="novaContaDestinoRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaContaDestinoNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <input type="text" id="novaContaDestinoInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-body); font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaContaDestinoBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
+          </div>
+        </div>
+      </div>
       <div id="valorFieldWrap">${campoValorProtegido(`Valor (R$) <span class="field-help" id="valorHint" style="display:inline;"></span>`, "valor", l.valor, unlockedValor, {min:"0.01"})}</div>
       <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
         <div class="field-row">
@@ -1668,6 +1715,37 @@ function modalLancamento(existing, tipoPreset){
     showToast("Negócio criado.");
   });
 
+  // ---- Conta (origem/destino) inline: qualquer usuário pode cadastrar uma conta que ainda não existe ----
+  function wireContaInline(selectId, rowId, nomeId, instId, btnId){
+    const select = document.getElementById(selectId);
+    const row = document.getElementById(rowId);
+    if(!select || !row) return;
+    select.addEventListener("change", () => {
+      if(select.value === "__nova__"){
+        row.style.display = "block";
+        document.getElementById(nomeId).focus();
+      }else{
+        row.style.display = "none";
+      }
+    });
+    document.getElementById(btnId).addEventListener("click", async () => {
+      const nomeInput = document.getElementById(nomeId);
+      const instInput = document.getElementById(instId);
+      const nome = nomeInput.value.trim();
+      const instituicao = instInput.value.trim();
+      if(!nome){ nomeInput.focus(); return; }
+      const nova = { id: uid("c"), parentId: null, nome, instituicao, tipo: "Conta Corrente", saldoInicial: 0, limite: 0, ativa: true };
+      state.contas.push(nova);
+      await saveContas();
+      select.innerHTML = contaOptionsComCriacao(nova.id);
+      row.style.display = "none";
+      nomeInput.value = ""; instInput.value = "";
+      showToast("Conta criada.");
+    });
+  }
+  wireContaInline("lancContaOrigemSelect", "novaContaOrigemRow", "novaContaOrigemNome", "novaContaOrigemInstituicao", "novaContaOrigemBtn");
+  wireContaInline("lancContaDestinoSelect", "novaContaDestinoRow", "novaContaDestinoNome", "novaContaDestinoInstituicao", "novaContaDestinoBtn");
+
   // ---- Repetição + divisão total/parcela ----
   const repSelect = document.getElementById("lancRepeticao");
   if(repSelect){
@@ -1708,6 +1786,9 @@ function modalLancamento(existing, tipoPreset){
     }
     if(negSelect.value === "__novo__"){
       showToast("Finalize a criação do negócio antes de salvar.", "error"); return;
+    }
+    if(fd.get("contaOrigem") === "__nova__" || fd.get("contaDestino") === "__nova__"){
+      showToast("Finalize a criação da conta antes de salvar.", "error"); return;
     }
     const data = {
       data: fd.get("data"), tipo,
@@ -1883,7 +1964,7 @@ function modalNegocio(existing){
 ========================================================================= */
 function modalPerfil(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", senha:"", permissoes:{} };
+  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{} };
   const linhasNegocio = state.negocios.map(n => {
     const perm = p.permissoes[n.nome] || { ver:false, editar:false, excluir:false };
     return `<tr>
@@ -1893,6 +1974,10 @@ function modalPerfil(existing){
       <td style="text-align:center;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
     </tr>`;
   }).join("");
+  const linhasCategoria = state.categorias.map(c => {
+    const permitida = !!(p.categoriasPermitidas || {})[c.nome];
+    return `<label class="checkbox-row" style="padding:5px 0;"><input type="checkbox" name="cat_${c.id}" ${permitida?"checked":""}> ${esc(c.nome)}</label>`;
+  }).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPerfil"><div class="modal-body">
@@ -1900,20 +1985,44 @@ function modalPerfil(existing){
       <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: tom123">
         <div class="field-help">Salva em texto simples, igual às senhas de "ver saldo" — não peça pra usar uma senha que a pessoa usa em outro lugar.</div>
       </div>
-      <div class="field"><label>Permissões por negócio</label>
-        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:8px;">
-          <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
-          <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
-        </div>
-        <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
+      <div class="field"><label>Tipo de acesso</label>
+        <select name="tipo" id="perfilTipoSelect">
+          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro (acesso restrito por negócio)</option>
+          <option value="master" ${p.tipo==="master"?"selected":""}>Master (acesso completo, igual a você)</option>
+        </select>
       </div>
+      <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
+        <div class="field"><label>Permissões por negócio</label>
+          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:8px;">
+            <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
+            <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
+          </div>
+          <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
+        </div>
+        <div class="field"><label>Categorias que pode usar</label>
+          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">
+            ${linhasCategoria || `<div style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhuma categoria cadastrada ainda.</div>`}
+          </div>
+          <div class="field-help">Marcando uma categoria, todas as subcategorias dela ficam liberadas junto — não dá pra liberar só uma subcategoria específica.</div>
+        </div>
+      </div>
+      <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"}; margin-bottom:10px;">Esse usuário vai ver e editar absolutamente tudo, igual a você — não precisa marcar nada abaixo.</div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button></div></form>
   `);
+  const tipoSelect = document.getElementById("perfilTipoSelect");
+  const permissoesWrap = document.getElementById("perfilPermissoesWrap");
+  const masterAviso = document.getElementById("perfilMasterAviso");
+  tipoSelect.addEventListener("change", () => {
+    const ehTipoMaster = tipoSelect.value === "master";
+    permissoesWrap.style.display = ehTipoMaster ? "none" : "block";
+    masterAviso.style.display = ehTipoMaster ? "block" : "none";
+  });
   document.getElementById("formPerfil").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const nome = fd.get("nome").trim();
     const senha = fd.get("senha").trim();
+    const tipo = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
     if(state.perfis.some(x => x.nome === nome && x !== existing)){ showToast("Já existe um usuário com esse nome.", "error"); return; }
     const permissoes = {};
@@ -1924,7 +2033,9 @@ function modalPerfil(existing){
         excluir: fd.get(`excluir_${n.id}`) === "on",
       };
     });
-    const data = { nome, senha, permissoes };
+    const categoriasPermitidas = {};
+    state.categorias.forEach(c => { categoriasPermitidas[c.nome] = fd.get(`cat_${c.id}`) === "on"; });
+    const data = { nome, senha, tipo, permissoes, categoriasPermitidas };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.perfis.push({ id: uid("perfil"), ...data }); }
     await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
