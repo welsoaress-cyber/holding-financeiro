@@ -52,12 +52,12 @@
 
 <script>
 // ============================================================
-// CONFIGURAÇÃO DO SUPABASE
+// CONFIGURAÇÃO DO SUPABASE (CORRIGIDO)
 // ============================================================
 const SUPABASE_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 
-// CORREÇÃO: Inicialização correta do Supabase
+// CORRIGIDO: NÃO USAR 'const' pois o script já declarou 'supabase'
 supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
@@ -191,7 +191,7 @@ async function doLogout() {
 }
 
 // ============================================================
-// CÁLCULOS (MANTIDOS IGUAIS)
+// CÁLCULOS
 // ============================================================
 function saldoAtual(id) {
   const conta = state.contas.find(c => c.id === id);
@@ -241,7 +241,7 @@ function totalPagar() {
 }
 
 // ============================================================
-// RENDER (MANTIDO IGUAL)
+// RENDER
 // ============================================================
 function render() {
   const app = document.getElementById('app');
@@ -303,7 +303,7 @@ function renderView() {
 }
 
 // ============================================================
-// VIEWS (MANTIDAS IGUAIS)
+// VIEWS
 // ============================================================
 function viewDashboard() {
   const total = totalConsolidado();
@@ -510,7 +510,7 @@ function viewCategorias() {
 }
 
 // ============================================================
-// MODAIS (MANTIDOS IGUAIS)
+// MODAIS
 // ============================================================
 function openModal(html) {
   const overlay = document.createElement('div');
@@ -858,7 +858,6 @@ document.addEventListener('submit', function(e) {
   } catch(e) {
     console.error('Erro na inicialização:', e);
     showToast('Erro ao iniciar o sistema. Verifique a conexão.', 'error');
-    // Tenta renderizar mesmo assim
     render();
   }
 })();
