@@ -1077,7 +1077,7 @@ function viewCartoes(){
 // ============================================================
 // VIEW: LANÇAMENTOS
 // ============================================================
-let lancFilter = { negocio: "", status: "", conta: "", cartao: "", dataDe: "", dataAte: "" };
+let lancFilter = { negocio: "", status: "", conta: "", cartao: "", categoria: "", dataDe: "", dataAte: "" };
 let lancSelecionados = new Set();
 let lancVisibleIds = [];
 const LANC_VIEW_CONFIG = {
@@ -1086,11 +1086,23 @@ const LANC_VIEW_CONFIG = {
   despesas:        { titulo: "Contas a Pagar",         sub: "Só despesas avulsas — compras no cartão ficam no menu Cartão de Crédito.", tipo: "Despesa",     novoLabel: "+ Nova despesa",     tipoPreset: "Despesa" },
   transferencias:  { titulo: "Transferências",         sub: "Só transferências entre contas.",                                     tipo: "Transferência",  novoLabel: "+ Nova transferência", tipoPreset: "Transferência" },
 };
+const CATEGORIA_FILTRO_LABELS = {
+  receber: "📥 Contas a Receber",
+  pagar: "📤 Contas a Pagar",
+  cartao: "💳 Cartão de Crédito",
+  transferencia: "⇄ Transferências",
+};
 function viewLancamentos(){
   const cfg = LANC_VIEW_CONFIG[state.view] || LANC_VIEW_CONFIG.lancamentos;
   let list = [...state.lancamentos].sort((a,b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
   if(cfg.tipo) list = list.filter(l => l.tipo === cfg.tipo);
   if(state.view === "despesas") list = list.filter(l => !l.cartaoId); // compras de cartao ficam so no menu Cartao de Credito
+  if(state.view === "lancamentos" && lancFilter.categoria){
+    if(lancFilter.categoria === "receber") list = list.filter(l => l.tipo === "Receita");
+    else if(lancFilter.categoria === "pagar") list = list.filter(l => l.tipo === "Despesa" && !l.cartaoId);
+    else if(lancFilter.categoria === "cartao") list = list.filter(l => !!l.cartaoId);
+    else if(lancFilter.categoria === "transferencia") list = list.filter(l => l.tipo === "Transferência");
+  }
   if(lancFilter.negocio) list = list.filter(l => l.negocio === lancFilter.negocio);
   if(lancFilter.status) list = list.filter(l => l.status === lancFilter.status);
   if(lancFilter.conta) list = list.filter(l => l.contaOrigem === lancFilter.conta || l.contaDestino === lancFilter.conta);
@@ -1139,7 +1151,8 @@ function viewLancamentos(){
   const statusOptions = STATUS_LANC.map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
   const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
-  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.dataDe||lancFilter.dataAte;
+  const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
+  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.dataDe||lancFilter.dataAte;
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   return `
     <div class="page-header">
@@ -1150,6 +1163,7 @@ function viewLancamentos(){
       </div>
     </div>
     <div class="panel"><div class="filter-bar">
+      ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
@@ -2211,7 +2225,7 @@ document.addEventListener("click", async e => {
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
   else if(action === "toggle-select-lanc"){
     if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
     renderView();
@@ -2372,6 +2386,7 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "filter-status"){ lancFilter.status = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-conta"){ lancFilter.conta = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-cartao"){ lancFilter.cartao = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-categoria"){ lancFilter.categoria = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-de"){ lancFilter.dataDe = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-ate"){ lancFilter.dataAte = e.target.value; renderApp(); }
   if(e.target.id === "mesManualInput" && e.target.value){
