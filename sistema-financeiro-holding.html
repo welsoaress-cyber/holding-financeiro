@@ -1440,7 +1440,7 @@ function modalLancamento(existing, tipoPreset){
           </div>
         </div>
       </div>
-      <div class="field"><label>Descrição</label><input required type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
+      <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
       <div class="field-row"><div class="field"><label>Status</label><select name="status" id="lancStatus">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Já conciliado com o extrato</label></div></div>
       <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (botão 💲 em Lançamentos). Agendado = já agendado no banco para débito/crédito automático — vira "Pago" sozinho na data.</div>
       ${!isEdit ? `
@@ -1845,7 +1845,7 @@ function modalCompraCartao(cartaoIdPreset){
           <button type="button" class="btn btn-ghost btn-sm" id="compraNovoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
         </div>
       </div>
-      <div class="field"><label>Descrição</label><input required type="text" name="descricao" placeholder="Ex: Notebook, Supermercado..."></div>
+      <div class="field"><label>Descrição</label><input type="text" name="descricao" placeholder="Ex: Notebook, Supermercado..."></div>
       <div class="field">
         <label>Repetição</label>
         <select name="repeticao" id="compraRepeticao">
