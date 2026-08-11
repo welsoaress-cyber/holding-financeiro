@@ -327,8 +327,11 @@ function showToast(msg, type){
   const el = document.createElement("div");
   el.className = "toast" + (type === "error" ? " error" : "");
   el.textContent = msg;
+  el.style.cursor = "pointer";
+  el.title = "Clique para fechar";
+  el.addEventListener("click", () => el.remove());
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+  setTimeout(() => el.remove(), type === "error" ? 12000 : 3200);
 }
 function dividirValor(total, qtd){
   const totalCentavos = Math.round(Number(total) * 100);
@@ -476,7 +479,8 @@ async function saveRows(table, items){
     state.ultimoSalvamento = new Date();
   }catch(e){
     state.storageOK = false;
-    showToast(`Não consegui salvar (${table}).`, "error");
+    console.error(`[saveRows:${table}]`, e);
+    showToast(`Não salvou (${table}): ${e.message || e}`, "error");
   }
 }
 async function deleteRow(table, id){
@@ -485,7 +489,8 @@ async function deleteRow(table, id){
     const { error } = await supabaseClient.from(table).delete().eq("id", id).eq("user_id", state.user.id);
     if(error) throw error;
   }catch(e){
-    showToast(`Erro ao excluir (${table}).`, "error");
+    console.error(`[deleteRow:${table}]`, e);
+    showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
   }
 }
 async function deleteRows(table, ids){
@@ -494,7 +499,8 @@ async function deleteRows(table, ids){
     const { error } = await supabaseClient.from(table).delete().in("id", ids).eq("user_id", state.user.id);
     if(error) throw error;
   }catch(e){
-    showToast(`Erro ao excluir (${table}).`, "error");
+    console.error(`[deleteRows:${table}]`, e);
+    showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
   }
 }
 const saveContas = () => saveRows("contas", state.contas);
@@ -510,7 +516,7 @@ async function loadData(){
     const results = await Promise.all(TABELAS.map(t =>
       supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
-    results.forEach((r, i) => { if(r.error) throw r.error; });
+    results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS[i]}]`, r.error); throw r.error; } });
     const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
       (r.data || []).map(row => ({ id: row.id, ...row.dados }))
     );
@@ -532,7 +538,7 @@ async function loadData(){
     if(autoBaixarAgendados().length) await saveLancamentos();
   }catch(e){
     state.storageOK = false;
-    showToast("Erro ao carregar dados: " + e.message, "error");
+    showToast("Erro ao carregar dados: " + (e.message || e), "error");
   }
 }
 function seedCategorias(){
@@ -937,12 +943,17 @@ function viewCartoes(){
     const disp = Number(c.limite||0) - emAberto;
     const inativo = c.ativo === false;
     const estourado = disp < 0;
-    const faturas = faturasAgrupadas(c.id).slice(0,3);
+    const todasFaturas = faturasAgrupadas(c.id);
+    const faturas = todasFaturas.slice(0,6);
     const faturasHTML = faturas.length ? faturas.map(f => `
-      <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #F0F1F4; font-size:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12px;">
         <span style="color:var(--ink-soft);">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-faint);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
-        <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, state.pagarUnlocked)}</span>
-      </div>`).join("") : `<div style="font-size:12px; color:var(--ink-faint); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, state.pagarUnlocked)}</span>
+          <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
+        </div>
+      </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-faint); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
+      : `<div style="font-size:12px; color:var(--ink-faint); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
     const cor = PALETA_NEGOCIOS[state.cartoes.indexOf(c) % PALETA_NEGOCIOS.length];
     return `<div class="panel" style="margin-bottom:14px; ${inativo?'opacity:.55;':''}">
       <div style="padding:16px 18px; border-bottom:1px solid var(--line);">
@@ -960,7 +971,7 @@ function viewCartoes(){
           <div class="kpi-card"><div class="kpi-label">Fatura em aberto</div><div class="kpi-value ${lockedPagar?'masked-value':'neg'}" style="font-size:16px;">${maskBRL(emAberto, state.pagarUnlocked)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Limite disponível</div><div class="kpi-value ${lockedPagar?'masked-value':(estourado?'neg':'pos')}" style="font-size:16px;">${lockedPagar ? "R$ ••••••" : fmtBRL(disp)}</div></div>
         </div>
-        <div style="margin-top:10px;"><div style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:2px;">Próximas faturas</div>${faturasHTML}</div>
+        <div style="margin-top:10px;"><div style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:2px;">Faturas em aberto — pagamento é por fatura fechada, não por compra</div>${faturasHTML}</div>
       </div>
     </div>`;
   };
@@ -1001,7 +1012,7 @@ function viewLancamentos(){
     const unlocked = l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked;
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
     const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
-    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência";
+    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId;
     return `<tr>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
@@ -1899,6 +1910,53 @@ function modalBaixa(l){
 }
 
 // ============================================================
+// MODAL — PAGAR FATURA (baixa todas as compras daquela fatura de uma vez)
+// ============================================================
+function modalPagarFatura(cartaoId, dataVencimento){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago");
+  if(!itens.length){ showToast("Essa fatura já está paga.", "error"); return; }
+  const total = itens.reduce((s,l) => s + Number(l.valor), 0);
+  const unlockedValor = state.pagarUnlocked;
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  const itensHTML = itens.map(l => `
+    <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #F0F1F4; font-size:12px;">
+      <span style="color:var(--ink-soft);">${esc(l.descricao)}</span>
+      <span class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono);">${maskBRL(l.valor, unlockedValor)}</span>
+    </div>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💳 Pagar fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarFatura"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:6px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} lançamento${itens.length===1?'':'s'}</div>
+      <div style="max-height:180px; overflow-y:auto; margin-bottom:10px;">${itensHTML}</div>
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid var(--line); margin-bottom:14px;">
+        <strong style="font-size:13px;">Total da fatura</strong>
+        <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
+      </div>
+      <div class="field-row"><div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
+      <div class="field-help" style="margin-bottom:12px;">Todos os ${itens.length} lançamentos dessa fatura são marcados como Pago de uma vez, na mesma conta e data.</div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="conciliado" checked> Já conciliado com o extrato</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento da fatura</button></div></form>
+  `);
+  document.getElementById("formPagarFatura").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const conciliado = fd.get("conciliado") === "on";
+    itens.forEach(l => {
+      l.status = "Pago";
+      l.data = dataPagamento;
+      l.contaOrigem = contaOrigem;
+      l.conciliado = conciliado;
+    });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Fatura paga — ${itens.length} lançamento(s) baixado(s).`);
+  });
+}
+
+// ============================================================
 // MODAL — EXCLUIR LANÇAMENTO (com opções quando faz parte de uma série)
 // ============================================================
 function modalExcluirLancamento(l){
@@ -2105,6 +2163,7 @@ document.addEventListener("click", async e => {
     renderApp(); showToast("Cartão removido.");
   }
   else if(action === "new-compra-cartao") modalCompraCartao(id);
+  else if(action === "pagar-fatura") modalPagarFatura(id, el.dataset.venc);
 
   else if(action === "mes-prev"){
     let { ano, mes } = state.mesVisualizado;
