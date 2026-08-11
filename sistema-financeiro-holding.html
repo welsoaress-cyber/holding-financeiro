@@ -691,6 +691,31 @@ function contasAPagar(){
 function contasAReceber(){
   return state.lancamentos.filter(l => l.tipo === "Receita" && l.status !== "Pago");
 }
+function contasAPagarConsolidado(){
+  // Despesas avulsas ficam uma por uma. Compras de cartao viram UMA linha por fatura
+  // (mesmo cartao + mesma data de vencimento), porque é assim que se paga de verdade.
+  const pendentes = state.lancamentos.filter(l => l.tipo === "Despesa" && l.status !== "Pago");
+  const individuais = pendentes.filter(l => !l.cartaoId).map(l => ({
+    tipo: "individual", id: l.id, data: l.data, valor: Number(l.valor),
+    descricao: l.descricao, negocio: l.negocio, status: l.status
+  }));
+  const grupos = {};
+  pendentes.filter(l => l.cartaoId).forEach(l => {
+    const key = l.cartaoId + "|" + l.data;
+    if(!grupos[key]) grupos[key] = { cartaoId: l.cartaoId, data: l.data, valor: 0, itens: [] };
+    grupos[key].valor += Number(l.valor);
+    grupos[key].itens.push(l);
+  });
+  const faturas = Object.values(grupos).map(g => {
+    const cartao = cartaoById(g.cartaoId);
+    return {
+      tipo: "fatura", cartaoId: g.cartaoId, data: g.data, valor: g.valor,
+      descricao: `Fatura ${cartao ? cartao.nome : "Cartão"} (${g.itens.length} compra${g.itens.length===1?'':'s'})`,
+      negocio: "", status: "Provisionado"
+    };
+  });
+  return [...individuais, ...faturas].sort((a,b) => a.data.localeCompare(b.data));
+}
 
 // ============================================================
 // CAMPO DE VALOR PROTEGIDO (mascara quando bloqueado por senha)
@@ -869,6 +894,20 @@ function viewDashboard(){
         <div class="${unlocked?'':'masked-value'}" style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; white-space:nowrap;">${maskBRL(l.valor, unlocked)}</div>
       </div>`).join("");
   };
+  const listaAPagar = contasAPagarConsolidado();
+  const contasAPagarHTML = listaAPagar.length ? listaAPagar.map(item => `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #F0F1F4;">
+      <div style="min-width:0;">
+        <div style="font-size:12.5px; font-weight:600;">${item.tipo==='fatura'?'💳 ':''}${esc(item.descricao)}</div>
+        <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(item.data)}${item.negocio?' · '+esc(item.negocio):''} · ${item.status}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600; white-space:nowrap;">${maskBRL(item.valor, state.pagarUnlocked)}</span>
+        ${item.tipo === 'fatura'
+          ? `<button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${item.cartaoId}" data-venc="${item.data}">Pagar</button>`
+          : `<button class="icon-btn" data-action="baixar-titulo" data-id="${item.id}" title="Dar baixa" style="color:#0F5C3F;">💲</button>`}
+      </div>
+    </div>`).join("") : emptyState("Nada em aberto. 🎉");
 
   return `
     <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">Posição do mês — navegue entre os meses para ver a projeção passada ou futura</div></div></div>
@@ -898,6 +937,10 @@ function viewDashboard(){
           <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final previsto</div><div class="kpi-value ${lockedReceber || lockedPagar ? 'masked-value' : (saldoFinalPrevisto>=0?'pos':'neg')}">${(lockedReceber || lockedPagar) ? "R$ ••••••" : fmtBRL(saldoFinalPrevisto)}</div><div class="kpi-note">Saldo atual + previsto receitas − previsto despesas</div></div>
         </div>
       </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Contas a Pagar</div></div>
+      <div class="panel-body" style="padding-top:6px;">${contasAPagarHTML}</div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
       <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, state.receberUnlocked)}</div></div>
@@ -947,9 +990,10 @@ function viewCartoes(){
     const faturas = todasFaturas.slice(0,6);
     const faturasHTML = faturas.length ? faturas.map(f => `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12px;">
-        <span style="color:var(--ink-soft);">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-faint);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
+        <span style="color:var(--ink-soft); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-faint);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
         <div style="display:flex; align-items:center; gap:8px;">
           <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, state.pagarUnlocked)}</span>
+          <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
           <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
         </div>
       </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-faint); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
@@ -1957,6 +2001,48 @@ function modalPagarFatura(cartaoId, dataVencimento){
 }
 
 // ============================================================
+// MODAL — DETALHE DA FATURA (cada compra, por período, dentro da fatura)
+// ============================================================
+function modalDetalheFatura(cartaoId, dataVencimento){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos
+    .filter(l => l.cartaoId === cartaoId && l.data === dataVencimento)
+    .sort((a,b) => (a.dataCompra||a.data).localeCompare(b.dataCompra||b.data));
+  if(!itens.length) return;
+  const total = itens.reduce((s,l) => s + Number(l.valor), 0);
+  const unlockedValor = state.pagarUnlocked;
+  const temPendente = itens.some(l => l.status !== "Pago");
+  const rows = itens.map(l => {
+    const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
+    return `<tr>
+      <td style="white-space:nowrap;">${fmtDateBR(l.dataCompra || l.data)}</td>
+      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(l.categoria)}${l.subcategoria?' › '+esc(l.subcategoria):''}</div>` : ""}</td>
+      <td>${l.negocio ? esc(l.negocio) : "—"}</td>
+      <td style="text-align:center;"><span class="status-pill ${statusClass}">${l.status}</span></td>
+      <td class="num ${unlockedValor?'':'masked-value'}">${maskBRL(l.valor, unlockedValor)}</td>
+    </tr>`;
+  }).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📋 Detalhe da fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} compra${itens.length===1?'':'s'} · ordenado por data da compra</div>
+      <div style="max-height:320px; overflow-y:auto;">
+        <table><thead><tr><th>Data compra</th><th>Descrição</th><th>Negócio</th><th style="text-align:center;">Status</th><th class="num">Valor</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--line); margin-top:10px;">
+        <strong style="font-size:13px;">Total da fatura</strong>
+        <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Fechar</button>
+      ${temPendente ? `<button type="button" class="btn btn-primary" data-action="pagar-fatura" data-id="${cartaoId}" data-venc="${dataVencimento}">Pagar fatura</button>` : ""}
+    </div>
+  `);
+}
+
+// ============================================================
 // MODAL — EXCLUIR LANÇAMENTO (com opções quando faz parte de uma série)
 // ============================================================
 function modalExcluirLancamento(l){
@@ -2163,7 +2249,8 @@ document.addEventListener("click", async e => {
     renderApp(); showToast("Cartão removido.");
   }
   else if(action === "new-compra-cartao") modalCompraCartao(id);
-  else if(action === "pagar-fatura") modalPagarFatura(id, el.dataset.venc);
+  else if(action === "pagar-fatura"){ closeModal(); modalPagarFatura(id, el.dataset.venc); }
+  else if(action === "ver-fatura") modalDetalheFatura(id, el.dataset.venc);
 
   else if(action === "mes-prev"){
     let { ano, mes } = state.mesVisualizado;
