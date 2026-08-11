@@ -46,7 +46,60 @@
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
   }
-  #app{ display:flex; min-height:100vh; }
+  #app{ display:flex; flex-direction:column; min-height:100vh; }
+  #appBody{ display:flex; flex:1; min-height:0; }
+
+  /* ---- Barra de Módulos ---- */
+  .modbar{
+    background: #0B0F1C;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    display:flex; align-items:center; gap:0;
+    padding: 0 18px;
+    position: relative; z-index:90;
+  }
+  .modbar-btn{
+    display:flex; align-items:center; gap:8px;
+    padding: 11px 16px;
+    color: #C8CEDE; font-size:12.5px; font-weight:600;
+    cursor:pointer; border:none; background:transparent;
+    border-bottom: 2px solid transparent;
+    font-family: var(--font-body);
+    transition: color .12s, border-color .12s;
+  }
+  .modbar-btn:hover{ color:#fff; }
+  .modbar-btn.active{ color:#3FD68E; border-bottom-color:#3FD68E; }
+  .modbar-logo{
+    font-family: var(--font-display); font-weight:700; font-size:15px;
+    color:#fff; padding: 0 16px 0 4px; border-right:1px solid rgba(255,255,255,.08);
+    margin-right:10px; letter-spacing:-.01em;
+  }
+  .modbar-logo .dot{ width:7px; height:7px; border-radius:50%; background:#3FD68E; display:inline-block; margin-right:5px; }
+  .modpanel{
+    position:absolute; top:100%; left:0; right:0;
+    background:#0B0F1C; border-bottom:1px solid rgba(255,255,255,.08);
+    padding:14px 24px 18px; display:none; z-index:89;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  }
+  .modpanel.open{ display:block; }
+  .modpanel-title{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#4A5270; margin-bottom:12px; }
+  .modpanel-grid{ display:flex; flex-wrap:wrap; gap:10px; }
+  .modcard{
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+    padding:12px 20px; border-radius:10px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.04);
+    transition: background .12s, border-color .12s;
+    min-width:130px;
+  }
+  .modcard:hover{ background: rgba(255,255,255,.09); border-color:rgba(63,214,142,.35); }
+  .modcard.active{ background: rgba(63,214,142,.08); border-color:rgba(63,214,142,.5); }
+  .modcard-ico{ font-size:20px; line-height:1; }
+  .modcard-nome{ font-size:13px; font-weight:700; color:#E7EAF2; font-family:var(--font-display); }
+  .modcard-desc{ font-size:11px; color:#4A5270; }
+  .modcard.soon{ opacity:.45; cursor:default; }
+  .modcard.soon:hover{ background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); }
+  /* ---- fim Barra de Módulos ---- */
+
   .sidebar{
     width: 240px;
     flex-shrink:0;
@@ -269,6 +322,7 @@
 </style>
 </head>
 <body>
+<div id="modbarWrap"></div>
 <div id="app"><div class="loading-screen">Carregando painel financeiro…</div></div>
 <div class="toast-wrap" id="toastWrap"></div>
 <script>
@@ -296,11 +350,20 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
-  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false,
+  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
 };
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HORIZONTE_ANOS = 5;
+
+const MODULOS_CATALOGO = [
+  { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
+  { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Produtos, entradas, saídas", ativo:false },
+  { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM e relacionamento", ativo:false },
+  { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
+  { id:"rh",        ico:"🏢", nome:"RH",         desc:"Equipe e folha de pagamento", ativo:false },
+  { id:"bi",        ico:"📊", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
+];
 
 // ============================================================
 // UTILITÁRIOS
@@ -831,17 +894,62 @@ function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 // ============================================================
 function setView(v){ state.view = v; renderApp(); }
 
+/* =========================================================================
+   BARRA DE MÓDULOS
+========================================================================= */
+function renderModbar(){
+  const wrap = document.getElementById("modbarWrap");
+  if(!wrap || !state.user) return;
+  wrap.innerHTML = `
+    <div class="modbar">
+      <div class="modbar-logo"><span class="dot"></span>Holding</div>
+      <button class="modbar-btn ${state.modpanelAberto ? 'active' : ''}" id="btnModulos">
+        ⊞ Módulos
+      </button>
+      <div class="modpanel ${state.modpanelAberto ? 'open' : ''}" id="modPanel">
+        <div class="modpanel-title">Selecione o módulo</div>
+        <div class="modpanel-grid">
+          ${MODULOS_CATALOGO.map(m => `
+            <div class="modcard ${m.id === 'financeiro' ? 'active' : ''} ${!m.ativo ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : ''}">
+              <div class="modcard-ico">${m.ico}</div>
+              <div class="modcard-nome">${m.nome}${!m.ativo ? ' <span style="font-size:9px; color:#4A5270; font-weight:400;">em breve</span>' : ''}</div>
+              <div class="modcard-desc">${m.desc}</div>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnModulos").addEventListener("click", e => {
+    e.stopPropagation();
+    state.modpanelAberto = !state.modpanelAberto;
+    renderModbar();
+  });
+  // Fecha ao clicar fora
+  if(state.modpanelAberto){
+    setTimeout(() => {
+      document.addEventListener("click", function fechar(ev){
+        const panel = document.getElementById("modPanel");
+        const btn = document.getElementById("btnModulos");
+        if(panel && !panel.contains(ev.target) && btn && !btn.contains(ev.target)){
+          state.modpanelAberto = false;
+          renderModbar();
+          document.removeEventListener("click", fechar);
+        }
+      });
+    }, 50);
+  }
+}
+
 function renderApp(){
   const app = document.getElementById("app");
-  if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); return; }
-  if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); return; }
+  if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
+  if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
 
   const horaSalvo = state.ultimoSalvamento ? state.ultimoSalvamento.toLocaleTimeString("pt-BR") : null;
   const master = ehMaster();
-  app.innerHTML = `
+  app.innerHTML = `<div id="appBody">
     <aside class="sidebar">
-      <div class="brand"><span class="dot"></span><span>Holding</span></div>
-      <div class="brand-sub">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 18px; font-size:11px; color:var(--sidebar-faint); font-family:var(--font-mono);">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
       ${master ? `
       <div class="nav-group-label">Visão geral</div>
@@ -880,12 +988,13 @@ function renderApp(){
       </div>
     </aside>
     <main class="main"><div id="mainArea"></div></main>
-  `;
+  </div>`;
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
   const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){ state.view = "lancamentos"; }
+  renderModbar();
   renderView();
 }
 function navItem(view, icon, label){
@@ -2701,6 +2810,15 @@ document.addEventListener("click", async e => {
   const subId = el.dataset.sub;
 
   if(action === "nav") setView(el.dataset.view);
+  else if(action === "abrir-modulo"){
+    const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
+    if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
+    state.modpanelAberto = false;
+    renderModbar();
+    // Módulo financeiro já é o atual — no futuro cada módulo carrega seu próprio sistema
+    if(mod.id === "financeiro"){ setView("dashboard"); }
+    else{ showToast(`Módulo ${mod.nome} em construção.`, "error"); }
+  }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
