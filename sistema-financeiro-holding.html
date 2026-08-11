@@ -291,11 +291,12 @@ const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "
 const SENHA_PAGAR = "@2020";
 const SENHA_RECEBER = "@1010";
 const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","cartoes","perfis"];
+const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuários — mude assim que possível
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
-  pagarUnlocked: false, receberUnlocked: false, ajustesMenuAberto: false,
+  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false,
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
 };
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -331,8 +332,8 @@ function proximaCorNegocio(){ return PALETA_NEGOCIOS[state.negocios.length % PAL
    PERMISSÕES (Master vê tudo; perfis de membro só o que foi liberado por negócio)
 ========================================================================= */
 function ehMaster(){ return !state.perfilAtivo || state.perfilAtivo.tipo === "master"; }
-function pagarDesbloqueado(){ return ehMaster() || state.pagarUnlocked; }
-function receberDesbloqueado(){ return ehMaster() || state.receberUnlocked; }
+function pagarDesbloqueado(){ return true; } // mascara de valores retirada — o controle de acesso agora é por perfil/permissão
+function receberDesbloqueado(){ return true; }
 function permissaoNegocio(negocio, acao){
   if(ehMaster()) return true;
   if(!negocio || !state.perfilAtivo) return false;
@@ -418,10 +419,11 @@ function faturasAgrupadas(cartaoId){
 }
 function autoBaixarAgendados(){
   // "Agendado" = debito/credito automatico agendado no banco: quando a data chega, vira "Pago" sozinho.
-  // "Provisionado" fica parado ate baixa manual (botao 💲).
+  // "Provisionado" fica parado ate baixa manual (botao 💲). Inativados sao ignorados.
   const hojeISO = todayISO();
   let alterou = [];
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.status === "Agendado" && l.data <= hojeISO && l.tipo !== "Transferência"){
       l.status = "Pago";
       l.conciliado = true;
@@ -596,6 +598,16 @@ async function loadData(){
       state.perfis = [];
     }
 
+    // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
+    try{
+      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", state.user.id).eq("id", "master").maybeSingle();
+      if(error) throw error;
+      state.senhaMaster = (data && data.dados && data.dados.senhaMaster) || SENHA_MASTER_PADRAO;
+    }catch(e){
+      console.warn("[loadData:config] tabela 'config' ainda não existe no Supabase — usando senha padrão do Master.", e.message || e);
+      state.senhaMaster = SENHA_MASTER_PADRAO;
+    }
+
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
     if(state.categorias.length === 0 && state.negocios.length === 0){
       state.categorias = seedCategorias();
@@ -671,6 +683,7 @@ function saldoAtual(contaId){
   if(!conta) return 0;
   let total = Number(conta.saldoInicial) || 0;
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.status !== "Pago") continue;
     if(l.tipo === "Receita" && l.contaOrigem === contaId) total += Number(l.valor);
     if(l.tipo === "Despesa" && l.contaOrigem === contaId) total -= Number(l.valor);
@@ -685,6 +698,7 @@ function saldoAtual(contaId){
 function saldoProjetado(contaId){
   let total = saldoAtual(contaId);
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.status === "Pago") continue;
     if(l.tipo === "Receita" && l.contaOrigem === contaId) total += Number(l.valor);
     if(l.tipo === "Despesa" && l.contaOrigem === contaId) total -= Number(l.valor);
@@ -703,6 +717,7 @@ function saldoProjetadoAteMes(ano, mes){
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let total = base;
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.data > fimISO) continue;
     if(l.tipo === "Receita") total += Number(l.valor);
     if(l.tipo === "Despesa") total -= Number(l.valor);
@@ -716,6 +731,7 @@ function saldoContaAteMes(contaId, ano, mes){
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let total = Number(conta.saldoInicial) || 0;
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.data > fimISO) continue;
     if(l.tipo === "Receita" && l.contaOrigem === contaId) total += Number(l.valor);
     if(l.tipo === "Despesa" && l.contaOrigem === contaId) total -= Number(l.valor);
@@ -732,6 +748,7 @@ function movimentoPendenteDoMes(ano, mes){
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let entradas = 0, saidas = 0;
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.data < inicioISO || l.data > fimISO || l.status === "Pago") continue;
     if(l.tipo === "Receita") entradas += Number(l.valor);
     if(l.tipo === "Despesa") saidas += Number(l.valor);
@@ -743,6 +760,7 @@ function movimentoRealizadoDoMes(ano, mes){
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let entradas = 0, saidas = 0;
   for(const l of state.lancamentos){
+    if(l.inativo) continue;
     if(l.data < inicioISO || l.data > fimISO || l.status !== "Pago") continue;
     if(l.tipo === "Receita") entradas += Number(l.valor);
     if(l.tipo === "Despesa") saidas += Number(l.valor);
@@ -758,15 +776,15 @@ function topLancamentosDoMes(tipo, ano, mes, n){
     .slice(0, n || 5);
 }
 function contasAPagar(){
-  return state.lancamentos.filter(l => l.tipo === "Despesa" && l.status !== "Pago");
+  return state.lancamentos.filter(l => l.tipo === "Despesa" && l.status !== "Pago" && !l.inativo);
 }
 function contasAReceber(){
-  return state.lancamentos.filter(l => l.tipo === "Receita" && l.status !== "Pago");
+  return state.lancamentos.filter(l => l.tipo === "Receita" && l.status !== "Pago" && !l.inativo);
 }
 function contasAPagarConsolidado(){
   // Despesas avulsas ficam uma por uma. Compras de cartao viram UMA linha por fatura
   // (mesmo cartao + mesma data de vencimento), porque é assim que se paga de verdade.
-  const pendentes = state.lancamentos.filter(l => l.tipo === "Despesa" && l.status !== "Pago");
+  const pendentes = state.lancamentos.filter(l => l.tipo === "Despesa" && l.status !== "Pago" && !l.inativo);
   const individuais = pendentes.filter(l => !l.cartaoId).map(l => ({
     tipo: "individual", id: l.id, data: l.data, valor: Number(l.valor),
     descricao: l.descricao, negocio: l.negocio, status: l.status
@@ -848,19 +866,12 @@ function renderApp(){
       ` : ""}
 
       <div class="sidebar-footer">
-        ${!master ? `
-        <button class="sidebar-lock-btn ${pagarDesbloqueado() ? 'unlocked' : ''}" data-action="${pagarDesbloqueado() ? 'lock-pagar' : 'unlock-pagar'}" title="${pagarDesbloqueado() ? 'Ocultar contas a pagar' : 'Ver contas a pagar'}">
-          ${pagarDesbloqueado() ? "🔓" : "🔒"}<span class="label">${pagarDesbloqueado() ? " Ocultar contas a pagar" : " Ver contas a pagar"}</span>
-        </button>
-        <button class="sidebar-lock-btn ${receberDesbloqueado() ? 'unlocked' : ''}" data-action="${receberDesbloqueado() ? 'lock-receber' : 'unlock-receber'}" title="${receberDesbloqueado() ? 'Ocultar a receber/saldo' : 'Ver a receber/saldo'}">
-          ${receberDesbloqueado() ? "🔓" : "🔒"}<span class="label">${receberDesbloqueado() ? " Ocultar a receber/saldo" : " Ver a receber/saldo"}</span>
-        </button>` : ""}
         ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
         <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;" title="Importar backup">
           ⬆<span class="label"> Importar backup</span>
           <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
         </label>` : ""}
-        ${state.perfis.length > 0 ? `<button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>` : ""}
+        <button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
@@ -1001,6 +1012,29 @@ function modalSenhaPerfil(perfil){
     }
   });
 }
+function modalSenhaMaster(){
+  openModal(`
+    <div class="modal-head"><div class="modal-title">👑 Master</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formSenhaMaster"><div class="modal-body">
+      <div class="field"><label>Senha do Master</label><input required type="password" name="senha" autocomplete="off" placeholder="Digite a senha"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Entrar</button></div></form>
+  `);
+  const input = document.querySelector('#formSenhaMaster input[name="senha"]');
+  if(input) input.focus();
+  document.getElementById("formSenhaMaster").addEventListener("submit", e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(fd.get("senha") === state.senhaMaster){
+      state.perfilAtivo = null;
+      state.perfilEscolhido = true;
+      closeModal(); renderApp(); showToast("Bem-vindo(a), Master.");
+    }else{
+      showToast("Senha incorreta.", "error");
+      const inp = document.querySelector('#formSenhaMaster input[name="senha"]');
+      if(inp){ inp.value = ""; inp.focus(); }
+    }
+  });
+}
 
 // ============================================================
 // VIEW: DASHBOARD
@@ -1019,6 +1053,49 @@ function viewDashboard(){
   const topReceitas = topLancamentosDoMes("Receita", mv.ano, mv.mes, 5);
   const topDespesas = topLancamentosDoMes("Despesa", mv.ano, mv.mes, 5);
   const maxAbs = Math.max(...state.contas.map(c => Math.abs(saldoContaAteMes(c.id, mv.ano, mv.mes))), 1);
+
+  // A pagar e a receber do mês selecionado (apenas pendentes, sem inativados, sem cartão)
+  const inicioMesISO = new Date(mv.ano, mv.mes, 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(mv.ano, mv.mes + 1, 0).toISOString().slice(0,10);
+  const pagarMes = lancamentosVisiveis(
+    state.lancamentos.filter(l => l.tipo === "Despesa" && !l.cartaoId && !l.inativo && l.status !== "Pago" && l.data >= inicioMesISO && l.data <= fimMesISO)
+  ).sort((a,b) => a.data.localeCompare(b.data));
+  const receberMes = lancamentosVisiveis(
+    state.lancamentos.filter(l => l.tipo === "Receita" && !l.inativo && l.status !== "Pago" && l.data >= inicioMesISO && l.data <= fimMesISO)
+  ).sort((a,b) => a.data.localeCompare(b.data));
+  // Faturas de cartão do mês
+  // Faturas de cartão do mês (construídas inline em faturasCartaoHTML abaixo)
+
+  const listaItemHTML = (l, tipo) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12.5px;">
+      <div style="min-width:0;">
+        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(l.descricao)||"—"}</div>
+        <div style="font-size:11px; color:var(--ink-faint);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+        <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'#0F5C3F':'var(--danger)'};">${fmtBRL(l.valor)}</span>
+        ${podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:#0F5C3F; font-size:14px;">💲</button>` : ""}
+      </div>
+    </div>`;
+
+  const faturasCartaoHTML = state.cartoes.flatMap(c => {
+    return faturasAgrupadas(c.id).filter(f => f.data >= inicioMesISO && f.data <= fimMesISO).map(f => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12.5px;">
+        <div>
+          <div style="font-weight:600;">💳 ${esc(c.nome)} — fatura</div>
+          <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <span style="font-family:var(--font-mono); font-weight:600; color:var(--danger);">${fmtBRL(f.total)}</span>
+          <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar</button>
+        </div>
+      </div>`);
+  }).join("");
+
+  const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0);
+  const totalReceberMes = receberMes.reduce((s,l) => s+Number(l.valor), 0);
+  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada em aberto. 🎉</div>`;
+  const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada a receber neste mês.</div>`;
 
   const barRow = (c, nested) => {
     const sa = saldoContaAteMes(c.id, mv.ano, mv.mes);
@@ -1039,23 +1116,9 @@ function viewDashboard(){
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; ${i===0?'':'border-top:1px solid #F0F1F4;'}">
         <div style="min-width:0;"><div style="font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${i+1}. ${esc(l.descricao)}</div>
         <div style="font-size:11px; color:var(--ink-faint);">${fmtDateBR(l.data)} · ${l.status}${l.negocio ? ' · '+esc(l.negocio) : ''}</div></div>
-        <div class="${unlocked?'':'masked-value'}" style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; white-space:nowrap;">${maskBRL(l.valor, unlocked)}</div>
+        <div style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; white-space:nowrap;">${fmtBRL(l.valor)}</div>
       </div>`).join("");
   };
-  const listaAPagar = contasAPagarConsolidado();
-  const contasAPagarHTML = listaAPagar.length ? listaAPagar.map(item => `
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #F0F1F4;">
-      <div style="min-width:0;">
-        <div style="font-size:12.5px; font-weight:600;">${item.tipo==='fatura'?'💳 ':''}${esc(item.descricao)}</div>
-        <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(item.data)}${item.negocio?' · '+esc(item.negocio):''} · ${item.status}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600; white-space:nowrap;">${maskBRL(item.valor, pagarDesbloqueado())}</span>
-        ${item.tipo === 'fatura'
-          ? `<button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${item.cartaoId}" data-venc="${item.data}">Pagar</button>`
-          : `<button class="icon-btn" data-action="baixar-titulo" data-id="${item.id}" title="Dar baixa" style="color:#0F5C3F;">💲</button>`}
-      </div>
-    </div>`).join("") : emptyState("Nada em aberto. 🎉");
 
   return `
     <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">Posição do mês — navegue entre os meses para ver a projeção passada ou futura</div></div></div>
@@ -1086,9 +1149,21 @@ function viewDashboard(){
         </div>
       </div>
     </div>
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Contas a Pagar</div></div>
-      <div class="panel-body" style="padding-top:6px;">${contasAPagarHTML}</div>
+    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
+      <div class="panel" style="margin-bottom:0;">
+        <div class="panel-head">
+          <div class="panel-title">📤 A Pagar — ${NOMES_MESES[mv.mes]}</div>
+          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--danger);">${fmtBRL(totalPagarMes)}</div>
+        </div>
+        <div class="panel-body" style="padding-top:0; max-height:320px; overflow-y:auto;">${pagarHTML}</div>
+      </div>
+      <div class="panel" style="margin-bottom:0;">
+        <div class="panel-head">
+          <div class="panel-title">📥 A Receber — ${NOMES_MESES[mv.mes]}</div>
+          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:#0F5C3F;">${fmtBRL(totalReceberMes)}</div>
+        </div>
+        <div class="panel-body" style="padding-top:0; max-height:320px; overflow-y:auto;">${receberHTML}</div>
+      </div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
       <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, receberDesbloqueado())}</div></div>
@@ -1234,19 +1309,35 @@ function viewLancamentos(){
     const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
     const podeEditar = podeEditarNegocio(l.negocio);
     const podeExcluir = podeExcluirNegocio(l.negocio);
-    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar;
+    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
     const marcado = lancSelecionados.has(l.id);
+    const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-faint); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
+    if(l.inativo){
+      const quando = l.inativadoEm ? ` em ${fmtDateBR(l.inativadoEm.slice(0,10))}` : "";
+      return `<tr style="opacity:.45; background:#FAF5F5;">
+        <td></td>
+        <td style="white-space:nowrap; text-decoration:line-through;">${fmtDateBR(l.data)}</td>
+        <td style="text-decoration:line-through;">${sinal} ${esc(l.tipo)}</td>
+        <td style="text-decoration:line-through;">${l.negocio ? `<span class="tag" style="background:#EEE; color:#999;">${esc(l.negocio)}</span>` : "—"}</td>
+        <td style="text-decoration:line-through;">${contaTxt}</td>
+        <td style="text-decoration:line-through;">${esc(l.descricao)}<div style="font-size:11px;color:var(--danger);">Inativado por ${esc(l.inativadoPor||"?")}${quando}</div></td>
+        <td class="num" style="text-decoration:line-through;">${fmtBRL(l.valor)}</td>
+        <td><span class="status-pill status-agendado">Inativo</span></td>
+        <td></td>
+        <td><div class="row-actions">${ehMaster() ? `<button class="icon-btn" data-action="reativar-lanc" data-id="${l.id}" title="Reativar lançamento" style="color:#0F5C3F;">↩</button>` : ""}</div></td>
+      </tr>`;
+    }
     return `<tr style="${marcado ? 'background:#EAF1FB;' : ''}">
       <td style="text-align:center;">${podeExcluir ? `<input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}>` : ""}</td>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${esc(l.descricao)}${recBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(catTxt)}</div>` : ""}</td>
-      <td class="num ${unlocked?'':'masked-value'}" style="font-weight:600;">${maskBRL(l.valor, unlocked)}</td>
+      <td>${esc(l.descricao)}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(catTxt)}</div>` : ""}</td>
+      <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:#0F5C3F;">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Excluir">🗑</button>` : ""}</div></td>
+      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:#0F5C3F;">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -1800,7 +1891,9 @@ function modalLancamento(existing, tipoPreset){
       valor: parseFloat(fd.get("valor"))||0,
       descricao: fd.get("descricao").trim(),
       status: fd.get("status"),
-      conciliado: fd.get("conciliado") === "on"
+      conciliado: fd.get("conciliado") === "on",
+      lancadoPor: isEdit ? existing.lancadoPor : (state.perfilAtivo ? state.perfilAtivo.nome : "Master"),
+      editadoPor: isEdit ? (state.perfilAtivo ? state.perfilAtivo.nome : "Master") : undefined
     };
     if(tipo === "Transferência" && data.contaOrigem === data.contaDestino){
       showToast("Conta de origem e destino não podem ser iguais.", "error"); return;
@@ -2259,7 +2352,8 @@ function modalCompraCartao(cartaoIdPreset){
     const base = {
       tipo: "Despesa", negocio: fd.get("negocio")||"", categoria: fd.get("categoria")||"", subcategoria: fd.get("subcategoria")||"",
       contaOrigem: cartao.contaPagamentoId, contaDestino: "", descricao: fd.get("descricao").trim(),
-      status: "Provisionado", conciliado: false, cartaoId: cartao.id, dataCompra
+      status: "Provisionado", conciliado: false, cartaoId: cartao.id, dataCompra,
+      lancadoPor: state.perfilAtivo ? state.perfilAtivo.nome : "Master"
     };
     const valor = parseFloat(fd.get("valor"))||0;
     const repeticao = fd.get("repeticao") || "nenhuma";
@@ -2497,7 +2591,7 @@ document.addEventListener("click", async e => {
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "logout") doLogout();
-  else if(action === "selecionar-master"){ state.perfilAtivo = null; state.perfilEscolhido = true; renderApp(); }
+  else if(action === "selecionar-master") modalSenhaMaster();
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
   else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
   else if(action === "exportar-backup") exportarBackup();
@@ -2551,25 +2645,35 @@ document.addEventListener("click", async e => {
   else if(action === "edit-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalLancamento(l); }
   else if(action === "del-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalExcluirLancamento(l); }
   else if(action === "del-lanc-um"){
-    state.lancamentos = state.lancamentos.filter(l => l.id !== id);
-    await deleteRow("lancamentos", id);
-    closeModal(); renderApp(); showToast("Lançamento removido.");
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l){
+      const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+      l.inativo = true; l.inativadoPor = quem; l.inativadoEm = new Date().toISOString();
+      await saveLancamentos();
+      closeModal(); renderApp(); showToast("Lançamento inativado (aparece tachado).");
+    }
   }
   else if(action === "del-lanc-futuros"){
     const l = state.lancamentos.find(x => x.id === id);
     if(!l) return;
-    const removidos = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data);
-    state.lancamentos = state.lancamentos.filter(x => !(x.recorrenciaId === l.recorrenciaId && x.data >= l.data));
-    await deleteRows("lancamentos", removidos.map(x=>x.id));
-    closeModal(); renderApp(); showToast(`${removidos.length} lançamento(s) removido(s).`);
+    const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data);
+    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
+    await saveLancamentos();
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
   }
   else if(action === "del-lanc-todos"){
     const l = state.lancamentos.find(x => x.id === id);
     if(!l) return;
-    const removidos = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId);
-    state.lancamentos = state.lancamentos.filter(x => x.recorrenciaId !== l.recorrenciaId);
-    await deleteRows("lancamentos", removidos.map(x=>x.id));
-    closeModal(); renderApp(); showToast(`${removidos.length} lançamento(s) removido(s).`);
+    const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId);
+    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
+    await saveLancamentos();
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
+  }
+  else if(action === "reativar-lanc"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l){ delete l.inativo; delete l.inativadoPor; delete l.inativadoEm; await saveLancamentos(); renderApp(); showToast("Lançamento reativado."); }
   }
   else if(action === "toggle-conc"){
     const l = state.lancamentos.find(x=>x.id===id);
