@@ -234,7 +234,6 @@
   .checkbox-row input{ width:auto; }
   .field-help{ font-size:11px; color:var(--ink-faint); margin-top:4px; }
   .bar-row{ display:grid; grid-template-columns: 170px 1fr 120px; align-items:center; gap:12px; padding:9px 0; }
-  .bar-row .name{ font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:7px; }
   .bar-track{ height:8px; border-radius:999px; background:#EEF0F3; overflow:hidden; }
   .bar-fill{ height:100%; border-radius:999px; }
   .bar-row .val{ font-family:var(--font-mono); font-size:12.5px; text-align:right; }
@@ -275,6 +274,7 @@ const TIPOS_CONTA = ["Conta Corrente","Conta Pagamento","Poupança"];
 const TIPOS_LANC = ["Receita","Despesa","Transferência"];
 const STATUS_LANC = ["Pago","Provisionado","Agendado"];
 const BANDEIRAS = ["Visa","Mastercard","Elo","American Express","Hipercard","Outra"];
+const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "Semestral", "Anual"];
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [],
@@ -316,6 +316,31 @@ function showToast(msg, type){
   el.textContent = msg;
   wrap.appendChild(el);
   setTimeout(() => el.remove(), 3200);
+}
+function dividirValor(total, qtd){
+  const totalCentavos = Math.round(Number(total) * 100);
+  const baseCentavos = Math.floor(totalCentavos / qtd);
+  const resto = totalCentavos - (baseCentavos * qtd);
+  const valores = [];
+  for(let i=0;i<qtd;i++){
+    let c = baseCentavos;
+    if(i === qtd - 1) c += resto;
+    valores.push(Math.round(c) / 100);
+  }
+  return valores;
+}
+function proximaData(dataISO, freq){
+  const d = new Date(dataISO + "T00:00:00");
+  if(freq === "Semanal"){ d.setDate(d.getDate() + 7); return d.toISOString().slice(0,10); }
+  if(freq === "Quinzenal"){ d.setDate(d.getDate() + 15); return d.toISOString().slice(0,10); }
+  const MESES_POR_FREQ = { "Mensal":1, "Bimestral":2, "Trimestral":3, "Semestral":6, "Anual":12 };
+  const meses = MESES_POR_FREQ[freq] || 1;
+  const dia = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + meses);
+  const diasNoMes = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dia, diasNoMes));
+  return d.toISOString().slice(0,10);
 }
 
 // ============================================================
@@ -403,7 +428,6 @@ async function doSignup(email, password) {
     if (error) { showToast(error.message, 'error'); return false; }
     if (data.user) {
       state.user = data.user;
-      // Criar dados iniciais
       const cats = ['Servidores/Hospedagem','Aluguel','Assinaturas/Softwares','Marketing','Salários/Pró-labore','Impostos/Taxas','Outros'];
       for (const nome of cats) state.categorias.push({ id: uid('cat'), nome, subcategorias: [] });
       const negs = ['TopTV','Uniplay','ServNet','Precautec','Porto Odonto','Pessoal','Compartilhado'];
@@ -548,6 +572,17 @@ function faturasAgrupadas(cartaoId) {
 function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
 function caixinhasDe(contaId){ return state.contas.filter(c => c.parentId === contaId); }
 function contasParaSelecao(selectedId){ return state.contas.filter(c => c.ativa !== false || c.id === selectedId); }
+function calcularVencimento(dataCompraISO, cartao) {
+  const d = new Date(dataCompraISO + 'T00:00:00');
+  const diaCompra = d.getDate();
+  let anoFech = d.getFullYear(), mesFech = d.getMonth();
+  if (diaCompra > cartao.diaFechamento) { mesFech += 1; if (mesFech > 11) { mesFech = 0; anoFech += 1; } }
+  let anoVenc = anoFech, mesVenc = mesFech;
+  if (cartao.diaVencimento < cartao.diaFechamento) { mesVenc += 1; if (mesVenc > 11) { mesVenc = 0; anoVenc += 1; } }
+  const diasNoMes = new Date(anoVenc, mesVenc + 1, 0).getDate();
+  const diaVenc = Math.min(cartao.diaVencimento, diasNoMes);
+  return new Date(anoVenc, mesVenc, diaVenc).toISOString().slice(0,10);
+}
 
 // ============================================================
 // NAVEGAÇÃO
@@ -573,10 +608,12 @@ function renderApp() {
       ${navItem("ajustes","∿","Ajustes")}
       ${navItem("categorias","🏷️","Categorias")}
       ${navItem("negocios","🏢","Negócios")}
-      <div class="nav-group-label">Em construção</div>
-      ${navItemSoon("Contas Fixas")}
-      ${navItemSoon("Carteira")}
-      ${navItemSoon("Rateio")}
+      <div class="nav-group-label">Ferramentas</div>
+      <button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;">⬇ Exportar backup</button>
+      <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;">
+        ⬆ Importar backup
+        <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
+      </label>
       <div class="sidebar-footer">
         <button class="sidebar-lock-btn ${state.pagarUnlocked ? 'unlocked' : ''}" data-action="${state.pagarUnlocked ? 'lock-pagar' : 'unlock-pagar'}">
           ${state.pagarUnlocked ? "🔓 Ocultar a pagar" : "🔒 Ver a pagar"}
@@ -590,6 +627,8 @@ function renderApp() {
     </aside>
     <main class="main" id="mainArea"></main>
   `;
+  const importInput = document.getElementById("importarBackupInput");
+  if(importInput) importInput.addEventListener("change", handleImportarBackup);
   renderView();
 }
 function navItem(view, icon, label){
@@ -636,7 +675,7 @@ function renderLogin() {
 }
 
 // ============================================================
-// VIEW: DASHBOARD
+// VIEW: DASHBOARD (COMPLETO)
 // ============================================================
 function viewDashboard() {
   const lockedReceber = !state.receberUnlocked;
@@ -677,7 +716,7 @@ function viewDashboard() {
   };
 
   return `
-    <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">Posição do mês — navegue entre os meses</div></div></div>
+    <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">Posição do mês — navegue entre os meses para ver a projeção passada ou futura</div></div></div>
     <div class="panel" style="margin-bottom:18px;">
       <div class="panel-body" style="padding-top:16px;">
         <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:18px;">
@@ -706,10 +745,10 @@ function viewDashboard() {
       </div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, state.receberUnlocked)}</div></div>
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, state.pagarUnlocked)}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, state.receberUnlocked)}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, state.pagarUnlocked)}</div></div>
     </div>
-    <div class="panel"><div class="panel-head"><div class="panel-title">Saldo por conta</div></div><div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div></div>
+    <div class="panel"><div class="panel-head"><div class="panel-title">Saldo por conta${!isMesAtual ? ` — projetado até ${NOMES_MESES[mv.mes]} de ${mv.ano}` : ''}</div></div><div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div></div>
   `;
 }
 
@@ -718,7 +757,8 @@ function viewDashboard() {
 // ============================================================
 function viewContas() {
   const rowHTML = (c, nested) => {
-    const sa = saldoAtual(c.id), sp = saldoProjetado(c.id), nc = state.lancamentos.filter(l => (l.contaOrigem === c.id || l.contaDestino === c.id) && !l.conciliado).length;
+    const sa = saldoAtual(c.id), sp = saldoProjetado(c.id);
+    const nc = state.lancamentos.filter(l => (l.contaOrigem === c.id || l.contaDestino === c.id) && !l.conciliado).length;
     const inativa = c.ativa === false;
     const nomeCell = nested ? `<span style="color:var(--ink-faint); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong><div style="font-size:11px;color:var(--ink-faint)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}">＋📦</button>`;
@@ -734,13 +774,13 @@ function viewContas() {
   };
   const rows = contasRaiz().map(c => rowHTML(c,false) + caixinhasDe(c.id).map(cx=>rowHTML(cx,true)).join("")).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas.</div></div><button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div>
+    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div></div><button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
 
 // ============================================================
-// VIEW: LANÇAMENTOS
+// VIEW: LANÇAMENTOS (COM REPETIÇÃO, PERÍODOS, PARCELAS)
 // ============================================================
 let lancFilter = { negocio: "", status: "", conta: "", cartao: "", dataDe: "", dataAte: "" };
 function viewLancamentos() {
@@ -762,12 +802,13 @@ function viewLancamentos() {
     const sinal = l.tipo === "Despesa" ? "−" : (l.tipo === "Receita" ? "+" : "⇄");
     const unlocked = l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked;
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência";
+    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
     return `<tr>
       <td>${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(l.categoria)}</div>` : ""}</td>
+      <td>${esc(l.descricao)}${recBadge}${l.categoria ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(l.categoria)}</div>` : ""}</td>
       <td class="num ${unlocked?'':'masked-value'}" style="font-weight:600;">${maskBRL(l.valor, unlocked)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="cursor:pointer;" data-action="toggle-conc" data-id="${l.id}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
@@ -780,7 +821,7 @@ function viewLancamentos() {
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.dataDe||lancFilter.dataAte;
   return `
-    <div class="page-header"><div><div class="page-title">Lançamentos</div><div class="page-sub">Ordem cronológica (mais antigo → mais recente)</div></div><button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button></div>
+    <div class="page-header"><div><div class="page-title">Lançamentos</div><div class="page-sub">Ordem cronológica. Use 💲 para dar baixa manual em despesas/receitas.</div></div><button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button></div>
     <div class="panel"><div class="filter-bar">
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
@@ -839,7 +880,7 @@ function viewNegocios() {
 }
 
 // ============================================================
-// VIEW: CARTÕES
+// VIEW: CARTÕES (COMPLETO)
 // ============================================================
 function viewCartoes() {
   const lockedPagar = !state.pagarUnlocked;
@@ -881,7 +922,42 @@ function viewCartoes() {
 function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 
 // ============================================================
-// MODAIS
+// BACKUP
+// ============================================================
+function exportarBackup(){
+  const dados = { versao: "3-contas-editaveis", exportadoEm: new Date().toISOString(), contas: state.contas, lancamentos: state.lancamentos, ajustes: state.ajustes, categorias: state.categorias, negocios: state.negocios, cartoes: state.cartoes };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-financeiro-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  showToast("Backup exportado.");
+}
+function handleImportarBackup(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const dados = JSON.parse(ev.target.result);
+      if(!confirm("Importar esse backup vai substituir TODOS os dados atuais. Continuar?")) return;
+      state.contas = dados.contas || [];
+      state.lancamentos = dados.lancamentos || [];
+      state.ajustes = dados.ajustes || [];
+      state.categorias = dados.categorias || [];
+      state.negocios = dados.negocios || [];
+      state.cartoes = dados.cartoes || [];
+      await saveContas(); await saveLancamentos(); await saveAjustes(); await saveCategorias(); await saveNegocios(); await saveCartoes();
+      renderApp(); showToast("Backup importado.");
+    }catch(err){ showToast("Arquivo inválido.", "error"); }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+}
+
+// ============================================================
+// MODAIS - COMPLETOS COM REPETIÇÃO
 // ============================================================
 function openModal(html) {
   const overlay = document.createElement('div');
@@ -901,15 +977,12 @@ function modalConta(existing) {
   const c = existing || { nome:'', instituicao:'', tipo:'Conta Corrente', saldoInicial:0, limite:0, ativa:true };
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? 'Editar conta' : 'Nova conta'}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formConta">
-      <div class="modal-body">
-        <div class="field"><label>Nome da conta</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Mercado Pago"></div>
-        <div class="field-row"><div class="field"><label>Instituição</label><input type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div><div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
-        <div class="field-row"><div class="field"><label>Saldo inicial (R$)</label><input type="number" step="0.01" name="saldoInicial" value="${c.saldoInicial}"></div><div class="field"><label>Limite (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div></div>
-        <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label></div>
-      </div>
-      <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div>
-    </form>
+    <form id="formConta"><div class="modal-body">
+      <div class="field"><label>Nome da conta</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Mercado Pago"></div>
+      <div class="field-row"><div class="field"><label>Instituição</label><input type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div><div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
+      <div class="field-row"><div class="field"><label>Saldo inicial (R$)</label><input type="number" step="0.01" name="saldoInicial" value="${c.saldoInicial}"></div><div class="field"><label>Limite (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div></div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div></form>
   `);
   document.getElementById('formConta').addEventListener('submit', async e => {
     e.preventDefault();
@@ -931,12 +1004,12 @@ function modalCaixinha(parentId, existing) {
   const cx = existing || { nome:'', saldoInicial:0, ativa:true };
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? 'Editar caixinha' : 'Nova caixinha'}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formCaixinha"><div class="modal-body"><div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(pai ? pai.nome : "")}</strong></div>
+    <form id="formCaixinha"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(pai ? pai.nome : "")}</strong></div>
       <div class="field"><label>Nome da caixinha</label><input required type="text" name="nome" value="${esc(cx.nome)}" placeholder="Ex: Aluguel"></div>
       <div class="field"><label>Saldo inicial (R$)</label><input type="number" step="0.01" name="saldoInicial" value="${cx.saldoInicial}"></div>
-      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${cx.ativa!==false?"checked":""}> Ativa</label></div></div>
-      <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div>
-    </form>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${cx.ativa!==false?"checked":""}> Ativa</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div></form>
   `);
   document.getElementById('formCaixinha').addEventListener('submit', async e => {
     e.preventDefault();
@@ -950,7 +1023,7 @@ function modalCaixinha(parentId, existing) {
 }
 
 // ============================================================
-// MODAL: LANÇAMENTO
+// MODAL: LANÇAMENTO (COM REPETIÇÃO COMPLETA)
 // ============================================================
 function modalLancamento(existing) {
   const isEdit = !!existing;
@@ -959,35 +1032,79 @@ function modalLancamento(existing) {
   const contaDestOpts = contasParaSelecao(l.contaDestino).map(c => `<option value="${c.id}" ${l.contaDestino===c.id?"selected":""}>${contaLabel(c)}</option>`).join('');
   const negOpts = state.negocios.map(n => `<option value="${esc(n.nome)}" ${l.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join('');
   const catOpts = state.categorias.map(c => `<option value="${esc(c.nome)}" ${l.categoria===c.nome?"selected":""}>${esc(c.nome)}</option>`).join('');
+  const subOpts = l.categoria ? subcategoriasDe(l.categoria).map(s => `<option value="${esc(s.nome)}" ${l.subcategoria===s.nome?"selected":""}>${esc(s.nome)}</option>`).join('') : '';
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? 'Editar lançamento' : 'Novo lançamento'}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formLanc"><div class="modal-body">
       <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${l.data}"></div><div class="field"><label>Tipo</label><select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
-      <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}"><label>Negócio</label><select name="negocio">${negOpts || '<option value="">— Selecione —</option>'}</select></div>
+      <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}"><label>Negócio</label><select name="negocio">${negOpts}</select></div>
       <div class="field-row"><div class="field"><label>${l.tipo==='Transferência' ? 'Conta origem' : 'Conta'}</label><select name="contaOrigem">${contaOpts}</select></div><div id="lancDestinoWrap" class="field" style="display:${l.tipo==='Transferência'?'block':'none'}"><label>Conta destino</label><select name="contaDestino">${contaDestOpts}</select></div></div>
+      <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
+        <div class="field"><label>Categoria</label><select name="categoria" id="lancCategoriaSelect"><option value="">— Selecione —</option>${catOpts}</select></div>
+        <div class="field"><label>Subcategoria</label><select name="subcategoria" id="lancSubcategoriaSelect"><option value="">— Nenhuma —</option>${subOpts}</select></div>
+      </div>
       <div class="field"><label>Valor (R$)</label><input required type="number" step="0.01" min="0.01" name="valor" value="${l.valor}"></div>
-      <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}"><div class="field"><label>Categoria</label><select name="categoria"><option value="">— Selecione —</option>${catOpts}</select></div></div>
       <div class="field"><label>Descrição</label><input required type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
       <div class="field-row"><div class="field"><label>Status</label><select name="status">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Conciliado</label></div></div>
+      <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (💲). Agendado = vira "Pago" sozinho na data.</div>
+      ${!isEdit ? `
+      <div class="field"><label>Repetição</label><select name="repeticao" id="lancRepeticao"><option value="nenhuma">Não se repete (avulsa)</option><option value="recorrente">🔁 Recorrente / fixa</option><option value="parcelado">💳 Parcelado</option></select></div>
+      <div id="repeticaoRecorrenteWrap" class="field" style="display:none;"><label>Período</label><select name="frequencia">${PERIODOS.map(f=>`<option value="${f}" ${f==='Mensal'?'selected':''}>${f}</option>`).join("")}</select><div class="field-help">Gera automaticamente os próximos ${HORIZONTE_ANOS} anos.</div></div>
+      <div id="repeticaoParceladoWrap" class="field" style="display:none;"><label>Número de parcelas</label><input type="number" min="2" max="60" step="1" name="qtdParcelas" value="3"><div class="field-help">Cada parcela é gerada mensalmente.</div></div>
+      ` : ''}
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div></form>
   `);
+
   document.getElementById('lancTipo').addEventListener('change', function() {
     const isTransf = this.value === 'Transferência';
     document.getElementById('lancDestinoWrap').style.display = isTransf ? 'block' : 'none';
     document.getElementById('lancNegocioWrap').style.display = isTransf ? 'none' : 'block';
     document.getElementById('lancCategoriaWrap').style.display = isTransf ? 'none' : 'block';
   });
+
+  const repSelect = document.getElementById('lancRepeticao');
+  if(repSelect){
+    const recWrap = document.getElementById('repeticaoRecorrenteWrap');
+    const parWrap = document.getElementById('repeticaoParceladoWrap');
+    repSelect.addEventListener('change', function() {
+      recWrap.style.display = this.value === 'recorrente' ? 'block' : 'none';
+      parWrap.style.display = this.value === 'parcelado' ? 'block' : 'none';
+    });
+  }
+
   document.getElementById('formLanc').addEventListener('submit', async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const tipo = fd.get('tipo');
-    const data = { data: fd.get('data'), tipo, negocio: tipo==='Transferência'?'':(fd.get('negocio')||''), categoria: tipo==='Transferência'?'':(fd.get('categoria')||''), contaOrigem: fd.get('contaOrigem'), contaDestino: tipo==='Transferência'?fd.get('contaDestino'):'', valor: parseFloat(fd.get('valor'))||0, descricao: fd.get('descricao').trim(), status: fd.get('status'), conciliado: fd.get('conciliado') === 'on' };
+    const data = { data: fd.get('data'), tipo, negocio: tipo==='Transferência'?'':(fd.get('negocio')||''), categoria: tipo==='Transferência'?'':(fd.get('categoria')||''), subcategoria: tipo==='Transferência'?'':(fd.get('subcategoria')||''), contaOrigem: fd.get('contaOrigem'), contaDestino: tipo==='Transferência'?fd.get('contaDestino'):'', valor: parseFloat(fd.get('valor'))||0, descricao: fd.get('descricao').trim(), status: fd.get('status'), conciliado: fd.get('conciliado') === 'on' };
     if (tipo === 'Transferência' && data.contaOrigem === data.contaDestino) { showToast('Contas não podem ser iguais.', 'error'); return; }
-    if (isEdit) Object.assign(existing, data);
-    else state.lancamentos.push({ id: uid('l'), ...data });
-    await saveLancamentos();
-    closeModal(); renderApp(); showToast(isEdit ? 'Lançamento atualizado.' : 'Lançamento adicionado.');
+    if (isEdit) { Object.assign(existing, data); await saveLancamentos(); closeModal(); renderApp(); showToast('Lançamento atualizado.'); return; }
+    const repeticao = fd.get('repeticao') || 'nenhuma';
+    if (repeticao === 'nenhuma') {
+      state.lancamentos.push({ id: uid('l'), ...data });
+    } else if (repeticao === 'recorrente') {
+      const freq = fd.get('frequencia') || 'Mensal';
+      const grupoId = uid('rec');
+      let dataOcorrencia = data.data;
+      const ocorrenciasPorAno = { 'Semanal':52, 'Quinzenal':24, 'Mensal':12, 'Bimestral':6, 'Trimestral':4, 'Semestral':2, 'Anual':1 };
+      const qtd = (ocorrenciasPorAno[freq]||12) * HORIZONTE_ANOS;
+      for(let i=0;i<qtd;i++){
+        state.lancamentos.push({ id: uid('l'), ...data, data: dataOcorrencia, descricao: i===0 ? data.descricao : `${data.descricao} (${i+1})`, status: i===0 ? data.status : 'Provisionado', conciliado: i===0 ? data.conciliado : false, recorrenciaId: grupoId, recorrenciaTipo: 'recorrente', recorrenciaIndex: i+1, recorrenciaTotal: qtd });
+        dataOcorrencia = proximaData(dataOcorrencia, freq);
+      }
+      showToast(`Lançamento fixo criado (próximos ${HORIZONTE_ANOS} anos).`);
+    } else if (repeticao === 'parcelado') {
+      const qtd = Math.max(2, parseInt(fd.get('qtdParcelas'))||3);
+      const grupoId = uid('rec');
+      let dataOcorrencia = data.data;
+      for(let i=0;i<qtd;i++){
+        state.lancamentos.push({ id: uid('l'), ...data, data: dataOcorrencia, descricao: `${data.descricao} (${i+1}/${qtd})`, status: i===0 ? data.status : 'Provisionado', conciliado: i===0 ? data.conciliado : false, recorrenciaId: grupoId, recorrenciaTipo: 'parcelado', recorrenciaIndex: i+1, recorrenciaTotal: qtd });
+        dataOcorrencia = proximaData(dataOcorrencia, 'Mensal');
+      }
+      showToast(`${qtd} parcelas criadas.`);
+    }
+    await saveLancamentos(); closeModal(); renderApp(); showToast('Lançamento adicionado.');
   });
 }
 
@@ -1030,16 +1147,9 @@ function modalCategoria(existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome) return;
-    if (isEdit) {
-      const nomeAntigo = existing.nome;
-      existing.nome = nome;
-      state.lancamentos.forEach(l => { if (l.categoria === nomeAntigo) l.categoria = nome; });
-      await saveLancamentos();
-    } else {
-      state.categorias.push({ id: uid('cat'), nome, subcategorias: [] });
-    }
-    await saveCategorias();
-    closeModal(); renderApp(); showToast(isEdit ? 'Categoria atualizada.' : 'Categoria criada.');
+    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.categoria === nomeAntigo) l.categoria = nome; }); await saveLancamentos(); }
+    else { state.categorias.push({ id: uid('cat'), nome, subcategorias: [] }); }
+    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? 'Categoria atualizada.' : 'Categoria criada.');
   });
 }
 
@@ -1057,16 +1167,9 @@ function modalSubcategoria(catId, existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome || !cat) return;
-    if (isEdit) {
-      const nomeAntigo = existing.nome;
-      existing.nome = nome;
-      state.lancamentos.forEach(l => { if (l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; });
-      await saveLancamentos();
-    } else {
-      cat.subcategorias.push({ id: uid('sub'), nome });
-    }
-    await saveCategorias();
-    closeModal(); renderApp(); showToast(isEdit ? 'Subcategoria atualizada.' : 'Subcategoria criada.');
+    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; }); await saveLancamentos(); }
+    else { cat.subcategorias.push({ id: uid('sub'), nome }); }
+    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? 'Subcategoria atualizada.' : 'Subcategoria criada.');
   });
 }
 
@@ -1083,16 +1186,9 @@ function modalNegocio(existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome) return;
-    if (isEdit) {
-      const nomeAntigo = existing.nome;
-      existing.nome = nome;
-      state.lancamentos.forEach(l => { if (l.negocio === nomeAntigo) l.negocio = nome; });
-      await saveLancamentos();
-    } else {
-      state.negocios.push({ id: uid('neg'), nome, cor: PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length] });
-    }
-    await saveNegocios();
-    closeModal(); renderApp(); showToast(isEdit ? 'Negócio atualizado.' : 'Negócio criado.');
+    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.negocio === nomeAntigo) l.negocio = nome; }); await saveLancamentos(); }
+    else { state.negocios.push({ id: uid('neg'), nome, cor: PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length] }); }
+    await saveNegocios(); closeModal(); renderApp(); showToast(isEdit ? 'Negócio atualizado.' : 'Negócio criado.');
   });
 }
 
@@ -1126,7 +1222,7 @@ function modalCartao(existing) {
 }
 
 // ============================================================
-// MODAL: COMPRA NO CARTÃO
+// MODAL: COMPRA NO CARTÃO (COM PARCELAMENTO)
 // ============================================================
 function modalCompraCartao(cartaoIdPreset) {
   if (!state.cartoes.length) { showToast('Cadastre um cartão primeiro.', 'error'); return; }
@@ -1159,11 +1255,9 @@ function modalCompraCartao(cartaoIdPreset) {
     const isParcelado = fd.get('parcelado') === 'sim';
     const base = { tipo:'Despesa', negocio: fd.get('negocio')||'', categoria: fd.get('categoria')||'', contaOrigem: cartao.contaPagamentoId, contaDestino:'', descricao: fd.get('descricao').trim(), status:'Provisionado', conciliado:false, cartaoId: cartao.id, dataCompra };
     if (!isParcelado) {
-      // À vista: calcula vencimento e cria um lançamento
       const dataVenc = calcularVencimento(dataCompra, cartao);
       state.lancamentos.push({ id: uid('l'), ...base, valor, data: dataVenc });
     } else {
-      // Parcelado: divide valor e cria N lançamentos
       const parcelas = dividirValor(valor, qtd);
       const grupoId = uid('rec');
       let dataVenc = calcularVencimento(dataCompra, cartao);
@@ -1176,38 +1270,10 @@ function modalCompraCartao(cartaoIdPreset) {
     closeModal(); renderApp(); showToast(isParcelado ? `${qtd} parcelas criadas.` : 'Compra adicionada.');
   });
 }
-function calcularVencimento(dataCompraISO, cartao) {
-  const d = new Date(dataCompraISO + 'T00:00:00');
-  const diaCompra = d.getDate();
-  let anoFech = d.getFullYear(), mesFech = d.getMonth();
-  if (diaCompra > cartao.diaFechamento) { mesFech += 1; if (mesFech > 11) { mesFech = 0; anoFech += 1; } }
-  let anoVenc = anoFech, mesVenc = mesFech;
-  if (cartao.diaVencimento < cartao.diaFechamento) { mesVenc += 1; if (mesVenc > 11) { mesVenc = 0; anoVenc += 1; } }
-  const diasNoMes = new Date(anoVenc, mesVenc + 1, 0).getDate();
-  const diaVenc = Math.min(cartao.diaVencimento, diasNoMes);
-  return new Date(anoVenc, mesVenc, diaVenc).toISOString().slice(0,10);
-}
-function proximaData(dataISO, freq) {
-  const d = new Date(dataISO + 'T00:00:00');
-  const dia = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + 1);
-  const diasNoMes = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(dia, diasNoMes));
-  return d.toISOString().slice(0,10);
-}
-function dividirValor(total, qtd) {
-  const totalCentavos = Math.round(Number(total) * 100);
-  const baseCentavos = Math.floor(totalCentavos / qtd);
-  const resto = totalCentavos - (baseCentavos * qtd);
-  const valores = [];
-  for (let i=0; i<qtd; i++) {
-    let c = baseCentavos;
-    if (i === qtd - 1) c += resto;
-    valores.push(Math.round(c) / 100);
-  }
-  return valores;
-}
+
+// ============================================================
+// MODAL: BAIXA MANUAL
+// ============================================================
 function modalBaixa(l) {
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}</option>`).join('');
   openModal(`
@@ -1243,6 +1309,7 @@ document.addEventListener('click', function(e) {
   else if (action === 'close-modal') closeModal();
   else if (action === 'switch-auth') { authMode = authMode === 'login' ? 'register' : 'login'; renderApp(); }
   else if (action === 'logout') doLogout();
+  else if (action === 'exportar-backup') exportarBackup();
   else if (action === 'unlock-pagar') { state.pagarUnlocked = true; renderApp(); }
   else if (action === 'lock-pagar') { state.pagarUnlocked = false; renderApp(); }
   else if (action === 'unlock-receber') { state.receberUnlocked = true; renderApp(); }
