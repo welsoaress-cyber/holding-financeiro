@@ -768,7 +768,10 @@ function renderApp(){
       <div class="nav-group-label">Contas Bancárias</div>
       ${navItem("contas","▢","Contas")}
       ${navItem("cartoes","💳","Cartões de Crédito")}
-      ${navItem("lancamentos","≡","Lançamentos")}
+      ${navItem("lancamentos","≡","Todos os Lançamentos")}
+      ${navItem("receitas","📥","Contas a Receber")}
+      ${navItem("despesas","📤","Contas a Pagar")}
+      ${navItem("transferencias","⇄","Transferências")}
       ${navSubmenuAjustes()}
 
       <div class="nav-group-label">Em construção</div>
@@ -837,7 +840,7 @@ function renderView(){
   if(state.view === "dashboard") main.innerHTML = viewDashboard();
   else if(state.view === "contas") main.innerHTML = viewContas();
   else if(state.view === "cartoes") main.innerHTML = viewCartoes();
-  else if(state.view === "lancamentos") main.innerHTML = viewLancamentos();
+  else if(state.view === "lancamentos" || state.view === "receitas" || state.view === "despesas" || state.view === "transferencias") main.innerHTML = viewLancamentos();
   else if(state.view === "ajustes") main.innerHTML = viewAjustes();
   else if(state.view === "categorias") main.innerHTML = viewCategorias();
   else if(state.view === "negocios") main.innerHTML = viewNegocios();
@@ -1058,12 +1061,21 @@ function viewCartoes(){
 let lancFilter = { negocio: "", status: "", conta: "", cartao: "", dataDe: "", dataAte: "" };
 let lancSelecionados = new Set();
 let lancVisibleIds = [];
+const LANC_VIEW_CONFIG = {
+  lancamentos:     { titulo: "Todos os Lançamentos", sub: "O coração do sistema — toda receita, despesa e transferência entra aqui.", tipo: null,             novoLabel: "+ Novo lançamento",  tipoPreset: null },
+  receitas:        { titulo: "Contas a Receber",      sub: "Só receitas — o que você tem pra receber, entrar na conta.",           tipo: "Receita",         novoLabel: "+ Nova receita",     tipoPreset: "Receita" },
+  despesas:        { titulo: "Contas a Pagar",         sub: "Só despesas avulsas — compras no cartão ficam no menu Cartão de Crédito.", tipo: "Despesa",     novoLabel: "+ Nova despesa",     tipoPreset: "Despesa" },
+  transferencias:  { titulo: "Transferências",         sub: "Só transferências entre contas.",                                     tipo: "Transferência",  novoLabel: "+ Nova transferência", tipoPreset: "Transferência" },
+};
 function viewLancamentos(){
+  const cfg = LANC_VIEW_CONFIG[state.view] || LANC_VIEW_CONFIG.lancamentos;
   let list = [...state.lancamentos].sort((a,b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
+  if(cfg.tipo) list = list.filter(l => l.tipo === cfg.tipo);
+  if(state.view === "despesas") list = list.filter(l => !l.cartaoId); // compras de cartao ficam so no menu Cartao de Credito
   if(lancFilter.negocio) list = list.filter(l => l.negocio === lancFilter.negocio);
   if(lancFilter.status) list = list.filter(l => l.status === lancFilter.status);
   if(lancFilter.conta) list = list.filter(l => l.contaOrigem === lancFilter.conta || l.contaDestino === lancFilter.conta);
-  if(lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
+  if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
   lancVisibleIds = list.map(l => l.id);
@@ -1112,17 +1124,17 @@ function viewLancamentos(){
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   return `
     <div class="page-header">
-      <div><div class="page-title">Lançamentos</div><div class="page-sub">O coração do sistema — toda receita, despesa e transferência entra aqui. Ordenado da data mais antiga para a mais recente.</div></div>
+      <div><div class="page-title">${cfg.titulo}</div><div class="page-sub">${cfg.sub}</div></div>
       <div style="display:flex; gap:8px;">
         ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--danger); border-color:var(--danger-soft);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
-        <button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button>
+        <button class="btn btn-primary" data-action="new-lanc" data-tipo-preset="${cfg.tipoPreset||''}">${cfg.novoLabel}</button>
       </div>
     </div>
     <div class="panel"><div class="filter-bar">
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
-      ${state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
+      ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
       <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
@@ -1356,9 +1368,9 @@ function negOptionsHTML(selectedNome){
   return `<option value="">— Selecione —</option>${opts}<option value="__novo__">+ Novo negócio...</option>`;
 }
 
-function modalLancamento(existing){
+function modalLancamento(existing, tipoPreset){
   const isEdit = !!existing;
-  const l = existing || { data: todayISO(), tipo:"Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
+  const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
   const unlockedValor = !isEdit || (l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked);
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   const contaDestOpts = contasParaSelecao(l.contaDestino).map(c => `<option value="${c.id}" ${l.contaDestino===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
@@ -2222,7 +2234,7 @@ document.addEventListener("click", async e => {
     renderApp(); showToast(c.parentId ? "Caixinha removida." : "Conta removida.");
   }
 
-  else if(action === "new-lanc") modalLancamento(null);
+  else if(action === "new-lanc") modalLancamento(null, el.dataset.tipoPreset || null);
   else if(action === "edit-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalLancamento(l); }
   else if(action === "del-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalExcluirLancamento(l); }
   else if(action === "del-lanc-um"){
