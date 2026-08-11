@@ -1063,8 +1063,6 @@ function viewDashboard(){
   const receberMes = lancamentosVisiveis(
     state.lancamentos.filter(l => l.tipo === "Receita" && !l.inativo && l.status !== "Pago" && l.data >= inicioMesISO && l.data <= fimMesISO)
   ).sort((a,b) => a.data.localeCompare(b.data));
-  // Faturas de cartão do mês
-  // Faturas de cartão do mês (construídas inline em faturasCartaoHTML abaixo)
 
   const listaItemHTML = (l, tipo) => `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12.5px;">
@@ -1078,21 +1076,29 @@ function viewDashboard(){
       </div>
     </div>`;
 
-  const faturasCartaoHTML = state.cartoes.flatMap(c => {
-    return faturasAgrupadas(c.id).filter(f => f.data >= inicioMesISO && f.data <= fimMesISO).map(f => `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12.5px;">
+  // Faturas de cartão do mês — com opções de pagamento total, mínimo e parcial
+  const faturasCartaoMes = state.cartoes.flatMap(c => {
+    return faturasAgrupadas(c.id).filter(f => f.data >= inicioMesISO && f.data <= fimMesISO).map(f => ({ cartao: c, fatura: f }));
+  });
+  const totalFaturasMes = faturasCartaoMes.reduce((s, {fatura}) => s + fatura.total, 0);
+  const faturasCartaoHTML = faturasCartaoMes.map(({cartao: c, fatura: f}) => `
+    <div style="border-top:1px solid #F0F1F4; padding:8px 0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px;">
         <div>
-          <div style="font-weight:600;">💳 ${esc(c.nome)} — fatura</div>
-          <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'}</div>
+          <div style="font-weight:600;">💳 ${esc(c.nome)} <span style="font-size:11px; color:var(--ink-faint);">final ${esc(c.ultimosDigitos)}</span></div>
+          <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'} · Limite disp. ${fmtBRL(Number(c.limite||0)-faturaEmAberto(c.id))}</div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-          <span style="font-family:var(--font-mono); font-weight:600; color:var(--danger);">${fmtBRL(f.total)}</span>
-          <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar</button>
-        </div>
-      </div>`);
-  }).join("");
+        <span style="font-family:var(--font-mono); font-weight:700; color:var(--danger);">${fmtBRL(f.total)}</span>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">💰 Pagar total</button>
+        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Geralmente 15% do total — marque as compras que quer pagar">💳 Pagar mínimo</button>
+        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Escolha um valor e quais compras pagar">✏ Pagar parcial</button>
+        <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">🔍 Detalhes</button>
+      </div>
+    </div>`).join("");
 
-  const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0);
+  const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0) + totalFaturasMes;
   const totalReceberMes = receberMes.reduce((s,l) => s+Number(l.valor), 0);
   const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada em aberto. 🎉</div>`;
   const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-faint); padding:10px 0;">Nada a receber neste mês.</div>`;
@@ -1133,41 +1139,50 @@ function viewDashboard(){
           <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">▶</button>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${lockedReceber ? 'masked-value' : (saldoMesAnterior>=0?'pos':'neg')}">${maskBRL(saldoMesAnterior, receberDesbloqueado())}</div></div>
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${lockedReceber || lockedPagar ? 'masked-value' : (saldoAtualMes>=0?'pos':'neg')}">${(lockedReceber || lockedPagar) ? "R$ ••••••" : fmtBRL(saldoAtualMes)}</div><div class="kpi-note">Mês anterior + realizado receitas − realizado despesas</div></div>
+          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
+          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${saldoAtualMes>=0?'pos':'neg'}">${fmtBRL(saldoAtualMes)}</div><div class="kpi-note">Mês anterior + realizado receitas − realizado despesas</div></div>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-label">Previsto receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movPendente.entradas, receberDesbloqueado())}</div><div class="kpi-note">Ainda não baixado</div></div>
-          <div class="kpi-card"><div class="kpi-label">Previsto despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movPendente.saidas, pagarDesbloqueado())}</div><div class="kpi-note">Ainda não baixado</div></div>
+          <div class="kpi-card"><div class="kpi-label">📥 Previsto receitas</div><div class="kpi-value pos">${fmtBRL(movPendente.entradas)}</div><div class="kpi-note">Ainda não baixado</div></div>
+          <div class="kpi-card"><div class="kpi-label">📤 Previsto despesas</div><div class="kpi-value neg">${fmtBRL(movPendente.saidas)}</div><div class="kpi-note">Ainda não baixado</div></div>
         </div>
-        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movReal.entradas, receberDesbloqueado())}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movReal.saidas, pagarDesbloqueado())}</div></div>
-        </div>
-        <div class="kpi-grid" style="grid-template-columns: 1fr;">
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final previsto</div><div class="kpi-value ${lockedReceber || lockedPagar ? 'masked-value' : (saldoFinalPrevisto>=0?'pos':'neg')}">${(lockedReceber || lockedPagar) ? "R$ ••••••" : fmtBRL(saldoFinalPrevisto)}</div><div class="kpi-note">Saldo atual + previsto receitas − previsto despesas</div></div>
+        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:0;">
+          <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value pos">${fmtBRL(movReal.entradas)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value neg">${fmtBRL(movReal.saidas)}</div></div>
         </div>
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
-      <div class="panel" style="margin-bottom:0;">
-        <div class="panel-head">
-          <div class="panel-title">📤 A Pagar — ${NOMES_MESES[mv.mes]}</div>
-          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--danger);">${fmtBRL(totalPagarMes)}</div>
-        </div>
-        <div class="panel-body" style="padding-top:0; max-height:320px; overflow-y:auto;">${pagarHTML}</div>
-      </div>
-      <div class="panel" style="margin-bottom:0;">
+
+    <!-- A Receber (esq) + A Pagar (dir) — filtrados pelo mês -->
+    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:0;">
+      <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
           <div class="panel-title">📥 A Receber — ${NOMES_MESES[mv.mes]}</div>
           <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:#0F5C3F;">${fmtBRL(totalReceberMes)}</div>
         </div>
-        <div class="panel-body" style="padding-top:0; max-height:320px; overflow-y:auto;">${receberHTML}</div>
+        <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${receberHTML}</div>
+      </div>
+      <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
+        <div class="panel-head">
+          <div class="panel-title">📤 A Pagar — ${NOMES_MESES[mv.mes]}</div>
+          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--danger);">${fmtBRL(totalPagarMes)}</div>
+        </div>
+        <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${pagarHTML}</div>
       </div>
     </div>
+
+    <!-- Saldo Final Previsto — abaixo dos dois painéis -->
+    <div class="panel" style="margin-bottom:20px; border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
+      <div class="panel-body" style="padding:14px 18px; text-align:center;">
+        <div class="kpi-label">Saldo final previsto</div>
+        <div class="kpi-value ${saldoFinalPrevisto>=0?'pos':'neg'}" style="font-size:28px;">${fmtBRL(saldoFinalPrevisto)}</div>
+        <div class="kpi-note">Saldo atual + previsto receitas − previsto despesas</div>
+      </div>
+    </div>
+
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, receberDesbloqueado())}</div></div>
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, pagarDesbloqueado())}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, true)}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, true)}</div></div>
     </div>
     <div class="panel"><div class="panel-head"><div class="panel-title">Saldo por conta${!isMesAtual ? ` — projetado até ${NOMES_MESES[mv.mes]} de ${mv.ano}` : ''}</div></div><div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div></div>
   `;
@@ -2462,6 +2477,105 @@ function modalPagarFatura(cartaoId, dataVencimento){
 }
 
 // ============================================================
+// MODAL — PAGAMENTO MÍNIMO DO CARTÃO (seleciona compras pra cobrir o mínimo)
+// ============================================================
+function modalPagarFaturaMinimo(cartaoId, dataVencimento, totalFatura){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
+  const minimoSugerido = Math.round(totalFatura * 0.15 * 100) / 100;
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  const linhasItens = itens.map(l => `
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid #F0F1F4; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <input type="checkbox" name="item_${l.id}">
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-faint);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--danger); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+    </label>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💳 Pagamento mínimo — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarMinimo"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong> · Mínimo sugerido: <strong style="color:var(--danger);">${fmtBRL(minimoSugerido)}</strong> (15%)</div>
+      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
+      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
+      <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="1" name="valorPago" value="${minimoSugerido}" id="valorPagoMinimo">
+        <div class="field-help">Digite o valor e marque as compras que entram nesse pagamento parcial abaixo.</div></div>
+      <div class="field"><label>Compras que entram neste pagamento</label>
+        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">${linhasItens}</div>
+        <div class="field-help">As compras marcadas serão pagas pelo valor acima. As desmarcadas continuam em aberto.</div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento</button></div></form>
+  `);
+  document.getElementById("formPagarMinimo").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const valorPago = parseFloat(fd.get("valorPago"))||0;
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
+    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
+    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Pagamento mínimo de ${fmtBRL(valorPago)} — ${itensPagos.length} compra(s) baixada(s).`);
+  });
+}
+
+// ============================================================
+// MODAL — PAGAMENTO PARCIAL DO CARTÃO (valor livre, seleciona compras)
+// ============================================================
+function modalPagarFaturaParcial(cartaoId, dataVencimento, totalFatura){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  let totalSelecionado = 0;
+  const linhasItens = itens.map(l => `
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid #F0F1F4; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <input type="checkbox" name="item_${l.id}" data-valor="${l.valor}" class="chk-parcial">
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-faint);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--danger); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+    </label>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">✏ Pagamento parcial — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarParcial"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong></div>
+      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
+      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
+      <div class="field"><label>Selecione as compras a pagar</label>
+        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">${linhasItens}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--line); margin-top:10px;">
+        <strong style="font-size:13px;">Total selecionado</strong>
+        <strong id="totalSelecionadoParcial" style="font-family:var(--font-mono); font-size:15px; color:var(--danger);">${fmtBRL(0)}</strong>
+      </div>
+      <div class="field-help">As compras marcadas serão pagas. As desmarcadas continuam em aberto.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento parcial</button></div></form>
+  `);
+  document.querySelectorAll(".chk-parcial").forEach(chk => {
+    chk.addEventListener("change", () => {
+      const total = Array.from(document.querySelectorAll(".chk-parcial:checked")).reduce((s,c) => s + parseFloat(c.dataset.valor||0), 0);
+      const el = document.getElementById("totalSelecionadoParcial");
+      if(el) el.textContent = fmtBRL(total);
+    });
+  });
+  document.getElementById("formPagarParcial").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
+    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
+    const totalPago = itensPagos.reduce((s,l) => s + Number(l.valor), 0);
+    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Pagamento parcial de ${fmtBRL(totalPago)} — ${itensPagos.length} compra(s) baixada(s).`);
+  });
+}
+
+// ============================================================
 // MODAL — DETALHE DA FATURA (cada compra, por período, dentro da fatura)
 // ============================================================
 function modalDetalheFatura(cartaoId, dataVencimento){
@@ -2758,6 +2872,8 @@ document.addEventListener("click", async e => {
   }
   else if(action === "new-compra-cartao") modalCompraCartao(id);
   else if(action === "pagar-fatura"){ closeModal(); modalPagarFatura(id, el.dataset.venc); }
+  else if(action === "pagar-fatura-minimo"){ closeModal(); modalPagarFaturaMinimo(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
+  else if(action === "pagar-fatura-parcial"){ closeModal(); modalPagarFaturaParcial(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
   else if(action === "ver-fatura") modalDetalheFatura(id, el.dataset.venc);
 
   else if(action === "mes-prev"){
