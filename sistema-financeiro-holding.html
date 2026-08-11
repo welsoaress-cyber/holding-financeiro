@@ -4,1438 +4,816 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Holding — Painel Financeiro</title>
-
-<!-- Supabase Client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg: #F5F6F8;
-    --panel: #FFFFFF;
-    --ink: #12151C;
-    --ink-soft: #5B6270;
-    --ink-faint: #9AA1AF;
-    --line: #E5E7EC;
-    --sidebar: #10141F;
-    --sidebar-ink: #E7EAF2;
-    --sidebar-faint: #7C8399;
-    --sidebar-active: #1B2233;
-    --accent: #146356;
-    --accent-soft: #E4F1EE;
-    --danger: #C1432E;
-    --danger-soft: #FBEAE6;
-    --warn: #B4790C;
-    --warn-soft: #FBF1DF;
-
-    --c-toptv: #3B7EC4;
-    --c-uniplay: #8457C9;
-    --c-servnet: #1E9159;
-    --c-precautec: #D8752B;
-    --c-porto: #0D8C82;
-    --c-pessoal: #6B7280;
-    --c-compartilhado: #B8891A;
-
-    --radius: 10px;
-    --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
-  }
-  *{ box-sizing: border-box; }
-  html, body{ margin:0; padding:0; height:100%; }
-  body{
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--font-body);
-    font-size: 14px;
-    -webkit-font-smoothing: antialiased;
-  }
-  #app{ display:flex; min-height:100vh; }
-
-  .sidebar{
-    width: 240px;
-    flex-shrink:0;
-    background: var(--sidebar);
-    color: var(--sidebar-ink);
-    display:flex;
-    flex-direction:column;
-    padding: 22px 14px;
-  }
-  .brand{
-    font-family: var(--font-display);
-    font-weight:700;
-    font-size: 17px;
-    letter-spacing: -0.02em;
-    padding: 4px 10px 4px;
-    display:flex;
-    align-items:baseline;
-    gap:8px;
-  }
-  .brand .dot{ width:8px; height:8px; border-radius:50%; background:#3FD68E; display:inline-block; }
-  .brand-sub{
-    font-size:11px;
-    color: var(--sidebar-faint);
-    padding: 0 10px 22px;
-    font-family: var(--font-mono);
-  }
-  .nav-group-label{
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--sidebar-faint);
-    padding: 14px 12px 6px;
-  }
-  .nav-item{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    color: var(--sidebar-ink);
-    cursor:pointer;
-    font-size: 13.5px;
-    font-weight:500;
-    transition: background .12s ease;
-    user-select:none;
-  }
-  .nav-item:hover{ background: rgba(255,255,255,.05); }
-  .nav-item.active{ background: var(--sidebar-active); }
-  .nav-item.active .nav-ico{ color:#3FD68E; }
-  .nav-item.disabled{ color: var(--sidebar-faint); cursor:default; }
-  .nav-item.disabled:hover{ background:transparent; }
-  .nav-ico{ font-size:14px; width:16px; text-align:center; }
-  .soon-badge{
-    font-size:9.5px;
-    font-family: var(--font-mono);
-    background: rgba(255,255,255,.06);
-    color: var(--sidebar-faint);
-    padding: 2px 6px;
-    border-radius: 999px;
-  }
-  .sidebar-footer{
-    margin-top:auto;
-    padding: 12px 10px 4px;
-    font-size: 11px;
-    color: var(--sidebar-faint);
-    border-top: 1px solid rgba(255,255,255,.08);
-  }
-  .sidebar-lock-btn{
-    display:flex; align-items:center; justify-content:center; gap:6px;
-    width:100%; padding:9px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.05); color: var(--sidebar-ink); font-size:12.5px; font-weight:600;
-    cursor:pointer; margin-bottom:10px; font-family: var(--font-body);
-  }
-  .sidebar-lock-btn:hover{ background: rgba(255,255,255,.11); }
-  .sidebar-lock-btn.unlocked{ background: rgba(63,214,142,.12); border-color: rgba(63,214,142,.32); color:#3FD68E; }
-  .masked-value{ color: var(--ink-faint); letter-spacing:1px; }
-
-  .main{ flex:1; min-width:0; padding: 28px 36px 60px; }
-  .page-header{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
-  .page-title{ font-family: var(--font-display); font-size: 24px; font-weight:700; letter-spacing:-0.01em; }
-  .page-sub{ color: var(--ink-soft); font-size: 13px; margin-top:2px; }
-  .btn{
-    font-family: var(--font-body);
-    font-weight:600;
-    font-size: 13px;
-    padding: 9px 16px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    cursor:pointer;
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    transition: all .12s ease;
-  }
-  .btn-primary{ background: var(--accent); color:#fff; }
-  .btn-primary:hover{ background:#0F4A40; }
-  .btn-ghost{ background: transparent; color: var(--ink); border-color: var(--line); }
-  .btn-ghost:hover{ background: #F0F1F4; }
-  .btn-danger-text{ background:transparent; color:var(--danger); border:none; padding:4px 8px; font-size:12.5px; }
-  .btn-sm{ padding:6px 10px; font-size:12px; }
-  .btn-logout{
-    background: rgba(255,255,255,.08);
-    color: var(--sidebar-ink);
-    border: 1px solid rgba(255,255,255,.1);
-  }
-  .btn-logout:hover{ background: rgba(255,50,50,.15); border-color: rgba(255,50,50,.3); }
-
-  .kpi-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom: 22px; }
-  .kpi-card{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 16px 18px;
-  }
-  .kpi-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
-  .kpi-value{ font-family: var(--font-mono); font-size: 22px; font-weight:600; letter-spacing:-0.01em; }
-  .kpi-value.pos{ color:#0F5C3F; }
-  .kpi-value.neg{ color: var(--danger); }
-  .kpi-note{ font-size:11.5px; color:var(--ink-faint); margin-top:6px; }
-
-  .panel{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin-bottom: 20px;
-    overflow:hidden;
-  }
-  .panel-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 16px 18px 12px;
-    border-bottom: 1px solid var(--line);
-  }
-  .panel-title{ font-family: var(--font-display); font-weight:600; font-size:15px; }
-  .panel-body{ padding: 6px 18px 18px; }
-  table{ width:100%; border-collapse: collapse; font-size:13px; }
-  thead th{
-    text-align:left;
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing:.04em;
-    color: var(--ink-soft);
-    padding: 10px 10px;
-    border-bottom: 1px solid var(--line);
-    white-space:nowrap;
-  }
-  tbody td{ padding: 11px 10px; border-bottom: 1px solid #EFF0F3; vertical-align:middle; }
-  tbody tr:last-child td{ border-bottom:none; }
-  tbody tr:hover{ background:#FAFBFC; }
-  td.num, th.num{ text-align:right; font-family: var(--font-mono); }
-  .tag{
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:11px; font-weight:600; padding: 3px 9px; border-radius:999px;
-  }
-  .tag-dot{ width:6px; height:6px; border-radius:50%; }
-  .status-pill{ font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; }
-  .status-pago{ background: var(--accent-soft); color:#0F5C3F; }
-  .status-pendente{ background: var(--warn-soft); color:#8A5C09; }
-  .status-agendado{ background:#EAEDF3; color:#4A5266; }
-  .conc-yes{ color:#0F5C3F; font-weight:600; }
-  .conc-no{ color: var(--ink-faint); }
-  .row-actions{ display:flex; gap:4px; justify-content:flex-end; }
-  .icon-btn{
-    border:none; background:transparent; cursor:pointer; padding:5px 7px; border-radius:6px; color: var(--ink-soft); font-size:13px;
-  }
-  .icon-btn:hover{ background:#F0F1F4; color:var(--ink); }
-  .icon-btn.danger:hover{ background: var(--danger-soft); color: var(--danger); }
-  .empty-state{ padding: 40px 20px; text-align:center; color: var(--ink-faint); font-size:13px; }
-
-  .filter-bar{ display:flex; gap:8px; flex-wrap:wrap; padding: 12px 18px 4px; }
-  .filter-bar select, .filter-bar input[type=text]{
-    font-family: var(--font-body); font-size:12.5px; padding:7px 10px; border-radius:7px; border:1px solid var(--line); background:#FCFCFD; color:var(--ink);
-  }
-
-  .modal-overlay{
-    position:fixed; inset:0; background: rgba(15,17,22,.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
-  }
-  .modal{
-    background:#fff; border-radius: 14px; width: 480px; max-width:100%; max-height:88vh; overflow-y:auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
-  }
-  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding: 18px 20px; border-bottom:1px solid var(--line); }
-  .modal-title{ font-family: var(--font-display); font-weight:700; font-size:16px; }
-  .modal-close{ border:none; background:transparent; font-size:18px; cursor:pointer; color:var(--ink-soft); line-height:1; }
-  .modal-body{ padding: 18px 20px; }
-  .modal-foot{ display:flex; justify-content:flex-end; gap:8px; padding: 14px 20px; border-top:1px solid var(--line); }
-  .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
-  .field input, .field select, .field textarea{
-    width:100%; font-family:var(--font-body); font-size:13.5px; padding:9px 11px; border-radius:8px; border:1px solid var(--line); background:#FCFCFD; color:var(--ink);
-  }
-  .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid #146356; outline-offset:1px; border-color:transparent; }
-  .field-row{ display:flex; gap:10px; }
-  .field-row .field{ flex:1; }
-  .checkbox-row{ display:flex; align-items:center; gap:8px; font-size:13px; }
-  .checkbox-row input{ width:auto; }
-  .field-help{ font-size:11px; color:var(--ink-faint); margin-top:4px; }
-
-  .bar-row{ display:grid; grid-template-columns: 170px 1fr 120px; align-items:center; gap:12px; padding:9px 0; }
-  .bar-row .name{ font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:7px; }
-  .bar-track{ height:8px; border-radius:999px; background:#EEF0F3; overflow:hidden; }
-  .bar-fill{ height:100%; border-radius:999px; }
-  .bar-row .val{ font-family:var(--font-mono); font-size:12.5px; text-align:right; }
-
-  .toast-wrap{ position:fixed; bottom:22px; right:22px; display:flex; flex-direction:column; gap:8px; z-index:200; }
-  .toast{
-    background: var(--ink); color:#fff; padding: 11px 16px; border-radius:9px; font-size:13px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: toast-in .18s ease-out;
-    display:flex; align-items:center; gap:8px;
-  }
-  .toast.error{ background: var(--danger); }
-  @keyframes toast-in{ from{ opacity:0; transform: translateY(6px);} to{opacity:1; transform:translateY(0);} }
-
-  .loading-screen{ display:flex; align-items:center; justify-content:center; height:100vh; width:100%; color: var(--ink-soft); font-family: var(--font-mono); font-size:13px; }
-  .auth-screen{
-    display:flex; align-items:center; justify-content:center; height:100vh; width:100%;
-    background: var(--bg);
-  }
-  .auth-box{
-    background: var(--panel); padding: 40px; border-radius: 16px; border: 1px solid var(--line);
-    width: 380px; max-width: 90%;
-  }
-  .auth-box h2{ font-family: var(--font-display); font-size: 24px; margin-bottom: 4px; }
-  .auth-box .sub{ color: var(--ink-soft); font-size: 13px; margin-bottom: 24px; }
-  .auth-box .field{ margin-bottom: 16px; }
-  .auth-box .btn{ width:100%; justify-content:center; }
-  .auth-box .switch{ text-align:center; margin-top: 14px; font-size: 13px; color: var(--ink-soft); }
-  .auth-box .switch a{ color: var(--accent); cursor:pointer; font-weight:600; }
-
-  @media (max-width: 980px){
-    .kpi-grid{ grid-template-columns: repeat(2,1fr); }
-    .sidebar{ width:72px; }
-    .brand span:not(.dot), .brand-sub, .nav-item span.label, .nav-group-label, .soon-badge, .sidebar-footer{ display:none; }
-    .nav-item{ justify-content:center; }
-    .main{ padding: 20px 16px 50px; }
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; }
+  .container { max-width: 800px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  h1 { margin-bottom: 20px; color: #146356; }
+  input, select, button { width: 100%; padding: 10px; margin: 6px 0 16px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+  button { background: #146356; color: #fff; font-weight: bold; cursor: pointer; border: none; }
+  button:hover { background: #0f4a40; }
+  .btn-danger { background: #c1432e; }
+  .btn-danger:hover { background: #a03524; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #f7f7f7; }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { width: auto; padding: 4px 10px; margin: 0; font-size: 12px; }
+  .status-ativo { color: #0F5C3F; font-weight: bold; }
+  .status-inativo { color: #999; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; background: #e4f1ee; color: #146356; }
+  .saldo-positivo { color: #0F5C3F; }
+  .saldo-negativo { color: #c1432e; }
+  .login-box { max-width: 400px; margin: 80px auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .login-box h2 { margin-bottom: 8px; }
+  .login-box .sub { color: #666; margin-bottom: 24px; }
+  .switch { text-align: center; margin-top: 16px; font-size: 14px; }
+  .switch a { color: #146356; cursor: pointer; font-weight: bold; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 999; }
+  .toast.error { background: #c1432e; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
+  .kpi-card { background: #f9f9f9; padding: 16px; border-radius: 8px; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; color: #888; }
+  .kpi-value { font-size: 22px; font-weight: bold; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .modal { background: #fff; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; width: auto; }
+  .modal-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal-foot button { width: auto; padding: 8px 20px; margin: 0; }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1; }
 </style>
 </head>
 <body>
-<div id="app"><div class="loading-screen">Carregando painel financeiro…</div></div>
-<div class="toast-wrap" id="toastWrap"></div>
+<div id="app"></div>
+<div id="toastWrap"></div>
+
 <script>
-/* =========================================================================
-   CONFIGURAÇÃO DO SUPABASE
-========================================================================= */
+// ============================================================
+// CONFIGURAÇÃO DO SUPABASE
+// ============================================================
 const SUPABASE_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* =========================================================================
-   ESTADO GLOBAL
-========================================================================= */
+// ============================================================
+// ESTADO
+// ============================================================
 let state = {
   contas: [],
   lancamentos: [],
   ajustes: [],
   categorias: [],
-  view: 'dashboard',
-  storageOK: true,
-  pagarUnlocked: false,
-  receberUnlocked: false,
   user: null,
-  mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
+  view: 'dashboard'
 };
 
-const NEGOCIOS = ["TopTV","Uniplay","ServNet","Precautec","Porto Odonto","Pessoal","Compartilhado"];
-const NEGOCIOS_LANC = NEGOCIOS;
-const NEGOCIO_COLOR = {
-  "TopTV":"var(--c-toptv)", "Uniplay":"var(--c-uniplay)", "ServNet":"var(--c-servnet)",
-  "Precautec":"var(--c-precautec)", "Porto Odonto":"var(--c-porto)", "Pessoal":"var(--c-pessoal)",
-  "Compartilhado":"var(--c-compartilhado)"
-};
-const TIPOS_CONTA = ["Conta Corrente","Conta Pagamento","Poupança"];
-const TIPOS_LANC = ["Receita","Despesa","Transferência"];
-const STATUS_LANC = ["Pago","Pendente","Agendado"];
-const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const HORIZONTE_ANOS = 5;
-const SENHA_PAGAR = "@2020";
-const SENHA_RECEBER = "@1010";
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function fmtBRL(n) { return (Number(n)||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+function todayISO() { return new Date().toISOString().slice(0,10); }
+function esc(s) { return String(s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-/* =========================================================================
-   UTILITARIOS
-========================================================================= */
-function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function fmtBRL(n){ n = Number(n)||0; return n.toLocaleString("pt-BR", {style:"currency", currency:"BRL"}); }
-function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ ••••••"; }
-function fmtDateBR(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-function contaById(id){ return state.contas.find(c => c.id === id); }
-function isCaixinha(c){ return !!(c && c.parent_id); }
-function contasRaiz(){ return state.contas.filter(c => !c.parent_id); }
-function caixinhasDe(contaId){ return state.contas.filter(c => c.parent_id === contaId); }
-function contaLabel(c){
-  if(!c) return "—";
-  if(c.parent_id){ const pai = contaById(c.parent_id); return `${pai ? esc(pai.nome) : "?"} → ${esc(c.nome)}`; }
-  return esc(c.nome);
-}
-function categoriaByNome(nome){ return state.categorias.find(c => c.nome === nome); }
-function categoriaById(id){ return state.categorias.find(c => c.id === id); }
-function subcategoriasDe(nomeCategoria){
-  const cat = categoriaByNome(nomeCategoria);
-  return cat ? cat.subcategorias : [];
-}
-function showToast(msg, type){
-  const wrap = document.getElementById("toastWrap");
-  const el = document.createElement("div");
-  el.className = "toast" + (type === "error" ? " error" : "");
+function showToast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' error' : '');
   el.textContent = msg;
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+  setTimeout(function() { el.remove(); }, 3000);
 }
 
-/* =========================================================================
-   FUNÇÕES DO SUPABASE
-========================================================================= */
-async function loadDados() {
+// ============================================================
+// FUNÇÕES SUPABASE
+// ============================================================
+async function loadData() {
   if (!state.user) return;
-
-  // Carregar contas
-  const { data: contas, error: errContas } = await supabaseClient
-    .from('contas')
-    .select('*')
-    .eq('user_id', state.user.id);
-  if (!errContas && contas) state.contas = contas;
-
-  // Carregar lançamentos
-  const { data: lancamentos, error: errLanc } = await supabaseClient
-    .from('lancamentos')
-    .select('*')
-    .eq('user_id', state.user.id);
-  if (!errLanc && lancamentos) state.lancamentos = lancamentos;
-
-  // Carregar ajustes
-  const { data: ajustes, error: errAjustes } = await supabaseClient
-    .from('ajustes')
-    .select('*')
-    .eq('user_id', state.user.id);
-  if (!errAjustes && ajustes) state.ajustes = ajustes;
-
-  // Carregar categorias
-  const { data: categorias, error: errCats } = await supabaseClient
-    .from('categorias')
-    .select('*')
-    .eq('user_id', state.user.id);
-  if (!errCats && categorias) state.categorias = categorias;
-
-  renderApp();
+  const { data: contas } = await supabase.from('contas').select('*').eq('user_id', state.user.id);
+  const { data: lancamentos } = await supabase.from('lancamentos').select('*').eq('user_id', state.user.id);
+  const { data: ajustes } = await supabase.from('ajustes').select('*').eq('user_id', state.user.id);
+  const { data: categorias } = await supabase.from('categorias').select('*').eq('user_id', state.user.id);
+  if (contas) state.contas = contas;
+  if (lancamentos) state.lancamentos = lancamentos;
+  if (ajustes) state.ajustes = ajustes;
+  if (categorias) state.categorias = categorias;
+  render();
 }
 
-async function salvarContas() {
+async function saveContas() {
   if (!state.user) return;
-  const contasComUser = state.contas.map(c => ({ ...c, user_id: state.user.id }));
-  const { error } = await supabaseClient
-    .from('contas')
-    .upsert(contasComUser, { onConflict: 'id' });
-  if (error) showToast('Erro ao salvar contas: ' + error.message, 'error');
+  const data = state.contas.map(c => ({ ...c, user_id: state.user.id }));
+  await supabase.from('contas').upsert(data, { onConflict: 'id' });
 }
 
-async function salvarLancamentos() {
+async function saveLancamentos() {
   if (!state.user) return;
-  const lancComUser = state.lancamentos.map(l => ({ ...l, user_id: state.user.id }));
-  const { error } = await supabaseClient
-    .from('lancamentos')
-    .upsert(lancComUser, { onConflict: 'id' });
-  if (error) showToast('Erro ao salvar lançamentos: ' + error.message, 'error');
+  const data = state.lancamentos.map(l => ({ ...l, user_id: state.user.id }));
+  await supabase.from('lancamentos').upsert(data, { onConflict: 'id' });
 }
 
-async function salvarAjustes() {
+async function saveAjustes() {
   if (!state.user) return;
-  const ajustesComUser = state.ajustes.map(a => ({ ...a, user_id: state.user.id }));
-  const { error } = await supabaseClient
-    .from('ajustes')
-    .upsert(ajustesComUser, { onConflict: 'id' });
-  if (error) showToast('Erro ao salvar ajustes: ' + error.message, 'error');
+  const data = state.ajustes.map(a => ({ ...a, user_id: state.user.id }));
+  await supabase.from('ajustes').upsert(data, { onConflict: 'id' });
 }
 
-async function salvarCategorias() {
+async function saveCategorias() {
   if (!state.user) return;
-  const catsComUser = state.categorias.map(c => ({ ...c, user_id: state.user.id }));
-  const { error } = await supabaseClient
-    .from('categorias')
-    .upsert(catsComUser, { onConflict: 'id' });
-  if (error) showToast('Erro ao salvar categorias: ' + error.message, 'error');
+  const data = state.categorias.map(c => ({ ...c, user_id: state.user.id }));
+  await supabase.from('categorias').upsert(data, { onConflict: 'id' });
 }
 
-/* =========================================================================
-   AUTENTICAÇÃO
-========================================================================= */
-async function login(email, password) {
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email, password
-  });
+// ============================================================
+// AUTENTICAÇÃO
+// ============================================================
+let authMode = 'login';
+
+async function doLogin(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) { showToast(error.message, 'error'); return false; }
   state.user = data.user;
-  await loadDados();
+  await loadData();
   return true;
 }
 
-async function cadastrar(email, password) {
-  const { data, error } = await supabaseClient.auth.signUp({
-    email, password
-  });
+async function doSignup(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) { showToast(error.message, 'error'); return false; }
   if (data.user) {
     state.user = data.user;
-    await loadDados();
+    // Criar categorias iniciais
+    const cats = [
+      'Servidores/Hospedagem', 'Aluguel', 'Assinaturas/Softwares',
+      'Marketing', 'Salários/Pró-labore', 'Impostos/Taxas', 'Outros'
+    ];
+    for (const nome of cats) {
+      state.categorias.push({ id: uid(), nome, subcategorias: [], user_id: state.user.id });
+    }
+    await saveCategorias();
+    await loadData();
     showToast('Conta criada com sucesso!');
     return true;
   }
   return false;
 }
 
-async function logout() {
-  await supabaseClient.auth.signOut();
+async function doLogout() {
+  await supabase.auth.signOut();
   state.user = null;
   state.contas = [];
   state.lancamentos = [];
   state.ajustes = [];
   state.categorias = [];
-  renderApp();
+  render();
 }
 
-/* =========================================================================
-   CALCULOS (MANTIDOS IGUAIS)
-========================================================================= */
-function saldoAtual(contaId){
-  const conta = contaById(contaId);
-  if(!conta) return 0;
-  let total = Number(conta.saldo_inicial) || 0;
-  for(const l of state.lancamentos){
-    if(l.status !== "Pago") continue;
-    if(l.tipo === "Receita" && l.conta_origem === contaId) total += Number(l.valor);
-    if(l.tipo === "Despesa" && l.conta_origem === contaId) total -= Number(l.valor);
-    if(l.tipo === "Transferência"){
-      if(l.conta_origem === contaId) total -= Number(l.valor);
-      if(l.conta_destino === contaId) total += Number(l.valor);
+// ============================================================
+// CÁLCULOS
+// ============================================================
+function saldoAtual(id) {
+  const conta = state.contas.find(c => c.id === id);
+  if (!conta) return 0;
+  let total = Number(conta.saldo_inicial || 0);
+  for (const l of state.lancamentos) {
+    if (l.status !== 'Pago') continue;
+    if (l.tipo === 'Receita' && l.conta_origem === id) total += Number(l.valor);
+    if (l.tipo === 'Despesa' && l.conta_origem === id) total -= Number(l.valor);
+    if (l.tipo === 'Transferência') {
+      if (l.conta_origem === id) total -= Number(l.valor);
+      if (l.conta_destino === id) total += Number(l.valor);
     }
   }
-  for(const a of state.ajustes){ if(a.conta_id === contaId) total += Number(a.valor); }
+  for (const a of state.ajustes) {
+    if (a.conta_id === id) total += Number(a.valor);
+  }
   return total;
 }
 
-function saldoProjetado(contaId){
-  let total = saldoAtual(contaId);
-  for(const l of state.lancamentos){
-    if(l.status === "Pago") continue;
-    if(l.tipo === "Receita" && l.conta_origem === contaId) total += Number(l.valor);
-    if(l.tipo === "Despesa" && l.conta_origem === contaId) total -= Number(l.valor);
-    if(l.tipo === "Transferência"){
-      if(l.conta_origem === contaId) total -= Number(l.valor);
-      if(l.conta_destino === contaId) total += Number(l.valor);
+function saldoProjetado(id) {
+  let total = saldoAtual(id);
+  for (const l of state.lancamentos) {
+    if (l.status === 'Pago') continue;
+    if (l.tipo === 'Receita' && l.conta_origem === id) total += Number(l.valor);
+    if (l.tipo === 'Despesa' && l.conta_origem === id) total -= Number(l.valor);
+    if (l.tipo === 'Transferência') {
+      if (l.conta_origem === id) total -= Number(l.valor);
+      if (l.conta_destino === id) total += Number(l.valor);
     }
   }
   return total;
 }
 
-function naoConciliados(contaId){
-  return state.lancamentos.filter(l => (l.conta_origem === contaId || l.conta_destino === contaId) && !l.conciliado).length;
-}
-
-function dashboardTotals(){
-  let consolidado=0, projetado=0;
-  for(const c of state.contas){
-    const sa = saldoAtual(c.id), sp = saldoProjetado(c.id);
-    consolidado += sa; projetado += sp;
-  }
-  return {consolidado, projetado};
-}
-
-function contasAPagar(){
-  return state.lancamentos.filter(l => l.tipo === "Despesa" && (l.status === "Pendente" || l.status === "Agendado"));
-}
-function contasAReceber(){
-  return state.lancamentos.filter(l => l.tipo === "Receita" && (l.status === "Pendente" || l.status === "Agendado"));
-}
-
-function saldoProjetadoAteMes(ano, mes){
-  const base = state.contas.reduce((s,c) => s + (Number(c.saldo_inicial)||0), 0);
-  const fimMes = new Date(ano, mes + 1, 0);
-  const fimISO = fimMes.toISOString().slice(0,10);
-  let total = base;
-  for(const l of state.lancamentos){
-    if(l.data > fimISO) continue;
-    if(l.tipo === "Receita") total += Number(l.valor);
-    if(l.tipo === "Despesa") total -= Number(l.valor);
-  }
-  for(const a of state.ajustes){ if(a.data <= fimISO) total += Number(a.valor); }
+function totalConsolidado() {
+  let total = 0;
+  for (const c of state.contas) total += saldoAtual(c.id);
   return total;
 }
 
-function movimentoDoMes(ano, mes){
-  const inicioISO = new Date(ano, mes, 1).toISOString().slice(0,10);
-  const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
-  let entradas = 0, saidas = 0;
-  for(const l of state.lancamentos){
-    if(l.data < inicioISO || l.data > fimISO) continue;
-    if(l.tipo === "Receita") entradas += Number(l.valor);
-    if(l.tipo === "Despesa") saidas += Number(l.valor);
-  }
-  return { entradas, saidas };
+function totalReceber() {
+  return state.lancamentos.filter(l => l.tipo === 'Receita' && l.status !== 'Pago').reduce((s,l) => s + Number(l.valor), 0);
 }
 
-function saldoContaAteMes(contaId, ano, mes){
-  const conta = contaById(contaId);
-  if(!conta) return 0;
-  const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
-  let total = Number(conta.saldo_inicial) || 0;
-  for(const l of state.lancamentos){
-    if(l.data > fimISO) continue;
-    if(l.tipo === "Receita" && l.conta_origem === contaId) total += Number(l.valor);
-    if(l.tipo === "Despesa" && l.conta_origem === contaId) total -= Number(l.valor);
-    if(l.tipo === "Transferência"){
-      if(l.conta_origem === contaId) total -= Number(l.valor);
-      if(l.conta_destino === contaId) total += Number(l.valor);
-    }
-  }
-  for(const a of state.ajustes){ if(a.conta_id === contaId && a.data <= fimISO) total += Number(a.valor); }
-  return total;
+function totalPagar() {
+  return state.lancamentos.filter(l => l.tipo === 'Despesa' && l.status !== 'Pago').reduce((s,l) => s + Number(l.valor), 0);
 }
 
-/* =========================================================================
-   NAVEGAÇÃO
-========================================================================= */
-function setView(v){ state.view = v; renderApp(); }
-
-function renderApp(){
-  const app = document.getElementById("app");
-
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const app = document.getElementById('app');
   if (!state.user) {
-    app.innerHTML = renderAuth();
+    app.innerHTML = renderLogin();
     return;
   }
-
-  app.innerHTML = `
-    <aside class="sidebar">
-      <div class="brand"><span class="dot"></span><span>Holding</span></div>
-      <div class="brand-sub">painel financeiro</div>
-
-      <div class="nav-group-label">Visão geral</div>
-      ${navItem("dashboard","◆","Dashboard")}
-
-      <div class="nav-group-label">Contas Bancárias</div>
-      ${navItem("contas","▢","Contas")}
-      ${navItem("lancamentos","≡","Lançamentos")}
-      ${navItem("ajustes","∿","Ajustes de Saldo")}
-      ${navItem("categorias","🏷️","Categorias")}
-
-      <div class="nav-group-label">Em construção</div>
-      ${navItemSoon("Cartões de Crédito")}
-      ${navItemSoon("Contas Fixas")}
-      ${navItemSoon("Carteira")}
-      ${navItemSoon("Rateio de Despesas")}
-
-      <div class="sidebar-footer">
-        <button class="sidebar-lock-btn ${state.pagarUnlocked ? 'unlocked' : ''}" data-action="${state.pagarUnlocked ? 'lock-pagar' : 'unlock-pagar'}">
-          ${state.pagarUnlocked ? "🔓 Ocultar contas a pagar" : "🔒 Ver contas a pagar"}
-        </button>
-        <button class="sidebar-lock-btn ${state.receberUnlocked ? 'unlocked' : ''}" data-action="${state.receberUnlocked ? 'lock-receber' : 'unlock-receber'}">
-          ${state.receberUnlocked ? "🔓 Ocultar a receber/saldo" : "🔒 Ver a receber/saldo"}
-        </button>
-        <button class="sidebar-lock-btn btn-logout" data-action="logout">🚪 Sair</button>
-        <div style="font-size:10px; color:var(--sidebar-faint); text-align:center; margin-top:4px;">${state.user?.email}</div>
-      </div>
-    </aside>
-    <main class="main" id="mainArea"></main>
-  `;
-  renderView();
+  app.innerHTML = renderApp();
 }
 
-function navItem(view, icon, label){
-  const active = state.view === view ? "active" : "";
-  return `<div class="nav-item ${active}" data-action="nav" data-view="${view}">
-    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
-  </div>`;
-}
-function navItemSoon(label){
-  return `<div class="nav-item disabled">
-    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">○</span><span class="label">${label}</span></span>
-    <span class="soon-badge label">em breve</span>
-  </div>`;
-}
-
-function renderView(){
-  const main = document.getElementById("mainArea");
-  if(!main) return;
-  if(state.view === "dashboard") main.innerHTML = viewDashboard();
-  else if(state.view === "contas") main.innerHTML = viewContas();
-  else if(state.view === "lancamentos") main.innerHTML = viewLancamentos();
-  else if(state.view === "ajustes") main.innerHTML = viewAjustes();
-  else if(state.view === "categorias") main.innerHTML = viewCategorias();
-}
-
-/* =========================================================================
-   TELA DE AUTENTICAÇÃO
-========================================================================= */
-let authMode = 'login';
-
-function renderAuth() {
+function renderLogin() {
   const isLogin = authMode === 'login';
   return `
-    <div class="auth-screen">
-      <div class="auth-box">
-        <h2>💰 ${isLogin ? 'Entrar' : 'Criar conta'}</h2>
-        <div class="sub">${isLogin ? 'Acesse seu painel financeiro' : 'Comece a controlar suas finanças'}</div>
-        <form id="authForm">
-          <div class="field">
-            <label>Email</label>
-            <input type="email" id="authEmail" placeholder="seu@email.com" required>
-          </div>
-          <div class="field">
-            <label>Senha</label>
-            <input type="password" id="authPassword" placeholder="••••••••" required minlength="6">
-          </div>
-          <button type="submit" class="btn btn-primary">${isLogin ? 'Entrar' : 'Criar conta'}</button>
-        </form>
-        <div class="switch">
-          ${isLogin ? 'Não tem conta?' : 'Já tem conta?'}
-          <a data-action="switch-auth">${isLogin ? 'Criar conta' : 'Entrar'}</a>
-        </div>
+    <div class="login-box">
+      <h2>💰 ${isLogin ? 'Entrar' : 'Criar conta'}</h2>
+      <div class="sub">${isLogin ? 'Acesse seu painel financeiro' : 'Comece a controlar suas finanças'}</div>
+      <form id="authForm">
+        <input type="email" id="authEmail" placeholder="seu@email.com" required>
+        <input type="password" id="authPassword" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+        <button type="submit">${isLogin ? 'Entrar' : 'Criar conta'}</button>
+      </form>
+      <div class="switch">
+        ${isLogin ? 'Não tem conta?' : 'Já tem conta?'}
+        <a data-action="switch-auth">${isLogin ? 'Criar conta' : 'Entrar'}</a>
       </div>
     </div>
   `;
 }
 
-/* =========================================================================
-   VIEW: DASHBOARD
-========================================================================= */
-function viewDashboard(){
-  const t = dashboardTotals();
-  const lockedReceber = !state.receberUnlocked;
-  const lockedPagar = !state.pagarUnlocked;
-
-  const mv = state.mesVisualizado;
-  const saldoMes = saldoProjetadoAteMes(mv.ano, mv.mes);
-  const saldoMesAnterior = (() => { const m = mv.mes===0?11:mv.mes-1; const a = mv.mes===0?mv.ano-1:mv.ano; return saldoProjetadoAteMes(a,m); })();
-  const deltaMes = saldoMes - saldoMesAnterior;
-  const mov = movimentoDoMes(mv.ano, mv.mes);
-  const hoje = new Date();
-  const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
-  const maxAbs = Math.max(...state.contas.map(c => Math.abs(saldoContaAteMes(c.id, mv.ano, mv.mes))), 1);
-
-  const pagarList = contasAPagar();
-  const receberList = contasAReceber();
-  const totalPagar = pagarList.reduce((s,l)=>s+Number(l.valor),0);
-  const totalReceber = receberList.reduce((s,l)=>s+Number(l.valor),0);
-  const pagarPendentes = pagarList.filter(l=>l.status==="Pendente").length;
-  const pagarAgendados = pagarList.filter(l=>l.status==="Agendado").length;
-  const receberPendentes = receberList.filter(l=>l.status==="Pendente").length;
-  const receberAgendados = receberList.filter(l=>l.status==="Agendado").length;
-
-  const barRow = (c, nested) => {
-    const sa = saldoContaAteMes(c.id, mv.ano, mv.mes);
-    const pct = lockedReceber ? 45 : Math.max(4, Math.round((Math.abs(sa)/maxAbs)*100));
-    const inativa = c.ativa === false;
-    const color = inativa ? "var(--ink-faint)" : (lockedReceber ? "var(--ink-faint)" : (nested ? "var(--c-porto)" : "var(--accent)"));
-    const nomeTxt = nested ? `↳ ${esc(c.nome)}` : esc(c.nome);
-    return `<div class="bar-row" style="${nested ? 'padding-left:14px;' : ''}">
-      <div class="name" style="${nested ? 'font-weight:500; font-size:12px;' : ''}"><span class="tag-dot" style="background:${color}"></span>${nomeTxt}${inativa ? ' <span class="status-pill status-agendado">Inativa</span>' : ""}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
-      <div class="val ${lockedReceber ? 'masked-value' : ''}">${maskBRL(sa, state.receberUnlocked)}</div>
-    </div>`;
-  };
-  const barsHTML = contasRaiz().map(c => barRow(c,false) + caixinhasDe(c.id).map(cx=>barRow(cx,true)).join("")).join("");
-
+function renderApp() {
   return `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Dashboard</div>
-        <div class="page-sub">Posição consolidada de todas as contas — atualizado em tempo real</div>
+    <div style="display:flex; min-height:100vh;">
+      <div style="width:220px; background:#10141F; color:#fff; padding:20px; flex-shrink:0;">
+        <h2 style="color:#3FD68E; margin-bottom:20px;">💰 Holding</h2>
+        <div style="cursor:pointer; padding:8px 12px; border-radius:6px; background:${state.view === 'dashboard' ? '#1B2233' : 'transparent'}" data-action="nav" data-view="dashboard">📊 Dashboard</div>
+        <div style="cursor:pointer; padding:8px 12px; border-radius:6px; background:${state.view === 'contas' ? '#1B2233' : 'transparent'}" data-action="nav" data-view="contas">🏦 Contas</div>
+        <div style="cursor:pointer; padding:8px 12px; border-radius:6px; background:${state.view === 'lancamentos' ? '#1B2233' : 'transparent'}" data-action="nav" data-view="lancamentos">📝 Lançamentos</div>
+        <div style="cursor:pointer; padding:8px 12px; border-radius:6px; background:${state.view === 'ajustes' ? '#1B2233' : 'transparent'}" data-action="nav" data-view="ajustes">🔧 Ajustes</div>
+        <div style="cursor:pointer; padding:8px 12px; border-radius:6px; background:${state.view === 'categorias' ? '#1B2233' : 'transparent'}" data-action="nav" data-view="categorias">🏷️ Categorias</div>
+        <div style="margin-top:40px; padding-top:20px; border-top:1px solid #333;">
+          <div style="font-size:12px; color:#888;">${state.user?.email}</div>
+          <button data-action="logout" style="background:#c1432e; margin-top:10px;">🚪 Sair</button>
+        </div>
+      </div>
+      <div style="flex:1; padding:30px; background:#f0f2f5;">
+        <div id="mainArea">${renderView()}</div>
       </div>
     </div>
+  `;
+}
 
-    <div class="panel-head" style="border:none; padding:0 0 8px;"><div class="panel-title">💰 Saldo</div></div>
-    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(220px, 1fr)); margin-bottom:18px;">
+function renderView() {
+  if (state.view === 'dashboard') return viewDashboard();
+  if (state.view === 'contas') return viewContas();
+  if (state.view === 'lancamentos') return viewLancamentos();
+  if (state.view === 'ajustes') return viewAjustes();
+  if (state.view === 'categorias') return viewCategorias();
+  return '<p>Página não encontrada</p>';
+}
+
+// ============================================================
+// VIEW: DASHBOARD
+// ============================================================
+function viewDashboard() {
+  const total = totalConsolidado();
+  const aReceber = totalReceber();
+  const aPagar = totalPagar();
+  const saldoFinal = total + aReceber - aPagar;
+
+  let rows = '';
+  for (const c of state.contas) {
+    const sa = saldoAtual(c.id);
+    rows += `
+      <tr>
+        <td>${esc(c.nome)}</td>
+        <td>${fmtBRL(sa)}</td>
+      </tr>
+    `;
+  }
+
+  return `
+    <h1>📊 Dashboard</h1>
+    <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Saldo consolidado</div>
-        <div class="kpi-value ${lockedReceber ? 'masked-value' : (t.consolidado>=0?'pos':'neg')}">${maskBRL(t.consolidado, state.receberUnlocked)}</div>
-        <div class="kpi-note">Todas as ${state.contas.length} contas</div>
+        <div class="kpi-label">Saldo Consolidado</div>
+        <div class="kpi-value ${total >= 0 ? 'saldo-positivo' : 'saldo-negativo'}">${fmtBRL(total)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Saldo projetado</div>
-        <div class="kpi-value ${lockedReceber ? 'masked-value' : (t.projetado>=0?'pos':'neg')}">${maskBRL(t.projetado, state.receberUnlocked)}</div>
-        <div class="kpi-note">Considerando pendentes e agendados</div>
+        <div class="kpi-label">A Receber</div>
+        <div class="kpi-value saldo-positivo">${fmtBRL(aReceber)}</div>
       </div>
-    </div>
-
-    <div class="panel-head" style="border:none; padding:0 0 8px;"><div class="panel-title">📅 Saldo Projetado por Mês</div></div>
-    <div class="panel" style="margin-bottom:18px;">
-      <div class="panel-body" style="padding-top:16px;">
-        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:16px;">
-          <button class="icon-btn" data-action="mes-prev" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">◀</button>
-          <div style="text-align:center; min-width:200px;">
-            <input type="month" id="mesManualInput" value="${mv.ano}-${String(mv.mes+1).padStart(2,'0')}"
-              style="font-family:var(--font-display); font-weight:700; font-size:16px; border:none; background:transparent; text-align:center; cursor:pointer; color:var(--ink); padding:2px;">
-            <div>${!isMesAtual ? `<span style="font-size:11px; color:var(--ink-faint); cursor:pointer; text-decoration:underline;" data-action="mes-hoje">voltar para hoje</span>` : `<span style="font-size:11px; color:var(--ink-faint);">mês atual</span>`}</div>
-          </div>
-          <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">▶</button>
-        </div>
-        <div class="kpi-grid" style="grid-template-columns: repeat(3, minmax(160px, 1fr));">
-          <div class="kpi-card">
-            <div class="kpi-label">Saldo projetado no fim do mês</div>
-            <div class="kpi-value ${lockedReceber ? 'masked-value' : (saldoMes>=0?'pos':'neg')}">${maskBRL(saldoMes, state.receberUnlocked)}</div>
-            <div class="kpi-note">${lockedReceber ? '' : (deltaMes>=0 ? '▲ ' : '▼ ') + maskBRL(Math.abs(deltaMes), state.receberUnlocked) + ' vs mês anterior'}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Entradas no mês</div>
-            <div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(mov.entradas, state.receberUnlocked)}</div>
-            <div class="kpi-note">Receitas com vencimento neste mês</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Saídas no mês</div>
-            <div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(mov.saidas, state.pagarUnlocked)}</div>
-            <div class="kpi-note">Despesas com vencimento neste mês</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-head" style="border:none; padding:0 0 8px;"><div class="panel-title">📥 Contas a Receber</div></div>
-    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(220px, 1fr)); margin-bottom:18px;">
       <div class="kpi-card">
-        <div class="kpi-label">Total a receber</div>
-        <div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(totalReceber, state.receberUnlocked)}</div>
-        <div class="kpi-note">${receberPendentes} pendente(s) · ${receberAgendados} agendado(s)</div>
+        <div class="kpi-label">A Pagar</div>
+        <div class="kpi-value saldo-negativo">${fmtBRL(aPagar)}</div>
       </div>
     </div>
-
-    <div class="panel-head" style="border:none; padding:0 0 8px;"><div class="panel-title">📤 Contas a Pagar</div></div>
-    <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(220px, 1fr)); margin-bottom:18px;">
+    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
       <div class="kpi-card">
-        <div class="kpi-label">Total a pagar</div>
-        <div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(totalPagar, state.pagarUnlocked)}</div>
-        <div class="kpi-note">${pagarPendentes} pendente(s) · ${pagarAgendados} agendado(s)</div>
+        <div class="kpi-label">Saldo Final Previsto</div>
+        <div class="kpi-value ${saldoFinal >= 0 ? 'saldo-positivo' : 'saldo-negativo'}">${fmtBRL(saldoFinal)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total de Contas</div>
+        <div class="kpi-value">${state.contas.length}</div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Saldo por conta</div></div>
-      <div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div>
-    </div>
+    <h2 style="margin: 20px 0 10px;">Saldo por Conta</h2>
+    <table>
+      <thead><tr><th>Conta</th><th>Saldo Atual</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="2">Nenhuma conta cadastrada</td></tr>'}</tbody>
+    </table>
   `;
 }
 
-/* =========================================================================
-   VIEW: CONTAS
-========================================================================= */
-function viewContas(){
-  const rowHTML = (c, nested) => {
-    const sa = saldoAtual(c.id), sp = saldoProjetado(c.id), nc = naoConciliados(c.id);
-    const inativa = c.ativa === false;
-    const nomeCell = nested
-      ? `<span style="color:var(--ink-faint); padding-left:18px;">↳</span> ${esc(c.nome)}`
-      : `<strong>${esc(c.nome)}</strong><div style="font-size:11px;color:var(--ink-faint)">${esc(c.instituicao || '')} · ${esc(c.tipo || '')}</div>`;
-    const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
-    return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:#FAFBFC;' : ''}">
-      <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}">${maskBRL(c.saldo_inicial, state.receberUnlocked)}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}" style="font-weight:600;">${maskBRL(sa, state.receberUnlocked)}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}">${maskBRL(sp, state.receberUnlocked)}</td>
-      <td style="text-align:center;">${nc > 0 ? `<span class="status-pill status-pendente">${nc}</span>` : "—"}</td>
-      <td style="text-align:center;">
-        <span class="status-pill ${inativa ? 'status-agendado' : 'status-pago'}" style="cursor:pointer;" data-action="toggle-ativa" data-id="${c.id}">${inativa ? "Inativa" : "Ativa"}</span>
-      </td>
-      <td>
-        <div class="row-actions">
-          ${novaCaixinhaBtn}
-          <button class="icon-btn" data-action="edit-conta" data-id="${c.id}">✎</button>
-          <button class="icon-btn danger" data-action="del-conta" data-id="${c.id}">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-  };
-
-  const rows = contasRaiz().map(c => {
-    const caixinhas = caixinhasDe(c.id).map(cx => rowHTML(cx, true)).join("");
-    return rowHTML(c, false) + caixinhas;
-  }).join("");
+// ============================================================
+// VIEW: CONTAS
+// ============================================================
+function viewContas() {
+  let rows = '';
+  for (const c of state.contas) {
+    const sa = saldoAtual(c.id);
+    const sp = saldoProjetado(c.id);
+    rows += `
+      <tr>
+        <td>${esc(c.nome)}</td>
+        <td>${esc(c.instituicao || '')}</td>
+        <td>${fmtBRL(c.saldo_inicial || 0)}</td>
+        <td>${fmtBRL(sa)}</td>
+        <td>${fmtBRL(sp)}</td>
+        <td><span class="${c.ativa !== false ? 'status-ativo' : 'status-inativo'}">${c.ativa !== false ? 'Ativa' : 'Inativa'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button data-action="edit-conta" data-id="${c.id}">✎</button>
+            <button class="btn-danger" data-action="del-conta" data-id="${c.id}">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
   return `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Contas Bancárias</div>
-        <div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div>
-      </div>
-      <button class="btn btn-primary" data-action="new-conta">+ Nova conta</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h1>🏦 Contas Bancárias</h1>
+      <button data-action="new-conta">+ Nova Conta</button>
     </div>
-
-    <div class="panel">
-      <div class="panel-body" style="padding-top:14px;">
-        <table>
-          <thead><tr>
-            <th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th>
-            <th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th>
-          </tr></thead>
-          <tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>
+    <table>
+      <thead><tr>
+        <th>Nome</th><th>Instituição</th><th>Saldo Inicial</th><th>Saldo Atual</th><th>Saldo Projetado</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="7">Nenhuma conta cadastrada.</td></tr>'}</tbody>
+    </table>
   `;
 }
 
-/* =========================================================================
-   VIEW: LANÇAMENTOS
-========================================================================= */
-let lancFilter = { negocio: "", status: "", conta: "" };
-
-function viewLancamentos(){
-  let list = [...state.lancamentos].sort((a,b) => b.data.localeCompare(a.data));
-  if(lancFilter.negocio) list = list.filter(l => l.negocio === lancFilter.negocio);
-  if(lancFilter.status) list = list.filter(l => l.status === lancFilter.status);
-  if(lancFilter.conta) list = list.filter(l => l.conta_origem === lancFilter.conta || l.conta_destino === lancFilter.conta);
-
-  const rows = list.map(l => {
-    const origem = contaById(l.conta_origem);
-    const destino = contaById(l.conta_destino);
-    const color = NEGOCIO_COLOR[l.negocio] || "var(--ink-faint)";
-    const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Pendente" ? "status-pendente" : "status-agendado");
-    const contaTxt = l.tipo === "Transferência"
-      ? `${origem ? contaLabel(origem) : "—"} → ${destino ? contaLabel(destino) : "—"}`
-      : (origem ? contaLabel(origem) : "—");
-    const sinal = l.tipo === "Despesa" ? "−" : (l.tipo === "Receita" ? "+" : "⇄");
-    const unlockedForRow = l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked;
-    return `<tr>
-      <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
-      <td>${sinal} ${esc(l.tipo)}</td>
-      <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
-      <td>${contaTxt}</td>
-      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(l.categoria)}</div>` : ""}</td>
-      <td class="num ${unlockedForRow?'':'masked-value'}" style="font-weight:600;">${maskBRL(l.valor, unlockedForRow)}</td>
-      <td><span class="status-pill ${statusClass}">${l.status}</span></td>
-      <td style="text-align:center;">
-        <span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="cursor:pointer;" data-action="toggle-conc" data-id="${l.id}">${l.conciliado ? "✓ Sim" : "Não"}</span>
-      </td>
-      <td>
-        <div class="row-actions">
-          <button class="icon-btn" data-action="edit-lanc" data-id="${l.id}">✎</button>
-          <button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join("");
-
-  const negOptions = NEGOCIOS_LANC.map(n => `<option value="${n}" ${lancFilter.negocio===n?"selected":""}>${n}</option>`).join("");
-  const statusOptions = STATUS_LANC.map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
-  const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+// ============================================================
+// VIEW: LANÇAMENTOS
+// ============================================================
+function viewLancamentos() {
+  let rows = '';
+  const list = [...state.lancamentos].sort((a,b) => b.data.localeCompare(a.data));
+  for (const l of list) {
+    const origem = state.contas.find(c => c.id === l.conta_origem);
+    const destino = state.contas.find(c => c.id === l.conta_destino);
+    const contaTxt = l.tipo === 'Transferência' 
+      ? `${origem?.nome || '—'} → ${destino?.nome || '—'}` 
+      : (origem?.nome || '—');
+    const statusClass = l.status === 'Pago' ? 'status-ativo' : 'status-inativo';
+    rows += `
+      <tr>
+        <td>${l.data}</td>
+        <td><span class="tag">${l.tipo}</span></td>
+        <td>${esc(l.negocio || '—')}</td>
+        <td>${contaTxt}</td>
+        <td>${esc(l.descricao || '')}</td>
+        <td>${fmtBRL(l.valor)}</td>
+        <td><span class="${statusClass}">${l.status}</span></td>
+        <td>${l.conciliado ? '✅' : '❌'}</td>
+        <td>
+          <div class="row-actions">
+            <button data-action="edit-lanc" data-id="${l.id}">✎</button>
+            <button class="btn-danger" data-action="del-lanc" data-id="${l.id}">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
   return `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Lançamentos</div>
-        <div class="page-sub">Toda receita, despesa e transferência entra aqui.</div>
-      </div>
-      <button class="btn btn-primary" data-action="new-lanc">+ Novo lançamento</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h1>📝 Lançamentos</h1>
+      <button data-action="new-lanc">+ Novo Lançamento</button>
     </div>
-
-    <div class="panel">
-      <div class="filter-bar">
-        <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
-        <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
-        <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
-        ${(lancFilter.negocio||lancFilter.status||lancFilter.conta) ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
-      </div>
-      <div class="panel-body">
-        <table>
-          <thead><tr>
-            <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th>
-          </tr></thead>
-          <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum lançamento encontrado.")}</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Conc.</th><th></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="9">Nenhum lançamento.</td></tr>'}</tbody>
+    </table>
   `;
 }
 
-/* =========================================================================
-   VIEW: AJUSTES
-========================================================================= */
-function viewAjustes(){
-  const rows = [...state.ajustes].sort((a,b) => b.data.localeCompare(a.data)).map(a => {
-    const conta = contaById(a.conta_id);
-    return `<tr>
-      <td>${fmtDateBR(a.data)}</td>
-      <td>${esc(conta?.nome || "Conta removida")}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}" style="font-weight:600; color:${state.receberUnlocked ? (a.valor>=0?'#0F5C3F':'var(--danger)') : 'inherit'};">${maskBRL(a.valor, state.receberUnlocked)}</td>
-      <td>${esc(a.motivo)}</td>
-      <td>
-        <div class="row-actions">
-          <button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}">✎</button>
-          <button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join("");
+// ============================================================
+// VIEW: AJUSTES
+// ============================================================
+function viewAjustes() {
+  let rows = '';
+  for (const a of state.ajustes) {
+    const conta = state.contas.find(c => c.id === a.conta_id);
+    rows += `
+      <tr>
+        <td>${a.data}</td>
+        <td>${conta?.nome || '—'}</td>
+        <td>${fmtBRL(a.valor)}</td>
+        <td>${esc(a.motivo || '')}</td>
+        <td>
+          <div class="row-actions">
+            <button data-action="edit-ajuste" data-id="${a.id}">✎</button>
+            <button class="btn-danger" data-action="del-ajuste" data-id="${a.id}">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
   return `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Ajustes de Saldo</div>
-        <div class="page-sub">Use quando o extrato do banco não bater com seu controle.</div>
-      </div>
-      <button class="btn btn-primary" data-action="new-ajuste">+ Novo ajuste</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h1>🔧 Ajustes de Saldo</h1>
+      <button data-action="new-ajuste">+ Novo Ajuste</button>
     </div>
-
-    <div class="panel">
-      <div class="panel-body" style="padding-top:14px;">
-        <table>
-          <thead><tr><th>Data</th><th>Conta</th><th class="num">Valor</th><th>Motivo</th><th></th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="5">${emptyState("Nenhum ajuste registrado.")}</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>
+    <table>
+      <thead><tr><th>Data</th><th>Conta</th><th>Valor</th><th>Motivo</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5">Nenhum ajuste.</td></tr>'}</tbody>
+    </table>
   `;
 }
 
-/* =========================================================================
-   VIEW: CATEGORIAS
-========================================================================= */
-function viewCategorias(){
-  const cards = state.categorias.map(cat => {
-    const subs = (cat.subcategorias || []).map(sub => `
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 18px 9px 30px; border-top:1px solid #F0F1F4;">
-        <span style="font-size:12.5px; color:var(--ink-soft);">↳ ${esc(sub.nome)}</span>
-        <div class="row-actions">
-          <button class="icon-btn" data-action="edit-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}">✎</button>
-          <button class="icon-btn danger" data-action="del-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}">🗑</button>
+// ============================================================
+// VIEW: CATEGORIAS
+// ============================================================
+function viewCategorias() {
+  let cards = '';
+  for (const cat of state.categorias) {
+    let subs = '';
+    for (const sub of (cat.subcategorias || [])) {
+      subs += `
+        <div style="display:flex; justify-content:space-between; padding:8px 16px; border-top:1px solid #eee; padding-left:30px;">
+          <span>↳ ${esc(sub.nome)}</span>
+          <div class="row-actions">
+            <button data-action="edit-sub" data-cat="${cat.id}" data-sub="${sub.id}">✎</button>
+            <button class="btn-danger" data-action="del-sub" data-cat="${cat.id}" data-sub="${sub.id}">🗑</button>
+          </div>
         </div>
-      </div>`).join("");
-    return `<div class="panel" style="margin-bottom:12px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px;">
-        <strong style="font-size:13.5px;">${esc(cat.nome)}</strong>
-        <div class="row-actions">
-          <button class="icon-btn" data-action="add-subcategoria" data-cat="${cat.id}">+ subcat.</button>
-          <button class="icon-btn" data-action="edit-categoria" data-cat="${cat.id}">✎</button>
-          <button class="icon-btn danger" data-action="del-categoria" data-cat="${cat.id}">🗑</button>
+      `;
+    }
+    cards += `
+      <div style="background:#fff; border-radius:8px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; padding:12px 16px;">
+          <strong>${esc(cat.nome)}</strong>
+          <div class="row-actions">
+            <button data-action="add-sub" data-cat="${cat.id}">+ sub</button>
+            <button data-action="edit-cat" data-cat="${cat.id}">✎</button>
+            <button class="btn-danger" data-action="del-cat" data-cat="${cat.id}">🗑</button>
+          </div>
         </div>
+        ${subs}
       </div>
-      ${subs}
-    </div>`;
-  }).join("");
+    `;
+  }
 
   return `
-    <div class="page-header">
-      <div>
-        <div class="page-title">Categorias</div>
-        <div class="page-sub">Gerencie as categorias e subcategorias dos lançamentos.</div>
-      </div>
-      <button class="btn btn-primary" data-action="new-categoria">+ Nova categoria</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h1>🏷️ Categorias</h1>
+      <button data-action="new-cat">+ Nova Categoria</button>
     </div>
-    ${cards || emptyState("Nenhuma categoria cadastrada.")}
+    ${cards || '<p>Nenhuma categoria cadastrada.</p>'}
   `;
 }
 
-function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
-
-/* =========================================================================
-   MODAIS (SIMPLIFICADOS)
-========================================================================= */
-function openModal(html){
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.id = "modalOverlay";
+// ============================================================
+// MODAIS
+// ============================================================
+function openModal(html) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modalOverlay';
   overlay.innerHTML = `<div class="modal">${html}</div>`;
-  overlay.addEventListener("click", e => { if(e.target === overlay) closeModal(); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
   document.body.appendChild(overlay);
 }
-function closeModal(){ const el = document.getElementById("modalOverlay"); if(el) el.remove(); }
 
-function modalConta(existing){
+function closeModal() {
+  const el = document.getElementById('modalOverlay');
+  if (el) el.remove();
+}
+
+function modalConta(existing) {
   const isEdit = !!existing;
-  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldo_inicial:0, limite:0, ativa:true };
+  const c = existing || { nome: '', instituicao: '', tipo: 'Conta Corrente', saldo_inicial: 0, ativa: true };
   openModal(`
     <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Editar conta" : "Nova conta bancária"}</div>
+      <h3>${isEdit ? 'Editar Conta' : 'Nova Conta'}</h3>
       <button class="modal-close" data-action="close-modal">✕</button>
     </div>
     <form id="formConta">
-      <div class="modal-body">
-        <div class="field"><label>Nome da conta</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Mercado Pago"></div>
-        <div class="field-row">
-          <div class="field"><label>Instituição</label><input type="text" name="instituicao" value="${esc(c.instituicao||'')}" placeholder="Ex: C6 Bank"></div>
-          <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
-        </div>
-        <div class="field-row">
-          <div class="field"><label>Saldo inicial (R$)</label><input type="number" step="0.01" name="saldo_inicial" value="${c.saldo_inicial||0}"></div>
-          <div class="field"><label>Limite (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite||0}"></div>
-        </div>
-        <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label></div>
+      <input type="text" name="nome" placeholder="Nome da conta" value="${esc(c.nome)}" required>
+      <input type="text" name="instituicao" placeholder="Instituição" value="${esc(c.instituicao || '')}">
+      <input type="number" step="0.01" name="saldo_inicial" placeholder="Saldo inicial" value="${c.saldo_inicial || 0}">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <label><input type="checkbox" name="ativa" ${c.ativa !== false ? 'checked' : ''}> Conta ativa</label>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
+        <button type="button" class="btn-ghost" data-action="close-modal">Cancelar</button>
+        <button type="submit">${isEdit ? 'Salvar' : 'Adicionar'}</button>
       </div>
     </form>
   `);
-  document.getElementById("formConta").addEventListener("submit", async e => {
+  document.getElementById('formConta').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const fd = new FormData(e.target);
+    const fd = new FormData(this);
     const data = {
-      nome: fd.get("nome").trim(),
-      instituicao: fd.get("instituicao").trim(),
-      tipo: fd.get("tipo"),
-      saldo_inicial: parseFloat(fd.get("saldo_inicial"))||0,
-      limite: parseFloat(fd.get("limite"))||0,
-      ativa: fd.get("ativa") === "on"
+      nome: fd.get('nome').trim(),
+      instituicao: fd.get('instituicao').trim(),
+      saldo_inicial: parseFloat(fd.get('saldo_inicial')) || 0,
+      ativa: fd.get('ativa') === 'on'
     };
-    if(isEdit){ Object.assign(existing, data); }
-    else{ state.contas.push({ id: uid("c"), parent_id: null, ...data }); }
-    await salvarContas();
+    if (isEdit) { Object.assign(existing, data); }
+    else { state.contas.push({ id: uid(), ...data }); }
+    await saveContas();
     closeModal();
-    renderApp();
-    showToast(isEdit ? "Conta atualizada." : "Conta adicionada.");
+    render();
+    showToast(isEdit ? 'Conta atualizada.' : 'Conta adicionada.');
   });
 }
 
-function modalCaixinha(parentId, existing){
+function modalLancamento(existing) {
   const isEdit = !!existing;
-  const pai = contaById(parentId || (existing && existing.parent_id));
-  const cx = existing || { nome:"", saldo_inicial:0, ativa:true };
-  openModal(`
-    <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Editar caixinha" : "Nova caixinha"}</div>
-      <button class="modal-close" data-action="close-modal">✕</button>
-    </div>
-    <form id="formCaixinha">
-      <div class="modal-body">
-        <div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(pai ? pai.nome : "")}</strong></div>
-        <div class="field"><label>Nome da caixinha</label><input required type="text" name="nome" value="${esc(cx.nome)}" placeholder="Ex: Aluguel"></div>
-        <div class="field"><label>Saldo inicial (R$)</label><input type="number" step="0.01" name="saldo_inicial" value="${cx.saldo_inicial||0}"></div>
-        <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${cx.ativa!==false?"checked":""}> Caixinha ativa</label></div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
-      </div>
-    </form>
-  `);
-  document.getElementById("formCaixinha").addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = {
-      nome: fd.get("nome").trim(),
-      saldo_inicial: parseFloat(fd.get("saldo_inicial"))||0,
-      ativa: fd.get("ativa") === "on"
-    };
-    if(isEdit){ Object.assign(existing, data); }
-    else{ state.contas.push({ id: uid("cx"), parent_id: pai.id, instituicao:"", tipo:"Caixinha", limite:0, ...data }); }
-    await salvarContas();
-    closeModal(); renderApp(); showToast(isEdit ? "Caixinha atualizada." : "Caixinha criada.");
-  });
-}
-
-function modalLancamento(existing){
-  const isEdit = !!existing;
-  const l = existing || { data: todayISO(), tipo:"Despesa", categoria:"", negocio:"TopTV", conta_origem: state.contas.find(c=>c.ativa!==false)?.id||"", conta_destino:"", valor:0, descricao:"", status:"Pago", conciliado:true };
-  const contaOpts = state.contas.filter(c => c.ativa !== false || c.id === l.conta_origem).map(c => `<option value="${c.id}" ${l.conta_origem===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
-  const contaDestOpts = state.contas.filter(c => c.ativa !== false || c.id === l.conta_destino).map(c => `<option value="${c.id}" ${l.conta_destino===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
-  const catOpts = state.categorias.map(c => `<option value="${esc(c.nome)}" ${l.categoria===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const l = existing || { data: todayISO(), tipo: 'Despesa', negocio: '', conta_origem: state.contas[0]?.id || '', conta_destino: '', valor: 0, descricao: '', status: 'Pendente', conciliado: false };
+  
+  const contaOpts = state.contas.map(c => `<option value="${c.id}" ${l.conta_origem === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+  const contaDestOpts = state.contas.map(c => `<option value="${c.id}" ${l.conta_destino === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+  const negocioOpts = ['TopTV','Uniplay','ServNet','Precautec','Porto Odonto','Pessoal','Compartilhado']
+    .map(n => `<option value="${n}" ${l.negocio === n ? 'selected' : ''}>${n}</option>`).join('');
+  const statusOpts = ['Pago','Pendente','Agendado'].map(s => `<option value="${s}" ${l.status === s ? 'selected' : ''}>${s}</option>`).join('');
+  const tipoOpts = ['Receita','Despesa','Transferência'].map(t => `<option value="${t}" ${l.tipo === t ? 'selected' : ''}>${t}</option>`).join('');
+  const catOpts = state.categorias.map(c => `<option value="${esc(c.nome)}" ${l.categoria === c.nome ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
 
   openModal(`
     <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Editar lançamento" : "Novo lançamento"}</div>
+      <h3>${isEdit ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
       <button class="modal-close" data-action="close-modal">✕</button>
     </div>
     <form id="formLanc">
-      <div class="modal-body">
-        <div class="field-row">
-          <div class="field"><label>Data</label><input required type="date" name="data" value="${l.data}"></div>
-          <div class="field"><label>Tipo</label>
-            <select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select>
-          </div>
+      <div class="field-row">
+        <div class="field"><input type="date" name="data" value="${l.data}" required></div>
+        <div class="field">
+          <select name="tipo" id="lancTipo">${tipoOpts}</select>
         </div>
-        <div id="lancNegocioWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
-          <div class="field"><label>Negócio</label><select name="negocio">${NEGOCIOS_LANC.map(n=>`<option ${l.negocio===n?"selected":""}>${n}</option>`).join("")}</select></div>
+      </div>
+      <div id="lancNegocioWrap" style="display:${l.tipo === 'Transferência' ? 'none' : 'block'}">
+        <select name="negocio">${negocioOpts}</select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <select name="conta_origem">${contaOpts}</select>
         </div>
-        <div class="field-row">
-          <div class="field"><label>${l.tipo==='Transferência' ? 'Conta de origem' : 'Conta'}</label><select name="conta_origem">${contaOpts}</select></div>
-          <div id="lancDestinoWrap" style="display:${l.tipo==='Transferência'?'block':'none'}">
-            <div class="field"><label>Conta de destino</label><select name="conta_destino">${contaDestOpts}</select></div>
-          </div>
+        <div class="field" id="lancDestinoWrap" style="display:${l.tipo === 'Transferência' ? 'block' : 'none'}">
+          <select name="conta_destino">${contaDestOpts}</select>
         </div>
-        <div class="field"><label>Valor (R$)</label><input required type="number" step="0.01" min="0.01" name="valor" value="${l.valor}"></div>
-        <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
-          <div class="field"><label>Categoria</label>
-            <select name="categoria"><option value="">— Selecione —</option>${catOpts}</select>
-          </div>
-        </div>
-        <div class="field"><label>Descrição</label><input required type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
-        <div class="field-row">
-          <div class="field"><label>Status</label><select name="status">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div>
-          <div class="field" style="display:flex; align-items:flex-end;">
-            <label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Conciliado</label>
-          </div>
+      </div>
+      <div id="lancCategoriaWrap" style="display:${l.tipo === 'Transferência' ? 'none' : 'block'}">
+        <select name="categoria"><option value="">— Categoria —</option>${catOpts}</select>
+      </div>
+      <input type="number" step="0.01" name="valor" placeholder="Valor" value="${l.valor}" required>
+      <input type="text" name="descricao" placeholder="Descrição" value="${esc(l.descricao)}">
+      <div class="field-row">
+        <div class="field"><select name="status">${statusOpts}</select></div>
+        <div class="field" style="display:flex; align-items:center;">
+          <label><input type="checkbox" name="conciliado" ${l.conciliado ? 'checked' : ''}> Conciliado</label>
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
+        <button type="button" class="btn-ghost" data-action="close-modal">Cancelar</button>
+        <button type="submit">${isEdit ? 'Salvar' : 'Adicionar'}</button>
       </div>
     </form>
   `);
 
-  document.getElementById("lancTipo").addEventListener("change", e => {
-    const isTransf = e.target.value === "Transferência";
-    document.getElementById("lancDestinoWrap").style.display = isTransf ? "block" : "none";
-    document.getElementById("lancNegocioWrap").style.display = isTransf ? "none" : "block";
-    document.getElementById("lancCategoriaWrap").style.display = isTransf ? "none" : "block";
+  document.getElementById('lancTipo').addEventListener('change', function() {
+    const isTransf = this.value === 'Transferência';
+    document.getElementById('lancDestinoWrap').style.display = isTransf ? 'block' : 'none';
+    document.getElementById('lancNegocioWrap').style.display = isTransf ? 'none' : 'block';
+    document.getElementById('lancCategoriaWrap').style.display = isTransf ? 'none' : 'block';
   });
 
-  document.getElementById("formLanc").addEventListener("submit", async e => {
+  document.getElementById('formLanc').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const tipo = fd.get("tipo");
+    const fd = new FormData(this);
+    const tipo = fd.get('tipo');
     const data = {
-      data: fd.get("data"),
-      tipo,
-      negocio: tipo === "Transferência" ? "" : (fd.get("negocio")||""),
-      categoria: tipo === "Transferência" ? "" : (fd.get("categoria")||""),
-      conta_origem: fd.get("conta_origem"),
-      conta_destino: tipo === "Transferência" ? fd.get("conta_destino") : "",
-      valor: parseFloat(fd.get("valor"))||0,
-      descricao: fd.get("descricao").trim(),
-      status: fd.get("status"),
-      conciliado: fd.get("conciliado") === "on"
+      data: fd.get('data'),
+      tipo: tipo,
+      negocio: tipo === 'Transferência' ? '' : (fd.get('negocio') || ''),
+      categoria: tipo === 'Transferência' ? '' : (fd.get('categoria') || ''),
+      conta_origem: fd.get('conta_origem'),
+      conta_destino: tipo === 'Transferência' ? fd.get('conta_destino') : '',
+      valor: parseFloat(fd.get('valor')) || 0,
+      descricao: fd.get('descricao').trim(),
+      status: fd.get('status'),
+      conciliado: fd.get('conciliado') === 'on'
     };
-    if(tipo === "Transferência" && data.conta_origem === data.conta_destino){
-      showToast("Conta de origem e destino não podem ser iguais.", "error"); return;
+    if (tipo === 'Transferência' && data.conta_origem === data.conta_destino) {
+      showToast('Conta de origem e destino não podem ser iguais.', 'error');
+      return;
     }
-    if(isEdit){ Object.assign(existing, data); }
-    else{ state.lancamentos.push({ id: uid("l"), ...data }); }
-    await salvarLancamentos();
+    if (isEdit) { Object.assign(existing, data); }
+    else { state.lancamentos.push({ id: uid(), ...data }); }
+    await saveLancamentos();
     closeModal();
-    renderApp();
-    showToast(isEdit ? "Lançamento atualizado." : "Lançamento adicionado.");
+    render();
+    showToast(isEdit ? 'Lançamento atualizado.' : 'Lançamento adicionado.');
   });
 }
 
-function modalAjuste(existing){
+function modalAjuste(existing) {
   const isEdit = !!existing;
-  const a = existing || { data: todayISO(), conta_id: state.contas.find(c=>c.ativa!==false)?.id||"", valor:0, motivo:"" };
-  const contaOpts = state.contas.filter(c => c.ativa !== false || c.id === a.conta_id).map(c => `<option value="${c.id}" ${a.conta_id===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  const a = existing || { data: todayISO(), conta_id: state.contas[0]?.id || '', valor: 0, motivo: '' };
+  const contaOpts = state.contas.map(c => `<option value="${c.id}" ${a.conta_id === c.id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
   openModal(`
     <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Editar ajuste" : "Novo ajuste"}</div>
+      <h3>${isEdit ? 'Editar Ajuste' : 'Novo Ajuste'}</h3>
       <button class="modal-close" data-action="close-modal">✕</button>
     </div>
     <form id="formAjuste">
-      <div class="modal-body">
-        <div class="field-row">
-          <div class="field"><label>Data</label><input required type="date" name="data" value="${a.data}"></div>
-          <div class="field"><label>Conta</label><select name="conta_id">${contaOpts}</select></div>
-        </div>
-        <div class="field"><label>Valor (R$)</label><input required type="number" step="0.01" name="valor" value="${a.valor}"><div class="field-help">Positivo aumenta · negativo reduz o saldo.</div></div>
-        <div class="field"><label>Motivo</label><input required type="text" name="motivo" value="${esc(a.motivo)}" placeholder="Ex: tarifa não lançada"></div>
+      <div class="field-row">
+        <div class="field"><input type="date" name="data" value="${a.data}" required></div>
+        <div class="field"><select name="conta_id">${contaOpts}</select></div>
       </div>
+      <input type="number" step="0.01" name="valor" placeholder="Valor (positivo = aumenta, negativo = reduz)" value="${a.valor}" required>
+      <input type="text" name="motivo" placeholder="Motivo" value="${esc(a.motivo)}" required>
       <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
+        <button type="button" class="btn-ghost" data-action="close-modal">Cancelar</button>
+        <button type="submit">${isEdit ? 'Salvar' : 'Adicionar'}</button>
       </div>
     </form>
   `);
-  document.getElementById("formAjuste").addEventListener("submit", async e => {
+  document.getElementById('formAjuste').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = { data: fd.get("data"), conta_id: fd.get("conta_id"), valor: parseFloat(fd.get("valor"))||0, motivo: fd.get("motivo").trim() };
-    if(isEdit){ Object.assign(existing, data); }
-    else{ state.ajustes.push({ id: uid("a"), ...data }); }
-    await salvarAjustes();
-    closeModal(); renderApp(); showToast(isEdit ? "Ajuste atualizado." : "Ajuste adicionado.");
+    const fd = new FormData(this);
+    const data = {
+      data: fd.get('data'),
+      conta_id: fd.get('conta_id'),
+      valor: parseFloat(fd.get('valor')) || 0,
+      motivo: fd.get('motivo').trim()
+    };
+    if (isEdit) { Object.assign(existing, data); }
+    else { state.ajustes.push({ id: uid(), ...data }); }
+    await saveAjustes();
+    closeModal();
+    render();
+    showToast(isEdit ? 'Ajuste atualizado.' : 'Ajuste adicionado.');
   });
 }
 
-/* =========================================================================
-   EVENTOS
-========================================================================= */
-document.addEventListener("click", async e => {
-  const el = e.target.closest("[data-action]");
-  if(!el) return;
+// ============================================================
+// EVENTOS
+// ============================================================
+document.addEventListener('click', function(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
   const action = el.dataset.action;
-  const id = el.dataset.id;
 
-  if(action === "nav") setView(el.dataset.view);
-  else if(action === "close-modal") closeModal();
-  else if(action === "switch-auth") { authMode = authMode === 'login' ? 'register' : 'login'; renderApp(); }
-  else if(action === "logout") { await logout(); }
-
-  else if(action === "new-conta") modalConta(null);
-  else if(action === "new-caixinha") modalCaixinha(id, null);
-  else if(action === "edit-conta"){
-    const c = contaById(id);
-    if(c && c.parent_id) modalCaixinha(null, c); else modalConta(c);
+  if (action === 'nav') {
+    state.view = el.dataset.view;
+    render();
   }
-  else if(action === "toggle-ativa"){
-    const c = contaById(id);
-    if(c){ c.ativa = c.ativa === false; await salvarContas(); renderApp(); showToast(c.ativa ? "Ativada." : "Inativada."); }
+  else if (action === 'close-modal') {
+    closeModal();
   }
-  else if(action === "del-conta"){
-    const c = contaById(id);
-    if(!c) return;
-    if(!c.parent_id && caixinhasDe(id).length > 0){
-      showToast("Essa conta ainda tem caixinhas. Exclua ou mova as caixinhas primeiro.", "error");
-      return;
-    }
-    if(!confirm("Excluir esta conta?")) return;
-    state.contas = state.contas.filter(x => x.id !== id);
-    await salvarContas(); renderApp(); showToast("Conta removida.");
+  else if (action === 'switch-auth') {
+    authMode = authMode === 'login' ? 'register' : 'login';
+    render();
   }
-
-  else if(action === "new-lanc") modalLancamento(null);
-  else if(action === "edit-lanc") modalLancamento(state.lancamentos.find(l=>l.id===id));
-  else if(action === "del-lanc"){
-    if(!confirm("Excluir este lançamento?")) return;
+  else if (action === 'logout') {
+    doLogout();
+  }
+  else if (action === 'new-conta') {
+    modalConta(null);
+  }
+  else if (action === 'edit-conta') {
+    const c = state.contas.find(x => x.id === el.dataset.id);
+    if (c) modalConta(c);
+  }
+  else if (action === 'del-conta') {
+    const id = el.dataset.id;
+    if (!confirm('Excluir esta conta?')) return;
+    state.contas = state.contas.filter(c => c.id !== id);
+    saveContas();
+    render();
+    showToast('Conta removida.');
+  }
+  else if (action === 'new-lanc') {
+    modalLancamento(null);
+  }
+  else if (action === 'edit-lanc') {
+    const l = state.lancamentos.find(x => x.id === el.dataset.id);
+    if (l) modalLancamento(l);
+  }
+  else if (action === 'del-lanc') {
+    const id = el.dataset.id;
+    if (!confirm('Excluir este lançamento?')) return;
     state.lancamentos = state.lancamentos.filter(l => l.id !== id);
-    await salvarLancamentos(); renderApp(); showToast("Lançamento removido.");
+    saveLancamentos();
+    render();
+    showToast('Lançamento removido.');
   }
-  else if(action === "toggle-conc"){
-    const l = state.lancamentos.find(x=>x.id===id);
-    if(l){ l.conciliado = !l.conciliado; await salvarLancamentos(); renderApp(); }
+  else if (action === 'new-ajuste') {
+    modalAjuste(null);
   }
-
-  else if(action === "new-ajuste") modalAjuste(null);
-  else if(action === "edit-ajuste") modalAjuste(state.ajustes.find(a=>a.id===id));
-  else if(action === "del-ajuste"){
-    if(!confirm("Excluir este ajuste?")) return;
+  else if (action === 'edit-ajuste') {
+    const a = state.ajustes.find(x => x.id === el.dataset.id);
+    if (a) modalAjuste(a);
+  }
+  else if (action === 'del-ajuste') {
+    const id = el.dataset.id;
+    if (!confirm('Excluir este ajuste?')) return;
     state.ajustes = state.ajustes.filter(a => a.id !== id);
-    await salvarAjustes(); renderApp(); showToast("Ajuste removido.");
+    saveAjustes();
+    render();
+    showToast('Ajuste removido.');
   }
-
-  else if(action === "new-categoria") modalCategoria(null);
-  else if(action === "edit-categoria") modalCategoria(categoriaById(el.dataset.cat));
-  else if(action === "del-categoria"){
-    const cat = categoriaById(el.dataset.cat);
-    if(!cat) return;
-    if(state.lancamentos.some(l => l.categoria === cat.nome) && !confirm("Categoria em uso. Excluir?")) return;
-    state.categorias = state.categorias.filter(c => c.id !== el.dataset.cat);
-    await salvarCategorias(); renderApp(); showToast("Categoria removida.");
-  }
-  else if(action === "add-subcategoria") modalSubcategoria(el.dataset.cat, null);
-  else if(action === "edit-subcategoria"){
-    const cat = categoriaById(el.dataset.cat);
-    const sub = cat ? cat.subcategorias.find(s => s.id === el.dataset.sub) : null;
-    modalSubcategoria(el.dataset.cat, sub);
-  }
-  else if(action === "del-subcategoria"){
-    const cat = categoriaById(el.dataset.cat);
-    if(!cat) return;
-    cat.subcategorias = cat.subcategorias.filter(s => s.id !== el.dataset.sub);
-    await salvarCategorias(); renderApp(); showToast("Subcategoria removida.");
-  }
-
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:""}; renderApp(); }
-  else if(action === "mes-prev"){
-    let { ano, mes } = state.mesVisualizado;
-    mes -= 1; if(mes < 0){ mes = 11; ano -= 1; }
-    state.mesVisualizado = { ano, mes }; renderView();
-  }
-  else if(action === "mes-next"){
-    let { ano, mes } = state.mesVisualizado;
-    mes += 1; if(mes > 11){ mes = 0; ano += 1; }
-    state.mesVisualizado = { ano, mes }; renderView();
-  }
-  else if(action === "mes-hoje"){
-    const hoje = new Date();
-    state.mesVisualizado = { ano: hoje.getFullYear(), mes: hoje.getMonth() }; renderView();
-  }
-  else if(action === "unlock-pagar"){ state.pagarUnlocked = true; renderApp(); }
-  else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); }
-  else if(action === "unlock-receber"){ state.receberUnlocked = true; renderApp(); }
-  else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); }
-});
-
-document.addEventListener("change", e => {
-  if(e.target.dataset.action === "filter-negocio"){ lancFilter.negocio = e.target.value; renderApp(); }
-  if(e.target.dataset.action === "filter-status"){ lancFilter.status = e.target.value; renderApp(); }
-  if(e.target.dataset.action === "filter-conta"){ lancFilter.conta = e.target.value; renderApp(); }
-  if(e.target.id === "mesManualInput" && e.target.value){
-    const [anoStr, mesStr] = e.target.value.split("-");
-    state.mesVisualizado = { ano: parseInt(anoStr), mes: parseInt(mesStr) - 1 }; renderView();
-  }
-});
-
-/* =========================================================================
-   AUTENTICAÇÃO - SUBMIT
-========================================================================= */
-document.addEventListener("submit", async e => {
-  if(e.target.id === "authForm"){
-    e.preventDefault();
-    const email = document.getElementById("authEmail").value.trim();
-    const password = document.getElementById("authPassword").value;
-    if(!email || !password){ showToast("Preencha email e senha.", "error"); return; }
-    const success = authMode === 'login' ? await login(email, password) : await cadastrar(email, password);
-    if(success) renderApp();
-  }
-});
-
-/* =========================================================================
-   MODAIS DE CATEGORIA (SIMPLIFICADOS)
-========================================================================= */
-function modalCategoria(existing){
-  const isEdit = !!existing;
-  openModal(`
-    <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Renomear categoria" : "Nova categoria"}</div>
-      <button class="modal-close" data-action="close-modal">✕</button>
-    </div>
-    <form id="formCategoria">
-      <div class="modal-body">
-        <div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}"></div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
-      </div>
-    </form>
-  `);
-  document.getElementById("formCategoria").addEventListener("submit", async e => {
-    e.preventDefault();
-    const nome = new FormData(e.target).get("nome").trim();
-    if(!nome) return;
-    if(isEdit){
-      const nomeAntigo = existing.nome;
-      existing.nome = nome;
-      state.lancamentos.forEach(l => { if(l.categoria === nomeAntigo) l.categoria = nome; });
-      await salvarLancamentos();
-    }else{
-      state.categorias.push({ id: uid("cat"), nome, subcategorias: [] });
+  else if (action === 'new-cat') {
+    const nome = prompt('Nome da nova categoria:');
+    if (nome && nome.trim()) {
+      state.categorias.push({ id: uid(), nome: nome.trim(), subcategorias: [] });
+      saveCategorias();
+      render();
+      showToast('Categoria criada.');
     }
-    await salvarCategorias();
-    closeModal(); renderApp(); showToast(isEdit ? "Categoria atualizada." : "Categoria criada.");
-  });
-}
-
-function modalSubcategoria(catId, existing){
-  const isEdit = !!existing;
-  const cat = categoriaById(catId);
-  openModal(`
-    <div class="modal-head">
-      <div class="modal-title">${isEdit ? "Renomear subcategoria" : "Nova subcategoria"}</div>
-      <button class="modal-close" data-action="close-modal">✕</button>
-    </div>
-    <form id="formSubcategoria">
-      <div class="modal-body">
-        <div class="field-help">Dentro de <strong>${esc(cat ? cat.nome : "")}</strong></div>
-        <div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}"></div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button>
-      </div>
-    </form>
-  `);
-  document.getElementById("formSubcategoria").addEventListener("submit", async e => {
-    e.preventDefault();
-    const nome = new FormData(e.target).get("nome").trim();
-    if(!nome || !cat) return;
-    if(isEdit){
-      const nomeAntigo = existing.nome;
-      existing.nome = nome;
-      state.lancamentos.forEach(l => { if(l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; });
-      await salvarLancamentos();
-    }else{
-      cat.subcategorias.push({ id: uid("sub"), nome });
+  }
+  else if (action === 'del-cat') {
+    const id = el.dataset.cat;
+    if (!confirm('Excluir esta categoria?')) return;
+    state.categorias = state.categorias.filter(c => c.id !== id);
+    saveCategorias();
+    render();
+    showToast('Categoria removida.');
+  }
+  else if (action === 'add-sub') {
+    const cat = state.categorias.find(c => c.id === el.dataset.cat);
+    if (!cat) return;
+    const nome = prompt('Nome da subcategoria:');
+    if (nome && nome.trim()) {
+      cat.subcategorias = cat.subcategorias || [];
+      cat.subcategorias.push({ id: uid(), nome: nome.trim() });
+      saveCategorias();
+      render();
+      showToast('Subcategoria criada.');
     }
-    await salvarCategorias();
-    closeModal(); renderApp(); showToast(isEdit ? "Subcategoria atualizada." : "Subcategoria criada.");
-  });
-}
+  }
+});
 
-/* =========================================================================
-   INIT
-========================================================================= */
-async function init() {
-  // Verificar se usuário já está logado
-  const { data: { session } } = await supabaseClient.auth.getSession();
+// ============================================================
+// AUTENTICAÇÃO
+// ============================================================
+document.addEventListener('submit', function(e) {
+  if (e.target.id === 'authForm') {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if (!email || !password) { showToast('Preencha email e senha.', 'error'); return; }
+    if (authMode === 'login') {
+      doLogin(email, password);
+    } else {
+      doSignup(email, password);
+    }
+  }
+});
+
+// ============================================================
+// INICIAR
+// ============================================================
+(async function init() {
+  const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     state.user = session.user;
-    await loadDados();
+    await loadData();
   }
-  renderApp();
-}
-
-init();
+  render();
+})();
 </script>
 </body>
 </html>
