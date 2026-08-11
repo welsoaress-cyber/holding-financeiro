@@ -290,11 +290,11 @@ const BANDEIRAS = ["Visa","Mastercard","Elo","American Express","Hipercard","Out
 const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "Semestral", "Anual"];
 const SENHA_PAGAR = "@2020";
 const SENHA_RECEBER = "@1010";
-const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
+const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","cartoes","perfis"];
 
 let state = {
-  contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [],
-  view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null,
+  contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
+  view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   pagarUnlocked: false, receberUnlocked: false, ajustesMenuAberto: false,
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
 };
@@ -326,6 +326,25 @@ function negocioCor(nome){
   return (n && n.cor) || "var(--ink-faint)";
 }
 function proximaCorNegocio(){ return PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length]; }
+
+/* =========================================================================
+   PERMISSÕES (Master vê tudo; perfis de membro só o que foi liberado por negócio)
+========================================================================= */
+function ehMaster(){ return !state.perfilAtivo; }
+function pagarDesbloqueado(){ return ehMaster() || state.pagarUnlocked; }
+function receberDesbloqueado(){ return ehMaster() || state.receberUnlocked; }
+function permissaoNegocio(negocio, acao){
+  if(ehMaster()) return true;
+  if(!negocio || !state.perfilAtivo) return false;
+  const perm = (state.perfilAtivo.permissoes || {})[negocio];
+  return !!(perm && perm[acao]);
+}
+function podeVerNegocio(negocio){ return permissaoNegocio(negocio, "ver"); }
+function podeEditarNegocio(negocio){ return permissaoNegocio(negocio, "editar"); }
+function podeExcluirNegocio(negocio){ return permissaoNegocio(negocio, "excluir"); }
+function lancamentosVisiveis(lista){ return ehMaster() ? lista : lista.filter(l => podeVerNegocio(l.negocio)); }
+function perfilById(id){ return state.perfis.find(p => p.id === id); }
+
 function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
 function caixinhasDe(contaId){ return state.contas.filter(c => c.parentId === contaId); }
 function contasParaSelecao(selectedId){ return state.contas.filter(c => c.ativa !== false || c.id === selectedId); }
@@ -523,6 +542,7 @@ const saveAjustes = () => saveRows("ajustes", state.ajustes);
 const saveCategorias = () => saveRows("categorias", state.categorias);
 const saveNegocios = () => saveRows("negocios", state.negocios);
 const saveCartoes = () => saveRows("cartoes", state.cartoes);
+const savePerfis = () => saveRows("perfis", state.perfis);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
@@ -534,8 +554,9 @@ async function tratarErroDeSessao(e){
   try{ await supabaseClient.auth.signOut(); }catch(err){}
   state.user = null;
   state.contas = []; state.lancamentos = []; state.ajustes = [];
-  state.categorias = []; state.negocios = []; state.cartoes = [];
+  state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
   state.pagarUnlocked = false; state.receberUnlocked = false;
+  state.perfilAtivo = null; state.perfilEscolhido = false;
   authMode = "login";
   renderApp();
 }
@@ -546,7 +567,7 @@ async function loadData(){
       supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes, perfis] = results.map(r =>
       (r.data || []).map(row => ({ id: row.id, ...row.dados }))
     );
     state.contas = contas;
@@ -555,6 +576,7 @@ async function loadData(){
     state.categorias = categorias;
     state.negocios = negocios;
     state.cartoes = cartoes;
+    state.perfis = perfis;
     state.storageOK = true;
 
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
@@ -590,6 +612,7 @@ async function doLogin(email, password){
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if(error){ showToast(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message, "error"); return false; }
     state.user = data.user;
+    state.perfilAtivo = null; state.perfilEscolhido = false;
     await loadData();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
@@ -600,6 +623,7 @@ async function doSignup(email, password){
     if(error){ showToast(error.message, "error"); return false; }
     if(data.user && data.session){
       state.user = data.user;
+      state.perfilAtivo = null; state.perfilEscolhido = false;
       await loadData(); // loadData ja semeia categorias/negocios padrao no primeiro login
       showToast("Conta criada com sucesso!");
       return true;
@@ -616,8 +640,9 @@ async function doLogout(){
   await supabaseClient.auth.signOut();
   state.user = null;
   state.contas = []; state.lancamentos = []; state.ajustes = [];
-  state.categorias = []; state.negocios = []; state.cartoes = [];
+  state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
   state.pagarUnlocked = false; state.receberUnlocked = false;
+  state.perfilAtivo = null; state.perfilEscolhido = false;
   renderApp();
 }
 
@@ -774,42 +799,51 @@ function setView(v){ state.view = v; renderApp(); }
 function renderApp(){
   const app = document.getElementById("app");
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); return; }
+  if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); return; }
 
   const horaSalvo = state.ultimoSalvamento ? state.ultimoSalvamento.toLocaleTimeString("pt-BR") : null;
+  const master = ehMaster();
   app.innerHTML = `
     <aside class="sidebar">
       <div class="brand"><span class="dot"></span><span>Holding</span></div>
-      <div class="brand-sub">painel financeiro</div>
+      <div class="brand-sub">${master ? "painel financeiro" : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
+      ${master ? `
       <div class="nav-group-label">Visão geral</div>
       ${navItem("dashboard","◆","Dashboard")}
+      ` : ""}
 
       <div class="nav-group-label">Contas Bancárias</div>
-      ${navItem("contas","▢","Contas")}
-      ${navItem("cartoes","💳","Cartões de Crédito")}
+      ${master ? navItem("contas","▢","Contas") : ""}
+      ${master ? navItem("cartoes","💳","Cartões de Crédito") : ""}
       ${navItem("lancamentos","≡","Todos os Lançamentos")}
       ${navItem("receitas","📥","Contas a Receber")}
       ${navItem("despesas","📤","Contas a Pagar")}
       ${navItem("transferencias","⇄","Transferências")}
-      ${navSubmenuAjustes()}
+      ${master ? navSubmenuAjustes() : ""}
+      ${master ? navItem("usuarios","👤","Usuários") : ""}
 
+      ${master ? `
       <div class="nav-group-label">Em construção</div>
       ${navItemSoon("Contas Fixas")}
       ${navItemSoon("Carteira")}
       ${navItemSoon("Rateio de Despesas")}
+      ` : ""}
 
       <div class="sidebar-footer">
-        <button class="sidebar-lock-btn ${state.pagarUnlocked ? 'unlocked' : ''}" data-action="${state.pagarUnlocked ? 'lock-pagar' : 'unlock-pagar'}" title="${state.pagarUnlocked ? 'Ocultar contas a pagar' : 'Ver contas a pagar'}">
-          ${state.pagarUnlocked ? "🔓" : "🔒"}<span class="label">${state.pagarUnlocked ? " Ocultar contas a pagar" : " Ver contas a pagar"}</span>
+        ${!master ? `
+        <button class="sidebar-lock-btn ${pagarDesbloqueado() ? 'unlocked' : ''}" data-action="${pagarDesbloqueado() ? 'lock-pagar' : 'unlock-pagar'}" title="${pagarDesbloqueado() ? 'Ocultar contas a pagar' : 'Ver contas a pagar'}">
+          ${pagarDesbloqueado() ? "🔓" : "🔒"}<span class="label">${pagarDesbloqueado() ? " Ocultar contas a pagar" : " Ver contas a pagar"}</span>
         </button>
-        <button class="sidebar-lock-btn ${state.receberUnlocked ? 'unlocked' : ''}" data-action="${state.receberUnlocked ? 'lock-receber' : 'unlock-receber'}" title="${state.receberUnlocked ? 'Ocultar a receber/saldo' : 'Ver a receber/saldo'}">
-          ${state.receberUnlocked ? "🔓" : "🔒"}<span class="label">${state.receberUnlocked ? " Ocultar a receber/saldo" : " Ver a receber/saldo"}</span>
-        </button>
-        <button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
+        <button class="sidebar-lock-btn ${receberDesbloqueado() ? 'unlocked' : ''}" data-action="${receberDesbloqueado() ? 'lock-receber' : 'unlock-receber'}" title="${receberDesbloqueado() ? 'Ocultar a receber/saldo' : 'Ver a receber/saldo'}">
+          ${receberDesbloqueado() ? "🔓" : "🔒"}<span class="label">${receberDesbloqueado() ? " Ocultar a receber/saldo" : " Ver a receber/saldo"}</span>
+        </button>` : ""}
+        ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
         <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;" title="Importar backup">
           ⬆<span class="label"> Importar backup</span>
           <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
-        </label>
+        </label>` : ""}
+        ${state.perfis.length > 0 ? `<button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>` : ""}
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
@@ -821,6 +855,9 @@ function renderApp(){
   `;
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
+  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
+  if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){ state.view = "lancamentos"; }
   renderView();
 }
 function navItem(view, icon, label){
@@ -863,6 +900,7 @@ function renderView(){
   else if(state.view === "ajustes") main.innerHTML = viewAjustes();
   else if(state.view === "categorias") main.innerHTML = viewCategorias();
   else if(state.view === "negocios") main.innerHTML = viewNegocios();
+  else if(state.view === "usuarios") main.innerHTML = viewUsuarios();
 }
 
 // ============================================================
@@ -904,11 +942,55 @@ function wireAuthForm(){
 }
 
 // ============================================================
+// SELETOR DE PERFIL ("Quem está usando?")
+// ============================================================
+function renderSeletorPerfil(){
+  const membros = state.perfis.map(p => `
+    <button class="btn btn-ghost" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-perfil" data-id="${p.id}">👤 ${esc(p.nome)}</button>
+  `).join("");
+  return `
+    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
+      <div style="background:#fff; padding:40px; border-radius:14px; width:420px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08); text-align:center;">
+        <h2 style="font-family:var(--font-display); margin-bottom:6px;">Quem está usando?</h2>
+        <div style="color:var(--ink-soft); font-size:12.5px; margin-bottom:24px;">${esc(state.user.email)}</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="btn btn-primary" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-master">👑 Master (acesso completo)</button>
+          ${membros}
+        </div>
+      </div>
+    </div>
+  `;
+}
+function modalSenhaPerfil(perfil){
+  openModal(`
+    <div class="modal-head"><div class="modal-title">👤 ${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formSenhaPerfil"><div class="modal-body">
+      <div class="field"><label>Senha</label><input required type="password" name="senha" autocomplete="off" placeholder="Digite sua senha"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Entrar</button></div></form>
+  `);
+  const input = document.querySelector('#formSenhaPerfil input[name="senha"]');
+  if(input) input.focus();
+  document.getElementById("formSenhaPerfil").addEventListener("submit", e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(fd.get("senha") === perfil.senha){
+      state.perfilAtivo = perfil;
+      state.perfilEscolhido = true;
+      closeModal(); renderApp(); showToast(`Bem-vindo(a), ${perfil.nome}.`);
+    }else{
+      showToast("Senha incorreta.", "error");
+      const inp = document.querySelector('#formSenhaPerfil input[name="senha"]');
+      if(inp){ inp.value = ""; inp.focus(); }
+    }
+  });
+}
+
+// ============================================================
 // VIEW: DASHBOARD
 // ============================================================
 function viewDashboard(){
-  const lockedReceber = !state.receberUnlocked;
-  const lockedPagar = !state.pagarUnlocked;
+  const lockedReceber = !receberDesbloqueado();
+  const lockedPagar = !pagarDesbloqueado();
   const mv = state.mesVisualizado;
   const hoje = new Date();
   const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
@@ -930,7 +1012,7 @@ function viewDashboard(){
     return `<div class="bar-row" style="${nested ? 'padding-left:14px;' : ''}">
       <div class="name" style="${nested ? 'font-weight:500; font-size:12px;' : ''}"><span class="tag-dot" style="background:${color}"></span>${nomeTxt}${inativa ? ' <span class="status-pill status-agendado">Inativa</span>' : ""}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
-      <div class="val ${lockedReceber ? 'masked-value' : ''}">${maskBRL(sa, state.receberUnlocked)}</div>
+      <div class="val ${lockedReceber ? 'masked-value' : ''}">${maskBRL(sa, receberDesbloqueado())}</div>
     </div>`;
   };
   const barsHTML = contasRaiz().map(c => barRow(c,false) + caixinhasDe(c.id).map(cx=>barRow(cx,true)).join("")).join("");
@@ -951,7 +1033,7 @@ function viewDashboard(){
         <div style="font-size:11px; color:var(--ink-faint);">Vence ${fmtDateBR(item.data)}${item.negocio?' · '+esc(item.negocio):''} · ${item.status}</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600; white-space:nowrap;">${maskBRL(item.valor, state.pagarUnlocked)}</span>
+        <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600; white-space:nowrap;">${maskBRL(item.valor, pagarDesbloqueado())}</span>
         ${item.tipo === 'fatura'
           ? `<button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${item.cartaoId}" data-venc="${item.data}">Pagar</button>`
           : `<button class="icon-btn" data-action="baixar-titulo" data-id="${item.id}" title="Dar baixa" style="color:#0F5C3F;">💲</button>`}
@@ -971,16 +1053,16 @@ function viewDashboard(){
           <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--line); border-radius:8px;">▶</button>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${lockedReceber ? 'masked-value' : (saldoMesAnterior>=0?'pos':'neg')}">${maskBRL(saldoMesAnterior, state.receberUnlocked)}</div></div>
+          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${lockedReceber ? 'masked-value' : (saldoMesAnterior>=0?'pos':'neg')}">${maskBRL(saldoMesAnterior, receberDesbloqueado())}</div></div>
           <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${lockedReceber || lockedPagar ? 'masked-value' : (saldoAtualMes>=0?'pos':'neg')}">${(lockedReceber || lockedPagar) ? "R$ ••••••" : fmtBRL(saldoAtualMes)}</div><div class="kpi-note">Mês anterior + realizado receitas − realizado despesas</div></div>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-label">Previsto receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movPendente.entradas, state.receberUnlocked)}</div><div class="kpi-note">Ainda não baixado</div></div>
-          <div class="kpi-card"><div class="kpi-label">Previsto despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movPendente.saidas, state.pagarUnlocked)}</div><div class="kpi-note">Ainda não baixado</div></div>
+          <div class="kpi-card"><div class="kpi-label">Previsto receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movPendente.entradas, receberDesbloqueado())}</div><div class="kpi-note">Ainda não baixado</div></div>
+          <div class="kpi-card"><div class="kpi-label">Previsto despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movPendente.saidas, pagarDesbloqueado())}</div><div class="kpi-note">Ainda não baixado</div></div>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movReal.entradas, state.receberUnlocked)}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movReal.saidas, state.pagarUnlocked)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value ${lockedReceber ? 'masked-value' : 'pos'}">${maskBRL(movReal.entradas, receberDesbloqueado())}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value ${lockedPagar ? 'masked-value' : 'neg'}">${maskBRL(movReal.saidas, pagarDesbloqueado())}</div></div>
         </div>
         <div class="kpi-grid" style="grid-template-columns: 1fr;">
           <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final previsto</div><div class="kpi-value ${lockedReceber || lockedPagar ? 'masked-value' : (saldoFinalPrevisto>=0?'pos':'neg')}">${(lockedReceber || lockedPagar) ? "R$ ••••••" : fmtBRL(saldoFinalPrevisto)}</div><div class="kpi-note">Saldo atual + previsto receitas − previsto despesas</div></div>
@@ -992,8 +1074,8 @@ function viewDashboard(){
       <div class="panel-body" style="padding-top:6px;">${contasAPagarHTML}</div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:20px;">
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, state.receberUnlocked)}</div></div>
-      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, state.pagarUnlocked)}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores receitas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topReceitas, receberDesbloqueado())}</div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, pagarDesbloqueado())}</div></div>
     </div>
     <div class="panel"><div class="panel-head"><div class="panel-title">Saldo por conta${!isMesAtual ? ` — projetado até ${NOMES_MESES[mv.mes]} de ${mv.ano}` : ''}</div></div><div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div></div>
   `;
@@ -1010,9 +1092,9 @@ function viewContas(){
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:#FAFBFC;' : ''}">
       <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}">${maskBRL(c.saldoInicial, state.receberUnlocked)}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}" style="font-weight:600;">${maskBRL(sa, state.receberUnlocked)}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}">${maskBRL(sp, state.receberUnlocked)}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(c.saldoInicial, receberDesbloqueado())}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600;">${maskBRL(sa, receberDesbloqueado())}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(sp, receberDesbloqueado())}</td>
       <td style="text-align:center;">${nc > 0 ? `<span class="status-pill status-pendente">${nc}</span>` : "—"}</td>
       <td style="text-align:center;"><span class="status-pill ${inativa ? 'status-agendado' : 'status-pago'}" style="cursor:pointer;" data-action="toggle-ativa" data-id="${c.id}" title="Clique para ${inativa?'ativar':'inativar'}">${inativa ? "Inativa" : "Ativa"}</span></td>
       <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">🗑</button></div></td>
@@ -1029,7 +1111,7 @@ function viewContas(){
 // VIEW: CARTÕES DE CRÉDITO
 // ============================================================
 function viewCartoes(){
-  const lockedPagar = !state.pagarUnlocked;
+  const lockedPagar = !pagarDesbloqueado();
   const cardHTML = (c) => {
     const emAberto = faturaEmAberto(c.id);
     const disp = Number(c.limite||0) - emAberto;
@@ -1041,7 +1123,7 @@ function viewCartoes(){
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #F0F1F4; font-size:12px;">
         <span style="color:var(--ink-soft); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-faint);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
         <div style="display:flex; align-items:center; gap:8px;">
-          <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, state.pagarUnlocked)}</span>
+          <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, pagarDesbloqueado())}</span>
           <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
           <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
         </div>
@@ -1061,7 +1143,7 @@ function viewCartoes(){
       <div class="panel-body" style="padding-top:14px;">
         <div class="kpi-grid" style="grid-template-columns: repeat(3, minmax(120px,1fr));">
           <div class="kpi-card"><div class="kpi-label">Limite</div><div class="kpi-value" style="font-size:16px;">${fmtBRL(c.limite)}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Fatura em aberto</div><div class="kpi-value ${lockedPagar?'masked-value':'neg'}" style="font-size:16px;">${maskBRL(emAberto, state.pagarUnlocked)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Fatura em aberto</div><div class="kpi-value ${lockedPagar?'masked-value':'neg'}" style="font-size:16px;">${maskBRL(emAberto, pagarDesbloqueado())}</div></div>
           <div class="kpi-card"><div class="kpi-label">Limite disponível</div><div class="kpi-value ${lockedPagar?'masked-value':(estourado?'neg':'pos')}" style="font-size:16px;">${lockedPagar ? "R$ ••••••" : fmtBRL(disp)}</div></div>
         </div>
         <div style="margin-top:10px;"><div style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:2px;">Faturas em aberto — pagamento é por fatura fechada, não por compra</div>${faturasHTML}</div>
@@ -1095,6 +1177,7 @@ const CATEGORIA_FILTRO_LABELS = {
 function viewLancamentos(){
   const cfg = LANC_VIEW_CONFIG[state.view] || LANC_VIEW_CONFIG.lancamentos;
   let list = [...state.lancamentos].sort((a,b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
+  list = lancamentosVisiveis(list); // membros so veem os negocios liberados pra eles; Master ve tudo
   if(cfg.tipo) list = list.filter(l => l.tipo === cfg.tipo);
   if(state.view === "despesas") list = list.filter(l => !l.cartaoId); // compras de cartao ficam so no menu Cartao de Credito
   if(state.view === "lancamentos" && lancFilter.categoria){
@@ -1129,13 +1212,15 @@ function viewLancamentos(){
       contaTxt = origem ? contaLabel(origem) : "—";
     }
     const sinal = l.tipo === "Despesa" ? "−" : (l.tipo === "Receita" ? "+" : "⇄");
-    const unlocked = l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked;
+    const unlocked = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
     const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
-    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId;
+    const podeEditar = podeEditarNegocio(l.negocio);
+    const podeExcluir = podeExcluirNegocio(l.negocio);
+    const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar;
     const marcado = lancSelecionados.has(l.id);
     return `<tr style="${marcado ? 'background:#EAF1FB;' : ''}">
-      <td style="text-align:center;"><input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}></td>
+      <td style="text-align:center;">${podeExcluir ? `<input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}>` : ""}</td>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
@@ -1143,11 +1228,11 @@ function viewLancamentos(){
       <td>${esc(l.descricao)}${recBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-faint)">${esc(catTxt)}</div>` : ""}</td>
       <td class="num ${unlocked?'':'masked-value'}" style="font-weight:600;">${maskBRL(l.valor, unlocked)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
-      <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="cursor:pointer;" data-action="toggle-conc" data-id="${l.id}" title="Clique para alternar">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:#0F5C3F;">💲</button>` : ""}<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Excluir">🗑</button></div></td>
+      <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
+      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:#0F5C3F;">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Excluir">🗑</button>` : ""}</div></td>
     </tr>`;
   }).join("");
-  const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOptions = STATUS_LANC.map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
   const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
@@ -1186,7 +1271,7 @@ function viewAjustes(){
     return `<tr>
       <td>${fmtDateBR(a.data)}</td>
       <td>${esc(conta?.nome || "Conta removida")}</td>
-      <td class="num ${state.receberUnlocked?'':'masked-value'}" style="font-weight:600; color:${state.receberUnlocked ? (a.valor>=0?'#0F5C3F':'var(--danger)') : 'inherit'};">${maskBRL(a.valor, state.receberUnlocked)}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600; color:${receberDesbloqueado() ? (a.valor>=0?'#0F5C3F':'var(--danger)') : 'inherit'};">${maskBRL(a.valor, receberDesbloqueado())}</td>
       <td>${esc(a.motivo)}</td>
       <td><div class="row-actions"><button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
@@ -1232,6 +1317,33 @@ function viewNegocios(){
   return `
     <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Negócio</th><th style="text-align:center;">Em uso</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table></div></div>
+  `;
+}
+
+// ============================================================
+// VIEW: USUÁRIOS (Master gerencia quem tem acesso e ao quê)
+// ============================================================
+function viewUsuarios(){
+  const rows = state.perfis.map(p => {
+    const entradas = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
+    const resumo = entradas.length
+      ? entradas.map(([neg,perm]) => `<span class="tag" style="background:#EEF0F3; color:var(--ink-soft); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("")
+      : `<span style="color:var(--ink-faint); font-size:12px;">Nenhum negócio liberado ainda</span>`;
+    return `<tr>
+      <td><strong>${esc(p.nome)}</strong></td>
+      <td>${resumo}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo.</div></div>
+      <button class="btn btn-primary" data-action="new-perfil">+ Novo usuário</button>
+    </div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;">
+      <table><thead><tr><th>Nome</th><th>Permissões</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum usuário criado ainda — só o Master existe.")}</td></tr>`}</tbody></table>
+    </div></div>
   `;
 }
 
@@ -1334,7 +1446,7 @@ function modalConta(existing){
         <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
       </div>
       <div class="field-row">
-        ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || state.receberUnlocked)}
+        ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || receberDesbloqueado())}
         <div class="field"><label>Limite cheque especial (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div>
       </div>
       <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label>
@@ -1369,7 +1481,7 @@ function modalCaixinha(parentId, existing){
     <form id="formCaixinha"><div class="modal-body">
       <div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(pai ? pai.nome : "")}</strong></div>
       <div class="field"><label>Nome da caixinha</label><input required type="text" name="nome" value="${esc(cx.nome)}" placeholder="Ex: Aluguel, Reserva, Impostos..."></div>
-      ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", cx.saldoInicial, !isEdit || state.receberUnlocked, {help:"Normalmente 0 — separe o dinheiro depois com uma Transferência da conta para a caixinha."})}
+      ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", cx.saldoInicial, !isEdit || receberDesbloqueado(), {help:"Normalmente 0 — separe o dinheiro depois com uma Transferência da conta para a caixinha."})}
       <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${cx.ativa!==false?"checked":""}> Caixinha ativa</label></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar caixinha"}</button></div></form>
   `);
@@ -1397,14 +1509,15 @@ function subcatOptionsHTML(nomeCategoria, selectedNome){
   return `<option value="">— Nenhuma —</option>${opts}<option value="__nova__">+ Nova subcategoria...</option>`;
 }
 function negOptionsHTML(selectedNome){
-  const opts = state.negocios.map(n => `<option value="${esc(n.nome)}" ${selectedNome===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
-  return `<option value="">— Selecione —</option>${opts}<option value="__novo__">+ Novo negócio...</option>`;
+  const negociosPermitidos = ehMaster() ? state.negocios : state.negocios.filter(n => podeEditarNegocio(n.nome) || n.nome === selectedNome);
+  const opts = negociosPermitidos.map(n => `<option value="${esc(n.nome)}" ${selectedNome===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  return `<option value="">— Selecione —</option>${opts}${ehMaster() ? `<option value="__novo__">+ Novo negócio...</option>` : ""}`;
 }
 
 function modalLancamento(existing, tipoPreset){
   const isEdit = !!existing;
   const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
-  const unlockedValor = !isEdit || (l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked);
+  const unlockedValor = !isEdit || (l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado());
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   const contaDestOpts = contasParaSelecao(l.contaDestino).map(c => `<option value="${c.id}" ${l.contaDestino===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
 
@@ -1670,7 +1783,7 @@ function modalAjuste(existing){
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar ajuste" : "Novo ajuste de saldo"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formAjuste"><div class="modal-body">
       <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${a.data}"></div><div class="field"><label>Conta</label><select name="contaId">${contaOpts}</select></div></div>
-      ${campoValorProtegido("Valor do ajuste (R$)", "valor", a.valor, !isEdit || state.receberUnlocked, {help:"Positivo aumenta o saldo · negativo reduz o saldo."})}
+      ${campoValorProtegido("Valor do ajuste (R$)", "valor", a.valor, !isEdit || receberDesbloqueado(), {help:"Positivo aumenta o saldo · negativo reduz o saldo."})}
       <div class="field"><label>Motivo</label><input required type="text" name="motivo" value="${esc(a.motivo)}" placeholder="Ex: tarifa não lançada, estorno, diferença de arredondamento..."></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar ajuste"}</button></div></form>
   `);
@@ -1762,6 +1875,59 @@ function modalNegocio(existing){
       state.negocios.push({ id: uid("neg"), nome, cor: proximaCorNegocio() });
     }
     await saveNegocios(); closeModal(); renderApp(); showToast(isEdit ? "Negócio atualizado." : "Negócio criado.");
+  });
+}
+
+/* =========================================================================
+   MODAL — USUÁRIO (Tom, Erica...) com permissões por negócio
+========================================================================= */
+function modalPerfil(existing){
+  const isEdit = !!existing;
+  const p = existing || { nome:"", senha:"", permissoes:{} };
+  const linhasNegocio = state.negocios.map(n => {
+    const perm = p.permissoes[n.nome] || { ver:false, editar:false, excluir:false };
+    return `<tr>
+      <td>${esc(n.nome)}</td>
+      <td style="text-align:center;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
+    </tr>`;
+  }).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPerfil"><div class="modal-body">
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Tom"></div>
+      <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: tom123">
+        <div class="field-help">Salva em texto simples, igual às senhas de "ver saldo" — não peça pra usar uma senha que a pessoa usa em outro lugar.</div>
+      </div>
+      <div class="field"><label>Permissões por negócio</label>
+        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:8px;">
+          <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
+          <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-faint); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
+        </div>
+        <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button></div></form>
+  `);
+  document.getElementById("formPerfil").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const nome = fd.get("nome").trim();
+    const senha = fd.get("senha").trim();
+    if(!nome || !senha) return;
+    if(state.perfis.some(x => x.nome === nome && x !== existing)){ showToast("Já existe um usuário com esse nome.", "error"); return; }
+    const permissoes = {};
+    state.negocios.forEach(n => {
+      permissoes[n.nome] = {
+        ver: fd.get(`ver_${n.id}`) === "on",
+        editar: fd.get(`editar_${n.id}`) === "on",
+        excluir: fd.get(`excluir_${n.id}`) === "on",
+      };
+    });
+    const data = { nome, senha, permissoes };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.perfis.push({ id: uid("perfil"), ...data }); }
+    await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
   });
 }
 
@@ -2021,7 +2187,7 @@ function modalCompraCartao(cartaoIdPreset){
 // ============================================================
 function modalBaixa(l){
   const contaAtual = contaById(l.contaOrigem);
-  const unlockedValor = l.tipo === "Despesa" ? state.pagarUnlocked : state.receberUnlocked;
+  const unlockedValor = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">💲 Dar baixa no título</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -2052,7 +2218,7 @@ function modalPagarFatura(cartaoId, dataVencimento){
   const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago");
   if(!itens.length){ showToast("Essa fatura já está paga.", "error"); return; }
   const total = itens.reduce((s,l) => s + Number(l.valor), 0);
-  const unlockedValor = state.pagarUnlocked;
+  const unlockedValor = pagarDesbloqueado();
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   const itensHTML = itens.map(l => `
     <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #F0F1F4; font-size:12px;">
@@ -2101,7 +2267,7 @@ function modalDetalheFatura(cartaoId, dataVencimento){
     .sort((a,b) => (a.dataCompra||a.data).localeCompare(b.dataCompra||b.data));
   if(!itens.length) return;
   const total = itens.reduce((s,l) => s + Number(l.valor), 0);
-  const unlockedValor = state.pagarUnlocked;
+  const unlockedValor = pagarDesbloqueado();
   const temPendente = itens.some(l => l.status !== "Pago");
   const rows = itens.map(l => {
     const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
@@ -2220,6 +2386,9 @@ document.addEventListener("click", async e => {
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "logout") doLogout();
+  else if(action === "selecionar-master"){ state.perfilAtivo = null; state.perfilEscolhido = true; renderApp(); }
+  else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
+  else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
   else if(action === "exportar-backup") exportarBackup();
   else if(action === "unlock-pagar") modalSenha("pagar");
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
@@ -2343,6 +2512,18 @@ document.addEventListener("click", async e => {
     state.negocios = state.negocios.filter(n => n.id !== id);
     await deleteRow("negocios", id);
     renderApp(); showToast("Negócio removido.");
+  }
+
+  else if(action === "new-perfil") modalPerfil(null);
+  else if(action === "edit-perfil") modalPerfil(perfilById(id));
+  else if(action === "del-perfil"){
+    const p = perfilById(id);
+    if(!p) return;
+    if(!confirm(`Excluir o usuário "${p.nome}"? Ele não vai mais conseguir entrar.`)) return;
+    state.perfis = state.perfis.filter(x => x.id !== id);
+    await deleteRow("perfis", id);
+    if(state.perfilAtivo && state.perfilAtivo.id === id){ state.perfilAtivo = null; state.perfilEscolhido = false; }
+    renderApp(); showToast("Usuário removido.");
   }
 
   else if(action === "new-cartao") modalCartao(null);
