@@ -147,6 +147,8 @@
   .btn-ghost:hover{ background: #F0F1F4; }
   .btn-danger-text{ background:transparent; color:var(--danger); border:none; padding:4px 8px; font-size:12.5px; }
   .btn-sm{ padding:6px 10px; font-size:12px; }
+  .btn-logout{ background: rgba(255,255,255,.08); color: var(--sidebar-ink); border:1px solid rgba(255,255,255,.1); }
+  .btn-logout:hover{ background: rgba(255,50,50,.15); border-color: rgba(255,50,50,.3); }
   .kpi-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom: 22px; }
   .kpi-card{
     background: var(--panel);
@@ -342,6 +344,24 @@ function proximaData(dataISO, freq){
   d.setDate(Math.min(dia, diasNoMes));
   return d.toISOString().slice(0,10);
 }
+function calcularVencimento(dataCompraISO, cartao) {
+  const d = new Date(dataCompraISO + 'T00:00:00');
+  const diaCompra = d.getDate();
+  let anoFech = d.getFullYear(), mesFech = d.getMonth();
+  if (diaCompra > cartao.diaFechamento) { mesFech += 1; if (mesFech > 11) { mesFech = 0; anoFech += 1; } }
+  let anoVenc = anoFech, mesVenc = mesFech;
+  if (cartao.diaVencimento < cartao.diaFechamento) { mesVenc += 1; if (mesVenc > 11) { mesVenc = 0; anoVenc += 1; } }
+  const diasNoMes = new Date(anoVenc, mesVenc + 1, 0).getDate();
+  const diaVenc = Math.min(cartao.diaVencimento, diasNoMes);
+  return new Date(anoVenc, mesVenc, diaVenc).toISOString().slice(0,10);
+}
+function subcategoriasDe(nomeCategoria){
+  const cat = categoriaByNome(nomeCategoria);
+  return cat ? cat.subcategorias : [];
+}
+function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
+function caixinhasDe(contaId){ return state.contas.filter(c => c.parentId === contaId); }
+function contasParaSelecao(selectedId){ return state.contas.filter(c => c.ativa !== false || c.id === selectedId); }
 
 // ============================================================
 // FUNÇÕES SUPABASE
@@ -569,20 +589,6 @@ function faturasAgrupadas(cartaoId) {
   });
   return Object.values(grupos).sort((a,b) => a.data.localeCompare(b.data));
 }
-function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
-function caixinhasDe(contaId){ return state.contas.filter(c => c.parentId === contaId); }
-function contasParaSelecao(selectedId){ return state.contas.filter(c => c.ativa !== false || c.id === selectedId); }
-function calcularVencimento(dataCompraISO, cartao) {
-  const d = new Date(dataCompraISO + 'T00:00:00');
-  const diaCompra = d.getDate();
-  let anoFech = d.getFullYear(), mesFech = d.getMonth();
-  if (diaCompra > cartao.diaFechamento) { mesFech += 1; if (mesFech > 11) { mesFech = 0; anoFech += 1; } }
-  let anoVenc = anoFech, mesVenc = mesFech;
-  if (cartao.diaVencimento < cartao.diaFechamento) { mesVenc += 1; if (mesVenc > 11) { mesVenc = 0; anoVenc += 1; } }
-  const diasNoMes = new Date(anoVenc, mesVenc + 1, 0).getDate();
-  const diaVenc = Math.min(cartao.diaVencimento, diasNoMes);
-  return new Date(anoVenc, mesVenc, diaVenc).toISOString().slice(0,10);
-}
 
 // ============================================================
 // NAVEGAÇÃO
@@ -621,7 +627,7 @@ function renderApp() {
         <button class="sidebar-lock-btn ${state.receberUnlocked ? 'unlocked' : ''}" data-action="${state.receberUnlocked ? 'lock-receber' : 'unlock-receber'}">
           ${state.receberUnlocked ? "🔓 Ocultar a receber" : "🔒 Ver a receber"}
         </button>
-        <button class="sidebar-lock-btn btn-primary" data-action="logout" style="background:#c1432e;">🚪 Sair</button>
+        <button class="sidebar-lock-btn btn-logout" data-action="logout">🚪 Sair</button>
         <div style="font-size:10px; color:var(--sidebar-faint); margin-top:4px;">${state.user?.email}</div>
       </div>
     </aside>
@@ -634,9 +640,6 @@ function renderApp() {
 function navItem(view, icon, label){
   const active = state.view === view ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav" data-view="${view}"><span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span></div>`;
-}
-function navItemSoon(label){
-  return `<div class="nav-item disabled"><span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">○</span><span class="label">${label}</span></span><span class="soon-badge label">em breve</span></div>`;
 }
 function renderView(){
   const main = document.getElementById('mainArea');
@@ -675,7 +678,7 @@ function renderLogin() {
 }
 
 // ============================================================
-// VIEW: DASHBOARD (COMPLETO)
+// VIEW: DASHBOARD
 // ============================================================
 function viewDashboard() {
   const lockedReceber = !state.receberUnlocked;
@@ -774,7 +777,7 @@ function viewContas() {
   };
   const rows = contasRaiz().map(c => rowHTML(c,false) + caixinhasDe(c.id).map(cx=>rowHTML(cx,true)).join("")).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div></div><button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div>
+    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas.</div></div><button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
@@ -880,7 +883,7 @@ function viewNegocios() {
 }
 
 // ============================================================
-// VIEW: CARTÕES (COMPLETO)
+// VIEW: CARTÕES
 // ============================================================
 function viewCartoes() {
   const lockedPagar = !state.pagarUnlocked;
@@ -918,7 +921,6 @@ function viewCartoes() {
     ${state.cartoes.map(cardHTML).join("") || emptyState("Nenhum cartão cadastrado.")}
   `;
 }
-
 function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 
 // ============================================================
@@ -957,7 +959,7 @@ function handleImportarBackup(e){
 }
 
 // ============================================================
-// MODAIS - COMPLETOS COM REPETIÇÃO
+// MODAIS
 // ============================================================
 function openModal(html) {
   const overlay = document.createElement('div');
@@ -1038,11 +1040,39 @@ function modalLancamento(existing) {
     <div class="modal-head"><div class="modal-title">${isEdit ? 'Editar lançamento' : 'Novo lançamento'}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formLanc"><div class="modal-body">
       <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${l.data}"></div><div class="field"><label>Tipo</label><select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
-      <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}"><label>Negócio</label><select name="negocio">${negOpts}</select></div>
+      <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}">
+        <label>Negócio</label>
+        <select name="negocio" id="lancNegocioSelect">
+          <option value="">— Selecione —</option>${negOpts}
+          <option value="__novo__">+ Novo negócio...</option>
+        </select>
+        <div class="field-inline-add" id="novoNegocioRow" style="display:none; margin-top:8px;">
+          <input type="text" id="novoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--line); margin-bottom:6px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="novoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
+        </div>
+      </div>
       <div class="field-row"><div class="field"><label>${l.tipo==='Transferência' ? 'Conta origem' : 'Conta'}</label><select name="contaOrigem">${contaOpts}</select></div><div id="lancDestinoWrap" class="field" style="display:${l.tipo==='Transferência'?'block':'none'}"><label>Conta destino</label><select name="contaDestino">${contaDestOpts}</select></div></div>
       <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
-        <div class="field"><label>Categoria</label><select name="categoria" id="lancCategoriaSelect"><option value="">— Selecione —</option>${catOpts}</select></div>
-        <div class="field"><label>Subcategoria</label><select name="subcategoria" id="lancSubcategoriaSelect"><option value="">— Nenhuma —</option>${subOpts}</select></div>
+        <div class="field"><label>Categoria</label>
+          <select name="categoria" id="lancCategoriaSelect">
+            <option value="">— Selecione —</option>${catOpts}
+            <option value="__nova__">+ Nova categoria...</option>
+          </select>
+          <div class="field-inline-add" id="novaCategoriaRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--line); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaCategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar categoria</button>
+          </div>
+        </div>
+        <div class="field"><label>Subcategoria</label>
+          <select name="subcategoria" id="lancSubcategoriaSelect">
+            <option value="">— Nenhuma —</option>${subOpts}
+            <option value="__nova__">+ Nova subcategoria...</option>
+          </select>
+          <div class="field-inline-add" id="novaSubcategoriaRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--line); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaSubcategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar subcategoria</button>
+          </div>
+        </div>
       </div>
       <div class="field"><label>Valor (R$)</label><input required type="number" step="0.01" min="0.01" name="valor" value="${l.valor}"></div>
       <div class="field"><label>Descrição</label><input required type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
@@ -1056,6 +1086,90 @@ function modalLancamento(existing) {
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? 'Salvar' : 'Adicionar'}</button></div></form>
   `);
 
+  // ---- Categoria inline ----
+  const catSelect = document.getElementById('lancCategoriaSelect');
+  const subSelect = document.getElementById('lancSubcategoriaSelect');
+  const novaCategoriaRow = document.getElementById('novaCategoriaRow');
+  const novaSubcategoriaRow = document.getElementById('novaSubcategoriaRow');
+
+  catSelect.addEventListener('change', function() {
+    if (this.value === '__nova__') {
+      novaCategoriaRow.style.display = 'block';
+      document.getElementById('novaCategoriaInput').focus();
+    } else {
+      novaCategoriaRow.style.display = 'none';
+      subSelect.innerHTML = `<option value="">— Nenhuma —</option>${subcategoriasDe(this.value).map(s => `<option value="${esc(s.nome)}">${esc(s.nome)}</option>`).join('')}<option value="__nova__">+ Nova subcategoria...</option>`;
+      novaSubcategoriaRow.style.display = 'none';
+    }
+  });
+
+  document.getElementById('novaCategoriaBtn').addEventListener('click', function() {
+    const input = document.getElementById('novaCategoriaInput');
+    const nome = input.value.trim();
+    if (!nome) { input.focus(); return; }
+    if (categoriaByNome(nome)) { showToast('Essa categoria já existe.', 'error'); return; }
+    state.categorias.push({ id: uid('cat'), nome, subcategorias: [] });
+    saveCategorias();
+    catSelect.innerHTML = `<option value="">— Selecione —</option>${state.categorias.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join('')}<option value="__nova__">+ Nova categoria...</option>`;
+    catSelect.value = nome;
+    novaCategoriaRow.style.display = 'none';
+    input.value = '';
+    subSelect.innerHTML = `<option value="">— Nenhuma —</option><option value="__nova__">+ Nova subcategoria...</option>`;
+    showToast('Categoria criada.');
+  });
+
+  subSelect.addEventListener('change', function() {
+    if (this.value === '__nova__') {
+      novaSubcategoriaRow.style.display = 'block';
+      document.getElementById('novaSubcategoriaInput').focus();
+    } else {
+      novaSubcategoriaRow.style.display = 'none';
+    }
+  });
+
+  document.getElementById('novaSubcategoriaBtn').addEventListener('click', function() {
+    const input = document.getElementById('novaSubcategoriaInput');
+    const nome = input.value.trim();
+    if (!nome) { input.focus(); return; }
+    const cat = categoriaByNome(catSelect.value);
+    if (!cat) { showToast('Escolha uma categoria primeiro.', 'error'); return; }
+    if (cat.subcategorias.some(s => s.nome === nome)) { showToast('Essa subcategoria já existe.', 'error'); return; }
+    cat.subcategorias.push({ id: uid('sub'), nome });
+    saveCategorias();
+    subSelect.innerHTML = `<option value="">— Nenhuma —</option>${cat.subcategorias.map(s => `<option value="${esc(s.nome)}">${esc(s.nome)}</option>`).join('')}<option value="__nova__">+ Nova subcategoria...</option>`;
+    subSelect.value = nome;
+    novaSubcategoriaRow.style.display = 'none';
+    input.value = '';
+    showToast('Subcategoria criada.');
+  });
+
+  // ---- Negócio inline ----
+  const negSelect = document.getElementById('lancNegocioSelect');
+  const novoNegocioRow = document.getElementById('novoNegocioRow');
+
+  negSelect.addEventListener('change', function() {
+    if (this.value === '__novo__') {
+      novoNegocioRow.style.display = 'block';
+      document.getElementById('novoNegocioInput').focus();
+    } else {
+      novoNegocioRow.style.display = 'none';
+    }
+  });
+
+  document.getElementById('novoNegocioBtn').addEventListener('click', function() {
+    const input = document.getElementById('novoNegocioInput');
+    const nome = input.value.trim();
+    if (!nome) { input.focus(); return; }
+    if (negocioByNome(nome)) { showToast('Esse negócio já existe.', 'error'); return; }
+    state.negocios.push({ id: uid('neg'), nome, cor: PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length] });
+    saveNegocios();
+    negSelect.innerHTML = `<option value="">— Selecione —</option>${state.negocios.map(n => `<option value="${esc(n.nome)}">${esc(n.nome)}</option>`).join('')}<option value="__novo__">+ Novo negócio...</option>`;
+    negSelect.value = nome;
+    novoNegocioRow.style.display = 'none';
+    input.value = '';
+    showToast('Negócio criado.');
+  });
+
   document.getElementById('lancTipo').addEventListener('change', function() {
     const isTransf = this.value === 'Transferência';
     document.getElementById('lancDestinoWrap').style.display = isTransf ? 'block' : 'none';
@@ -1064,7 +1178,7 @@ function modalLancamento(existing) {
   });
 
   const repSelect = document.getElementById('lancRepeticao');
-  if(repSelect){
+  if (repSelect) {
     const recWrap = document.getElementById('repeticaoRecorrenteWrap');
     const parWrap = document.getElementById('repeticaoParceladoWrap');
     repSelect.addEventListener('change', function() {
@@ -1077,9 +1191,28 @@ function modalLancamento(existing) {
     e.preventDefault();
     const fd = new FormData(e.target);
     const tipo = fd.get('tipo');
-    const data = { data: fd.get('data'), tipo, negocio: tipo==='Transferência'?'':(fd.get('negocio')||''), categoria: tipo==='Transferência'?'':(fd.get('categoria')||''), subcategoria: tipo==='Transferência'?'':(fd.get('subcategoria')||''), contaOrigem: fd.get('contaOrigem'), contaDestino: tipo==='Transferência'?fd.get('contaDestino'):'', valor: parseFloat(fd.get('valor'))||0, descricao: fd.get('descricao').trim(), status: fd.get('status'), conciliado: fd.get('conciliado') === 'on' };
-    if (tipo === 'Transferência' && data.contaOrigem === data.contaDestino) { showToast('Contas não podem ser iguais.', 'error'); return; }
-    if (isEdit) { Object.assign(existing, data); await saveLancamentos(); closeModal(); renderApp(); showToast('Lançamento atualizado.'); return; }
+    const data = {
+      data: fd.get('data'), tipo,
+      negocio: tipo === 'Transferência' ? '' : (fd.get('negocio') || ''),
+      categoria: tipo === 'Transferência' ? '' : (fd.get('categoria') || ''),
+      subcategoria: tipo === 'Transferência' ? '' : (fd.get('subcategoria') || ''),
+      contaOrigem: fd.get('contaOrigem'),
+      contaDestino: tipo === 'Transferência' ? fd.get('contaDestino') : '',
+      valor: parseFloat(fd.get('valor')) || 0,
+      descricao: fd.get('descricao').trim(),
+      status: fd.get('status'),
+      conciliado: fd.get('conciliado') === 'on'
+    };
+    if (tipo === 'Transferência' && data.contaOrigem === data.contaDestino) {
+      showToast('Contas não podem ser iguais.', 'error');
+      return;
+    }
+    if (isEdit) {
+      Object.assign(existing, data);
+      await saveLancamentos();
+      closeModal(); renderApp(); showToast('Lançamento atualizado.');
+      return;
+    }
     const repeticao = fd.get('repeticao') || 'nenhuma';
     if (repeticao === 'nenhuma') {
       state.lancamentos.push({ id: uid('l'), ...data });
@@ -1089,7 +1222,7 @@ function modalLancamento(existing) {
       let dataOcorrencia = data.data;
       const ocorrenciasPorAno = { 'Semanal':52, 'Quinzenal':24, 'Mensal':12, 'Bimestral':6, 'Trimestral':4, 'Semestral':2, 'Anual':1 };
       const qtd = (ocorrenciasPorAno[freq]||12) * HORIZONTE_ANOS;
-      for(let i=0;i<qtd;i++){
+      for (let i=0; i<qtd; i++) {
         state.lancamentos.push({ id: uid('l'), ...data, data: dataOcorrencia, descricao: i===0 ? data.descricao : `${data.descricao} (${i+1})`, status: i===0 ? data.status : 'Provisionado', conciliado: i===0 ? data.conciliado : false, recorrenciaId: grupoId, recorrenciaTipo: 'recorrente', recorrenciaIndex: i+1, recorrenciaTotal: qtd });
         dataOcorrencia = proximaData(dataOcorrencia, freq);
       }
@@ -1098,13 +1231,14 @@ function modalLancamento(existing) {
       const qtd = Math.max(2, parseInt(fd.get('qtdParcelas'))||3);
       const grupoId = uid('rec');
       let dataOcorrencia = data.data;
-      for(let i=0;i<qtd;i++){
+      for (let i=0; i<qtd; i++) {
         state.lancamentos.push({ id: uid('l'), ...data, data: dataOcorrencia, descricao: `${data.descricao} (${i+1}/${qtd})`, status: i===0 ? data.status : 'Provisionado', conciliado: i===0 ? data.conciliado : false, recorrenciaId: grupoId, recorrenciaTipo: 'parcelado', recorrenciaIndex: i+1, recorrenciaTotal: qtd });
         dataOcorrencia = proximaData(dataOcorrencia, 'Mensal');
       }
       showToast(`${qtd} parcelas criadas.`);
     }
-    await saveLancamentos(); closeModal(); renderApp(); showToast('Lançamento adicionado.');
+    await saveLancamentos();
+    closeModal(); renderApp(); showToast('Lançamento adicionado.');
   });
 }
 
@@ -1147,9 +1281,16 @@ function modalCategoria(existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome) return;
-    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.categoria === nomeAntigo) l.categoria = nome; }); await saveLancamentos(); }
-    else { state.categorias.push({ id: uid('cat'), nome, subcategorias: [] }); }
-    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? 'Categoria atualizada.' : 'Categoria criada.');
+    if (isEdit) {
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if (l.categoria === nomeAntigo) l.categoria = nome; });
+      await saveLancamentos();
+    } else {
+      state.categorias.push({ id: uid('cat'), nome, subcategorias: [] });
+    }
+    await saveCategorias();
+    closeModal(); renderApp(); showToast(isEdit ? 'Categoria atualizada.' : 'Categoria criada.');
   });
 }
 
@@ -1167,9 +1308,16 @@ function modalSubcategoria(catId, existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome || !cat) return;
-    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; }); await saveLancamentos(); }
-    else { cat.subcategorias.push({ id: uid('sub'), nome }); }
-    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? 'Subcategoria atualizada.' : 'Subcategoria criada.');
+    if (isEdit) {
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if (l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; });
+      await saveLancamentos();
+    } else {
+      cat.subcategorias.push({ id: uid('sub'), nome });
+    }
+    await saveCategorias();
+    closeModal(); renderApp(); showToast(isEdit ? 'Subcategoria atualizada.' : 'Subcategoria criada.');
   });
 }
 
@@ -1186,9 +1334,16 @@ function modalNegocio(existing) {
     e.preventDefault();
     const nome = new FormData(e.target).get('nome').trim();
     if (!nome) return;
-    if (isEdit) { const nomeAntigo = existing.nome; existing.nome = nome; state.lancamentos.forEach(l => { if (l.negocio === nomeAntigo) l.negocio = nome; }); await saveLancamentos(); }
-    else { state.negocios.push({ id: uid('neg'), nome, cor: PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length] }); }
-    await saveNegocios(); closeModal(); renderApp(); showToast(isEdit ? 'Negócio atualizado.' : 'Negócio criado.');
+    if (isEdit) {
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if (l.negocio === nomeAntigo) l.negocio = nome; });
+      await saveLancamentos();
+    } else {
+      state.negocios.push({ id: uid('neg'), nome, cor: PALETA_NEGOCIOS[state.negocios.length % PALETA_NEGOCIOS.length] });
+    }
+    await saveNegocios();
+    closeModal(); renderApp(); showToast(isEdit ? 'Negócio atualizado.' : 'Negócio criado.');
   });
 }
 
@@ -1222,7 +1377,7 @@ function modalCartao(existing) {
 }
 
 // ============================================================
-// MODAL: COMPRA NO CARTÃO (COM PARCELAMENTO)
+// MODAL: COMPRA NO CARTÃO
 // ============================================================
 function modalCompraCartao(cartaoIdPreset) {
   if (!state.cartoes.length) { showToast('Cadastre um cartão primeiro.', 'error'); return; }
@@ -1329,11 +1484,30 @@ document.addEventListener('click', function(e) {
   }
 
   else if (action === 'new-lanc') modalLancamento(null);
-  else if (action === 'edit-lanc') modalLancamento(state.lancamentos.find(l=>l.id===id));
+  else if (action === 'edit-lanc') {
+    const l = state.lancamentos.find(x => x.id === id);
+    if (l) modalLancamento(l);
+  }
   else if (action === 'del-lanc') {
     if (!confirm('Excluir este lançamento?')) return;
-    state.lancamentos = state.lancamentos.filter(l => l.id !== id);
-    saveLancamentos(); renderApp();
+    const l = state.lancamentos.find(x => x.id === id);
+    if (l && l.recorrenciaId) {
+      const total = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId).length;
+      if (!confirm(`Este lançamento faz parte de uma série (${total} no total). Excluir apenas este ou todos? Clique OK para todos, Cancelar para apenas este.`)) {
+        state.lancamentos = state.lancamentos.filter(x => x.id !== id);
+        await saveLancamentos();
+        renderApp();
+        showToast('Lançamento removido.');
+        return;
+      }
+      state.lancamentos = state.lancamentos.filter(x => x.recorrenciaId !== l.recorrenciaId);
+      showToast(`Série completa removida (${total} lançamentos).`);
+    } else {
+      state.lancamentos = state.lancamentos.filter(x => x.id !== id);
+    }
+    await saveLancamentos();
+    renderApp();
+    showToast('Lançamento removido.');
   }
   else if (action === 'toggle-conc') {
     const l = state.lancamentos.find(x => x.id === id);
