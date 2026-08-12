@@ -1918,4 +1918,2598 @@ function viewLancamentos(){
       <td style="text-align:center;">${podeExcluir ? `<input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}>` : ""}</td>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
-   
+      <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
+      <td>${contaTxt}</td>
+      <td>${esc(l.descricao)}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}</td>
+      <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
+      <td><span class="status-pill ${statusClass}">${l.status}</span></td>
+      <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
+      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
+    </tr>`;
+  }).join("");
+  const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const statusOptions = STATUS_LANC.map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
+  const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
+  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.dataDe||lancFilter.dataAte;
+  const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
+  return `
+    <div class="page-header">
+      <div><div class="page-title">${cfg.titulo}</div><div class="page-sub">${cfg.sub}</div></div>
+      <div style="display:flex; gap:8px;">
+        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
+        <button class="btn btn-primary" data-action="new-lanc" data-tipo-preset="${cfg.tipoPreset||''}">${cfg.novoLabel}</button>
+      </div>
+    </div>
+    <div class="panel"><div class="filter-bar">
+      ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
+      <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
+      <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
+      <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
+      ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
+      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
+      ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
+    </div><div class="panel-body"><table><thead><tr>
+      <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
+      <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum lançamento encontrado com esse filtro.")}</td></tr>`}</tbody></table></div></div>
+  `;
+}
+
+// ============================================================
+// VIEW: AJUSTES DE SALDO
+// ============================================================
+function viewAjustes(){
+  const rows = [...state.ajustes].sort((a,b) => b.data.localeCompare(a.data)).map(a => {
+    const conta = contaById(a.contaId);
+    return `<tr>
+      <td>${fmtDateBR(a.data)}</td>
+      <td>${esc(conta?.nome || "Conta removida")}</td>
+      <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600; color:${receberDesbloqueado() ? (a.valor>=0?'var(--pos)':'var(--neg)') : 'inherit'};">${maskBRL(a.valor, receberDesbloqueado())}</td>
+      <td>${esc(a.motivo)}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header"><div><div class="page-title">Ajustes de Saldo</div><div class="page-sub">Use quando o extrato do banco não bater com o seu controle.</div></div><button class="btn btn-primary" data-action="new-ajuste">+ Novo ajuste</button></div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Data</th><th>Conta</th><th class="num">Valor</th><th>Motivo</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="5">${emptyState("Nenhum ajuste registrado.")}</td></tr>`}</tbody></table></div></div>
+  `;
+}
+
+// ============================================================
+// VIEW: CATEGORIAS
+// ============================================================
+function viewCategorias(){
+  const cards = state.categorias.map(cat => {
+    const subRows = (cat.subcategorias||[]).map(sub => `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 18px 9px 30px; border-top:1px solid var(--border);">
+        <span style="font-size:12.5px; color:var(--ink-3);">↳ ${esc(sub.nome)}</span>
+        <div class="row-actions"><button class="icon-btn" data-action="edit-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Excluir">🗑</button></div>
+      </div>`).join("");
+    return `<div class="panel" style="margin-bottom:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px;">
+        <strong style="font-size:13.5px;">${esc(cat.nome)}</strong>
+        <div class="row-actions"><button class="icon-btn" data-action="add-subcategoria" data-cat="${cat.id}" title="Nova subcategoria">+ subcat.</button><button class="icon-btn" data-action="edit-categoria" data-cat="${cat.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-categoria" data-cat="${cat.id}" title="Excluir">🗑</button></div>
+      </div>
+      ${subRows}
+    </div>`;
+  }).join("");
+  return `
+    <div class="page-header"><div><div class="page-title">Categorias</div><div class="page-sub">Gerencie as categorias e subcategorias usadas nos lançamentos.</div></div><button class="btn btn-primary" data-action="new-categoria">+ Nova categoria</button></div>
+    ${cards || emptyState("Nenhuma categoria cadastrada ainda.")}
+  `;
+}
+
+// ============================================================
+// VIEW: NEGÓCIOS
+// ============================================================
+function viewNegocios(){
+  const rows = state.negocios.map(n => {
+    const emUso = state.lancamentos.filter(l => l.negocio === n.nome).length;
+    return `<tr><td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
+  }).join("");
+  return `
+    <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Negócio</th><th style="text-align:center;">Em uso</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table></div></div>
+  `;
+}
+
+// ============================================================
+// VIEW: USUÁRIOS (Master gerencia quem tem acesso e ao quê)
+// ============================================================
+function viewUsuarios(){
+  const rows = state.perfis.map(p => {
+    let resumo;
+    if(p.tipo === "master"){
+      resumo = `<span class="status-pill status-pago">👑 Master — acesso completo</span>`;
+    }else{
+      const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
+      const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
+      const entradasCat = Object.entries(p.categoriasPermitidas || {}).filter(([,v]) => v).map(([cat]) => cat);
+      const catTxt = entradasCat.length ? `<div style="font-size:11px; color:var(--ink-4); margin-top:4px;">Categorias: ${entradasCat.map(esc).join(", ")}</div>` : "";
+      resumo = (negTags || `<span style="color:var(--ink-4); font-size:12px;">Nenhum negócio liberado ainda</span>`) + catTxt;
+    }
+    return `<tr>
+      <td><strong>${esc(p.nome)}</strong></td>
+      <td>${resumo}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo.</div></div>
+      <button class="btn btn-primary" data-action="new-perfil">+ Novo usuário</button>
+    </div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;">
+      <table><thead><tr><th>Nome</th><th>Permissões</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum usuário criado ainda — só o Master existe.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ============================================================
+// BACKUP (exportar/importar JSON)
+// ============================================================
+function exportarBackup(){
+  const dados = {
+    versao: "4-supabase", exportadoEm: new Date().toISOString(),
+    contas: state.contas, lancamentos: state.lancamentos, ajustes: state.ajustes,
+    categorias: state.categorias, negocios: state.negocios, cartoes: state.cartoes
+  };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-financeiro-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  showToast("Backup exportado.");
+}
+function handleImportarBackup(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const dados = JSON.parse(ev.target.result);
+      if(!dados || !Array.isArray(dados.contas)){ showToast("Arquivo de backup inválido.", "error"); return; }
+      if(!confirm("Importar esse backup vai substituir TODOS os dados atuais. Continuar?")) return;
+      state.contas = dados.contas || [];
+      state.lancamentos = dados.lancamentos || [];
+      state.ajustes = dados.ajustes || [];
+      state.categorias = dados.categorias || seedCategorias();
+      state.negocios = dados.negocios || seedNegocios();
+      state.cartoes = dados.cartoes || [];
+      await saveContas(); await saveLancamentos(); await saveAjustes();
+      await saveCategorias(); await saveNegocios(); await saveCartoes();
+      renderApp();
+      showToast("Backup importado com sucesso.");
+    }catch(err){ showToast("Não consegui ler esse arquivo.", "error"); }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+}
+
+// ============================================================
+// MODAIS — base
+// ============================================================
+function openModal(html){
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "modalOverlay";
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  overlay.addEventListener("click", e => { if(e.target === overlay) closeModal(); });
+  document.body.appendChild(overlay);
+}
+function closeModal(){ const el = document.getElementById("modalOverlay"); if(el) el.remove(); }
+
+// ============================================================
+// MODAL — SENHA (desbloqueia "contas a pagar" ou "contas a receber/saldo")
+// ============================================================
+function modalSenha(kind){
+  const cfg = kind === "pagar"
+    ? { titulo: "🔒 Ver contas a pagar", senha: SENHA_PAGAR, campo: "pagarUnlocked", toast: "Contas a pagar desbloqueadas." }
+    : { titulo: "🔒 Ver contas a receber / saldo", senha: SENHA_RECEBER, campo: "receberUnlocked", toast: "Contas a receber e saldo desbloqueados." };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${cfg.titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formSenha"><div class="modal-body">
+      <div class="field"><label>Senha</label><input required type="password" name="senha" autocomplete="off" placeholder="Digite a senha"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Desbloquear</button></div></form>
+  `);
+  const input = document.querySelector('#formSenha input[name="senha"]');
+  if(input) input.focus();
+  document.getElementById("formSenha").addEventListener("submit", e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(fd.get("senha") === cfg.senha){
+      state[cfg.campo] = true;
+      closeModal(); renderApp(); showToast(cfg.toast);
+    }else{
+      showToast("Senha incorreta.", "error");
+      const inp = document.querySelector('#formSenha input[name="senha"]');
+      if(inp){ inp.value = ""; inp.focus(); }
+    }
+  });
+}
+
+// ============================================================
+// MODAL — CONTA
+// ============================================================
+function modalConta(existing){
+  const isEdit = !!existing;
+  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar conta" : "Nova conta bancária"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formConta"><div class="modal-body">
+      <div class="field"><label>Nome da conta</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Mercado Pago, Caixa, C6 Bank PJ..."></div>
+      <div class="field-row">
+        <div class="field"><label>Instituição</label><input required type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div>
+        <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || receberDesbloqueado())}
+        <div class="field"><label>Limite cheque especial (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div>
+      </div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label>
+        <div class="field-help">Contas inativas ficam esmaecidas e somem das opções ao criar novos lançamentos, mas o histórico continua visível.</div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar conta"}</button></div></form>
+  `);
+  attachCalculadora("saldoInicial");
+  document.getElementById("formConta").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), instituicao: fd.get("instituicao").trim(), tipo: fd.get("tipo"),
+      saldoInicial: parseFloat(fd.get("saldoInicial"))||0, limite: parseFloat(fd.get("limite"))||0,
+      ativa: fd.get("ativa") === "on"
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.contas.push({ id: uid("c"), parentId: null, ...data }); }
+    await saveContas(); closeModal(); renderApp(); showToast(isEdit ? "Conta atualizada." : "Conta adicionada.");
+  });
+}
+
+// ============================================================
+// MODAL — CAIXINHA
+// ============================================================
+function modalCaixinha(parentId, existing){
+  const isEdit = !!existing;
+  const pai = contaById(parentId || (existing && existing.parentId));
+  const cx = existing || { nome:"", saldoInicial:0, ativa:true };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar caixinha" : "Nova caixinha"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCaixinha"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(pai ? pai.nome : "")}</strong></div>
+      <div class="field"><label>Nome da caixinha</label><input required type="text" name="nome" value="${esc(cx.nome)}" placeholder="Ex: Aluguel, Reserva, Impostos..."></div>
+      ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", cx.saldoInicial, !isEdit || receberDesbloqueado(), {help:"Normalmente 0 — separe o dinheiro depois com uma Transferência da conta para a caixinha."})}
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${cx.ativa!==false?"checked":""}> Caixinha ativa</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar caixinha"}</button></div></form>
+  `);
+  attachCalculadora("saldoInicial");
+  document.getElementById("formCaixinha").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { nome: fd.get("nome").trim(), saldoInicial: parseFloat(fd.get("saldoInicial"))||0, ativa: fd.get("ativa")==="on" };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.contas.push({ id: uid("cx"), parentId: pai.id, instituicao:"", tipo:"Caixinha", limite:0, ...data }); }
+    await saveContas(); closeModal(); renderApp(); showToast(isEdit ? "Caixinha atualizada." : "Caixinha criada.");
+  });
+}
+
+// ============================================================
+// MODAL — LANÇAMENTO
+// ============================================================
+function catOptionsHTML(selectedNome){
+  const categoriasPermitidas = ehMaster() ? state.categorias : state.categorias.filter(c => podeUsarCategoria(c.nome) || c.nome === selectedNome);
+  const opts = categoriasPermitidas.map(c => `<option value="${esc(c.nome)}" ${selectedNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
+  return `<option value="">— Selecione —</option>${opts}${ehMaster() ? `<option value="__nova__">+ Nova categoria...</option>` : ""}`;
+}
+function subcatOptionsHTML(nomeCategoria, selectedNome){
+  const subs = subcategoriasDe(nomeCategoria);
+  const opts = subs.map(s => `<option value="${esc(s.nome)}" ${selectedNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
+  return `<option value="">— Nenhuma —</option>${opts}${ehMaster() ? `<option value="__nova__">+ Nova subcategoria...</option>` : ""}`;
+}
+function negOptionsHTML(selectedNome){
+  const negociosPermitidos = ehMaster() ? state.negocios : state.negocios.filter(n => podeEditarNegocio(n.nome) || n.nome === selectedNome);
+  const opts = negociosPermitidos.map(n => `<option value="${esc(n.nome)}" ${selectedNome===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  return `<option value="">— Selecione —</option>${opts}${ehMaster() ? `<option value="__novo__">+ Novo negócio...</option>` : ""}`;
+}
+
+function contaOptionsComCriacao(selectedId){
+  const opts = contasParaSelecao(selectedId).map(c => `<option value="${c.id}" ${selectedId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  return `${opts}<option value="__nova__">+ Nova conta...</option>`;
+}
+function modalLancamento(existing, tipoPreset){
+  const isEdit = !!existing;
+  const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
+  const unlockedValor = !isEdit || (l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado());
+  const contaOpts = contaOptionsComCriacao(l.contaOrigem);
+  const contaDestOpts = contaOptionsComCriacao(l.contaDestino);
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar lançamento" : "Novo lançamento"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formLanc"><div class="modal-body">
+      <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${l.data}"></div><div class="field"><label>Tipo</label><select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
+      <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}">
+        <label>Negócio</label>
+        <select name="negocio" id="lancNegocioSelect">${negOptionsHTML(l.negocio)}</select>
+        <div class="field-inline-add" id="novoNegocioRow" style="display:none; margin-top:8px;">
+          <input type="text" id="novoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="novoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>${l.tipo==='Transferência' ? 'Conta de origem' : 'Conta'}</label>
+          <select name="contaOrigem" id="lancContaOrigemSelect">${contaOpts}</select>
+          <div class="field-inline-add" id="novaContaOrigemRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaContaOrigemNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <input type="text" id="novaContaOrigemInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaContaOrigemBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
+          </div>
+        </div>
+        <div id="lancDestinoWrap" class="field" style="display:${l.tipo==='Transferência'?'block':'none'}">
+          <label>Conta de destino</label>
+          <select name="contaDestino" id="lancContaDestinoSelect">${contaDestOpts}</select>
+          <div class="field-inline-add" id="novaContaDestinoRow" style="display:none; margin-top:8px;">
+            <input type="text" id="novaContaDestinoNome" placeholder="Nome da conta (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <input type="text" id="novaContaDestinoInstituicao" placeholder="Instituição (ex: Nubank)" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="novaContaDestinoBtn" style="width:100%; justify-content:center;">+ Adicionar conta</button>
+          </div>
+        </div>
+      </div>
+      <div id="valorFieldWrap">${campoValorProtegido(`Valor (R$) <span class="field-help" id="valorHint" style="display:inline;"></span>`, "valor", l.valor, unlockedValor, {min:"0.01"})}</div>
+      <div id="lancCategoriaWrap" style="display:${l.tipo==='Transferência'?'none':'block'}">
+        <div class="field-row">
+          <div class="field"><label>Categoria</label>
+            <select name="categoria" id="lancCategoriaSelect">${catOptionsHTML(l.categoria)}</select>
+            <div class="field-inline-add" id="novaCategoriaRow" style="display:none; margin-top:8px;">
+              <input type="text" id="novaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+              <button type="button" class="btn btn-ghost btn-sm" id="novaCategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar categoria</button>
+            </div>
+          </div>
+          <div class="field"><label>Subcategoria</label>
+            <select name="subcategoria" id="lancSubcategoriaSelect">${subcatOptionsHTML(l.categoria, l.subcategoria)}</select>
+            <div class="field-inline-add" id="novaSubcategoriaRow" style="display:none; margin-top:8px;">
+              <input type="text" id="novaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+              <button type="button" class="btn btn-ghost btn-sm" id="novaSubcategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar subcategoria</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
+      <div class="field-row"><div class="field"><label>Status</label><select name="status" id="lancStatus">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Já conciliado com o extrato</label></div></div>
+      <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (botão 💲 em Lançamentos). Agendado = já agendado no banco para débito/crédito automático — vira "Pago" sozinho na data.</div>
+      ${!isEdit ? `
+      <div class="field">
+        <label>Repetição</label>
+        <select name="repeticao" id="lancRepeticao">
+          <option value="nenhuma">Não se repete</option>
+          <option value="recorrente">🔁 Recorrente / despesa fixa</option>
+          <option value="parcelado">💳 Parcelado</option>
+        </select>
+      </div>
+      <div id="repeticaoRecorrenteWrap" class="field" style="display:none;">
+        <label>Repetir a cada</label>
+        <select name="frequencia">${PERIODOS.map(f=>`<option value="${f}" ${f==='Mensal'?'selected':''}>${f}</option>`).join("")}</select>
+        <div class="field-help">É fixo, então não pedimos por quanto tempo — geramos automaticamente os próximos ${HORIZONTE_ANOS} anos de lançamentos.</div>
+      </div>
+      <div id="repeticaoParceladoWrap" class="field" style="display:none;">
+        <label>Número de parcelas</label>
+        <input type="number" min="2" max="60" step="1" name="qtdParcelas" value="3" id="lancQtdParcelas">
+        <div class="field-help" style="margin-bottom:10px;">Cada parcela cai um mês depois da anterior.</div>
+        <label>O valor informado acima é</label>
+        <select name="tipoValorParcela" id="lancTipoValorParcela">
+          <option value="parcela">O valor de cada parcela</option>
+          <option value="total">O valor TOTAL da compra (divide entre as parcelas)</option>
+        </select>
+        <div class="field-help" id="lancDivisaoPreview"></div>
+      </div>
+      ` : ""}
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar lançamento"}</button></div></form>
+  `);
+
+  document.getElementById("lancTipo").addEventListener("change", e => {
+    const isTransf = e.target.value === "Transferência";
+    document.getElementById("lancDestinoWrap").style.display = isTransf ? "block" : "none";
+    document.getElementById("lancNegocioWrap").style.display = isTransf ? "none" : "block";
+    document.getElementById("lancCategoriaWrap").style.display = isTransf ? "none" : "block";
+  });
+
+  // ---- Categoria inline ----
+  const catSelect = document.getElementById("lancCategoriaSelect");
+  const subSelect = document.getElementById("lancSubcategoriaSelect");
+  const novaCategoriaRow = document.getElementById("novaCategoriaRow");
+  const novaSubcategoriaRow = document.getElementById("novaSubcategoriaRow");
+  catSelect.addEventListener("change", () => {
+    if(catSelect.value === "__nova__"){
+      novaCategoriaRow.style.display = "block";
+      document.getElementById("novaCategoriaInput").focus();
+    }else{
+      novaCategoriaRow.style.display = "none";
+      subSelect.innerHTML = subcatOptionsHTML(catSelect.value, "");
+      novaSubcategoriaRow.style.display = "none";
+    }
+  });
+  document.getElementById("novaCategoriaBtn").addEventListener("click", () => {
+    const input = document.getElementById("novaCategoriaInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    if(categoriaByNome(nome)){ showToast("Essa categoria já existe.", "error"); return; }
+    state.categorias.push({ id: uid("cat"), nome, subcategorias: [] });
+    saveCategorias();
+    catSelect.innerHTML = catOptionsHTML(nome);
+    novaCategoriaRow.style.display = "none";
+    input.value = "";
+    subSelect.innerHTML = subcatOptionsHTML(nome, "");
+    showToast("Categoria criada.");
+  });
+  subSelect.addEventListener("change", () => {
+    if(subSelect.value === "__nova__"){
+      if(!catSelect.value || catSelect.value === "__nova__"){
+        showToast("Escolha (ou crie) uma categoria primeiro.", "error");
+        subSelect.value = "";
+        return;
+      }
+      novaSubcategoriaRow.style.display = "block";
+      document.getElementById("novaSubcategoriaInput").focus();
+    }else{
+      novaSubcategoriaRow.style.display = "none";
+    }
+  });
+  document.getElementById("novaSubcategoriaBtn").addEventListener("click", () => {
+    const input = document.getElementById("novaSubcategoriaInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    const cat = categoriaByNome(catSelect.value);
+    if(!cat){ showToast("Escolha uma categoria primeiro.", "error"); return; }
+    if(cat.subcategorias.some(s=>s.nome===nome)){ showToast("Essa subcategoria já existe.", "error"); return; }
+    cat.subcategorias.push({ id: uid("sub"), nome });
+    saveCategorias();
+    subSelect.innerHTML = subcatOptionsHTML(cat.nome, nome);
+    novaSubcategoriaRow.style.display = "none";
+    input.value = "";
+    showToast("Subcategoria criada.");
+  });
+
+  // ---- Negócio inline ----
+  const negSelect = document.getElementById("lancNegocioSelect");
+  const novoNegocioRow = document.getElementById("novoNegocioRow");
+  negSelect.addEventListener("change", () => {
+    novoNegocioRow.style.display = negSelect.value === "__novo__" ? "block" : "none";
+    if(negSelect.value === "__novo__") document.getElementById("novoNegocioInput").focus();
+  });
+  document.getElementById("novoNegocioBtn").addEventListener("click", () => {
+    const input = document.getElementById("novoNegocioInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    if(negocioByNome(nome)){ showToast("Esse negócio já existe.", "error"); return; }
+    state.negocios.push({ id: uid("neg"), nome, cor: proximaCorNegocio() });
+    saveNegocios();
+    negSelect.innerHTML = negOptionsHTML(nome);
+    novoNegocioRow.style.display = "none";
+    input.value = "";
+    showToast("Negócio criado.");
+  });
+
+  // ---- Conta (origem/destino) inline: qualquer usuário pode cadastrar uma conta que ainda não existe ----
+  function wireContaInline(selectId, rowId, nomeId, instId, btnId){
+    const select = document.getElementById(selectId);
+    const row = document.getElementById(rowId);
+    if(!select || !row) return;
+    select.addEventListener("change", () => {
+      if(select.value === "__nova__"){
+        row.style.display = "block";
+        document.getElementById(nomeId).focus();
+      }else{
+        row.style.display = "none";
+      }
+    });
+    document.getElementById(btnId).addEventListener("click", async () => {
+      const nomeInput = document.getElementById(nomeId);
+      const instInput = document.getElementById(instId);
+      const nome = nomeInput.value.trim();
+      const instituicao = instInput.value.trim();
+      if(!nome){ nomeInput.focus(); return; }
+      const nova = { id: uid("c"), parentId: null, nome, instituicao, tipo: "Conta Corrente", saldoInicial: 0, limite: 0, ativa: true };
+      state.contas.push(nova);
+      await saveContas();
+      select.innerHTML = contaOptionsComCriacao(nova.id);
+      row.style.display = "none";
+      nomeInput.value = ""; instInput.value = "";
+      showToast("Conta criada.");
+    });
+  }
+  wireContaInline("lancContaOrigemSelect", "novaContaOrigemRow", "novaContaOrigemNome", "novaContaOrigemInstituicao", "novaContaOrigemBtn");
+  wireContaInline("lancContaDestinoSelect", "novaContaDestinoRow", "novaContaDestinoNome", "novaContaDestinoInstituicao", "novaContaDestinoBtn");
+
+  // ---- Repetição + divisão total/parcela ----
+  const repSelect = document.getElementById("lancRepeticao");
+  if(repSelect){
+    const recWrap = document.getElementById("repeticaoRecorrenteWrap");
+    const parWrap = document.getElementById("repeticaoParceladoWrap");
+    const valorHint = document.getElementById("valorHint");
+    const tipoValorParcela = document.getElementById("lancTipoValorParcela");
+    const qtdParcelasInput = document.getElementById("lancQtdParcelas");
+    const divisaoPreview = document.getElementById("lancDivisaoPreview");
+    const atualizarDivisaoPreview = () => {
+      if(repSelect.value !== "parcelado" || tipoValorParcela.value !== "total"){ divisaoPreview.textContent = ""; return; }
+      const valorInput = document.getElementById("campo_valor");
+      const total = parseFloat(valorInput ? valorInput.value : 0) || 0;
+      const qtd = Math.max(2, parseInt(qtdParcelasInput.value)||2);
+      const partes = dividirValor(total, qtd);
+      divisaoPreview.textContent = partes[0] === partes[partes.length-1]
+        ? `${qtd}x de ${fmtBRL(partes[0])}`
+        : `${qtd-1}x de ${fmtBRL(partes[0])} + 1x de ${fmtBRL(partes[partes.length-1])} (ajuste de centavos)`;
+    };
+    repSelect.addEventListener("change", () => {
+      recWrap.style.display = repSelect.value === "recorrente" ? "block" : "none";
+      parWrap.style.display = repSelect.value === "parcelado" ? "block" : "none";
+      valorHint.textContent = repSelect.value === "parcelado" ? "(valor de cada parcela, por padrão)" : (repSelect.value === "recorrente" ? "(valor de cada ocorrência)" : "");
+      atualizarDivisaoPreview();
+    });
+    tipoValorParcela.addEventListener("change", atualizarDivisaoPreview);
+    qtdParcelasInput.addEventListener("input", atualizarDivisaoPreview);
+    document.getElementById("campo_valor")?.addEventListener("input", atualizarDivisaoPreview);
+  }
+  attachCalculadora("valor");
+
+  document.getElementById("formLanc").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const tipo = fd.get("tipo");
+    if(catSelect.value === "__nova__" || subSelect.value === "__nova__"){
+      showToast("Finalize a criação da categoria/subcategoria antes de salvar.", "error"); return;
+    }
+    if(negSelect.value === "__novo__"){
+      showToast("Finalize a criação do negócio antes de salvar.", "error"); return;
+    }
+    if(fd.get("contaOrigem") === "__nova__" || fd.get("contaDestino") === "__nova__"){
+      showToast("Finalize a criação da conta antes de salvar.", "error"); return;
+    }
+    const data = {
+      data: fd.get("data"), tipo,
+      negocio: tipo === "Transferência" ? "" : (fd.get("negocio")||""),
+      categoria: tipo === "Transferência" ? "" : (fd.get("categoria")||""),
+      subcategoria: tipo === "Transferência" ? "" : (fd.get("subcategoria")||""),
+      contaOrigem: fd.get("contaOrigem"),
+      contaDestino: tipo === "Transferência" ? fd.get("contaDestino") : "",
+      valor: parseFloat(fd.get("valor"))||0,
+      descricao: fd.get("descricao").trim(),
+      status: fd.get("status"),
+      conciliado: fd.get("conciliado") === "on",
+      lancadoPor: isEdit ? existing.lancadoPor : (state.perfilAtivo ? state.perfilAtivo.nome : "Master"),
+      editadoPor: isEdit ? (state.perfilAtivo ? state.perfilAtivo.nome : "Master") : undefined
+    };
+    if(tipo === "Transferência" && data.contaOrigem === data.contaDestino){
+      showToast("Conta de origem e destino não podem ser iguais.", "error"); return;
+    }
+
+    if(isEdit){
+      if(existing.recorrenciaId){
+        closeModal();
+        modalEscopoEdicaoSerie(existing, data);
+      }else{
+        Object.assign(existing, data);
+        await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento atualizado.");
+      }
+      return;
+    }
+
+    const repeticao = fd.get("repeticao") || "nenhuma";
+    if(repeticao === "nenhuma"){
+      state.lancamentos.push({ id: uid("l"), ...data });
+      await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento adicionado.");
+      return;
+    }
+    const isParcelado = repeticao === "parcelado";
+    const freq = isParcelado ? "Mensal" : (fd.get("frequencia")||"Mensal");
+    const OCORRENCIAS_POR_ANO = { "Semanal":52, "Quinzenal":24, "Mensal":12, "Bimestral":6, "Trimestral":4, "Semestral":2, "Anual":1 };
+    let qtd;
+    if(isParcelado){
+      qtd = Math.max(2, parseInt(fd.get("qtdParcelas"))||2);
+    }else{
+      qtd = (OCORRENCIAS_POR_ANO[freq]||12) * HORIZONTE_ANOS;
+    }
+    const valoresParcelas = (isParcelado && fd.get("tipoValorParcela") === "total") ? dividirValor(data.valor, qtd) : null;
+    const grupoId = uid("rec");
+    let dataOcorrencia = data.data;
+    for(let i=0;i<qtd;i++){
+      const descricaoOcorrencia = isParcelado ? `${data.descricao} (${i+1}/${qtd})` : data.descricao;
+      state.lancamentos.push({
+        id: uid("l"), ...data,
+        valor: valoresParcelas ? valoresParcelas[i] : data.valor,
+        data: dataOcorrencia,
+        descricao: descricaoOcorrencia,
+        status: i===0 ? data.status : "Provisionado",
+        conciliado: i===0 ? data.conciliado : false,
+        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd
+      });
+      dataOcorrencia = proximaData(dataOcorrencia, freq);
+    }
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(isParcelado ? `${qtd} parcelas criadas.` : `Lançamento fixo criado (próximos ${HORIZONTE_ANOS} anos já agendados).`);
+  });
+}
+
+// ============================================================
+// MODAL — AJUSTE DE SALDO
+// ============================================================
+function modalAjuste(existing){
+  const isEdit = !!existing;
+  const a = existing || { data: todayISO(), contaId: state.contas.find(c=>c.ativa!==false)?.id||"", valor:0, motivo:"" };
+  const contaOpts = contasParaSelecao(a.contaId).map(c => `<option value="${c.id}" ${a.contaId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar ajuste" : "Novo ajuste de saldo"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formAjuste"><div class="modal-body">
+      <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${a.data}"></div><div class="field"><label>Conta</label><select name="contaId">${contaOpts}</select></div></div>
+      ${campoValorProtegido("Valor do ajuste (R$)", "valor", a.valor, !isEdit || receberDesbloqueado(), {help:"Positivo aumenta o saldo · negativo reduz o saldo."})}
+      <div class="field"><label>Motivo</label><input required type="text" name="motivo" value="${esc(a.motivo)}" placeholder="Ex: tarifa não lançada, estorno, diferença de arredondamento..."></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar ajuste"}</button></div></form>
+  `);
+  attachCalculadora("valor");
+  document.getElementById("formAjuste").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { data: fd.get("data"), contaId: fd.get("contaId"), valor: parseFloat(fd.get("valor"))||0, motivo: fd.get("motivo").trim() };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.ajustes.push({ id: uid("a"), ...data }); }
+    await saveAjustes(); closeModal(); renderApp(); showToast(isEdit ? "Ajuste atualizado." : "Ajuste adicionado.");
+  });
+}
+
+// ============================================================
+// MODAL — CATEGORIA / SUBCATEGORIA
+// ============================================================
+function modalCategoria(existing){
+  const isEdit = !!existing;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear categoria" : "Nova categoria"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCategoria"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Marketing"></div></div>
+    <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
+  `);
+  document.getElementById("formCategoria").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nome = new FormData(e.target).get("nome").trim();
+    if(!nome) return;
+    if(state.categorias.some(c => c.nome === nome && c !== existing)){ showToast("Já existe uma categoria com esse nome.", "error"); return; }
+    if(isEdit){
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if(l.categoria === nomeAntigo) l.categoria = nome; });
+      await saveLancamentos();
+    }else{
+      state.categorias.push({ id: uid("cat"), nome, subcategorias: [] });
+    }
+    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? "Categoria atualizada." : "Categoria criada.");
+  });
+}
+function modalSubcategoria(catId, existing){
+  const isEdit = !!existing;
+  const cat = categoriaById(catId || (existing && existing._catId));
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear subcategoria" : "Nova subcategoria"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formSubcategoria"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:12px;">Dentro de <strong>${esc(cat ? cat.nome : "")}</strong></div>
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Escritório"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
+  `);
+  document.getElementById("formSubcategoria").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nome = new FormData(e.target).get("nome").trim();
+    if(!nome || !cat) return;
+    if(cat.subcategorias.some(s => s.nome === nome && s !== existing)){ showToast("Já existe uma subcategoria com esse nome.", "error"); return; }
+    if(isEdit){
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if(l.categoria === cat.nome && l.subcategoria === nomeAntigo) l.subcategoria = nome; });
+      await saveLancamentos();
+    }else{
+      cat.subcategorias.push({ id: uid("sub"), nome });
+    }
+    await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? "Subcategoria atualizada." : "Subcategoria criada.");
+  });
+}
+
+// ============================================================
+// MODAL — NEGÓCIO
+// ============================================================
+function modalNegocio(existing){
+  const isEdit = !!existing;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear negócio" : "Novo negócio"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formNegocio"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: TopTV, um negócio futuro..."></div></div>
+    <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
+  `);
+  document.getElementById("formNegocio").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nome = new FormData(e.target).get("nome").trim();
+    if(!nome) return;
+    if(state.negocios.some(n => n.nome === nome && n !== existing)){ showToast("Já existe um negócio com esse nome.", "error"); return; }
+    if(isEdit){
+      const nomeAntigo = existing.nome;
+      existing.nome = nome;
+      state.lancamentos.forEach(l => { if(l.negocio === nomeAntigo) l.negocio = nome; });
+      await saveLancamentos();
+    }else{
+      state.negocios.push({ id: uid("neg"), nome, cor: proximaCorNegocio() });
+    }
+    await saveNegocios(); closeModal(); renderApp(); showToast(isEdit ? "Negócio atualizado." : "Negócio criado.");
+  });
+}
+
+/* =========================================================================
+   MODAL — USUÁRIO (Tom, Erica...) com permissões por negócio
+========================================================================= */
+function modalPerfil(existing){
+  const isEdit = !!existing;
+  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{} };
+  const linhasNegocio = state.negocios.map(n => {
+    const perm = p.permissoes[n.nome] || { ver:false, editar:false, excluir:false };
+    return `<tr>
+      <td>${esc(n.nome)}</td>
+      <td style="text-align:center;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
+    </tr>`;
+  }).join("");
+  const linhasCategoria = state.categorias.map(c => {
+    const permitida = !!(p.categoriasPermitidas || {})[c.nome];
+    return `<label class="checkbox-row" style="padding:5px 0;"><input type="checkbox" name="cat_${c.id}" ${permitida?"checked":""}> ${esc(c.nome)}</label>`;
+  }).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPerfil"><div class="modal-body">
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Tom"></div>
+      <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: tom123">
+        <div class="field-help">Salva em texto simples, igual às senhas de "ver saldo" — não peça pra usar uma senha que a pessoa usa em outro lugar.</div>
+      </div>
+      <div class="field"><label>Tipo de acesso</label>
+        <select name="tipo" id="perfilTipoSelect">
+          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro (acesso restrito por negócio)</option>
+          <option value="master" ${p.tipo==="master"?"selected":""}>Master (acesso completo, igual a você)</option>
+        </select>
+      </div>
+      <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
+        <div class="field"><label>Permissões por negócio</label>
+          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
+            <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
+            <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-4); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
+          </div>
+          <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
+        </div>
+        <div class="field"><label>Categorias que pode usar</label>
+          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">
+            ${linhasCategoria || `<div style="text-align:center; color:var(--ink-4); padding:14px;">Nenhuma categoria cadastrada ainda.</div>`}
+          </div>
+          <div class="field-help">Marcando uma categoria, todas as subcategorias dela ficam liberadas junto — não dá pra liberar só uma subcategoria específica.</div>
+        </div>
+      </div>
+      <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"}; margin-bottom:10px;">Esse usuário vai ver e editar absolutamente tudo, igual a você — não precisa marcar nada abaixo.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button></div></form>
+  `);
+  const tipoSelect = document.getElementById("perfilTipoSelect");
+  const permissoesWrap = document.getElementById("perfilPermissoesWrap");
+  const masterAviso = document.getElementById("perfilMasterAviso");
+  tipoSelect.addEventListener("change", () => {
+    const ehTipoMaster = tipoSelect.value === "master";
+    permissoesWrap.style.display = ehTipoMaster ? "none" : "block";
+    masterAviso.style.display = ehTipoMaster ? "block" : "none";
+  });
+  document.getElementById("formPerfil").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const nome = fd.get("nome").trim();
+    const senha = fd.get("senha").trim();
+    const tipo = fd.get("tipo") === "master" ? "master" : "membro";
+    if(!nome || !senha) return;
+    if(state.perfis.some(x => x.nome === nome && x !== existing)){ showToast("Já existe um usuário com esse nome.", "error"); return; }
+    const permissoes = {};
+    state.negocios.forEach(n => {
+      permissoes[n.nome] = {
+        ver: fd.get(`ver_${n.id}`) === "on",
+        editar: fd.get(`editar_${n.id}`) === "on",
+        excluir: fd.get(`excluir_${n.id}`) === "on",
+      };
+    });
+    const categoriasPermitidas = {};
+    state.categorias.forEach(c => { categoriasPermitidas[c.nome] = fd.get(`cat_${c.id}`) === "on"; });
+    const data = { nome, senha, tipo, permissoes, categoriasPermitidas };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.perfis.push({ id: uid("perfil"), ...data }); }
+    await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
+  });
+}
+
+// ============================================================
+// MODAL — CARTÃO DE CRÉDITO
+// ============================================================
+function modalCartao(existing){
+  const isEdit = !!existing;
+  const c = existing || { nome:"", bandeira:"Visa", ultimosDigitos:"", limite:0, diaFechamento:1, diaVencimento:10, contaPagamentoId: state.contas.find(x=>x.ativa!==false)?.id||"", ativo:true };
+  const contaOpts = contasParaSelecao(c.contaPagamentoId).map(x => `<option value="${x.id}" ${c.contaPagamentoId===x.id?"selected":""}>${contaLabel(x)}${x.ativa===false?" (inativa)":""}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar cartão" : "Novo cartão de crédito"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCartao"><div class="modal-body">
+      <div class="field"><label>Nome do cartão</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Nubank Ultravioleta"></div>
+      <div class="field-row">
+        <div class="field"><label>Bandeira</label><select name="bandeira">${BANDEIRAS.map(b=>`<option ${c.bandeira===b?"selected":""}>${b}</option>`).join("")}</select></div>
+        <div class="field"><label>Final do cartão</label><input required type="text" name="ultimosDigitos" value="${esc(c.ultimosDigitos)}" maxlength="4" pattern="[0-9]{4}" placeholder="1234" inputmode="numeric">
+          <div class="field-help">Só os 4 últimos dígitos, pra não confundir com outro cartão.</div>
+        </div>
+      </div>
+      <div class="field"><label>Limite total (R$)</label><input required type="number" step="0.01" min="0" name="limite" value="${c.limite}"></div>
+      <div class="field-row">
+        <div class="field"><label>Dia de fechamento</label><input required type="number" min="1" max="31" step="1" name="diaFechamento" value="${c.diaFechamento}"><div class="field-help">Compras depois desse dia caem na fatura seguinte.</div></div>
+        <div class="field"><label>Dia de vencimento</label><input required type="number" min="1" max="31" step="1" name="diaVencimento" value="${c.diaVencimento}"></div>
+      </div>
+      <div class="field"><label>Conta que paga a fatura</label><select name="contaPagamentoId">${contaOpts}</select></div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativo" ${c.ativo!==false?"checked":""}> Cartão ativo</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar cartão"}</button></div></form>
+  `);
+  document.getElementById("formCartao").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), bandeira: fd.get("bandeira"),
+      ultimosDigitos: fd.get("ultimosDigitos").trim().replace(/\D/g,"").slice(-4),
+      limite: parseFloat(fd.get("limite"))||0,
+      diaFechamento: Math.min(31, Math.max(1, parseInt(fd.get("diaFechamento"))||1)),
+      diaVencimento: Math.min(31, Math.max(1, parseInt(fd.get("diaVencimento"))||1)),
+      contaPagamentoId: fd.get("contaPagamentoId"), ativo: fd.get("ativo") === "on"
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.cartoes.push({ id: uid("cartao"), ...data }); }
+    await saveCartoes(); closeModal(); renderApp(); showToast(isEdit ? "Cartão atualizado." : "Cartão adicionado.");
+  });
+}
+
+// ============================================================
+// MODAL — COMPRA NO CARTÃO
+// ============================================================
+function modalCompraCartao(cartaoIdPreset){
+  if(!state.cartoes.length){ showToast("Cadastre um cartão primeiro.", "error"); return; }
+  const cartaoInicial = cartaoById(cartaoIdPreset) || state.cartoes.find(c=>c.ativo!==false) || state.cartoes[0];
+  const cartaoOpts = state.cartoes.map(c => `<option value="${c.id}" ${cartaoInicial.id===c.id?"selected":""}>${esc(c.nome)} (final ${esc(c.ultimosDigitos)})${c.ativo===false?" — inativo":""}</option>`).join("");
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💳 Nova compra no cartão</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCompraCartao"><div class="modal-body">
+      <div class="field"><label>Cartão</label><select name="cartaoId" id="compraCartaoSelect">${cartaoOpts}</select></div>
+      <div class="field-row"><div class="field"><label>Data da compra</label><input required type="date" name="dataCompra" id="compraDataInput" value="${todayISO()}"></div><div class="field"><label>Valor (R$) <span class="field-help" id="compraValorHint" style="display:inline;"></span></label><input id="campo_valor" required type="number" step="0.01" min="0.01" name="valor" value="0"></div></div>
+      <div class="field-help" id="compraFaturaPreview" style="margin-top:-10px; margin-bottom:14px;"></div>
+      <div class="field-row">
+        <div class="field"><label>Categoria</label>
+          <select name="categoria" id="compraCategoriaSelect">${catOptionsHTML("")}</select>
+          <div class="field-inline-add" id="compraNovaCategoriaRow" style="display:none; margin-top:8px;">
+            <input type="text" id="compraNovaCategoriaInput" placeholder="Nome da nova categoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="compraNovaCategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar categoria</button>
+          </div>
+        </div>
+        <div class="field"><label>Subcategoria</label>
+          <select name="subcategoria" id="compraSubcategoriaSelect">${subcatOptionsHTML("", "")}</select>
+          <div class="field-inline-add" id="compraNovaSubcategoriaRow" style="display:none; margin-top:8px;">
+            <input type="text" id="compraNovaSubcategoriaInput" placeholder="Nome da nova subcategoria" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="compraNovaSubcategoriaBtn" style="width:100%; justify-content:center;">+ Adicionar subcategoria</button>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Negócio</label>
+        <select name="negocio" id="compraNegocioSelect">${negOptionsHTML("")}</select>
+        <div class="field-inline-add" id="compraNovoNegocioRow" style="display:none; margin-top:8px;">
+          <input type="text" id="compraNovoNegocioInput" placeholder="Nome do novo negócio" style="width:100%; font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border); margin-bottom:6px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="compraNovoNegocioBtn" style="width:100%; justify-content:center;">+ Adicionar negócio</button>
+        </div>
+      </div>
+      <div class="field"><label>Descrição</label><input type="text" name="descricao" placeholder="Ex: Notebook, Supermercado..."></div>
+      <div class="field">
+        <label>Repetição</label>
+        <select name="repeticao" id="compraRepeticao">
+          <option value="nenhuma">Compra única (à vista)</option>
+          <option value="parcelado">💳 Parcelado (ex: 12x)</option>
+          <option value="recorrente">🔁 Recorrente (ex: assinatura cobrada no cartão)</option>
+        </select>
+      </div>
+      <div id="compraParceladoWrap" class="field" style="display:none;">
+        <label>Número de parcelas</label>
+        <input type="number" min="2" max="60" step="1" name="qtdParcelas" value="2" id="compraQtdParcelas">
+        <div class="field-help" style="margin-bottom:10px;">Cada parcela cai na fatura de um mês.</div>
+        <label>O valor informado acima é</label>
+        <select name="tipoValorParcela" id="compraTipoValorParcela">
+          <option value="parcela">O valor de cada parcela</option>
+          <option value="total">O valor TOTAL da compra (divide entre as parcelas)</option>
+        </select>
+        <div class="field-help" id="compraDivisaoPreview"></div>
+      </div>
+      <div id="compraRecorrenteWrap" class="field" style="display:none;">
+        <label>Repetir a cada</label>
+        <select name="frequencia"><option value="Mensal" selected>Mês</option><option value="Bimestral">Bimestre</option><option value="Trimestral">Trimestre</option><option value="Semestral">Semestre</option><option value="Anual">Ano</option></select>
+        <div class="field-help">É fixo, então geramos automaticamente os próximos ${HORIZONTE_ANOS} anos de faturas.</div>
+      </div>
+      <div class="field-help" style="margin-top:4px;">Toda compra entra como "Provisionado" — dá baixa manual (💲 em Lançamentos) quando pagar a fatura.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Adicionar compra</button></div></form>
+  `);
+
+  const atualizarPreview = () => {
+    const cartao = cartaoById(document.getElementById("compraCartaoSelect").value);
+    const dataCompra = document.getElementById("compraDataInput").value;
+    if(!cartao || !dataCompra) return;
+    const venc = calcularVencimento(dataCompra, cartao);
+    document.getElementById("compraFaturaPreview").textContent = `Cai na fatura com vencimento em ${fmtDateBR(venc)}.`;
+  };
+  document.getElementById("compraCartaoSelect").addEventListener("change", atualizarPreview);
+  document.getElementById("compraDataInput").addEventListener("change", atualizarPreview);
+  atualizarPreview();
+
+  const catSelect = document.getElementById("compraCategoriaSelect");
+  const subSelect = document.getElementById("compraSubcategoriaSelect");
+  const novaCategoriaRow = document.getElementById("compraNovaCategoriaRow");
+  const novaSubcategoriaRow = document.getElementById("compraNovaSubcategoriaRow");
+  catSelect.addEventListener("change", () => {
+    if(catSelect.value === "__nova__"){ novaCategoriaRow.style.display = "block"; document.getElementById("compraNovaCategoriaInput").focus(); }
+    else{ novaCategoriaRow.style.display = "none"; subSelect.innerHTML = subcatOptionsHTML(catSelect.value, ""); novaSubcategoriaRow.style.display = "none"; }
+  });
+  document.getElementById("compraNovaCategoriaBtn").addEventListener("click", () => {
+    const input = document.getElementById("compraNovaCategoriaInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    if(categoriaByNome(nome)){ showToast("Essa categoria já existe.", "error"); return; }
+    state.categorias.push({ id: uid("cat"), nome, subcategorias: [] });
+    saveCategorias();
+    catSelect.innerHTML = catOptionsHTML(nome);
+    novaCategoriaRow.style.display = "none"; input.value = "";
+    subSelect.innerHTML = subcatOptionsHTML(nome, "");
+    showToast("Categoria criada.");
+  });
+  subSelect.addEventListener("change", () => {
+    if(subSelect.value === "__nova__"){
+      if(!catSelect.value || catSelect.value === "__nova__"){ showToast("Escolha (ou crie) uma categoria primeiro.", "error"); subSelect.value = ""; return; }
+      novaSubcategoriaRow.style.display = "block"; document.getElementById("compraNovaSubcategoriaInput").focus();
+    }else{ novaSubcategoriaRow.style.display = "none"; }
+  });
+  document.getElementById("compraNovaSubcategoriaBtn").addEventListener("click", () => {
+    const input = document.getElementById("compraNovaSubcategoriaInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    const cat = categoriaByNome(catSelect.value);
+    if(!cat){ showToast("Escolha uma categoria primeiro.", "error"); return; }
+    if(cat.subcategorias.some(s=>s.nome===nome)){ showToast("Essa subcategoria já existe.", "error"); return; }
+    cat.subcategorias.push({ id: uid("sub"), nome });
+    saveCategorias();
+    subSelect.innerHTML = subcatOptionsHTML(cat.nome, nome);
+    novaSubcategoriaRow.style.display = "none"; input.value = "";
+    showToast("Subcategoria criada.");
+  });
+
+  const negSelect = document.getElementById("compraNegocioSelect");
+  const novoNegocioRow = document.getElementById("compraNovoNegocioRow");
+  negSelect.addEventListener("change", () => {
+    novoNegocioRow.style.display = negSelect.value === "__novo__" ? "block" : "none";
+    if(negSelect.value === "__novo__") document.getElementById("compraNovoNegocioInput").focus();
+  });
+  document.getElementById("compraNovoNegocioBtn").addEventListener("click", () => {
+    const input = document.getElementById("compraNovoNegocioInput");
+    const nome = input.value.trim();
+    if(!nome){ input.focus(); return; }
+    if(negocioByNome(nome)){ showToast("Esse negócio já existe.", "error"); return; }
+    state.negocios.push({ id: uid("neg"), nome, cor: proximaCorNegocio() });
+    saveNegocios();
+    negSelect.innerHTML = negOptionsHTML(nome);
+    novoNegocioRow.style.display = "none"; input.value = "";
+    showToast("Negócio criado.");
+  });
+
+  const repSelect = document.getElementById("compraRepeticao");
+  const parWrap = document.getElementById("compraParceladoWrap");
+  const recWrap = document.getElementById("compraRecorrenteWrap");
+  const valorHint = document.getElementById("compraValorHint");
+  const compraTipoValorParcela = document.getElementById("compraTipoValorParcela");
+  const compraQtdParcelas = document.getElementById("compraQtdParcelas");
+  const compraDivisaoPreview = document.getElementById("compraDivisaoPreview");
+  const atualizarCompraDivisaoPreview = () => {
+    if(repSelect.value !== "parcelado" || compraTipoValorParcela.value !== "total"){ compraDivisaoPreview.textContent = ""; return; }
+    const valorInput = document.getElementById("campo_valor");
+    const total = parseFloat(valorInput ? valorInput.value : 0) || 0;
+    const qtd = Math.max(2, parseInt(compraQtdParcelas.value)||2);
+    const partes = dividirValor(total, qtd);
+    compraDivisaoPreview.textContent = partes[0] === partes[partes.length-1]
+      ? `${qtd}x de ${fmtBRL(partes[0])}`
+      : `${qtd-1}x de ${fmtBRL(partes[0])} + 1x de ${fmtBRL(partes[partes.length-1])} (ajuste de centavos)`;
+  };
+  repSelect.addEventListener("change", () => {
+    parWrap.style.display = repSelect.value === "parcelado" ? "block" : "none";
+    recWrap.style.display = repSelect.value === "recorrente" ? "block" : "none";
+    valorHint.textContent = repSelect.value === "parcelado" ? "(valor de cada parcela, por padrão)" : (repSelect.value === "recorrente" ? "(valor de cada cobrança)" : "");
+    atualizarCompraDivisaoPreview();
+  });
+  compraTipoValorParcela.addEventListener("change", atualizarCompraDivisaoPreview);
+  compraQtdParcelas.addEventListener("input", atualizarCompraDivisaoPreview);
+  document.getElementById("campo_valor")?.addEventListener("input", () => { atualizarCompraDivisaoPreview(); });
+  attachCalculadora("valor");
+
+  document.getElementById("formCompraCartao").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(catSelect.value === "__nova__" || subSelect.value === "__nova__"){ showToast("Finalize a criação da categoria/subcategoria antes de salvar.", "error"); return; }
+    if(negSelect.value === "__novo__"){ showToast("Finalize a criação do negócio antes de salvar.", "error"); return; }
+    const cartao = cartaoById(fd.get("cartaoId"));
+    if(!cartao){ showToast("Escolha um cartão.", "error"); return; }
+    const dataCompra = fd.get("dataCompra");
+    const base = {
+      tipo: "Despesa", negocio: fd.get("negocio")||"", categoria: fd.get("categoria")||"", subcategoria: fd.get("subcategoria")||"",
+      contaOrigem: cartao.contaPagamentoId, contaDestino: "", descricao: fd.get("descricao").trim(),
+      status: "Provisionado", conciliado: false, cartaoId: cartao.id, dataCompra,
+      lancadoPor: state.perfilAtivo ? state.perfilAtivo.nome : "Master"
+    };
+    const valor = parseFloat(fd.get("valor"))||0;
+    const repeticao = fd.get("repeticao") || "nenhuma";
+
+    if(repeticao === "nenhuma"){
+      const venc = calcularVencimento(dataCompra, cartao);
+      state.lancamentos.push({ id: uid("l"), ...base, valor, data: venc });
+      await saveLancamentos(); closeModal(); renderApp(); showToast("Compra adicionada.");
+      return;
+    }
+    const isParcelado = repeticao === "parcelado";
+    const freq = isParcelado ? "Mensal" : (fd.get("frequencia")||"Mensal");
+    let qtd;
+    if(isParcelado){ qtd = Math.max(2, parseInt(fd.get("qtdParcelas"))||2); }
+    else{ const OCORRENCIAS_POR_ANO = { "Mensal":12, "Bimestral":6, "Trimestral":4, "Semestral":2, "Anual":1 }; qtd = (OCORRENCIAS_POR_ANO[freq]||12) * HORIZONTE_ANOS; }
+    const valoresParcelas = (isParcelado && fd.get("tipoValorParcela") === "total") ? dividirValor(valor, qtd) : null;
+    const grupoId = uid("rec");
+    let dataVencOcorrencia = calcularVencimento(dataCompra, cartao);
+    for(let i=0;i<qtd;i++){
+      const descricaoOcorrencia = isParcelado ? `${base.descricao} (${i+1}/${qtd})` : base.descricao;
+      state.lancamentos.push({
+        id: uid("l"), ...base,
+        valor: valoresParcelas ? valoresParcelas[i] : valor,
+        descricao: descricaoOcorrencia, data: dataVencOcorrencia,
+        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd
+      });
+      dataVencOcorrencia = proximaData(dataVencOcorrencia, freq);
+    }
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(isParcelado ? `${qtd} parcelas criadas.` : `Compra fixa criada (próximos ${HORIZONTE_ANOS} anos já agendados).`);
+  });
+}
+
+// ============================================================
+// MODAL — BAIXAR TÍTULO
+// ============================================================
+function modalBaixa(l){
+  const contaAtual = contaById(l.contaOrigem);
+  const unlockedValor = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
+  const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💲 Dar baixa no título</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formBaixa"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:12px; font-size:13px;"><strong>${esc(l.descricao)}</strong><br>${l.tipo} de ${maskBRL(l.valor, unlockedValor)} — hoje em ${contaLabel(contaAtual)}</div>
+      <div class="field-row"><div class="field"><label>Data da baixa</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
+      <div class="field-help" style="margin-bottom:12px;">Pode escolher qualquer conta — não precisa ser a que estava no lançamento original.</div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="conciliado" checked> Já conciliado com o extrato</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar baixa</button></div></form>
+  `);
+  document.getElementById("formBaixa").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    l.status = "Pago";
+    l.data = fd.get("data");
+    l.contaOrigem = fd.get("contaOrigem");
+    l.conciliado = fd.get("conciliado") === "on";
+    await saveLancamentos(); closeModal(); renderApp(); showToast("Título baixado.");
+  });
+}
+
+// ============================================================
+// MODAL — PAGAR FATURA (baixa todas as compras daquela fatura de uma vez)
+// ============================================================
+function modalPagarFatura(cartaoId, dataVencimento){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago");
+  if(!itens.length){ showToast("Essa fatura já está paga.", "error"); return; }
+  const total = itens.reduce((s,l) => s + Number(l.valor), 0);
+  const unlockedValor = pagarDesbloqueado();
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  const itensHTML = itens.map(l => `
+    <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); font-size:12px;">
+      <span style="color:var(--ink-3);">${esc(l.descricao)}</span>
+      <span class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono);">${maskBRL(l.valor, unlockedValor)}</span>
+    </div>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💳 Pagar fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarFatura"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:6px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} lançamento${itens.length===1?'':'s'}</div>
+      <div style="max-height:180px; overflow-y:auto; margin-bottom:10px;">${itensHTML}</div>
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid var(--border); margin-bottom:14px;">
+        <strong style="font-size:13px;">Total da fatura</strong>
+        <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
+      </div>
+      <div class="field-row"><div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
+      <div class="field-help" style="margin-bottom:12px;">Todos os ${itens.length} lançamentos dessa fatura são marcados como Pago de uma vez, na mesma conta e data.</div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="conciliado" checked> Já conciliado com o extrato</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento da fatura</button></div></form>
+  `);
+  document.getElementById("formPagarFatura").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const conciliado = fd.get("conciliado") === "on";
+    itens.forEach(l => {
+      l.status = "Pago";
+      l.data = dataPagamento;
+      l.contaOrigem = contaOrigem;
+      l.conciliado = conciliado;
+    });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Fatura paga — ${itens.length} lançamento(s) baixado(s).`);
+  });
+}
+
+// ============================================================
+// MODAL — PAGAMENTO MÍNIMO DO CARTÃO (seleciona compras pra cobrir o mínimo)
+// ============================================================
+function modalPagarFaturaMinimo(cartaoId, dataVencimento, totalFatura){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
+  const minimoSugerido = Math.round(totalFatura * 0.15 * 100) / 100;
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  const linhasItens = itens.map(l => `
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <input type="checkbox" name="item_${l.id}">
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+    </label>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💳 Pagamento mínimo — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarMinimo"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong> · Mínimo sugerido: <strong style="color:var(--neg);">${fmtBRL(minimoSugerido)}</strong> (15%)</div>
+      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
+      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
+      <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="1" name="valorPago" value="${minimoSugerido}" id="valorPagoMinimo">
+        <div class="field-help">Digite o valor e marque as compras que entram nesse pagamento parcial abaixo.</div></div>
+      <div class="field"><label>Compras que entram neste pagamento</label>
+        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
+        <div class="field-help">As compras marcadas serão pagas pelo valor acima. As desmarcadas continuam em aberto.</div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento</button></div></form>
+  `);
+  document.getElementById("formPagarMinimo").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const valorPago = parseFloat(fd.get("valorPago"))||0;
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
+    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
+    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Pagamento mínimo de ${fmtBRL(valorPago)} — ${itensPagos.length} compra(s) baixada(s).`);
+  });
+}
+
+// ============================================================
+// MODAL — PAGAMENTO PARCIAL DO CARTÃO (valor livre, seleciona compras)
+// ============================================================
+function modalPagarFaturaParcial(cartaoId, dataVencimento, totalFatura){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
+  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  let totalSelecionado = 0;
+  const linhasItens = itens.map(l => `
+    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <input type="checkbox" name="item_${l.id}" data-valor="${l.valor}" class="chk-parcial">
+        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
+    </label>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">✏ Pagamento parcial — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarParcial"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong></div>
+      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
+      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
+      <div class="field"><label>Selecione as compras a pagar</label>
+        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
+        <strong style="font-size:13px;">Total selecionado</strong>
+        <strong id="totalSelecionadoParcial" style="font-family:var(--font-mono); font-size:15px; color:var(--neg);">${fmtBRL(0)}</strong>
+      </div>
+      <div class="field-help">As compras marcadas serão pagas. As desmarcadas continuam em aberto.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento parcial</button></div></form>
+  `);
+  document.querySelectorAll(".chk-parcial").forEach(chk => {
+    chk.addEventListener("change", () => {
+      const total = Array.from(document.querySelectorAll(".chk-parcial:checked")).reduce((s,c) => s + parseFloat(c.dataset.valor||0), 0);
+      const el = document.getElementById("totalSelecionadoParcial");
+      if(el) el.textContent = fmtBRL(total);
+    });
+  });
+  document.getElementById("formPagarParcial").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const dataPagamento = fd.get("data");
+    const contaOrigem = fd.get("contaOrigem");
+    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
+    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
+    const totalPago = itensPagos.reduce((s,l) => s + Number(l.valor), 0);
+    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
+    await saveLancamentos(); closeModal(); renderApp();
+    showToast(`Pagamento parcial de ${fmtBRL(totalPago)} — ${itensPagos.length} compra(s) baixada(s).`);
+  });
+}
+
+// ============================================================
+// MODAL — DETALHE DA FATURA (cada compra, por período, dentro da fatura)
+// ============================================================
+function modalDetalheFatura(cartaoId, dataVencimento){
+  const cartao = cartaoById(cartaoId);
+  if(!cartao) return;
+  const itens = state.lancamentos
+    .filter(l => l.cartaoId === cartaoId && l.data === dataVencimento)
+    .sort((a,b) => (a.dataCompra||a.data).localeCompare(b.dataCompra||b.data));
+  if(!itens.length) return;
+  const total = itens.reduce((s,l) => s + Number(l.valor), 0);
+  const unlockedValor = pagarDesbloqueado();
+  const temPendente = itens.some(l => l.status !== "Pago");
+  const rows = itens.map(l => {
+    const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
+    return `<tr>
+      <td style="white-space:nowrap;">${fmtDateBR(l.dataCompra || l.data)}</td>
+      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-4)">${esc(l.categoria)}${l.subcategoria?' › '+esc(l.subcategoria):''}</div>` : ""}</td>
+      <td>${l.negocio ? esc(l.negocio) : "—"}</td>
+      <td style="text-align:center;"><span class="status-pill ${statusClass}">${l.status}</span></td>
+      <td class="num ${unlockedValor?'':'masked-value'}">${maskBRL(l.valor, unlockedValor)}</td>
+    </tr>`;
+  }).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📋 Detalhe da fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} compra${itens.length===1?'':'s'} · ordenado por data da compra</div>
+      <div style="max-height:320px; overflow-y:auto;">
+        <table><thead><tr><th>Data compra</th><th>Descrição</th><th>Negócio</th><th style="text-align:center;">Status</th><th class="num">Valor</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
+        <strong style="font-size:13px;">Total da fatura</strong>
+        <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Fechar</button>
+      ${temPendente ? `<button type="button" class="btn btn-primary" data-action="pagar-fatura" data-id="${cartaoId}" data-venc="${dataVencimento}">Pagar fatura</button>` : ""}
+    </div>
+  `);
+}
+
+// ============================================================
+// MODAL — EXCLUIR LANÇAMENTO (com opções quando faz parte de uma série)
+// ============================================================
+function modalExcluirLancamento(l){
+  if(!l.recorrenciaId){
+    if(!confirm("Excluir este lançamento?")) return;
+    state.lancamentos = state.lancamentos.filter(x => x.id !== l.id);
+    deleteRow("lancamentos", l.id);
+    renderApp(); showToast("Lançamento removido.");
+    return;
+  }
+  const serieTxt = l.recorrenciaTipo === "parcelado" ? "parcelada" : "recorrente";
+  const totalTxt = l.recorrenciaTipo === "parcelado" ? "parcelas" : "ocorrências";
+  const futuros = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data).length;
+  const todos = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId).length;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">Excluir lançamento</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px; font-size:13px;"><strong>${esc(l.descricao)}</strong> (${fmtDateBR(l.data)}) faz parte de uma série ${serieTxt} — ${l.recorrenciaIndex}ª de ${l.recorrenciaTotal} ${totalTxt}. O que você quer excluir?</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-um" data-id="${l.id}">Excluir apenas este lançamento</button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-futuros" data-id="${l.id}">Excluir este e os próximos <span style="color:var(--ink-4); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'} a partir de ${fmtDateBR(l.data)})</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start; color:var(--neg);" data-action="del-lanc-todos" data-id="${l.id}">Excluir todos da série <span style="color:var(--ink-4); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'} no total)</span></button>
+      </div>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
+  `);
+}
+
+// ============================================================
+// MODAL — ESCOPO DA EDIÇÃO EM SÉRIE (ex: reajuste de valor)
+// ============================================================
+const CAMPOS_CASCATA_SERIE = ["tipo","negocio","categoria","subcategoria","contaOrigem","contaDestino","valor"];
+function modalEscopoEdicaoSerie(existing, data){
+  const serieTxt = existing.recorrenciaTipo === "parcelado" ? "parcelada" : "recorrente";
+  const futuros = state.lancamentos.filter(x => x.recorrenciaId === existing.recorrenciaId && x.data >= existing.data).length;
+  const todos = state.lancamentos.filter(x => x.recorrenciaId === existing.recorrenciaId).length;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">Aplicar alteração</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px; font-size:13px;">
+        <strong>${esc(existing.descricao)}</strong> faz parte de uma série ${serieTxt}. Onde aplicar valor, categoria, conta e negócio (ex: um reajuste)?
+        <br><span style="color:var(--ink-4);">Data, status e conciliado nunca são copiados — cada ocorrência mantém os seus.</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoUm">Aplicar apenas a este lançamento</button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoFuturos">Aplicar a este e aos próximos <span style="color:var(--ink-4); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'})</span></button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;" id="btnEscopoTodos">Aplicar a todos da série <span style="color:var(--ink-4); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'})</span></button>
+      </div>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
+  `);
+  const aplicarCascata = async (apenasFuturos) => {
+    Object.assign(existing, data);
+    const afetados = [existing];
+    for(const l of state.lancamentos){
+      if(l === existing) continue;
+      if(l.recorrenciaId !== existing.recorrenciaId) continue;
+      if(apenasFuturos && l.data < existing.data) continue;
+      CAMPOS_CASCATA_SERIE.forEach(campo => { l[campo] = data[campo]; });
+      afetados.push(l);
+    }
+    await saveLancamentos(); closeModal(); renderApp(); showToast(`Alteração aplicada a ${afetados.length} lançamento(s).`);
+  };
+  document.getElementById("btnEscopoUm").addEventListener("click", async () => {
+    Object.assign(existing, data);
+    await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento atualizado.");
+  });
+  document.getElementById("btnEscopoFuturos").addEventListener("click", () => aplicarCascata(true));
+  document.getElementById("btnEscopoTodos").addEventListener("click", () => aplicarCascata(false));
+}
+
+// ============================================================
+// EVENT DELEGATION
+// ============================================================
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  const catId = el.dataset.cat;
+  const subId = el.dataset.sub;
+
+  if(action === "nav") setView(el.dataset.view);
+  else if(action === "abrir-modulo"){
+    const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
+    if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
+    state.modpanelAberto = false;
+    state.moduloAtivo = mod.id;
+    if(mod.id === "financeiro"){ state.view = "dashboard"; }
+    else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
+    else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
+    renderApp();
+  }
+  else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
+  else if(action === "close-modal") closeModal();
+  else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
+  else if(action === "logout") doLogout();
+  else if(action === "selecionar-master") modalSenhaMaster();
+  else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
+  else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
+  else if(action === "exportar-backup") exportarBackup();
+  else if(action === "unlock-pagar") modalSenha("pagar");
+  else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
+  else if(action === "unlock-receber") modalSenha("receber");
+  else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
+  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "toggle-select-lanc"){
+    if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
+    renderView();
+  }
+  else if(action === "toggle-select-all-lanc"){
+    const todosSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(vid => lancSelecionados.has(vid));
+    if(todosSelecionados){ lancVisibleIds.forEach(vid => lancSelecionados.delete(vid)); }
+    else{ lancVisibleIds.forEach(vid => lancSelecionados.add(vid)); }
+    renderView();
+  }
+  else if(action === "excluir-selecionados"){
+    const qtd = lancSelecionados.size;
+    if(qtd === 0) return;
+    if(!confirm(`Excluir ${qtd} lançamento(s) selecionado(s)? Essa ação não pode ser desfeita.`)) return;
+    const ids = Array.from(lancSelecionados);
+    state.lancamentos = state.lancamentos.filter(l => !lancSelecionados.has(l.id));
+    await deleteRows("lancamentos", ids);
+    lancSelecionados.clear();
+    renderApp();
+    showToast(`${ids.length} lançamento(s) excluído(s).`);
+  }
+
+  else if(action === "new-conta") modalConta(null);
+  else if(action === "new-caixinha") modalCaixinha(id, null);
+  else if(action === "edit-conta"){ const c = contaById(id); if(c && c.parentId) modalCaixinha(null, c); else modalConta(c); }
+  else if(action === "toggle-ativa"){
+    const c = contaById(id);
+    if(c){ c.ativa = c.ativa === false; await saveContas(); renderApp(); showToast(c.ativa ? "Ativada." : "Inativada."); }
+  }
+  else if(action === "del-conta"){
+    const c = contaById(id);
+    if(!c) return;
+    if(!c.parentId && caixinhasDe(id).length > 0){ alert("Essa conta ainda tem caixinhas dentro dela. Exclua ou mova as caixinhas primeiro."); return; }
+    const usado = state.lancamentos.some(l => l.contaOrigem===id || l.contaDestino===id) || state.ajustes.some(a=>a.contaId===id);
+    const label = c.parentId ? "caixinha" : "conta";
+    if(usado && !confirm(`Essa ${label} tem lançamentos ou ajustes vinculados. Excluir mesmo assim? Os lançamentos vinculados vão continuar existindo, mas sem referência de conta.`)) return;
+    state.contas = state.contas.filter(x => x.id !== id);
+    await deleteRow("contas", id);
+    renderApp(); showToast(c.parentId ? "Caixinha removida." : "Conta removida.");
+  }
+
+  else if(action === "new-lanc") modalLancamento(null, el.dataset.tipoPreset || null);
+  else if(action === "edit-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalLancamento(l); }
+  else if(action === "del-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalExcluirLancamento(l); }
+  else if(action === "del-lanc-um"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l){
+      const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+      l.inativo = true; l.inativadoPor = quem; l.inativadoEm = new Date().toISOString();
+      await saveLancamentos();
+      closeModal(); renderApp(); showToast("Lançamento inativado (aparece tachado).");
+    }
+  }
+  else if(action === "del-lanc-futuros"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(!l) return;
+    const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data);
+    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
+    await saveLancamentos();
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
+  }
+  else if(action === "del-lanc-todos"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(!l) return;
+    const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId);
+    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
+    await saveLancamentos();
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
+  }
+  else if(action === "reativar-lanc"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l){ delete l.inativo; delete l.inativadoPor; delete l.inativadoEm; await saveLancamentos(); renderApp(); showToast("Lançamento reativado."); }
+  }
+  else if(action === "toggle-conc"){
+    const l = state.lancamentos.find(x=>x.id===id);
+    if(l){ l.conciliado = !l.conciliado; await saveLancamentos(); renderApp(); }
+  }
+  else if(action === "baixar-titulo"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalBaixa(l); }
+
+  else if(action === "new-ajuste") modalAjuste(null);
+  else if(action === "edit-ajuste") modalAjuste(state.ajustes.find(a=>a.id===id));
+  else if(action === "del-ajuste"){
+    if(!confirm("Excluir este ajuste de saldo?")) return;
+    state.ajustes = state.ajustes.filter(a => a.id !== id);
+    await deleteRow("ajustes", id);
+    renderApp(); showToast("Ajuste removido.");
+  }
+
+  else if(action === "new-categoria") modalCategoria(null);
+  else if(action === "edit-categoria") modalCategoria(categoriaById(catId));
+  else if(action === "del-categoria"){
+    const cat = categoriaById(catId);
+    if(!cat) return;
+    const usada = state.lancamentos.some(l => l.categoria === cat.nome);
+    if(usada && !confirm(`A categoria "${cat.nome}" está em uso em lançamentos existentes. Excluir mesmo assim?`)) return;
+    state.categorias = state.categorias.filter(c => c.id !== catId);
+    await deleteRow("categorias", catId);
+    renderApp(); showToast("Categoria removida.");
+  }
+  else if(action === "add-subcategoria") modalSubcategoria(catId, null);
+  else if(action === "edit-subcategoria"){
+    const cat = categoriaById(catId);
+    const sub = cat ? cat.subcategorias.find(s => s.id === subId) : null;
+    modalSubcategoria(catId, sub);
+  }
+  else if(action === "del-subcategoria"){
+    const cat = categoriaById(catId);
+    if(!cat) return;
+    const sub = cat.subcategorias.find(s => s.id === subId);
+    const usada = sub && state.lancamentos.some(l => l.categoria === cat.nome && l.subcategoria === sub.nome);
+    if(usada && !confirm("Essa subcategoria está em uso em lançamentos existentes. Excluir mesmo assim?")) return;
+    cat.subcategorias = cat.subcategorias.filter(s => s.id !== subId);
+    await saveCategorias(); renderApp(); showToast("Subcategoria removida.");
+  }
+
+  else if(action === "new-negocio") modalNegocio(null);
+  else if(action === "edit-negocio") modalNegocio(negocioById(id));
+  else if(action === "del-negocio"){
+    const neg = negocioById(id);
+    if(!neg) return;
+    const usado = state.lancamentos.some(l => l.negocio === neg.nome);
+    if(usado && !confirm(`O negócio "${neg.nome}" está em uso em lançamentos existentes. Excluir mesmo assim?`)) return;
+    state.negocios = state.negocios.filter(n => n.id !== id);
+    await deleteRow("negocios", id);
+    renderApp(); showToast("Negócio removido.");
+  }
+
+  else if(action === "new-perfil") modalPerfil(null);
+  else if(action === "edit-perfil") modalPerfil(perfilById(id));
+  else if(action === "del-perfil"){
+    const p = perfilById(id);
+    if(!p) return;
+    if(!confirm(`Excluir o usuário "${p.nome}"? Ele não vai mais conseguir entrar.`)) return;
+    state.perfis = state.perfis.filter(x => x.id !== id);
+    await deleteRow("perfis", id);
+    if(state.perfilAtivo && state.perfilAtivo.id === id){ state.perfilAtivo = null; state.perfilEscolhido = false; }
+    renderApp(); showToast("Usuário removido.");
+  }
+
+  else if(action === "new-cartao") modalCartao(null);
+  else if(action === "edit-cartao") modalCartao(cartaoById(id));
+  else if(action === "toggle-cartao-ativo"){
+    const c = cartaoById(id);
+    if(c){ c.ativo = c.ativo === false; await saveCartoes(); renderApp(); }
+  }
+  else if(action === "del-cartao"){
+    const c = cartaoById(id);
+    if(!c) return;
+    const usado = state.lancamentos.some(l => l.cartaoId === id);
+    if(usado && !confirm("Esse cartão tem compras lançadas. Excluir mesmo assim? Os lançamentos já criados continuam existindo, mas sem referência ao cartão.")) return;
+    state.cartoes = state.cartoes.filter(x => x.id !== id);
+    await deleteRow("cartoes", id);
+    renderApp(); showToast("Cartão removido.");
+  }
+  else if(action === "new-compra-cartao") modalCompraCartao(id);
+  else if(action === "pagar-fatura"){ closeModal(); modalPagarFatura(id, el.dataset.venc); }
+  else if(action === "pagar-fatura-minimo"){ closeModal(); modalPagarFaturaMinimo(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
+  else if(action === "pagar-fatura-parcial"){ closeModal(); modalPagarFaturaParcial(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
+  else if(action === "ver-fatura") modalDetalheFatura(id, el.dataset.venc);
+
+  else if(action === "mes-prev"){
+    let { ano, mes } = state.mesVisualizado;
+    mes -= 1; if(mes < 0){ mes = 11; ano -= 1; }
+    state.mesVisualizado = { ano, mes }; renderView();
+  }
+  else if(action === "mes-next"){
+    let { ano, mes } = state.mesVisualizado;
+    mes += 1; if(mes > 11){ mes = 0; ano += 1; }
+    state.mesVisualizado = { ano, mes }; renderView();
+  }
+  else if(action === "mes-hoje"){
+    const hoje = new Date();
+    state.mesVisualizado = { ano: hoje.getFullYear(), mes: hoje.getMonth() };
+    renderView();
+  }
+  // ---- Estoque ----
+  else if(action === "est-novo-produto") modalEstProduto(null);
+  else if(action === "est-edit-produto") modalEstProduto(estProdutoById(id));
+  else if(action === "est-del-produto"){
+    if(!confirm("Excluir este produto? As movimentações históricas serão mantidas.")) return;
+    state.estProdutos = state.estProdutos.filter(p => p.id !== id);
+    await deleteRow("est_produtos", id);
+    renderView(); showToast("Produto removido.");
+  }
+  else if(action === "est-nova-movimentacao") modalEstMovimentacao("", "Entrada");
+  else if(action === "est-registrar-entrada") modalEstMovimentacao(id, "Entrada");
+  else if(action === "est-registrar-saida") modalEstMovimentacao(id, "Saída");
+  else if(action === "est-del-mov"){
+    if(!confirm("Remover esta movimentação? O saldo do produto será recalculado.")) return;
+    state.estMovimentos = state.estMovimentos.filter(m => m.id !== id);
+    await deleteRow("est_movimentos", id);
+    renderView(); showToast("Movimentação removida.");
+  }
+  else if(action === "est-novo-fornecedor") modalEstFornecedor(null);
+  else if(action === "est-edit-fornecedor") modalEstFornecedor(estFornecedorById(id));
+  else if(action === "est-del-fornecedor"){
+    if(!confirm("Excluir este fornecedor?")) return;
+    state.estFornecedores = state.estFornecedores.filter(f => f.id !== id);
+    await deleteRow("est_fornecedores", id);
+    renderView(); showToast("Fornecedor removido.");
+  }
+  else if(action === "est-filtro-clear"){ estFiltroCategoria = ""; estFiltroTexto = ""; renderView(); }
+  else if(action === "est-movfiltro-clear"){ estMovFiltro = {tipo:"",produto:"",dataDe:"",dataAte:""}; renderView(); }
+  // ---- Clientes ----
+  else if(action === "cli-novo") modalCliCliente(null);
+  else if(action === "cli-edit"){ const c = cliClienteById(id); if(c) modalCliCliente(c); }
+  else if(action === "cli-del"){
+    const c = cliClienteById(id);
+    if(!c) return;
+    if(!confirm(`Excluir o cliente "${cliNome(c)}" e todos os seus contratos?`)) return;
+    state.cliClientes = state.cliClientes.filter(x=>x.id!==id);
+    await deleteRow("cli_clientes", id);
+    state.view = "cli_lista"; renderApp(); showToast("Cliente excluído.");
+  }
+  else if(action === "cli-detalhe"){ cliViewDetalheId = id; state.view = "cli_detalhe"; renderApp(); }
+  else if(action === "cli-add-contrato") modalCliContrato(id, null);
+  else if(action === "cli-edit-contrato"){
+    const c = cliClienteById(id);
+    const ct = (c?.contratos||[]).find(x=>x.id===el.dataset.cid);
+    if(ct) modalCliContrato(id, ct);
+  }
+  else if(action === "cli-del-contrato"){
+    const c = cliClienteById(id);
+    if(!c) return;
+    if(!confirm("Remover este contrato?")) return;
+    c.contratos = (c.contratos||[]).filter(x=>x.id!==el.dataset.cid);
+    await saveCliClientes(); renderView(); showToast("Contrato removido.");
+  }
+  else if(action === "cli-novo-plano") modalCliPlano(null);
+  else if(action === "cli-edit-plano") modalCliPlano(cliPlanoById(id));
+  else if(action === "cli-del-plano"){
+    if(!confirm("Excluir este plano?")) return;
+    state.cliPlanos = state.cliPlanos.filter(x=>x.id!==id);
+    await deleteRow("cli_planos", id);
+    renderView(); showToast("Plano excluído.");
+  }
+  else if(action === "cli-filtrar-negocio"){
+    cliFiltro.negocio = el.dataset.negocio||"";
+    state.view = "cli_lista"; renderApp();
+  }
+  else if(action === "cli-filtro-clear"){ cliFiltro = {negocio:"",status:"",plano:"",texto:""}; renderView(); }
+});
+
+document.addEventListener("change", e => {
+  if(e.target.dataset.action === "filter-negocio"){ lancFilter.negocio = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-status"){ lancFilter.status = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-conta"){ lancFilter.conta = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-cartao"){ lancFilter.cartao = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-categoria"){ lancFilter.categoria = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-data-de"){ lancFilter.dataDe = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-data-ate"){ lancFilter.dataAte = e.target.value; renderApp(); }
+  // Estoque filters
+  if(e.target.dataset.action === "est-filtro-cat"){ estFiltroCategoria = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-tipo"){ estMovFiltro.tipo = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-produto"){ estMovFiltro.produto = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-de"){ estMovFiltro.dataDe = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-movfiltro-ate"){ estMovFiltro.dataAte = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cli-filtro-negocio"){ cliFiltro.negocio = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cli-filtro-status"){ cliFiltro.status = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cli-filtro-plano"){ cliFiltro.plano = e.target.value; renderView(); }
+  if(e.target.id === "mesManualInput" && e.target.value){
+    const [anoStr, mesStr] = e.target.value.split("-");
+    state.mesVisualizado = { ano: parseInt(anoStr), mes: parseInt(mesStr) - 1 };
+    renderView();
+  }
+});
+document.addEventListener("input", e => {
+  if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; renderView(); }
+});
+// =========================================================================
+// MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
+// =========================================================================
+
+// ---- Estado de navegação e filtros ----
+let cliViewDetalheId = null;
+let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
+
+// ---- Constantes ----
+const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
+const CLI_GENEROS = ["Masculino","Feminino","Outro","Pessoa Jurídica","Não informado"];
+const CLI_ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+const CLI_TIPOS_CONEXAO = ["Fibra Óptica","Cabo","Rádio","4G/5G","Satélite","ADSL"];
+
+// ---- Helpers ----
+function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
+function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
+function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
+function cliContratosByNegocio(clienteId, negocio){
+  const c = cliClienteById(clienteId);
+  return (c?.contratos || []).filter(ct => ct.negocio === negocio);
+}
+function cliDataRecente(dias){ const d = new Date(); d.setDate(d.getDate()-dias); return d.toISOString().slice(0,10); }
+
+// ---- VIEW: DASHBOARD CLIENTES ----
+function viewCliDashboard(){
+  const total = state.cliClientes.length;
+  const ativos = state.cliClientes.filter(c => c.status === "Ativo").length;
+  const inativos = total - ativos;
+  const novos30 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(30)).length;
+  const novos60 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(60) && c.dataCadastro < cliDataRecente(30)).length;
+  const crescPct = novos60 > 0 ? ((novos30 - novos60)/novos60*100).toFixed(1) : novos30 > 0 ? "+100" : "0";
+  const crescPos = Number(crescPct) >= 0;
+
+  const negocioTotais = state.negocios.map(n => {
+    const clientes = state.cliClientes.filter(c => (c.contratos||[]).some(ct => ct.negocio === n.nome));
+    const ativos = clientes.filter(c => (c.contratos||[]).find(ct=>ct.negocio===n.nome)?.status === "Ativo").length;
+    const mrr = clientes.reduce((s,c) => {
+      const ct = (c.contratos||[]).find(ct=>ct.negocio===n.nome && ct.status==="Ativo");
+      const plano = ct ? cliPlanoById(ct.planoId) : null;
+      return s + (plano ? Number(plano.valor||0) : 0);
+    }, 0);
+    return { n, total: clientes.length, ativos, mrr };
+  }).filter(r => r.total > 0);
+
+  const inadimplentes = state.cliClientes.filter(c => c.status === "Inadimplente").length;
+  const mrrTotal = state.cliClientes.reduce((s,c) => {
+    return s + (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((ss,ct) => {
+      const p = cliPlanoById(ct.planoId);
+      return ss + (p ? Number(p.valor||0) : 0);
+    },0);
+  },0);
+
+  const novosRows = state.cliClientes
+    .filter(c => c.dataCadastro >= cliDataRecente(30))
+    .sort((a,b)=>b.dataCadastro.localeCompare(a.dataCadastro))
+    .slice(0,8)
+    .map(c => `<tr>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cli-detalhe" data-id="${c.id}">${esc(cliNome(c))}</td>
+      <td style="color:var(--ink-3);">${fmtDateBR(c.dataCadastro)}</td>
+      <td>${(c.contratos||[]).map(ct=>`<span class="status-pill status-agendado" style="margin-right:3px;">${esc(ct.negocio)}</span>`).join("")||"—"}</td>
+      <td>${esc(c.cidade||"—")}${c.uf?` — ${c.uf}`:""}</td>
+    </tr>`).join("");
+
+  const negCards = negocioTotais.map(({n,total,ativos,mrr}) => `
+    <div class="kpi-card" style="cursor:pointer;" data-action="cli-filtrar-negocio" data-negocio="${esc(n.nome)}">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
+        <span class="kpi-label" style="margin:0;">${esc(n.nome)}</span>
+      </div>
+      <div class="kpi-value" style="font-size:26px;">${total}</div>
+      <div class="kpi-note">${ativos} ativos · MRR ${fmtBRL(mrr)}</div>
+    </div>`).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Clientes — Dashboard</div><div class="page-sub">Visão consolidada de todos os negócios</div></div>
+      <button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
+      <div class="kpi-card"><div class="kpi-label">Total de clientes</div><div class="kpi-value">${total}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Clientes ativos</div><div class="kpi-value pos">${ativos}</div></div>
+      <div class="kpi-card"><div class="kpi-label">MRR total</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(mrrTotal)}</div><div class="kpi-note">Receita mensal recorrente</div></div>
+      <div class="kpi-card"><div class="kpi-label">Novos (30 dias)</div><div class="kpi-value">${novos30}</div><div class="kpi-note" style="color:${crescPos?'var(--pos)':'var(--neg)'};">${crescPos?'↑':'↓'} ${Math.abs(crescPct)}% vs mês anterior</div></div>
+      <div class="kpi-card"><div class="kpi-label">Inadimplentes</div><div class="kpi-value ${inadimplentes>0?'neg':''}">${inadimplentes}</div></div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); margin-bottom:16px;">
+      ${negCards || `<div class="kpi-card" style="grid-column:1/-1; text-align:center; color:var(--ink-4);">Nenhum cliente cadastrado com negócios vinculados.</div>`}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">👥 Novos clientes — últimos 30 dias</div><span style="font-size:12px;color:var(--ink-3);">${novos30} cadastros</span></div>
+      <div class="panel-body" style="padding-top:6px;">
+        ${novosRows ? `<table><thead><tr><th>Nome</th><th>Cadastrado em</th><th>Negócios</th><th>Cidade</th></tr></thead><tbody>${novosRows}</tbody></table>` : emptyState("Nenhum cadastro nos últimos 30 dias.")}
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: LISTA DE CLIENTES ----
+function viewCliLista(){
+  let lista = [...state.cliClientes].sort((a,b)=>cliNome(a).localeCompare(cliNome(b)));
+  if(cliFiltro.negocio) lista = lista.filter(c => (c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio));
+  if(cliFiltro.status) lista = lista.filter(c => c.status === cliFiltro.status);
+  if(cliFiltro.plano) lista = lista.filter(c => (c.contratos||[]).some(ct=>ct.planoId===cliFiltro.plano));
+  if(cliFiltro.texto){
+    const t = cliFiltro.texto.toLowerCase();
+    lista = lista.filter(c => cliNome(c).toLowerCase().includes(t) || (c.cpfCnpj||"").includes(t) || (c.email||"").toLowerCase().includes(t) || (c.telefone||"").includes(t) || (c.cidade||"").toLowerCase().includes(t));
+  }
+  const rows = lista.map(c => {
+    const negocios = (c.contratos||[]).map(ct=>`<span class="status-pill status-agendado" style="margin:1px;">${esc(ct.negocio)}</span>`).join("");
+    const statusClass = c.status==="Ativo"?"status-pago":c.status==="Inadimplente"||c.status==="Cancelado"?"status-pendente":"status-agendado";
+    const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
+    return `<tr>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cli-detalhe" data-id="${c.id}">${esc(cliNome(c))}</td>
+      <td style="color:var(--ink-3); font-size:12px;">${esc(c.cpfCnpj||"—")}</td>
+      <td>${negocios||"—"}</td>
+      <td>${esc(c.cidade||"—")}${c.uf?`/${c.uf}`:""}</td>
+      <td>${esc(c.telefone||"—")}</td>
+      <td>${fmtDateBR(c.dataCadastro)}</td>
+      <td>${mrr>0?fmtBRL(mrr):"—"}</td>
+      <td><span class="status-pill ${statusClass}">${esc(c.status||"—")}</span></td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
+        <button class="icon-btn danger" data-action="cli-del" data-id="${c.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
+  const planoOpts = state.cliPlanos.map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Todos os Clientes</div><div class="page-sub">${lista.length} de ${state.cliClientes.length} cliente(s)</div></div>
+      <button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar por nome, CPF, e-mail, telefone, cidade..." value="${esc(cliFiltro.texto)}" data-action="cli-filtro-texto" style="min-width:260px;">
+        <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+        <select data-action="cli-filtro-status"><option value="">Todos os status</option>${statusOpts}</select>
+        <select data-action="cli-filtro-plano"><option value="">Todos os planos</option>${planoOpts}</select>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th><th class="num">MRR</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: DETALHE / EDIÇÃO DO CLIENTE ----
+function viewCliDetalhe(){
+  const c = cliClienteById(cliViewDetalheId);
+  if(!c) return `<div>${emptyState("Cliente não encontrado.")}</div>`;
+  const negociosVinculados = state.negocios.filter(n=>(c.contratos||[]).some(ct=>ct.negocio===n.nome));
+  const statusClass = c.status==="Ativo"?"status-pago":c.status==="Inadimplente"||c.status==="Cancelado"?"status-pendente":"status-agendado";
+  const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId);return s+(p?Number(p.valor||0):0);},0);
+
+  const contratosHTML = (c.contratos||[]).map(ct=>{
+    const plano = cliPlanoById(ct.planoId);
+    const ctStatusClass = ct.status==="Ativo"?"status-pago":ct.status==="Cancelado"?"status-pendente":"status-agendado";
+    return `<div class="panel" style="margin:0 0 10px; border-left:3px solid ${negocioByNome(ct.negocio)?.cor||'var(--border)'};">
+      <div class="panel-body" style="padding:12px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+          <div>
+            <div style="font-weight:700; font-size:14px;">${esc(ct.negocio)}</div>
+            <div style="font-size:12px; color:var(--ink-3); margin-top:2px;">
+              Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano?`· ${fmtBRL(plano.valor)}/mês`:""}
+              ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
+              ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
+            </div>
+            ${ct.observacoes?`<div style="font-size:11.5px;color:var(--ink-4);margin-top:3px;">${esc(ct.observacoes)}</div>`:""}
+            ${ct.tipoConexao?`<div style="font-size:11.5px;color:var(--ink-4);">Conexão: ${esc(ct.tipoConexao)}</div>`:""}
+            ${ct.enderecoInstalacao?`<div style="font-size:11.5px;color:var(--ink-4);">Instalação: ${esc(ct.enderecoInstalacao)}</div>`:""}
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <span class="status-pill ${ctStatusClass}">${ct.status}</span>
+            <button class="icon-btn" data-action="cli-edit-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Editar contrato">✎</button>
+            <button class="icon-btn danger" data-action="cli-del-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Remover">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+    <div class="page-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_lista">← Voltar</button>
+        <div>
+          <div class="page-title">${esc(cliNome(c))}</div>
+          <div class="page-sub">Cadastrado em ${fmtDateBR(c.dataCadastro)} · <span class="status-pill ${statusClass}">${c.status||"—"}</span></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" data-action="cli-add-contrato" data-id="${c.id}">+ Vincular negócio</button>
+        <button class="btn btn-primary" data-action="cli-edit" data-id="${c.id}">✎ Editar cadastro</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Negócios vinculados</div><div class="kpi-value">${(c.contratos||[]).length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cidade</div><div class="kpi-value" style="font-size:16px;">${esc(c.cidade||"—")}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:16px;"><span class="status-pill ${statusClass} " style="font-size:13px;">${c.status}</span></div></div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
+          <div class="panel-body" style="padding-top:10px;">
+            <div style="display:grid; gap:6px; font-size:12.5px;">
+              ${[
+                ["Tipo","tipoPessoa"],["CPF/CNPJ","cpfCnpj"],["RG","rg"],["Data nascimento","dataNascimento"],
+                ["E-mail","email"],["Telefone","telefone"],["WhatsApp","whatsapp"],["Gênero","genero"],
+              ].map(([label, field]) => c[field] ? `<div style="display:flex; gap:8px;"><span style="color:var(--ink-3); min-width:130px;">${label}:</span><strong>${field==='dataNascimento'?fmtDateBR(c[field]):esc(c[field])}</strong></div>` : "").filter(Boolean).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:12px;">
+          <div class="panel-head"><div class="panel-title">📍 Endereço</div></div>
+          <div class="panel-body" style="padding-top:10px; font-size:12.5px;">
+            ${c.logradouro ? `<div>${esc(c.logradouro)}, ${esc(c.numero||"S/N")}${c.complemento?` — ${esc(c.complemento)}`:""}</div>` : ""}
+            ${c.bairro ? `<div>${esc(c.bairro)}</div>` : ""}
+            ${c.cidade ? `<div>${esc(c.cidade)}${c.uf?` — ${esc(c.uf)}`:""}</div>` : ""}
+            ${c.cep ? `<div>CEP: ${esc(c.cep)}</div>` : ""}
+            ${!c.logradouro && !c.cidade ? `<span style="color:var(--ink-4);">Endereço não informado</span>` : ""}
+          </div>
+        </div>
+        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px;">${esc(c.observacoes)}</div></div>` : ""}
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-weight:700; font-size:13.5px;">🤝 Negócios & Contratos</div>
+        </div>
+        ${contratosHTML || `<div class="panel"><div class="panel-body">${emptyState("Nenhum negócio vinculado ainda. Clique em \"+ Vincular negócio\".")}</div></div>`}
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: PLANOS ----
+function viewCliPlanos(){
+  const rows = state.cliPlanos.map(p => {
+    const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
+    return `<tr>
+      <td style="font-weight:600;">${esc(p.nome)}</td>
+      <td><span class="status-pill status-agendado">${esc(p.negocio)}</span></td>
+      <td style="color:var(--ink-3);">${esc(p.descricao||"—")}</td>
+      <td class="num" style="font-weight:700; color:var(--pos);">${fmtBRL(p.valor)}</td>
+      <td style="color:var(--ink-3);">${esc(p.velocidade||"—")}</td>
+      <td style="text-align:center;">${usos}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="cli-edit-plano" data-id="${p.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="cli-del-plano" data-id="${p.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
+      <button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="7">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+/* =========================================================================
+   MODAIS DO MÓDULO CLIENTES
+========================================================================= */
+
+function modalCliCliente(existing){
+  const isEdit = !!existing;
+  const c = existing || { nome:"", tipoPessoa:"PF", cpfCnpj:"", rg:"", dataNascimento:"", genero:"Não informado", email:"", telefone:"", whatsapp:"", logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"", status:"Ativo", dataCadastro:todayISO(), observacoes:"", contratos:[] };
+
+  const negCheckboxes = state.negocios.map(n => {
+    const hasContrato = (c.contratos||[]).some(ct=>ct.negocio===n.nome);
+    return `<label class="checkbox-row" style="padding:4px 0;">
+      <input type="checkbox" name="neg_${n.id}" value="${n.nome}" ${hasContrato?"checked":""}
+        style="accent-color:${n.cor};">
+      <span style="display:flex; align-items:center; gap:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
+        ${esc(n.nome)}
+      </span>
+    </label>`;
+  }).join("");
+
+  const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${(c.status||"Ativo")===s?"selected":""}>${s}</option>`).join("");
+  const generoOpts = CLI_GENEROS.map(g=>`<option value="${g}" ${(c.genero||"Não informado")===g?"selected":""}>${g}</option>`).join("");
+  const ufOpts = CLI_ESTADOS.map(e=>`<option value="${e}" ${(c.uf||"SP")===e?"selected":""}>${e}</option>`).join("");
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar cliente":"Novo cliente"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCliCliente"><div class="modal-body">
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Dados pessoais</div>
+
+      <div class="field-row">
+        <div class="field"><label>Tipo de pessoa</label>
+          <select name="tipoPessoa" id="cliTipoPessoa">
+            <option value="PF" ${(c.tipoPessoa||"PF")==="PF"?"selected":""}>Pessoa Física</option>
+            <option value="PJ" ${c.tipoPessoa==="PJ"?"selected":""}>Pessoa Jurídica</option>
+          </select>
+        </div>
+        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+        <div class="field"><label>Cadastrado em</label><input type="date" name="dataCadastro" value="${c.dataCadastro||todayISO()}"></div>
+      </div>
+      <div class="field" id="cliNomePFWrap">
+        <label>Nome completo *</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Nome completo">
+      </div>
+      <div id="cliNomePJWrap" style="display:none;">
+        <div class="field-row">
+          <div class="field"><label>Razão social *</label><input type="text" name="razaoSocial" value="${esc(c.razaoSocial||"")}" placeholder="Razão social"></div>
+          <div class="field"><label>Nome fantasia</label><input type="text" name="nomeFantasia" value="${esc(c.nomeFantasia||"")}" placeholder="Nome fantasia"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label id="cliCpfLabel">CPF</label><input type="text" name="cpfCnpj" value="${esc(c.cpfCnpj||"")}" placeholder="000.000.000-00"></div>
+        <div class="field" id="cliRgWrap"><label>RG</label><input type="text" name="rg" value="${esc(c.rg||"")}" placeholder="00.000.000-0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field" id="cliNascimentoWrap"><label>Data de nascimento</label><input type="date" name="dataNascimento" value="${c.dataNascimento||""}"></div>
+        <div class="field" id="cliGeneroWrap"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
+      </div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Contato</div>
+      <div class="field-row">
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>WhatsApp</label><input type="text" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(c.email||"")}" placeholder="cliente@email.com"></div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Endereço</div>
+      <div class="field-row">
+        <div class="field"><label>CEP</label><input type="text" name="cep" value="${esc(c.cep||"")}" placeholder="00000-000"></div>
+        <div class="field"><label>UF</label><select name="uf">${ufOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Logradouro</label><input type="text" name="logradouro" value="${esc(c.logradouro||"")}" placeholder="Rua, Avenida, etc."></div>
+        <div class="field"><label>Número</label><input type="text" name="numero" value="${esc(c.numero||"")}" placeholder="123"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Complemento</label><input type="text" name="complemento" value="${esc(c.complemento||"")}" placeholder="Apto, bloco, casa..."></div>
+        <div class="field"><label>Bairro</label><input type="text" name="bairro" value="${esc(c.bairro||"")}" placeholder="Bairro"></div>
+      </div>
+      <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(c.cidade||"")}" placeholder="Cidade"></div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios vinculados</div>
+      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence</div>
+      <div style="display:flex; flex-wrap:wrap; gap:4px 20px; margin-bottom:10px;">${negCheckboxes||"<span style='color:var(--ink-4);'>Nenhum negócio cadastrado</span>"}</div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Observações</div>
+      <div class="field"><textarea name="observacoes" rows="3" style="resize:none;" placeholder="Notas internas, histórico de atendimento, etc.">${esc(c.observacoes||"")}</textarea></div>
+
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar alterações":"Cadastrar cliente"}</button></div></form>
+  `);
+
+  // PF/PJ toggle
+  const tipoPessoa = document.getElementById("cliTipoPessoa");
+  const pfWrap = document.getElementById("cliNomePFWrap");
+  const pjWrap = document.getElementById("cliNomePJWrap");
+  const cpfLabel = document.getElementById("cliCpfLabel");
+  const rgWrap = document.getElementById("cliRgWrap");
+  const nascimentoWrap = document.getElementById("cliNascimentoWrap");
+  const generoWrap = document.getElementById("cliGeneroWrap");
+  const atualizarTipo = () => {
+    const isPJ = tipoPessoa.value === "PJ";
+    pfWrap.style.display = isPJ ? "none" : "block";
+    pjWrap.style.display = isPJ ? "block" : "none";
+    cpfLabel.textContent = isPJ ? "CNPJ" : "CPF";
+    rgWrap.style.display = isPJ ? "none" : "block";
+    nascimentoWrap.style.display = isPJ ? "none" : "block";
+    generoWrap.style.display = isPJ ? "none" : "block";
+    if(isPJ) pfWrap.querySelector("input").removeAttribute("required");
+    else pfWrap.querySelector("input").setAttribute("required","");
+  };
+  tipoPessoa.addEventListener("change", atualizarTipo);
+  atualizarTipo();
+
+  document.getElementById("formCliCliente").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const isPJ = fd.get("tipoPessoa") === "PJ";
+    const negociosMarcados = state.negocios.filter(n => fd.get(`neg_${n.id}`) === n.nome);
+
+    const data = {
+      tipoPessoa: fd.get("tipoPessoa"),
+      nome: isPJ ? (fd.get("razaoSocial")||"").trim() : (fd.get("nome")||"").trim(),
+      razaoSocial: (fd.get("razaoSocial")||"").trim(),
+      nomeFantasia: (fd.get("nomeFantasia")||"").trim(),
+      cpfCnpj: (fd.get("cpfCnpj")||"").trim(),
+      rg: (fd.get("rg")||"").trim(),
+      dataNascimento: fd.get("dataNascimento"),
+      genero: fd.get("genero"),
+      email: (fd.get("email")||"").trim(),
+      telefone: (fd.get("telefone")||"").trim(),
+      whatsapp: (fd.get("whatsapp")||"").trim(),
+      cep: (fd.get("cep")||"").trim(),
+      logradouro: (fd.get("logradouro")||"").trim(),
+      numero: (fd.get("numero")||"").trim(),
+      complemento: (fd.get("complemento")||"").trim(),
+      bairro: (fd.get("bairro")||"").trim(),
+      cidade: (fd.get("cidade")||"").trim(),
+      uf: fd.get("uf"),
+      status: fd.get("status"),
+      dataCadastro: fd.get("dataCadastro") || todayISO(),
+      observacoes: (fd.get("observacoes")||"").trim(),
+    };
+
+    if(isEdit){
+      // Mantém contratos existentes, adiciona novos negócios sem contrato
+      const novosNegs = negociosMarcados.filter(n=>!(existing.contratos||[]).some(ct=>ct.negocio===n.nome));
+      const contratosNovos = novosNegs.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+      // Remove contratos de negócios desmarcados
+      const negsMarcadosNomes = negociosMarcados.map(n=>n.nome);
+      const contratosRestantes = (existing.contratos||[]).filter(ct=>negsMarcadosNomes.includes(ct.negocio));
+      data.contratos = [...contratosRestantes, ...contratosNovos];
+      Object.assign(existing, data);
+    }else{
+      data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+    }
+
+    if(isEdit){
+      await saveCliClientes(); closeModal();
+      cliViewDetalheId = existing.id;
+      state.view = "cli_detalhe";
+      renderApp(); showToast("Cliente atualizado.");
+    }else{
+      const novoId = uid("cli");
+      state.cliClientes.push({ id:novoId, ...data });
+      await saveCliClientes(); closeModal();
+      cliViewDetalheId = novoId;
+      state.view = "cli_detalhe";
+      renderApp(); showToast("Cliente cadastrado.");
+    }
+  });
+}
+
+function modalCliContrato(clienteId, existing){
+  const c = cliClienteById(clienteId);
+  if(!c) return;
+  const isEdit = !!existing;
+  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", tipoConexao:"", enderecoInstalacao:"", observacoes:"" };
+
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
+  const conexaoOpts = CLI_TIPOS_CONEXAO.map(t=>`<option value="${t}" ${ct.tipoConexao===t?"selected":""}>${t}</option>`).join("");
+  const planosDoPNegocio = state.cliPlanos.filter(p=>p.negocio===ct.negocio);
+  const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar contrato":"Vincular negócio ao cliente"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCliContrato"><div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Negócio *</label><select name="negocio" id="cliCtNegocio">${negOpts}</select></div>
+        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+      </div>
+      <div class="field"><label>Plano</label><select name="planoId" id="cliCtPlano"><option value="">— Selecione um plano —</option>${planoOpts}</select>
+        <div class="field-help">Se não houver planos para este negócio, crie em Planos primeiro.</div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Cliente desde</label><input type="date" name="dataContrato" value="${ct.dataContrato||todayISO()}"></div>
+        <div class="field"><label>Dia de vencimento</label><input type="number" min="1" max="31" name="diaVencimento" value="${ct.diaVencimento||""}" placeholder="Ex: 10"></div>
+      </div>
+      <div class="field"><label>Tipo de conexão</label><select name="tipoConexao"><option value="">— Selecione —</option>${conexaoOpts}</select></div>
+      <div class="field"><label>Endereço de instalação</label><input type="text" name="enderecoInstalacao" value="${esc(ct.enderecoInstalacao||"")}" placeholder="Rua, número — diferente do endereço cadastral?"></div>
+      <div class="field"><label>Observações do contrato</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes do plano, SLA, observações...">${esc(ct.observacoes||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Vincular"}</button></div></form>
+  `);
+
+  document.getElementById("cliCtNegocio").addEventListener("change", e => {
+    const planos = state.cliPlanos.filter(p=>p.negocio===e.target.value);
+    const sel = document.getElementById("cliCtPlano");
+    sel.innerHTML = `<option value="">— Selecione um plano —</option>` + planos.map(p=>`<option value="${p.id}">${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+  });
+
+  document.getElementById("formCliContrato").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      negocio: fd.get("negocio"), planoId: fd.get("planoId"), status: fd.get("status"),
+      dataContrato: fd.get("dataContrato"), diaVencimento: fd.get("diaVencimento"),
+      tipoConexao: fd.get("tipoConexao"), enderecoInstalacao: fd.get("enderecoInstalacao").trim(),
+      observacoes: fd.get("observacoes").trim(),
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{
+      if(!(c.contratos)) c.contratos = [];
+      c.contratos.push({ id:uid("ct"), ...data });
+    }
+    await saveCliClientes(); closeModal();
+    state.view = "cli_detalhe";
+    renderApp(); showToast(isEdit?"Contrato atualizado.":"Negócio vinculado.");
+  });
+}
+
+function modalCliPlano(existing){
+  const isEdit = !!existing;
+  const p = existing || { nome:"", negocio: state.negocios[0]?.nome||"", descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar plano":"Novo plano"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCliPlano"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome do plano *</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Fibra 100Mb, Plano Básico..."></div>
+        <div class="field"><label>Negócio *</label><select name="negocio">${negOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Valor mensal (R$) *</label><input required type="number" step="0.01" min="0" name="valor" value="${p.valor}" placeholder="0,00"></div>
+        <div class="field"><label>Velocidade</label><input type="text" name="velocidade" value="${esc(p.velocidade||"")}" placeholder="Ex: 100 Mbps, 300/50 Mbps"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tecnologia</label><input type="text" name="tecnologia" value="${esc(p.tecnologia||"")}" placeholder="Ex: GPON, EPON, Rádio"></div>
+        <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(p.descricao||"")}" placeholder="Resumo do plano"></div>
+      </div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes, franquia, velocidade noturna...">${esc(p.observacoes||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Criar plano"}</button></div></form>
+  `);
+  document.getElementById("formCliPlano").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { nome:fd.get("nome").trim(), negocio:fd.get("negocio"), descricao:fd.get("descricao").trim(), valor:parseFloat(fd.get("valor"))||0, velocidade:fd.get("velocidade").trim(), tecnologia:fd.get("tecnologia").trim(), observacoes:fd.get("observacoes").trim() };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.cliPlanos.push({ id:uid("pl"), ...data }); }
+    await saveCliPlanos(); closeModal(); renderView(); showToast(isEdit?"Plano atualizado.":"Plano criado.");
+  });
+}
+
+// ---- Helpers de estoque ----
+function estProdutoById(id){ return state.estProdutos.find(p => p.id === id); }
+function estFornecedorById(id){ return state.estFornecedores.find(f => f.id === id); }
+function estSaldoAtual(produtoId){
+  let saldo = 0;
+  for(const m of state.estMovimentos){
+    if(m.produtoId !== produtoId) continue;
+    if(m.tipo === "Entrada" || m.tipo === "Devolução") saldo += Number(m.qtd);
+    if(m.tipo === "Saída") saldo -= Number(m.qtd);
+    if(m.tipo === "Ajuste") saldo = Number(m.qtdFinal);
+    if(m.tipo === "Transferência" && m.localDestino) {} // apenas muda local, qtd total igual
+  }
+  return saldo;
+}
+function estStatusBadge(saldo, minimo){
+  const pct = minimo > 0 ? saldo / minimo : 1;
+  if(saldo <= 0) return `<span class="status-pill" style="background:#FEE2E2; color:#DC2626;">Zerado</span>`;
+  if(pct <= 1)   return `<span class="status-pill status-pendente">Baixo (${saldo})</span>`;
+  return `<span class="status-pill status-pago">${saldo} ${estProdutoById}</span>`;
+}
+
+// ---- VIEW: DASHBOARD ESTOQUE ----
+function viewEstDashboard(){
+  const totalProdutos = state.estProdutos.length;
+  const totalFornecedores = state.estFornecedores.length;
+  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0) > 0);
+  const zerados = state.estProdutos.filter(p => estSaldoAtual(p.id) <= 0);
+  const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * Number(p.precoUnitario||0), 0);
+  const movsHoje = state.estMovimentos.filter(m => m.data === todayISO()).length;
+  const ultMovs = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0,8);
+
+  const movRow = m => {
+    const prod = estProdutoById(m.produtoId);
+    const cor = {Entrada:"var(--pos)",Saída:"var(--neg)",Devolução:"var(--warn)",Ajuste:"var(--accent)",Transferência:"var(--ink-3)"}[m.tipo]||"var(--ink-3)";
+    return `<tr>
+      <td style="white-space:nowrap; color:var(--ink-3);">${fmtDateBR(m.data)}</td>
+      <td><span style="color:${cor}; font-weight:600; font-size:12px;">● ${esc(m.tipo)}</span></td>
+      <td>${esc(prod?.nome||"—")}</td>
+      <td class="num" style="font-weight:600; color:${m.tipo==='Saída'?'var(--neg)':'var(--pos)'};">${m.tipo==='Saída'?'-':'+'} ${m.qtd} ${esc(prod?.unidade||"un")}</td>
+      <td style="color:var(--ink-3);">${esc(m.motivo||"—")}</td>
+      <td style="color:var(--ink-3); font-size:11.5px;">${esc(m.responsavel||"—")}</td>
+    </tr>`;
+  };
+
+  const alertaRows = alertas.slice(0,5).map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const cor = saldo <= 0 ? "var(--neg)" : "var(--warn)";
+    return `<tr>
+      <td><strong>${esc(p.nome)}</strong><div style="font-size:11px;color:var(--ink-4);">${esc(p.categoria)}</div></td>
+      <td class="num" style="font-weight:700; color:${cor};">${saldo}</td>
+      <td class="num" style="color:var(--ink-4);">${p.estoqueMinimo}</td>
+      <td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button></div></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Estoque — Dashboard</div><div class="page-sub">Visão geral de equipamentos e insumos do provedor</div></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>
+        <button class="btn btn-primary" data-action="est-novo-produto">+ Produto</button>
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns: repeat(5,1fr);">
+      <div class="kpi-card"><div class="kpi-label">Produtos cadastrados</div><div class="kpi-value">${totalProdutos}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(valorTotal)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Movimentações hoje</div><div class="kpi-value">${movsHoje}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Alertas de estoque</div><div class="kpi-value" style="color:${alertas.length?'var(--warn)':'var(--pos)'};">${alertas.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Itens zerados</div><div class="kpi-value" style="color:${zerados.length?'var(--neg)':'var(--pos)'};">${zerados.length}</div></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">🔔 Alertas — estoque abaixo do mínimo</div></div>
+        <div class="panel-body" style="padding-top:6px;">
+          ${alertas.length ? `<table><thead><tr><th>Produto</th><th class="num">Saldo</th><th class="num">Mínimo</th><th></th></tr></thead><tbody>${alertaRows}</tbody></table>` : emptyState("Nenhum alerta. Estoque em dia. ✓")}
+        </div>
+      </div>
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">↕ Últimas movimentações</div></div>
+        <div class="panel-body" style="padding-top:6px;">
+          ${ultMovs.length ? `<table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Motivo</th><th>Responsável</th></tr></thead><tbody>${ultMovs.map(movRow).join("")}</tbody></table>` : emptyState("Nenhuma movimentação registrada ainda.")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: PRODUTOS ----
+let estFiltroCategoria = "", estFiltroTexto = "";
+function viewEstProdutos(){
+  let lista = [...state.estProdutos];
+  if(estFiltroCategoria) lista = lista.filter(p => p.categoria === estFiltroCategoria);
+  if(estFiltroTexto) lista = lista.filter(p => (p.nome+p.codigoInterno+p.modelo+p.fabricante).toLowerCase().includes(estFiltroTexto.toLowerCase()));
+  lista.sort((a,b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome));
+
+  const rows = lista.map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const minimo = Number(p.estoqueMinimo||0);
+    const corSaldo = saldo <= 0 ? "var(--neg)" : saldo <= minimo ? "var(--warn)" : "var(--pos)";
+    const fornecedor = estFornecedorById(p.fornecedorId);
+    return `<tr>
+      <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}</td>
+      <td>${esc(p.codigoInterno||"—")}</td>
+      <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
+      <td style="color:var(--ink-3);">${esc(fornecedor?.nome||"—")}</td>
+      <td class="num" style="font-weight:700; color:${corSaldo}; font-size:14px;">${saldo}</td>
+      <td class="num" style="color:var(--ink-4);">${esc(p.unidade||"un")}</td>
+      <td class="num">${p.estoqueMinimo||"—"}</td>
+      <td class="num">${p.precoUnitario ? fmtBRL(p.precoUnitario) : "—"}</td>
+      <td class="num" style="color:var(--ink-3);">${p.precoUnitario ? fmtBRL(saldo * Number(p.precoUnitario)) : "—"}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="est-registrar-entrada" data-id="${p.id}" title="Registrar entrada" style="color:var(--pos);">▲</button>
+        <button class="icon-btn" data-action="est-registrar-saida" data-id="${p.id}" title="Registrar saída" style="color:var(--neg);">▼</button>
+        <button class="icon-btn" data-action="est-edit-produto" data-id="${p.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="est-del-produto" data-id="${p.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+
+  const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${estFiltroCategoria===c?"selected":""}>${c}</option>`).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s)</div></div>
+      <button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar por nome, código ou modelo..." value="${esc(estFiltroTexto)}" data-action="est-filtro-texto" style="min-width:220px;">
+        <select data-action="est-filtro-cat"><option value="">Todas as categorias</option>${catOptions}</select>
+        ${(estFiltroCategoria||estFiltroTexto)?`<button class="btn btn-ghost btn-sm" data-action="est-filtro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr>
+          <th>Produto</th><th>Código</th><th>Categoria</th><th>Fornecedor</th>
+          <th class="num">Saldo</th><th class="num">Un</th><th class="num">Mín.</th>
+          <th class="num">Preço unit.</th><th class="num">Valor total</th><th></th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: MOVIMENTAÇÕES ----
+let estMovFiltro = { tipo:"", produto:"", dataDe:"", dataAte:"" };
+function viewEstMovimentos(){
+  let lista = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data)||b.id.localeCompare(a.id));
+  if(estMovFiltro.tipo) lista = lista.filter(m => m.tipo === estMovFiltro.tipo);
+  if(estMovFiltro.produto) lista = lista.filter(m => m.produtoId === estMovFiltro.produto);
+  if(estMovFiltro.dataDe) lista = lista.filter(m => m.data >= estMovFiltro.dataDe);
+  if(estMovFiltro.dataAte) lista = lista.filter(m => m.data <= estMovFiltro.dataAte);
+
+  const rows = lista.map(m => {
+    const prod = estProdutoById(m.produtoId);
+    const sinal = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "+" : m.tipo==="Saída" ? "−" : "~";
+    const cor = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "var(--pos)" : m.tipo==="Saída" ? "var(--neg)" : "var(--ink-3)";
+    return `<tr>
+      <td style="white-space:nowrap;">${fmtDateBR(m.data)}</td>
+      <td><span style="color:${cor}; font-weight:600;">${esc(m.tipo)}</span></td>
+      <td>${esc(prod?.nome||"—")}<div style="font-size:11px;color:var(--ink-4);">${esc(prod?.categoria||"")}</div></td>
+      <td class="num" style="font-weight:700; color:${cor};">${sinal} ${m.qtd} ${esc(prod?.unidade||"un")}</td>
+      <td style="color:var(--ink-3);">${esc(m.localOrigem||"—")} ${m.localDestino?`→ ${esc(m.localDestino)}`:""}</td>
+      <td>${esc(m.motivo||"—")}</td>
+      <td style="color:var(--ink-3); font-size:11.5px;">${esc(m.responsavel||"—")}</td>
+      <td>${esc(m.notaFiscal||"—")}</td>
+      <td><div class="row-actions"><button class="icon-btn danger" data-action="est-del-mov" data-id="${m.id}" title="Remover">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+
+  const tipoOpts = EST_MOV_TIPOS.map(t => `<option value="${t}" ${estMovFiltro.tipo===t?"selected":""}>${t}</option>`).join("");
+  const prodOpts = state.estProdutos.map(p => `<option value="${p.id}" ${estMovFiltro.produto===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const temFiltro = estMovFiltro.tipo||estMovFiltro.produto||estMovFiltro.dataDe||estMovFiltro.dataAte;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Movimentações</div><div class="page-sub">Entradas, saídas, transferências e ajustes de estoque</div></div>
+      <button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <select data-action="est-movfiltro-tipo"><option value="">Todos os tipos</option>${tipoOpts}</select>
+        <select data-action="est-movfiltro-produto"><option value="">Todos os produtos</option>${prodOpts}</select>
+        <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="est-movfiltro-de" value="${estMovFiltro.dataDe}"> até <input type="date" data-action="est-movfiltro-ate" value="${estMovFiltro.dataAte}"></span>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="est-movfiltro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhuma movimentação encontrada.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: FORNECEDORES ----
+function viewEstFornecedores(){
+  const rows = state.estFornecedores.map(f => {
+    const produtos = state.estProdutos.filter(p => p.fornecedorId === f.id).length;
+    return `<tr>
+      <td style="font-weight:600;">${esc(f.nome)}</td>
+      <td>${esc(f.cnpj||"—")}</td>
+      <td>${esc(f.contato||"—")}</td>
+      <td>${esc(f.telefone||"—")}</td>
+      <td>${esc(f.email||"—")}</td>
+      <td style="text-align:center;">${produtos} produto(s)</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="est-edit-fornecedor" data-id="${f.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="est-del-fornecedor" data-id="${f.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Fornecedores</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
+      <button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: ALERTAS ----
+function viewEstAlertas(){
+  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0));
+  const rows = alertas.map(p => {
+    const saldo = estSaldoAtual(p.id);
+    const minimo = Number(p.estoqueMinimo||0);
+    const fornecedor = estFornecedorById(p.fornecedorId);
+    return `<tr>
+      <td style="font-weight:600;">${esc(p.nome)}</td>
+      <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
+      <td class="num" style="font-weight:700; color:${saldo<=0?'var(--neg)':'var(--warn)'};">${saldo}</td>
+      <td class="num">${minimo}</td>
+      <td class="num" style="color:var(--neg); font-weight:600;">${minimo - saldo}</td>
+      <td>${esc(fornecedor?.nome||"—")}</td>
+      <td>${esc(fornecedor?.telefone||"—")}</td>
+      <td><div class="row-actions"><button class="btn btn-primary btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">🔔 Alertas de Estoque</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
+    </div>
+    ${alertas.length ? `
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Saldo atual</th><th class="num">Mínimo</th><th class="num">Faltam</th><th>Fornecedor</th><th>Contato</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div></div>` : `<div class="panel"><div class="panel-body">${emptyState("Nenhum alerta. Estoque em dia. ✓")}</div></div>`}
+  `;
+}
+
+/* =========================================================================
+   MODAIS DO ESTOQUE
+========================================================================= */
+function modalEstProduto(existing){
+  const isEdit = !!existing;
+  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", fornecedorId:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
+  const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
+  const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar produto":"Novo produto"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstProduto"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome do produto *</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: ONU GPON Huawei HG8145V5"></div>
+        <div class="field"><label>Código interno</label><input type="text" name="codigoInterno" value="${esc(p.codigoInterno)}" placeholder="Ex: ONU-001"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Categoria *</label><select name="categoria">${catOptions}</select></div>
+        <div class="field"><label>Unidade</label><select name="unidade">${unOptions}</select></div>
+        <div class="field"><label>Estoque mínimo</label><input type="number" min="0" name="estoqueMinimo" value="${p.estoqueMinimo}" placeholder="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Modelo</label><input type="text" name="modelo" value="${esc(p.modelo)}" placeholder="Ex: HG8145V5"></div>
+        <div class="field"><label>Fabricante</label><input type="text" name="fabricante" value="${esc(p.fabricante)}" placeholder="Ex: Huawei"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Fornecedor</label><select name="fornecedorId"><option value="">— Nenhum —</option>${fornOptions}</select></div>
+        <div class="field"><label>Preço unitário (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00"></div>
+      </div>
+      <div class="field"><label>Localização no estoque</label><input type="text" name="localizacao" value="${esc(p.localizacao)}" placeholder="Ex: Prateleira A3, Sala técnica"></div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(p.observacoes)}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar produto"}</button></div></form>
+  `);
+  document.getElementById("formEstProduto").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), codigoInterno: fd.get("codigoInterno").trim(),
+      categoria: fd.get("categoria"), unidade: fd.get("unidade"),
+      modelo: fd.get("modelo").trim(), fabricante: fd.get("fabricante").trim(),
+      fornecedorId: fd.get("fornecedorId"),
+      precoUnitario: parseFloat(fd.get("precoUnitario"))||0,
+      estoqueMinimo: parseInt(fd.get("estoqueMinimo"))||0,
+      localizacao: fd.get("localizacao").trim(),
+      observacoes: fd.get("observacoes").trim(),
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.estProdutos.push({ id: uid("ep"), ...data }); }
+    await saveEstProdutos(); closeModal(); renderView(); showToast(isEdit?"Produto atualizado.":"Produto adicionado.");
+  });
+}
+
+function modalEstMovimentacao(presetProdutoId, presetTipo){
+  const prodOptions = state.estProdutos.map(p => `<option value="${p.id}" ${presetProdutoId===p.id?"selected":""}>${esc(p.nome)} — saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")}</option>`).join("");
+  const tipoOptions = EST_MOV_TIPOS.map(t => `<option value="${t}" ${presetTipo===t?"selected":""}>${t}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">↕ Nova movimentação de estoque</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstMov"><div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Data *</label><input required type="date" name="data" value="${todayISO()}"></div>
+        <div class="field"><label>Tipo *</label><select name="tipo" id="estMovTipo">${tipoOptions}</select></div>
+      </div>
+      <div class="field"><label>Produto *</label><select required name="produtoId">${prodOptions||'<option value="">— Cadastre um produto primeiro —</option>'}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Quantidade *</label><input required type="number" min="1" step="1" name="qtd" placeholder="1">
+          <div class="field-help" id="estMovQtdHelp"></div>
+        </div>
+        <div class="field" id="estMovQtdFinalWrap" style="display:none;"><label>Saldo final (ajuste)</label><input type="number" min="0" step="1" name="qtdFinal" placeholder="Saldo correto"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Local de origem</label><input type="text" name="localOrigem" placeholder="Ex: Almoxarifado"></div>
+        <div class="field" id="estMovDestinoWrap"><label>Local de destino</label><input type="text" name="localDestino" placeholder="Ex: Técnico João"></div>
+      </div>
+      <div class="field"><label>Motivo / Descrição</label><input type="text" name="motivo" placeholder="Ex: Instalação cliente, Compra NF 123, Perda"></div>
+      <div class="field-row">
+        <div class="field"><label>Responsável</label><input type="text" name="responsavel" value="${state.perfilAtivo?state.perfilAtivo.nome:'Master'}" placeholder="Nome"></div>
+        <div class="field"><label>Nota Fiscal</label><input type="text" name="notaFiscal" placeholder="Nº da NF (opcional)"></div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Registrar</button></div></form>
+  `);
+  document.getElementById("estMovTipo").addEventListener("change", e => {
+    const isAjuste = e.target.value === "Ajuste";
+    const isTransf = e.target.value === "Transferência";
+    document.getElementById("estMovQtdFinalWrap").style.display = isAjuste ? "block" : "none";
+    document.getElementById("estMovDestinoWrap").style.display = isTransf ? "block" : "none";
+  });
+  document.getElementById("formEstMov").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(!fd.get("produtoId")){ showToast("Selecione um produto.", "error"); return; }
+    const mov = {
+      id: uid("em"), data: fd.get("data"), tipo: fd.get("tipo"),
+      produtoId: fd.get("produtoId"), qtd: parseInt(fd.get("qtd"))||0,
+      qtdFinal: parseInt(fd.get("qtdFinal"))||undefined,
+      localOrigem: fd.get("localOrigem").trim(), localDestino: fd.get("localDestino").trim(),
+      motivo: fd.get("motivo").trim(), responsavel: fd.get("responsavel").trim(),
+      notaFiscal: fd.get("notaFiscal").trim(),
+    };
+    state.estMovimentos.push(mov);
+    await saveEstMovimentos(); closeModal(); renderView();
+    showToast("Movimentação registrada.");
+  });
+}
+
+function modalEstFornecedor(existing){
+  const isEdit = !!existing;
+  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", observacoes:"" };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar fornecedor":"Novo fornecedor"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstForn"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome *</label><input required type="text" name="nome" value="${esc(f.nome)}" placeholder="Razão social ou nome fantasia"></div>
+        <div class="field"><label>CNPJ</label><input type="text" name="cnpj" value="${esc(f.cnpj)}" placeholder="00.000.000/0001-00"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Nome do contato</label><input type="text" name="contato" value="${esc(f.contato)}" placeholder="Nome"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="${esc(f.telefone)}" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email)}" placeholder="fornecedor@email.com"></div>
+      <div class="field"><label>Endereço</label><input type="text" name="endereco" value="${esc(f.endereco)}" placeholder="Rua, número, cidade"></div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(f.observacoes)}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar fornecedor"}</button></div></form>
+  `);
+  document.getElementById("formEstForn").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { nome: fd.get("nome").trim(), cnpj: fd.get("cnpj").trim(), contato: fd.get("contato").trim(), telefone: fd.get("telefone").trim(), email: fd.get("email").trim(), endereco: fd.get("endereco").trim(), observacoes: fd.get("observacoes").trim() };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.estFornecedores.push({ id: uid("ef"), ...data }); }
+    await saveEstFornecedores(); closeModal(); renderView(); showToast(isEdit?"Fornecedor atualizado.":"Fornecedor adicionado.");
+  });
+}
+
+// ============================================================
+// INIT — reage à sessão do Supabase
+// ============================================================
+async function init(){
+  // onAuthStateChange dispara imediatamente com a sessão atual (vinda do localStorage
+  // do navegador, se houver) assim que nos inscrevemos — não precisamos chamar
+  // getSession() à parte, isso evitaria um carregamento duplicado.
+  let carregouUmaVez = false;
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    const jaLogado = !!state.user;
+    state.user = session ? session.user : null;
+    if(state.user && (!jaLogado || !carregouUmaVez)){
+      carregouUmaVez = true;
+      await loadData();
+      renderApp();
+    }else if(!state.user){
+      carregouUmaVez = false;
+      renderApp();
+    }
+  });
+}
+init();
+</script>
+</body>
+</html>
