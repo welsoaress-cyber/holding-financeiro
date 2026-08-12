@@ -1732,8 +1732,8 @@ function renderApp(){
           ⬆<span class="label"> Importar backup</span>
           <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
         </label>
-        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Cargos, Funcionários, Folha e Férias">🌱<span class="label"> Popular dados de teste</span></button>
-        <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Remove tudo que foi criado por 'Popular dados de teste'">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
+        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Escolha popular Geral (tudo) ou só o módulo em que você está agora">🌱<span class="label"> Popular dados de teste</span></button>
+        <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Escolha remover Geral (tudo) ou só o módulo em que você está agora">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
         <button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
@@ -2371,7 +2371,7 @@ function viewCartoes(){
 // ============================================================
 // VIEW: LANÇAMENTOS
 // ============================================================
-let lancFilter = { negocio: "", status: "", conta: "", cartao: "", categoria: "", dataDe: "", dataAte: "" };
+let lancFilter = { negocio: "", status: "", conta: "", cartao: "", categoria: "", catNome: "", subcatNome: "", texto: "", dataDe: "", dataAte: "" };
 let lancSelecionados = new Set();
 let lancVisibleIds = [];
 const LANC_VIEW_CONFIG = {
@@ -2402,6 +2402,9 @@ function viewLancamentos(){
   if(lancFilter.status) list = list.filter(l => l.status === lancFilter.status);
   if(lancFilter.conta) list = list.filter(l => l.contaOrigem === lancFilter.conta || l.contaDestino === lancFilter.conta);
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
+  if(lancFilter.catNome) list = list.filter(l => l.categoria === lancFilter.catNome);
+  if(lancFilter.subcatNome) list = list.filter(l => l.subcategoria === lancFilter.subcatNome);
+  if(lancFilter.texto) list = list.filter(l => (l.descricao||"").toLowerCase().includes(lancFilter.texto.toLowerCase()));
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
   lancVisibleIds = list.map(l => l.id);
@@ -2465,7 +2468,9 @@ function viewLancamentos(){
   const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
-  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.dataDe||lancFilter.dataAte;
+  const catNomeOptions = state.categorias.map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s)}" ${lancFilter.subcatNome===s?"selected":""}>${esc(s)}</option>`).join("");
+  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte;
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   return `
     <div class="page-header">
@@ -2476,11 +2481,14 @@ function viewLancamentos(){
       </div>
     </div>
     <div class="panel"><div class="filter-bar">
+      <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
+      <select data-action="filter-catnome"><option value="">🏷️ Todas as categorias</option>${catNomeOptions}</select>
+      <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"🏷️ Selecione uma categoria"}</option>${subcatNomeOptions}</select>
       <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
@@ -2631,16 +2639,46 @@ function handleImportarBackup(e){
 // "_teste: true" (guardado dentro do jsonb "dados", não é coluna nova) e prefixo
 // "[TESTE]" no nome, pra ficar óbvio e fácil de tirar depois.
 // ============================================================
-async function popularDadosTeste(){
-  if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
-  if(!confirm("Isso cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Técnicos, Chamados, Cargos, Funcionários, Folha e Férias — 100% do que já existe no sistema, tudo marcado com [TESTE]. Continuar?")) return;
-  showToast("Gerando dados de teste...");
+// ============================================================
+// DADOS DE TESTE — Geral (todas as áreas) ou só a área/módulo selecionado,
+// tanto pra popular quanto pra remover. Cada área é independente (não
+// depende de outra ter rodado antes), mas se a outra já tiver dados
+// (de teste ou reais), aproveita pra enriquecer (ex: Chamados usa
+// produtos/contas que já existirem, senão só pula essa parte opcional).
+// ============================================================
+const AREAS_DADOS_TESTE = [
+  { id:"financeiro", nome:"Financeiro", desc:"contas, cartões e lançamentos" },
+  { id:"estoque",    nome:"Estoque",    desc:"fornecedores, produtos e compras" },
+  { id:"clientes",   nome:"Clientes",   desc:"planos, clientes, técnicos e chamados" },
+  { id:"rh",         nome:"RH",         desc:"cargos, funcionários, folha e férias" },
+];
+function areaDadosTesteDoModulo(moduloId){ return AREAS_DADOS_TESTE.find(a => a.id === moduloId) || null; }
+function testeCpfFake(i){ return `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`; }
+function testeTelFake(base, i){ return `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`; }
+function testeNegAleatorio(){ const nomes = state.negocios.map(n=>n.nome); return nomes.length ? nomes[Math.floor(Math.random()*nomes.length)] : ""; }
 
-  const negNomes = state.negocios.map(n => n.nome);
-  const negAleatorio = () => negNomes.length ? negNomes[Math.floor(Math.random()*negNomes.length)] : "";
-  const cpfFake = (i) => `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`;
-  const telFake = (base, i) => `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`;
+function modalDadosTeste(acao){
+  if(!ehMaster()){ showToast(`Apenas o Master pode ${acao==="popular"?"popular":"remover"} dados de teste.`, "error"); return; }
+  const areaAtual = areaDadosTesteDoModulo(state.moduloAtivo);
+  const titulo = acao==="popular" ? "🌱 Popular dados de teste" : "🧹 Remover dados de teste";
+  const verbo = acao==="popular" ? "Cria" : "Remove";
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px;">Escolha o alcance:</div>
+      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; margin-bottom:8px; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="geral">
+        <div><div style="font-weight:700;">🌐 Geral</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} ~10 registros de teste em Financeiro, Estoque, Clientes e RH.</div></div>
+      </button>
+      ${areaAtual ? `
+      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="${areaAtual.id}">
+        <div><div style="font-weight:700;">📍 Somente ${esc(areaAtual.nome)}</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} só ${esc(areaAtual.desc)}.</div></div>
+      </button>` : `<div class="field-help">Você está num módulo sem dados de teste próprios (Cadastro, Visão Geral ou Relatórios) — só "Geral" está disponível aqui. Abra Financeiro, Estoque, Clientes ou RH pra liberar a opção "Somente esse módulo".</div>`}
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
+  `);
+}
 
+async function seedTesteFinanceiro(){
+  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
   // ---- Contas Bancárias (tabela "flat" — sem coluna "dados", não aceita o
   // marcador _teste; a identificação de teste aqui é só pelo prefixo no nome) ----
   const contaDefs = [
@@ -2670,6 +2708,50 @@ async function popularDadosTeste(){
   state.cartoes.push(...novosCartoes);
   await saveCartoes();
 
+  // ---- Lançamentos (Receitas/Despesas/Transferências, espalhados em 3 meses) ----
+  const categoriasNomes = state.categorias.map(c => c.nome);
+  const categoriaAleatoria = () => categoriasNomes.length ? categoriasNomes[Math.floor(Math.random()*categoriasNomes.length)] : "";
+  const statusVariados = ["Pago","Provisionado","Agendado"];
+  const novosLancamentos = [];
+  const hoje = new Date();
+  for(let m=-1; m<=1; m++){
+    const anoRef = hoje.getFullYear(), mesRef = hoje.getMonth()+m;
+    for(let i=0;i<4;i++){
+      const data = new Date(anoRef, mesRef, Math.min(3+i*6, 28)).toISOString().slice(0,10);
+      const contaR = novasContas[Math.floor(Math.random()*novasContas.length)];
+      const statusR = statusVariados[i%3];
+      novosLancamentos.push({
+        id: uid("l"), data, tipo: "Receita", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
+        contaOrigem: contaR.id, contaDestino: "", valor: Math.round((300+Math.random()*2000)*100)/100,
+        descricao: "[TESTE] Receita de teste", status: statusR, conciliado: statusR==="Pago",
+        lancadoPor: "Master", _teste: true,
+      });
+      const contaD = novasContas[Math.floor(Math.random()*novasContas.length)];
+      const statusD = statusVariados[(i+1)%3];
+      novosLancamentos.push({
+        id: uid("l"), data, tipo: "Despesa", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
+        contaOrigem: contaD.id, contaDestino: "", valor: Math.round((100+Math.random()*1200)*100)/100,
+        descricao: "[TESTE] Despesa de teste", status: statusD, conciliado: statusD==="Pago",
+        lancadoPor: "Master", _teste: true,
+      });
+    }
+    if(novasContas.length >= 2){
+      novosLancamentos.push({
+        id: uid("l"), data: new Date(anoRef, mesRef, 15).toISOString().slice(0,10), tipo: "Transferência",
+        negocio: "", categoria: "", subcategoria: "", contaOrigem: novasContas[0].id, contaDestino: novasContas[1].id,
+        valor: Math.round((200+Math.random()*800)*100)/100, descricao: "[TESTE] Transferência entre contas",
+        status: "Pago", conciliado: true, lancadoPor: "Master", _teste: true,
+      });
+    }
+  }
+  state.lancamentos.push(...novosLancamentos);
+  await saveLancamentos();
+
+  return `${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosLancamentos.length} lançamentos`;
+}
+
+async function seedTesteEstoque(){
+  const telFake = testeTelFake, negAleatorio = testeNegAleatorio;
   // ---- Fornecedores ----
   const fornNomes = ["Fibra Sul Distribuidora","Conexão Norte Equipamentos","TechNet Atacado","Rede Forte Suprimentos","Ótica Brasil Cabos","Distribuidora Sinal Rápido","Comercial Torres & Postes","Atacado Provedor Total","Fibra Express Insumos","Central de Redes Ltda"];
   const contatos = ["Carlos","Ana","Marcos","Fernanda","João","Patrícia","Rafael","Juliana","Eduardo","Camila"];
@@ -2737,45 +2819,11 @@ async function popularDadosTeste(){
   await saveEstCompras();
   await saveEstMovimentos();
 
-  // ---- Lançamentos (Receitas/Despesas/Transferências, espalhados em 3 meses) ----
-  const categoriasNomes = state.categorias.map(c => c.nome);
-  const categoriaAleatoria = () => categoriasNomes.length ? categoriasNomes[Math.floor(Math.random()*categoriasNomes.length)] : "";
-  const statusVariados = ["Pago","Provisionado","Agendado"];
-  const novosLancamentos = [];
-  const hoje = new Date();
-  for(let m=-1; m<=1; m++){
-    const anoRef = hoje.getFullYear(), mesRef = hoje.getMonth()+m;
-    for(let i=0;i<4;i++){
-      const data = new Date(anoRef, mesRef, Math.min(3+i*6, 28)).toISOString().slice(0,10);
-      const contaR = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusR = statusVariados[i%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Receita", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaR.id, contaDestino: "", valor: Math.round((300+Math.random()*2000)*100)/100,
-        descricao: "[TESTE] Receita de teste", status: statusR, conciliado: statusR==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-      const contaD = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusD = statusVariados[(i+1)%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Despesa", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaD.id, contaDestino: "", valor: Math.round((100+Math.random()*1200)*100)/100,
-        descricao: "[TESTE] Despesa de teste", status: statusD, conciliado: statusD==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-    }
-    if(novasContas.length >= 2){
-      novosLancamentos.push({
-        id: uid("l"), data: new Date(anoRef, mesRef, 15).toISOString().slice(0,10), tipo: "Transferência",
-        negocio: "", categoria: "", subcategoria: "", contaOrigem: novasContas[0].id, contaDestino: novasContas[1].id,
-        valor: Math.round((200+Math.random()*800)*100)/100, descricao: "[TESTE] Transferência entre contas",
-        status: "Pago", conciliado: true, lancadoPor: "Master", _teste: true,
-      });
-    }
-  }
-  state.lancamentos.push(...novosLancamentos);
-  await saveLancamentos();
+  return `${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras`;
+}
 
+async function seedTesteClientes(){
+  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
   // ---- Planos ----
   const planoDefs = [
     ["Fibra 100 Mega",89.9,"100 Mbps","GPON"], ["Fibra 200 Mega",109.9,"200 Mbps","GPON"],
@@ -2852,25 +2900,29 @@ async function popularDadosTeste(){
   state.cliChamados.push(...novosChamados);
   await saveCliChamados();
 
-  // material baixado nos 3 primeiros chamados concluídos (usa Custo Médio Real)
+  // material baixado nos chamados concluídos, se já existir produto cadastrado
+  // (de teste ou real — Estoque não precisa ter rodado nesse mesmo escopo)
   const chamadosConcluidos = novosChamados.filter(c => c.status === "Concluído");
-  chamadosConcluidos.forEach((cham,i) => {
-    const p = novosProdutos[i % novosProdutos.length];
-    const custoUnit = estValorUnitarioEstimado(p) || 10;
-    state.estMovimentos.push({
-      id: uid("em"), data: cham.dataConclusao, tipo: "Saída", produtoId: p.id, qtd: 1, custoUnitario: custoUnit,
-      localOrigem: "Estoque", localDestino: novosClientes.find(c=>c.id===cham.clienteId)?.nome||"Cliente",
-      motivo: `Chamado ${cham.numero}`, responsavel: "Master", chamadoId: cham.id, _teste: true,
+  if(state.estProdutos.length){
+    chamadosConcluidos.forEach((cham,i) => {
+      const p = state.estProdutos[i % state.estProdutos.length];
+      const custoUnit = estValorUnitarioEstimado(p) || 10;
+      state.estMovimentos.push({
+        id: uid("em"), data: cham.dataConclusao, tipo: "Saída", produtoId: p.id, qtd: 1, custoUnitario: custoUnit,
+        localOrigem: "Estoque", localDestino: novosClientes.find(c=>c.id===cham.clienteId)?.nome||"Cliente",
+        motivo: `Chamado ${cham.numero}`, responsavel: "Master", chamadoId: cham.id, _teste: true,
+      });
     });
-  });
-  await saveEstMovimentos();
+    await saveEstMovimentos();
+  }
 
-  // cobrança gerada só no 1º chamado concluído, pra mostrar o vínculo com Lançamentos
-  if(chamadosConcluidos.length){
+  // cobrança gerada só no 1º chamado concluído (se já existir conta pra receber),
+  // pra mostrar o vínculo com Lançamentos
+  if(chamadosConcluidos.length && state.contas.length){
     let catVendas = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
     if(!catVendas){ catVendas = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(catVendas); await saveCategorias(); }
     const chamCobranca = chamadosConcluidos[0];
-    const contaCobranca = novasContas[0];
+    const contaCobranca = state.contas.find(c=>c.ativa!==false) || state.contas[0];
     const lancId = uid("l");
     state.lancamentos.push({
       id: lancId, data: chamCobranca.dataConclusao, tipo: "Receita", negocio: chamCobranca.negocio||"",
@@ -2883,6 +2935,11 @@ async function popularDadosTeste(){
     await saveCliChamados();
   }
 
+  return `${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosTecnicos.length} técnicos, ${novosChamados.length} chamados`;
+}
+
+async function seedTesteRh(){
+  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
   // ---- Cargos ----
   const cargoDefs = [
     ["Técnico de Instalação","44h/semana",2200], ["Técnico de Suporte N1","44h/semana",1900],
@@ -2946,37 +3003,60 @@ async function popularDadosTeste(){
   state.rhFerias.push(...novasFerias);
   await saveRhFerias();
 
-  renderApp();
-  showToast(`Dados de teste criados: ${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosLancamentos.length} lançamentos, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosTecnicos.length} técnicos, ${novosChamados.length} chamados, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias.`);
+  return `${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias`;
 }
 
-async function removerDadosTeste(){
+async function popularDadosTeste(escopo){
+  if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
+  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
+  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
+  if(!confirm(`Isso cria ~10 registros de teste em ${areas.map(a=>nomesArea[a]).join(", ")}, tudo marcado com [TESTE]. Continuar?`)) return;
+  showToast("Gerando dados de teste...");
+  const resumo = [];
+  if(areas.includes("financeiro")) resumo.push(await seedTesteFinanceiro());
+  if(areas.includes("estoque")) resumo.push(await seedTesteEstoque());
+  if(areas.includes("clientes")) resumo.push(await seedTesteClientes());
+  if(areas.includes("rh")) resumo.push(await seedTesteRh());
+  renderApp();
+  showToast(`Dados de teste criados: ${resumo.join(" · ")}.`);
+}
+
+async function removerDadosTeste(escopo){
   if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
-  if(!confirm("Remover TODOS os registros marcados como [TESTE] (contas, cartões, fornecedores, produtos, compras, movimentações, lançamentos, planos, clientes, técnicos, chamados, cargos, funcionários, folha e férias)? Não afeta seus dados reais.")) return;
+  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
+  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
+  if(!confirm(`Remover os registros marcados como [TESTE] de ${areas.map(a=>nomesArea[a]).join(", ")}? Não afeta seus dados reais.`)) return;
   const removerDoArray = async (arrName, tabela) => {
     const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
     state[arrName] = state[arrName].filter(x => !x._teste);
     if(idsTeste.length) await deleteRows(tabela, idsTeste);
   };
-  // "contas" é tabela flat (sem coluna dados) — não tem campo _teste, identifica pelo nome
-  const idsContasTeste = state.contas.filter(c => (c.nome||"").startsWith("[TESTE]")).map(c => c.id);
-  state.contas = state.contas.filter(c => !(c.nome||"").startsWith("[TESTE]"));
-  if(idsContasTeste.length) await deleteRows("contas", idsContasTeste);
-
-  await removerDoArray("cartoes", "cartoes");
-  await removerDoArray("lancamentos", "lancamentos");
-  await removerDoArray("estMovimentos", "est_movimentos");
-  await removerDoArray("estCompras", "est_compras");
-  await removerDoArray("estProdutos", "est_produtos");
-  await removerDoArray("estFornecedores", "est_fornecedores");
-  await removerDoArray("cliClientes", "cli_clientes");
-  await removerDoArray("cliPlanos", "cli_planos");
-  await removerDoArray("cliChamados", "cli_chamados");
-  await removerDoArray("cliTecnicos", "cli_tecnicos");
-  await removerDoArray("rhFuncionarios", "rh_funcionarios");
-  await removerDoArray("rhCargos", "rh_cargos");
-  await removerDoArray("rhFolha", "rh_folha");
-  await removerDoArray("rhFerias", "rh_ferias");
+  if(areas.includes("financeiro")){
+    // "contas" é tabela flat (sem coluna dados) — não tem campo _teste, identifica pelo nome
+    const idsContasTeste = state.contas.filter(c => (c.nome||"").startsWith("[TESTE]")).map(c => c.id);
+    state.contas = state.contas.filter(c => !(c.nome||"").startsWith("[TESTE]"));
+    if(idsContasTeste.length) await deleteRows("contas", idsContasTeste);
+    await removerDoArray("cartoes", "cartoes");
+    await removerDoArray("lancamentos", "lancamentos");
+  }
+  if(areas.includes("estoque")){
+    await removerDoArray("estMovimentos", "est_movimentos");
+    await removerDoArray("estCompras", "est_compras");
+    await removerDoArray("estProdutos", "est_produtos");
+    await removerDoArray("estFornecedores", "est_fornecedores");
+  }
+  if(areas.includes("clientes")){
+    await removerDoArray("cliClientes", "cli_clientes");
+    await removerDoArray("cliPlanos", "cli_planos");
+    await removerDoArray("cliChamados", "cli_chamados");
+    await removerDoArray("cliTecnicos", "cli_tecnicos");
+  }
+  if(areas.includes("rh")){
+    await removerDoArray("rhFuncionarios", "rh_funcionarios");
+    await removerDoArray("rhCargos", "rh_cargos");
+    await removerDoArray("rhFolha", "rh_folha");
+    await removerDoArray("rhFerias", "rh_ferias");
+  }
   renderApp();
   showToast("Dados de teste removidos.");
 }
@@ -4262,13 +4342,18 @@ document.addEventListener("click", async e => {
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
   else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
   else if(action === "exportar-backup") exportarBackup();
-  else if(action === "popular-dados-teste") popularDadosTeste();
-  else if(action === "remover-dados-teste") removerDadosTeste();
+  else if(action === "popular-dados-teste") modalDadosTeste("popular");
+  else if(action === "remover-dados-teste") modalDadosTeste("remover");
+  else if(action === "dados-teste-executar"){
+    const acaoTeste = el.dataset.acao, escopo = el.dataset.escopo;
+    closeModal();
+    if(acaoTeste === "popular") popularDadosTeste(escopo); else removerDadosTeste(escopo);
+  }
   else if(action === "unlock-pagar") modalSenha("pagar");
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
   else if(action === "toggle-select-lanc"){
     if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
     renderView();
@@ -4684,6 +4769,9 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "filter-conta"){ lancFilter.conta = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-cartao"){ lancFilter.cartao = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-categoria"){ lancFilter.categoria = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-catnome"){ lancFilter.catNome = e.target.value; lancFilter.subcatNome = ""; renderApp(); }
+  if(e.target.dataset.action === "filter-subcatnome"){ lancFilter.subcatNome = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-texto"){ lancFilter.texto = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-de"){ lancFilter.dataDe = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-data-ate"){ lancFilter.dataAte = e.target.value; renderApp(); }
   // Estoque filters
