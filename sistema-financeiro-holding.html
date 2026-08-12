@@ -694,6 +694,7 @@ let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [],
   cliClientes: [], cliPlanos: [],
+  rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
@@ -707,12 +708,21 @@ const EST_CATEGORIAS = ["ONU/ONT","Roteador","Switch","Cabo","Ferramenta","Conec
 const EST_UNIDADES = ["un","m","cx","kg","rolo","par","kit","lote"];
 const EST_MOV_TIPOS = ["Entrada","Saída","Transferência","Ajuste","Devolução"];
 
+// ---- RH ----
+const RH_STATUS = ["Ativo","Férias","Afastado","Aviso Prévio","Desligado"];
+const RH_TIPOS_CONTRATO = ["CLT","PJ","Estágio","Temporário","Autônomo"];
+const RH_GENEROS = ["Masculino","Feminino","Outro","Não informado"];
+const RH_ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+const RH_STATUS_FOLHA = ["Pendente","Pago"];
+const RH_STATUS_FERIAS = ["Programada","Em andamento","Concluída","Cancelada"];
+const RH_TIPOS_DESLIGAMENTO = ["Pedido de demissão","Demissão sem justa causa","Demissão com justa causa","Término de contrato","Acordo (distrato)"];
+
 const MODULOS_CATALOGO = [
   { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
   { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
   { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
+  { id:"rh",        ico:"🏢", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
   { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
-  { id:"rh",        ico:"🏢", nome:"RH",         desc:"Equipe e folha de pagamento", ativo:false },
   { id:"bi",        ico:"📊", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
 ];
 
@@ -983,6 +993,10 @@ const saveEstMovimentos = () => saveRows("est_movimentos", state.estMovimentos);
 const saveEstFornecedores = () => saveRows("est_fornecedores", state.estFornecedores);
 const saveCliClientes = () => saveRows("cli_clientes", state.cliClientes);
 const saveCliPlanos = () => saveRows("cli_planos", state.cliPlanos);
+const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionarios);
+const saveRhCargos = () => saveRows("rh_cargos", state.rhCargos);
+const saveRhFolha = () => saveRows("rh_folha", state.rhFolha);
+const saveRhFerias = () => saveRows("rh_ferias", state.rhFerias);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
@@ -1055,8 +1069,8 @@ async function loadData(){
       state.senhaMaster = SENHA_MASTER_PADRAO;
     }
 
-    // Tabelas de estoque — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"]]){
+    // Tabelas de estoque/clientes/RH — opcionais/novas
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -1297,12 +1311,17 @@ function renderModbar(){
   const wrap = document.getElementById("modbarWrap");
   if(!wrap || !state.user) return;
   const moduloAtual = MODULOS_CATALOGO.find(m => m.id === state.moduloAtivo) || MODULOS_CATALOGO[0];
-  const moduloCards = MODULOS_CATALOGO.map(m => `
-    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${!m.ativo ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : ''}">
+  const moduloCards = MODULOS_CATALOGO.map(m => {
+    const soMaster = m.id === "rh" && !ehMaster(); // RH é restrito ao Master
+    const bloqueado = !m.ativo || soMaster;
+    const rotulo = !m.ativo ? "em breve" : soMaster ? "só Master" : "";
+    return `
+    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${bloqueado ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : soMaster ? 'Apenas o Master tem acesso ao RH' : ''}">
       <div class="modcard-ico">${m.ico}</div>
-      <div class="modcard-nome">${m.nome}${!m.ativo ? ' <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">em breve</span>' : ''}</div>
+      <div class="modcard-nome">${m.nome}${rotulo ? ` <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">${rotulo}</span>` : ''}</div>
       <div class="modcard-desc">${m.desc}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
   wrap.innerHTML = `
     <div class="modbar">
       <div class="modbar-logo"><span class="dot"></span>Holding</div>
@@ -1328,11 +1347,13 @@ function renderModbar(){
       const modId = card.dataset.id; if(!modId) return;
       const mod = MODULOS_CATALOGO.find(m=>m.id===modId);
       if(!mod||!mod.ativo){ showToast("Módulo em construção.","error"); return; }
+      if(modId==="rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
       if(modId==="financeiro") state.view="dashboard";
       else if(modId==="estoque") state.view="est_dashboard";
       else if(modId==="clientes") state.view="cli_dashboard";
+      else if(modId==="rh") state.view="rh_dashboard";
       renderApp();
     }));
     // Close on tap outside
@@ -1381,13 +1402,13 @@ function renderApp(){
         <span></span><span></span><span></span>
       </button>
       <div class="mob-logo"><span class="dot"></span>Holding</div>
-      <div style="margin-left:auto; font-size:10px; color:rgba(255,255,255,.35); font-family:var(--font-mono);">${state.moduloAtivo==="estoque"?"📦":state.moduloAtivo==="clientes"?"👥":"💰"}</div>
+      <div style="margin-left:auto; font-size:10px; color:rgba(255,255,255,.35); font-family:var(--font-mono);">${state.moduloAtivo==="estoque"?"📦":state.moduloAtivo==="clientes"?"👥":state.moduloAtivo==="rh"?"🏢":"💰"}</div>
       <button id="mobModulosBtn" style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:6px; color:rgba(255,255,255,.7); font-size:11px; padding:4px 10px; cursor:pointer; font-family:var(--font-ui);">⊞</button>
     </div>
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="mainSidebar">
-      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
       ${state.moduloAtivo === "estoque" ? `
         <div class="nav-group-label">Estoque</div>
@@ -1401,6 +1422,14 @@ function renderApp(){
         ${navItem("cli_dashboard","◆","Dashboard")}
         ${navItem("cli_lista","👥","Todos os Clientes")}
         ${navItem("cli_planos","📋","Planos")}
+      ` : state.moduloAtivo === "rh" ? `
+        <div class="nav-group-label">RH</div>
+        ${navItem("rh_dashboard","◆","Dashboard")}
+        ${navItem("rh_funcionarios","🧑‍💼","Funcionários")}
+        ${navItem("rh_cargos","🏷️","Cargos")}
+        ${navItem("rh_folha","💵","Folha de Pagamento")}
+        ${navItem("rh_ferias","🏖️","Férias")}
+        ${navItem("rh_alertas","🔔","Alertas")}
       ` : `
       ${master ? `
       <div class="nav-group-label">Visão geral</div>
@@ -1453,6 +1482,9 @@ function renderApp(){
       <button class="mob-nav-btn ${state.view.startsWith('cli_')?'active':''}" data-action="abrir-modulo" data-id="clientes">
         <span class="ico">👥</span><span class="lbl">Clientes</span>
       </button>
+      ${master ? `<button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
+        <span class="ico">🏢</span><span class="lbl">RH</span>
+      </button>` : ""}
       <button class="mob-nav-btn" id="mobMenuBtn2">
         <span class="ico">☰</span><span class="lbl">Menu</span>
       </button>
@@ -1460,9 +1492,12 @@ function renderApp(){
   </nav>`;
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
-  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
-  if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){ state.view = "lancamentos"; }
+  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios/RH — redireciona se necessario
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas"];
+  if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
+    state.view = "lancamentos";
+    if(state.moduloAtivo === "rh") state.moduloAtivo = "financeiro";
+  }
   renderModbar();
   // ---- Mobile drawer ----
   const mobMenuBtn = document.getElementById("mobMenuBtn");
@@ -1534,6 +1569,14 @@ function renderView(){
   else if(state.view === "cli_lista") main.innerHTML = viewCliLista();
   else if(state.view === "cli_planos") main.innerHTML = viewCliPlanos();
   else if(state.view === "cli_detalhe") main.innerHTML = viewCliDetalhe();
+  // ---- Módulo RH ----
+  else if(state.view === "rh_dashboard") main.innerHTML = viewRhDashboard();
+  else if(state.view === "rh_funcionarios") main.innerHTML = viewRhFuncionarios();
+  else if(state.view === "rh_funcionario_detalhe") main.innerHTML = viewRhFuncionarioDetalhe();
+  else if(state.view === "rh_cargos") main.innerHTML = viewRhCargos();
+  else if(state.view === "rh_folha") main.innerHTML = viewRhFolha();
+  else if(state.view === "rh_ferias") main.innerHTML = viewRhFerias();
+  else if(state.view === "rh_alertas") main.innerHTML = viewRhAlertas();
 }
 
 // ============================================================
@@ -3309,11 +3352,13 @@ document.addEventListener("click", async e => {
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
+    if(mod.id === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
     if(mod.id === "financeiro"){ state.view = "dashboard"; }
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
+    else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
     renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
@@ -3572,6 +3617,60 @@ document.addEventListener("click", async e => {
     state.view = "cli_lista"; renderApp();
   }
   else if(action === "cli-filtro-clear"){ cliFiltro = {negocio:"",status:"",plano:"",texto:""}; renderView(); }
+  // ---- RH ----
+  else if(action === "rh-novo-funcionario") modalRhFuncionario(null);
+  else if(action === "rh-edit-funcionario"){ const f = rhFuncionarioById(id); if(f) modalRhFuncionario(f); }
+  else if(action === "rh-detalhe"){ rhViewDetalheId = id; state.view = "rh_funcionario_detalhe"; renderApp(); }
+  else if(action === "rh-del-funcionario"){
+    const f = rhFuncionarioById(id);
+    if(!f) return;
+    if(!confirm(`Excluir o funcionário "${f.nome}"? Isso também remove os lançamentos de folha e férias dele.`)) return;
+    state.rhFuncionarios = state.rhFuncionarios.filter(x=>x.id!==id);
+    const folhaIds = state.rhFolha.filter(x=>x.funcionarioId===id).map(x=>x.id);
+    const feriasIds = state.rhFerias.filter(x=>x.funcionarioId===id).map(x=>x.id);
+    state.rhFolha = state.rhFolha.filter(x=>x.funcionarioId!==id);
+    state.rhFerias = state.rhFerias.filter(x=>x.funcionarioId!==id);
+    await deleteRow("rh_funcionarios", id);
+    if(folhaIds.length) await deleteRows("rh_folha", folhaIds);
+    if(feriasIds.length) await deleteRows("rh_ferias", feriasIds);
+    if(state.view === "rh_funcionario_detalhe") state.view = "rh_funcionarios";
+    renderApp(); showToast("Funcionário excluído.");
+  }
+  else if(action === "rh-novo-cargo") modalRhCargo(null);
+  else if(action === "rh-edit-cargo") modalRhCargo(rhCargoById(id));
+  else if(action === "rh-del-cargo"){
+    const c = rhCargoById(id);
+    if(!c) return;
+    const usado = state.rhFuncionarios.some(f=>f.cargoId===id);
+    if(usado && !confirm(`O cargo "${c.nome}" está em uso por funcionários. Excluir mesmo assim?`)) return;
+    state.rhCargos = state.rhCargos.filter(x=>x.id!==id);
+    await deleteRow("rh_cargos", id);
+    renderView(); showToast("Cargo excluído.");
+  }
+  else if(action === "rh-nova-folha") modalRhFolha(null, id||null);
+  else if(action === "rh-edit-folha") modalRhFolha(rhFolhaById(id));
+  else if(action === "rh-del-folha"){
+    if(!confirm("Excluir este lançamento de folha?")) return;
+    state.rhFolha = state.rhFolha.filter(x=>x.id!==id);
+    await deleteRow("rh_folha", id);
+    renderView(); showToast("Lançamento de folha excluído.");
+  }
+  else if(action === "rh-marcar-pago"){
+    const p = rhFolhaById(id);
+    if(p){ p.status = "Pago"; if(!p.dataPagamento) p.dataPagamento = todayISO(); await saveRhFolha(); renderView(); showToast("Marcado como pago."); }
+  }
+  else if(action === "rh-gerar-folha-mes") rhGerarFolhaDoMes();
+  else if(action === "rh-nova-ferias") modalRhFerias(null, id||null);
+  else if(action === "rh-edit-ferias") modalRhFerias(rhFeriasById(id));
+  else if(action === "rh-del-ferias"){
+    if(!confirm("Excluir este registro de férias?")) return;
+    state.rhFerias = state.rhFerias.filter(x=>x.id!==id);
+    await deleteRow("rh_ferias", id);
+    renderView(); showToast("Registro de férias excluído.");
+  }
+  else if(action === "rh-filtro-clear"){ rhFuncFiltro = {negocio:"",cargo:"",status:"",texto:""}; renderView(); }
+  else if(action === "rh-filtro-folha-clear"){ rhFolhaFiltro = {competencia:"",negocio:"",status:""}; renderView(); }
+  else if(action === "rh-filtro-ferias-clear"){ rhFeriasFiltro = {funcionario:"",status:""}; renderView(); }
 });
 
 document.addEventListener("change", e => {
@@ -3591,6 +3690,15 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "cli-filtro-negocio"){ cliFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-status"){ cliFiltro.status = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-plano"){ cliFiltro.plano = e.target.value; renderView(); }
+  // RH filters
+  if(e.target.dataset.action === "rh-filtro-negocio"){ rhFuncFiltro.negocio = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-cargo"){ rhFuncFiltro.cargo = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-status"){ rhFuncFiltro.status = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-competencia"){ rhFolhaFiltro.competencia = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-folha-negocio"){ rhFolhaFiltro.negocio = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-folha-status"){ rhFolhaFiltro.status = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-ferias-func"){ rhFeriasFiltro.funcionario = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-ferias-status"){ rhFeriasFiltro.status = e.target.value; renderView(); }
   if(e.target.id === "mesManualInput" && e.target.value){
     const [anoStr, mesStr] = e.target.value.split("-");
     state.mesVisualizado = { ano: parseInt(anoStr), mes: parseInt(mesStr) - 1 };
@@ -3600,6 +3708,7 @@ document.addEventListener("change", e => {
 document.addEventListener("input", e => {
   if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; renderView(); }
+  if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; renderView(); }
 });
 // =========================================================================
 // MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
@@ -4135,6 +4244,724 @@ function modalCliPlano(existing){
     else{ state.cliPlanos.push({ id:uid("pl"), ...data }); }
     await saveCliPlanos(); closeModal(); renderView(); showToast(isEdit?"Plano atualizado.":"Plano criado.");
   });
+}
+
+// =========================================================================
+// MÓDULO RH — funcionários, cargos, folha de pagamento e férias
+// =========================================================================
+let rhFuncFiltro = { negocio:"", cargo:"", status:"", texto:"" };
+let rhFolhaFiltro = { competencia:"", negocio:"", status:"" };
+let rhFeriasFiltro = { funcionario:"", status:"" };
+let rhViewDetalheId = null;
+
+function rhFuncionarioById(id){ return state.rhFuncionarios.find(f => f.id === id); }
+function rhCargoById(id){ return state.rhCargos.find(c => c.id === id); }
+function rhFolhaById(id){ return state.rhFolha.find(f => f.id === id); }
+function rhFeriasById(id){ return state.rhFerias.find(f => f.id === id); }
+function rhNomeCargo(cargoId){ const c = rhCargoById(cargoId); return c ? c.nome : "—"; }
+function rhFuncionariosAtivos(){ return state.rhFuncionarios.filter(f => f.status !== "Desligado"); }
+function competenciaAtual(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function fmtCompetencia(c){ if(!c) return "—"; const [y,m] = c.split("-"); return `${NOMES_MESES[parseInt(m,10)-1]||m}/${y}`; }
+function rhIdade(dataNascimento){
+  if(!dataNascimento) return null;
+  const hoje = new Date(); const nasc = new Date(dataNascimento+"T00:00:00");
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const m = hoje.getMonth() - nasc.getMonth();
+  if(m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+  return idade;
+}
+function rhTempoCasa(dataAdmissao, dataDemissao){
+  if(!dataAdmissao) return "—";
+  const fim = dataDemissao ? new Date(dataDemissao+"T00:00:00") : new Date();
+  const adm = new Date(dataAdmissao+"T00:00:00");
+  let meses = (fim.getFullYear()-adm.getFullYear())*12 + (fim.getMonth()-adm.getMonth());
+  if(fim.getDate() < adm.getDate()) meses--;
+  if(meses < 0) meses = 0;
+  const anos = Math.floor(meses/12), restoMeses = meses%12;
+  if(anos === 0) return `${restoMeses} mês${restoMeses===1?"":"es"}`;
+  if(restoMeses === 0) return `${anos} ano${anos===1?"":"s"}`;
+  return `${anos} ano${anos===1?"":"s"} e ${restoMeses} mês${restoMeses===1?"":"es"}`;
+}
+function rhUltimasFeriasConcluidas(funcionarioId){
+  return state.rhFerias
+    .filter(f => f.funcionarioId === funcionarioId && f.status === "Concluída" && f.dataFimGozo)
+    .sort((a,b) => (b.dataFimGozo||"").localeCompare(a.dataFimGozo||""))[0];
+}
+function rhProximoVencimentoFerias(funcionarioId){
+  // Período aquisitivo simplificado: 12 meses depois da admissão (ou das últimas férias
+  // concluídas) o funcionário vence um novo direito a férias. Serve só de alerta —
+  // não substitui o cálculo oficial de CLT com afastamentos etc.
+  const f = rhFuncionarioById(funcionarioId);
+  if(!f || !f.dataAdmissao || f.status === "Desligado") return null;
+  const ultima = rhUltimasFeriasConcluidas(funcionarioId);
+  const base = ultima ? ultima.dataFimGozo : f.dataAdmissao;
+  if(!base) return null;
+  const d = new Date(base+"T00:00:00");
+  d.setFullYear(d.getFullYear()+1);
+  const vencimento = d.toISOString().slice(0,10);
+  const diasRestantes = Math.round((new Date(vencimento+"T00:00:00") - new Date(todayISO()+"T00:00:00")) / 86400000);
+  return { vencimento, diasRestantes };
+}
+function rhAniversariantesDoMes(){
+  const mesAtual = new Date().getMonth();
+  return rhFuncionariosAtivos()
+    .filter(f => f.dataNascimento && new Date(f.dataNascimento+"T00:00:00").getMonth() === mesAtual)
+    .sort((a,b) => new Date(a.dataNascimento+"T00:00:00").getDate() - new Date(b.dataNascimento+"T00:00:00").getDate());
+}
+function rhCustoFolhaMensal(){
+  return rhFuncionariosAtivos().reduce((s,f) => s + (Number(f.salario)||0), 0);
+}
+
+// ---- VIEW: DASHBOARD RH ----
+function viewRhDashboard(){
+  const ativos = rhFuncionariosAtivos();
+  const total = state.rhFuncionarios.length;
+  const admissoes30 = state.rhFuncionarios.filter(f => f.dataAdmissao >= cliDataRecente(30)).length;
+  const desligamentos30 = state.rhFuncionarios.filter(f => f.status === "Desligado" && f.dataDemissao && f.dataDemissao >= cliDataRecente(30)).length;
+  const custoFolha = rhCustoFolhaMensal();
+  const aniversariantes = rhAniversariantesDoMes();
+  const feriasVencendo = ativos
+    .map(f => ({ f, v: rhProximoVencimentoFerias(f.id) }))
+    .filter(x => x.v && x.v.diasRestantes <= 60)
+    .sort((a,b) => a.v.diasRestantes - b.v.diasRestantes);
+
+  const negocioTotais = state.negocios.map(n => {
+    const func = ativos.filter(f => f.negocio === n.nome);
+    const custo = func.reduce((s,f) => s + (Number(f.salario)||0), 0);
+    return { n, total: func.length, custo };
+  }).filter(r => r.total > 0);
+
+  const negCards = negocioTotais.map(({n,total,custo}) => `
+    <div class="kpi-card">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
+        <span class="kpi-label" style="margin:0;">${esc(n.nome)}</span>
+      </div>
+      <div class="kpi-value" style="font-size:26px;">${total}</div>
+      <div class="kpi-note">custo mensal ${fmtBRL(custo)}</div>
+    </div>`).join("");
+
+  const aniversariantesHTML = aniversariantes.length ? aniversariantes.map(f => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
+      <div style="cursor:pointer; color:var(--accent); font-weight:600;" data-action="rh-detalhe" data-id="${f.id}">🎂 ${esc(f.nome)}</div>
+      <div style="color:var(--ink-3);">${fmtDateBR(f.dataNascimento)}${rhIdade(f.dataNascimento)!=null?` · completa ${rhIdade(f.dataNascimento)+1} anos`:""}</div>
+    </div>`).join("") : emptyState("Nenhum aniversariante este mês.");
+
+  const feriasHTML = feriasVencendo.length ? feriasVencendo.slice(0,8).map(({f,v}) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
+      <div style="cursor:pointer; color:var(--accent); font-weight:600;" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</div>
+      <div style="color:${v.diasRestantes<0?'var(--neg)':v.diasRestantes<=30?'var(--warn)':'var(--ink-3)'}; font-weight:600;">${v.diasRestantes<0?`vencidas há ${Math.abs(v.diasRestantes)}d`:`vence em ${v.diasRestantes}d`}</div>
+    </div>`).join("") : emptyState("Ninguém com férias vencendo nos próximos 60 dias. ✓");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">RH — Dashboard</div><div class="page-sub">Visão geral da equipe da holding</div></div>
+      <button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
+      <div class="kpi-card"><div class="kpi-label">Total de funcionários</div><div class="kpi-value">${total}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Ativos</div><div class="kpi-value pos">${ativos.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Custo de folha mensal</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoFolha)}</div><div class="kpi-note">soma dos salários ativos</div></div>
+      <div class="kpi-card"><div class="kpi-label">Admissões (30 dias)</div><div class="kpi-value">${admissoes30}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Desligamentos (30 dias)</div><div class="kpi-value ${desligamentos30>0?'neg':''}">${desligamentos30}</div></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); margin-bottom:16px;">
+      ${negCards || `<div class="kpi-card" style="grid-column:1/-1; text-align:center; color:var(--ink-4);">Nenhum funcionário vinculado a um negócio ainda.</div>`}
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">🏖️ Férias vencendo (60 dias)</div><span style="font-size:12px;color:var(--ink-3);">${feriasVencendo.length} alerta(s)</span></div>
+        <div class="panel-body" style="padding-top:6px;">${feriasHTML}</div>
+      </div>
+      <div class="panel" style="margin:0;">
+        <div class="panel-head"><div class="panel-title">🎂 Aniversariantes do mês</div></div>
+        <div class="panel-body" style="padding-top:6px;">${aniversariantesHTML}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: LISTA DE FUNCIONÁRIOS ----
+function viewRhFuncionarios(){
+  let lista = [...state.rhFuncionarios].sort((a,b) => a.nome.localeCompare(b.nome));
+  if(rhFuncFiltro.negocio) lista = lista.filter(f => f.negocio === rhFuncFiltro.negocio);
+  if(rhFuncFiltro.cargo) lista = lista.filter(f => f.cargoId === rhFuncFiltro.cargo);
+  if(rhFuncFiltro.status) lista = lista.filter(f => f.status === rhFuncFiltro.status);
+  if(rhFuncFiltro.texto){
+    const t = rhFuncFiltro.texto.toLowerCase();
+    lista = lista.filter(f => (f.nome||"").toLowerCase().includes(t) || (f.cpf||"").includes(t) || (f.email||"").toLowerCase().includes(t) || (f.telefone||"").includes(t));
+  }
+  const rows = lista.map(f => {
+    const statusClass = f.status==="Ativo"?"status-pago":f.status==="Desligado"?"status-pendente":"status-agendado";
+    const cor = negocioCor(f.negocio);
+    return `<tr>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</td>
+      <td>${esc(rhNomeCargo(f.cargoId))}</td>
+      <td>${f.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${cor} 14%, white); color:${cor};"><span class="tag-dot" style="background:${cor}"></span>${esc(f.negocio)}</span>` : "—"}</td>
+      <td>${fmtDateBR(f.dataAdmissao)}</td>
+      <td style="color:var(--ink-3); font-size:12px;">${rhTempoCasa(f.dataAdmissao, f.dataDemissao)}</td>
+      <td class="num">${f.salario ? fmtBRL(f.salario) : "—"}</td>
+      <td><span class="status-pill ${statusClass}">${esc(f.status||"—")}</span></td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="rh-detalhe" data-id="${f.id}" title="Ver/Editar">✎</button>
+        <button class="icon-btn danger" data-action="rh-del-funcionario" data-id="${f.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${rhFuncFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const cargoOpts = state.rhCargos.map(c=>`<option value="${c.id}" ${rhFuncFiltro.cargo===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const statusOpts = RH_STATUS.map(s=>`<option value="${s}" ${rhFuncFiltro.status===s?"selected":""}>${s}</option>`).join("");
+  const temFiltro = rhFuncFiltro.negocio||rhFuncFiltro.cargo||rhFuncFiltro.status||rhFuncFiltro.texto;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Funcionários</div><div class="page-sub">${lista.length} de ${state.rhFuncionarios.length} funcionário(s)</div></div>
+      <button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar por nome, CPF, e-mail, telefone..." value="${esc(rhFuncFiltro.texto)}" data-action="rh-filtro-texto" style="min-width:240px;">
+        <select data-action="rh-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+        <select data-action="rh-filtro-cargo"><option value="">Todos os cargos</option>${cargoOpts}</select>
+        <select data-action="rh-filtro-status"><option value="">Todos os status</option>${statusOpts}</select>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Nome</th><th>Cargo</th><th>Negócio</th><th>Admissão</th><th>Tempo de casa</th><th class="num">Salário</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum funcionário encontrado.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: DETALHE DO FUNCIONÁRIO ----
+function viewRhFuncionarioDetalhe(){
+  const f = rhFuncionarioById(rhViewDetalheId);
+  if(!f) return `<div>${emptyState("Funcionário não encontrado.")}</div>`;
+  const statusClass = f.status==="Ativo"?"status-pago":f.status==="Desligado"?"status-pendente":"status-agendado";
+  const vencFerias = rhProximoVencimentoFerias(f.id);
+
+  const folhaHist = state.rhFolha.filter(x=>x.funcionarioId===f.id).sort((a,b)=>b.competencia.localeCompare(a.competencia)).slice(0,12);
+  const folhaHTML = folhaHist.length ? folhaHist.map(p => `
+    <tr>
+      <td>${fmtCompetencia(p.competencia)}</td>
+      <td class="num">${fmtBRL(p.salarioBase)}</td>
+      <td class="num" style="color:var(--pos);">${p.bonus?'+'+fmtBRL(p.bonus):"—"}</td>
+      <td class="num" style="color:var(--neg);">${p.descontos?'-'+fmtBRL(p.descontos):"—"}</td>
+      <td class="num" style="font-weight:700;">${fmtBRL(p.valorLiquido)}</td>
+      <td><span class="status-pill ${p.status==='Pago'?'status-pago':'status-pendente'}">${p.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+    </tr>`).join("") : `<tr><td colspan="7">${emptyState("Nenhum pagamento lançado ainda.")}</td></tr>`;
+
+  const feriasHist = state.rhFerias.filter(x=>x.funcionarioId===f.id).sort((a,b)=>(b.periodoAquisitivoInicio||"").localeCompare(a.periodoAquisitivoInicio||""));
+  const feriasHTML = feriasHist.length ? feriasHist.map(v => `
+    <tr>
+      <td>${fmtDateBR(v.periodoAquisitivoInicio)} — ${fmtDateBR(v.periodoAquisitivoFim)}</td>
+      <td>${v.dataInicioGozo?`${fmtDateBR(v.dataInicioGozo)} — ${fmtDateBR(v.dataFimGozo)}`:"—"}</td>
+      <td class="num">${v.diasGozados||0}/${v.diasDireito||30}</td>
+      <td><span class="status-pill ${v.status==='Concluída'?'status-pago':v.status==='Cancelada'?'status-agendado':'status-pendente'}">${v.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">🗑</button></div></td>
+    </tr>`).join("") : `<tr><td colspan="5">${emptyState("Nenhuma férias registrada ainda.")}</td></tr>`;
+
+  return `
+    <div class="page-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="rh_funcionarios">← Voltar</button>
+        <div>
+          <div class="page-title">${esc(f.nome)}</div>
+          <div class="page-sub">${esc(rhNomeCargo(f.cargoId))}${f.negocio?` · ${esc(f.negocio)}`:""} · <span class="status-pill ${statusClass}">${f.status}</span></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" data-action="rh-nova-ferias" data-id="${f.id}">+ Férias</button>
+        <button class="btn btn-ghost" data-action="rh-nova-folha" data-id="${f.id}">+ Pagamento</button>
+        <button class="btn btn-primary" data-action="rh-edit-funcionario" data-id="${f.id}">✎ Editar</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">Salário</div><div class="kpi-value pos">${f.salario?fmtBRL(f.salario):"—"}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Tempo de casa</div><div class="kpi-value" style="font-size:16px;">${rhTempoCasa(f.dataAdmissao, f.dataDemissao)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Admitido em</div><div class="kpi-value" style="font-size:16px;">${fmtDateBR(f.dataAdmissao)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Próximas férias</div><div class="kpi-value" style="font-size:14px; color:${vencFerias&&vencFerias.diasRestantes<0?'var(--neg)':vencFerias&&vencFerias.diasRestantes<=30?'var(--warn)':'inherit'};">${vencFerias ? (vencFerias.diasRestantes<0?`vencidas há ${Math.abs(vencFerias.diasRestantes)}d`:`em ${vencFerias.diasRestantes}d`) : "—"}</div></div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
+          <div class="panel-body" style="padding-top:10px;">
+            <div style="display:grid; gap:6px; font-size:12.5px;">
+              ${[["CPF","cpf"],["RG","rg"],["Data nascimento","dataNascimento"],["Gênero","genero"],["E-mail","email"],["Telefone","telefone"],["Tipo de contrato","tipoContrato"],["PIX","pix"]]
+                .map(([label,field]) => f[field] ? `<div style="display:flex; gap:8px;"><span style="color:var(--ink-3); min-width:130px;">${label}:</span><strong>${field==='dataNascimento'?fmtDateBR(f[field])+(rhIdade(f[field])!=null?` (${rhIdade(f[field])} anos)`:""):esc(f[field])}</strong></div>` : "").filter(Boolean).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:12px;">
+          <div class="panel-head"><div class="panel-title">📍 Endereço</div></div>
+          <div class="panel-body" style="padding-top:10px; font-size:12.5px;">
+            ${f.logradouro ? `<div>${esc(f.logradouro)}, ${esc(f.numero||"S/N")}${f.complemento?` — ${esc(f.complemento)}`:""}</div>` : ""}
+            ${f.bairro ? `<div>${esc(f.bairro)}</div>` : ""}
+            ${f.cidade ? `<div>${esc(f.cidade)}${f.uf?` — ${esc(f.uf)}`:""}</div>` : ""}
+            ${f.cep ? `<div>CEP: ${esc(f.cep)}</div>` : ""}
+            ${!f.logradouro && !f.cidade ? `<span style="color:var(--ink-4);">Endereço não informado</span>` : ""}
+          </div>
+        </div>
+        ${f.status === "Desligado" ? `<div class="panel" style="margin-top:12px; border-left:3px solid var(--neg);"><div class="panel-head"><div class="panel-title">🚪 Desligamento</div></div><div class="panel-body" style="padding-top:10px; font-size:12.5px;">
+          <div>Data: <strong>${fmtDateBR(f.dataDemissao)}</strong></div>
+          ${f.tipoDesligamento?`<div>Tipo: <strong>${esc(f.tipoDesligamento)}</strong></div>`:""}
+          ${f.motivoDesligamento?`<div style="margin-top:4px; color:var(--ink-3);">${esc(f.motivoDesligamento)}</div>`:""}
+        </div></div>` : ""}
+        ${f.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px;">${esc(f.observacoes)}</div></div>` : ""}
+      </div>
+      <div>
+        <div class="panel" style="margin-bottom:12px;">
+          <div class="panel-head"><div class="panel-title">💵 Folha de pagamento</div></div>
+          <div class="panel-body"><table><thead><tr><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Status</th><th></th></tr></thead><tbody>${folhaHTML}</tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">🏖️ Férias</div></div>
+          <div class="panel-body"><table><thead><tr><th>Período aquisitivo</th><th>Período de gozo</th><th class="num">Dias</th><th>Status</th><th></th></tr></thead><tbody>${feriasHTML}</tbody></table></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: CARGOS ----
+function viewRhCargos(){
+  const rows = state.rhCargos.map(c => {
+    const qtd = state.rhFuncionarios.filter(f=>f.cargoId===c.id && f.status!=="Desligado").length;
+    return `<tr>
+      <td style="font-weight:600;">${esc(c.nome)}</td>
+      <td><span class="status-pill status-agendado">${esc(c.negocio||"—")}</span></td>
+      <td class="num">${fmtBRL(c.salarioBase)}</td>
+      <td>${esc(c.cargaHoraria||"—")}</td>
+      <td style="color:var(--ink-3);">${esc(c.descricao||"—")}</td>
+      <td style="text-align:center;">${qtd}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="rh-edit-cargo" data-id="${c.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="rh-del-cargo" data-id="${c.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Cargos</div><div class="page-sub">Catálogo de cargos e faixas salariais por negócio</div></div>
+      <button class="btn btn-primary" data-action="rh-novo-cargo">+ Novo cargo</button>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Cargo</th><th>Negócio</th><th class="num">Salário base</th><th>Carga horária</th><th>Descrição</th><th style="text-align:center;">Ativos</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="7">${emptyState("Nenhum cargo cadastrado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: FOLHA DE PAGAMENTO ----
+function viewRhFolha(){
+  let lista = [...state.rhFolha].sort((a,b) => b.competencia.localeCompare(a.competencia) || (rhFuncionarioById(a.funcionarioId)?.nome||"").localeCompare(rhFuncionarioById(b.funcionarioId)?.nome||""));
+  if(rhFolhaFiltro.competencia) lista = lista.filter(p=>p.competencia===rhFolhaFiltro.competencia);
+  if(rhFolhaFiltro.negocio) lista = lista.filter(p=>{ const f=rhFuncionarioById(p.funcionarioId); return f && f.negocio===rhFolhaFiltro.negocio; });
+  if(rhFolhaFiltro.status) lista = lista.filter(p=>p.status===rhFolhaFiltro.status);
+
+  const totalLiquido = lista.reduce((s,p)=>s+Number(p.valorLiquido||0),0);
+  const rows = lista.map(p => {
+    const f = rhFuncionarioById(p.funcionarioId);
+    return `<tr>
+      <td style="font-weight:600;">${esc(f?f.nome:"— funcionário removido —")}</td>
+      <td>${fmtCompetencia(p.competencia)}</td>
+      <td class="num">${fmtBRL(p.salarioBase)}</td>
+      <td class="num" style="color:var(--pos);">${p.bonus?fmtBRL(p.bonus):"—"}</td>
+      <td class="num" style="color:var(--neg);">${p.descontos?fmtBRL(p.descontos):"—"}</td>
+      <td class="num" style="font-weight:700;">${fmtBRL(p.valorLiquido)}</td>
+      <td>${fmtDateBR(p.dataPagamento)}</td>
+      <td><span class="status-pill ${p.status==='Pago'?'status-pago':'status-pendente'}" ${p.status!=='Pago'?`style="cursor:pointer;" data-action="rh-marcar-pago" data-id="${p.id}" title="Marcar como pago"`:""}>${p.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${rhFolhaFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const statusOpts = RH_STATUS_FOLHA.map(s=>`<option value="${s}" ${rhFolhaFiltro.status===s?"selected":""}>${s}</option>`).join("");
+  const temFiltro = rhFolhaFiltro.competencia||rhFolhaFiltro.negocio||rhFolhaFiltro.status;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Folha de Pagamento</div><div class="page-sub">${lista.length} lançamento(s) · total líquido ${fmtBRL(totalLiquido)}</div></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" data-action="rh-gerar-folha-mes">⚙ Gerar folha do mês</button>
+        <button class="btn btn-primary" data-action="rh-nova-folha">+ Lançar pagamento</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <input type="month" data-action="rh-filtro-competencia" value="${rhFolhaFiltro.competencia}">
+        <select data-action="rh-filtro-folha-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+        <select data-action="rh-filtro-folha-status"><option value="">Todos os status</option>${statusOpts}</select>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-folha-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Funcionário</th><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Pagamento</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhum lançamento de folha encontrado.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: FÉRIAS ----
+function viewRhFerias(){
+  let lista = [...state.rhFerias].sort((a,b) => (b.periodoAquisitivoInicio||"").localeCompare(a.periodoAquisitivoInicio||""));
+  if(rhFeriasFiltro.funcionario) lista = lista.filter(v=>v.funcionarioId===rhFeriasFiltro.funcionario);
+  if(rhFeriasFiltro.status) lista = lista.filter(v=>v.status===rhFeriasFiltro.status);
+
+  const rows = lista.map(v => {
+    const f = rhFuncionarioById(v.funcionarioId);
+    return `<tr>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${v.funcionarioId}">${esc(f?f.nome:"— removido —")}</td>
+      <td>${fmtDateBR(v.periodoAquisitivoInicio)} — ${fmtDateBR(v.periodoAquisitivoFim)}</td>
+      <td>${v.dataInicioGozo?`${fmtDateBR(v.dataInicioGozo)} — ${fmtDateBR(v.dataFimGozo)}`:"—"}</td>
+      <td class="num">${v.diasGozados||0}/${v.diasDireito||30}</td>
+      <td><span class="status-pill ${v.status==='Concluída'?'status-pago':v.status==='Cancelada'?'status-agendado':'status-pendente'}">${v.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  const funcOpts = state.rhFuncionarios.map(f=>`<option value="${f.id}" ${rhFeriasFiltro.funcionario===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const statusOpts = RH_STATUS_FERIAS.map(s=>`<option value="${s}" ${rhFeriasFiltro.status===s?"selected":""}>${s}</option>`).join("");
+  const temFiltro = rhFeriasFiltro.funcionario||rhFeriasFiltro.status;
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Férias</div><div class="page-sub">Controle de períodos aquisitivos e de gozo</div></div>
+      <button class="btn btn-primary" data-action="rh-nova-ferias">+ Nova férias</button>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <select data-action="rh-filtro-ferias-func"><option value="">Todos os funcionários</option>${funcOpts}</select>
+        <select data-action="rh-filtro-ferias-status"><option value="">Todos os status</option>${statusOpts}</select>
+        ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-ferias-clear">Limpar</button>`:""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Funcionário</th><th>Período aquisitivo</th><th>Período de gozo</th><th class="num">Dias</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="6">${emptyState("Nenhuma férias registrada ainda.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+// ---- VIEW: ALERTAS DE RH ----
+function viewRhAlertas(){
+  const ativos = rhFuncionariosAtivos();
+  const feriasAlertas = ativos
+    .map(f => ({ f, v: rhProximoVencimentoFerias(f.id) }))
+    .filter(x => x.v && x.v.diasRestantes <= 60)
+    .sort((a,b) => a.v.diasRestantes - b.v.diasRestantes);
+  const aniversariantes = rhAniversariantesDoMes();
+  const feriasRows = feriasAlertas.map(({f,v}) => `<tr>
+    <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</td>
+    <td>${esc(f.negocio||"—")}</td>
+    <td>${fmtDateBR(v.vencimento)}</td>
+    <td class="num" style="font-weight:700; color:${v.diasRestantes<0?'var(--neg)':v.diasRestantes<=30?'var(--warn)':'inherit'};">${v.diasRestantes<0?`vencidas há ${Math.abs(v.diasRestantes)}d`:`${v.diasRestantes}d`}</td>
+    <td><div class="row-actions"><button class="btn btn-primary btn-sm" data-action="rh-nova-ferias" data-id="${f.id}">+ Férias</button></div></td>
+  </tr>`).join("");
+  const aniversRows = aniversariantes.map(f => `<tr>
+    <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">🎂 ${esc(f.nome)}</td>
+    <td>${esc(f.negocio||"—")}</td>
+    <td>${fmtDateBR(f.dataNascimento)}</td>
+  </tr>`).join("");
+  return `
+    <div class="page-header"><div><div class="page-title">🔔 Alertas de RH</div><div class="page-sub">Férias vencendo e aniversariantes do mês</div></div></div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">🏖️ Férias vencendo/vencidas — ${feriasAlertas.length} alerta(s)</div></div>
+      <div class="panel-body">${feriasAlertas.length ? `<table><thead><tr><th>Funcionário</th><th>Negócio</th><th>Vencimento</th><th class="num">Prazo</th><th></th></tr></thead><tbody>${feriasRows}</tbody></table>` : emptyState("Ninguém com férias vencendo. ✓")}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">🎂 Aniversariantes do mês</div></div>
+      <div class="panel-body">${aniversariantes.length ? `<table><thead><tr><th>Funcionário</th><th>Negócio</th><th>Data</th></tr></thead><tbody>${aniversRows}</tbody></table>` : emptyState("Ninguém faz aniversário este mês.")}</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   MODAIS DO MÓDULO RH
+========================================================================= */
+function modalRhFuncionario(existing){
+  const isEdit = !!existing;
+  const f = existing || { nome:"", cpf:"", rg:"", dataNascimento:"", genero:"Não informado", email:"", telefone:"", negocio: state.negocios[0]?.nome||"", cargoId:"", dataAdmissao:todayISO(), tipoContrato:"CLT", salario:"", status:"Ativo", pix:"", logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"", dataDemissao:"", tipoDesligamento:"", motivoDesligamento:"", observacoes:"" };
+
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const cargoOpts = state.rhCargos.map(c=>`<option value="${c.id}" ${f.cargoId===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const contratoOpts = RH_TIPOS_CONTRATO.map(t=>`<option value="${t}" ${f.tipoContrato===t?"selected":""}>${t}</option>`).join("");
+  const generoOpts = RH_GENEROS.map(g=>`<option value="${g}" ${(f.genero||"Não informado")===g?"selected":""}>${g}</option>`).join("");
+  const statusOpts = RH_STATUS.map(s=>`<option value="${s}" ${(f.status||"Ativo")===s?"selected":""}>${s}</option>`).join("");
+  const ufOpts = RH_ESTADOS.map(e=>`<option value="${e}" ${(f.uf||"SP")===e?"selected":""}>${e}</option>`).join("");
+  const desligamentoOpts = RH_TIPOS_DESLIGAMENTO.map(t=>`<option value="${t}" ${f.tipoDesligamento===t?"selected":""}>${t}</option>`).join("");
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar funcionário":"Novo funcionário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formRhFuncionario"><div class="modal-body">
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Dados pessoais</div>
+      <div class="field"><label>Nome completo *</label><input required type="text" name="nome" value="${esc(f.nome)}" placeholder="Nome completo"></div>
+      <div class="field-row">
+        <div class="field"><label>CPF</label><input type="text" name="cpf" value="${esc(f.cpf)}" placeholder="000.000.000-00"></div>
+        <div class="field"><label>RG</label><input type="text" name="rg" value="${esc(f.rg)}" placeholder="00.000.000-0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Data de nascimento</label><input type="date" name="dataNascimento" value="${f.dataNascimento||""}"></div>
+        <div class="field"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email||"")}" placeholder="funcionario@email.com"></div>
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(f.telefone||"")}" placeholder="(00) 00000-0000"></div>
+      </div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Dados profissionais</div>
+      <div class="field-row">
+        <div class="field"><label>Negócio *</label><select name="negocio">${negOpts||'<option value="">— cadastre um negócio —</option>'}</select></div>
+        <div class="field"><label>Cargo</label><select name="cargoId"><option value="">— Selecione —</option>${cargoOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Data de admissão *</label><input required type="date" name="dataAdmissao" value="${f.dataAdmissao||todayISO()}"></div>
+        <div class="field"><label>Tipo de contrato</label><select name="tipoContrato">${contratoOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Salário (R$)</label><input type="number" step="0.01" min="0" name="salario" value="${f.salario}" placeholder="0,00"></div>
+        <div class="field"><label>Status</label><select name="status" id="rhFuncStatus">${statusOpts}</select></div>
+      </div>
+      <div class="field"><label>PIX / dados bancários</label><input type="text" name="pix" value="${esc(f.pix||"")}" placeholder="Chave PIX ou banco/agência/conta"></div>
+
+      <div id="rhDesligamentoWrap" style="display:${f.status==='Desligado'?'block':'none'};">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Desligamento</div>
+        <div class="field-row">
+          <div class="field"><label>Data do desligamento</label><input type="date" name="dataDemissao" value="${f.dataDemissao||""}"></div>
+          <div class="field"><label>Tipo</label><select name="tipoDesligamento"><option value="">— Selecione —</option>${desligamentoOpts}</select></div>
+        </div>
+        <div class="field"><label>Motivo / observações</label><textarea name="motivoDesligamento" rows="2" style="resize:none;">${esc(f.motivoDesligamento||"")}</textarea></div>
+      </div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Endereço</div>
+      <div class="field-row">
+        <div class="field"><label>CEP</label><input type="text" name="cep" value="${esc(f.cep||"")}" placeholder="00000-000"></div>
+        <div class="field"><label>UF</label><select name="uf">${ufOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Logradouro</label><input type="text" name="logradouro" value="${esc(f.logradouro||"")}" placeholder="Rua, Avenida, etc."></div>
+        <div class="field"><label>Número</label><input type="text" name="numero" value="${esc(f.numero||"")}" placeholder="123"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Complemento</label><input type="text" name="complemento" value="${esc(f.complemento||"")}"></div>
+        <div class="field"><label>Bairro</label><input type="text" name="bairro" value="${esc(f.bairro||"")}"></div>
+      </div>
+      <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(f.cidade||"")}"></div>
+
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Observações</div>
+      <div class="field"><textarea name="observacoes" rows="3" style="resize:none;" placeholder="Notas internas...">${esc(f.observacoes||"")}</textarea></div>
+
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar alterações":"Cadastrar funcionário"}</button></div></form>
+  `);
+
+  document.getElementById("rhFuncStatus").addEventListener("change", e => {
+    document.getElementById("rhDesligamentoWrap").style.display = e.target.value === "Desligado" ? "block" : "none";
+  });
+
+  document.getElementById("formRhFuncionario").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), cpf: fd.get("cpf").trim(), rg: fd.get("rg").trim(),
+      dataNascimento: fd.get("dataNascimento"), genero: fd.get("genero"),
+      email: fd.get("email").trim(), telefone: fd.get("telefone").trim(),
+      negocio: fd.get("negocio"), cargoId: fd.get("cargoId"),
+      dataAdmissao: fd.get("dataAdmissao"), tipoContrato: fd.get("tipoContrato"),
+      salario: parseFloat(fd.get("salario"))||0, status: fd.get("status"), pix: fd.get("pix").trim(),
+      dataDemissao: fd.get("status")==="Desligado" ? fd.get("dataDemissao") : "",
+      tipoDesligamento: fd.get("status")==="Desligado" ? fd.get("tipoDesligamento") : "",
+      motivoDesligamento: fd.get("status")==="Desligado" ? fd.get("motivoDesligamento").trim() : "",
+      cep: fd.get("cep").trim(), logradouro: fd.get("logradouro").trim(), numero: fd.get("numero").trim(),
+      complemento: fd.get("complemento").trim(), bairro: fd.get("bairro").trim(), cidade: fd.get("cidade").trim(),
+      uf: fd.get("uf"), observacoes: fd.get("observacoes").trim(),
+    };
+    let idAlvo;
+    if(isEdit){ Object.assign(existing, data); idAlvo = existing.id; }
+    else{ idAlvo = uid("func"); state.rhFuncionarios.push({ id: idAlvo, ...data }); }
+    await saveRhFuncionarios(); closeModal();
+    rhViewDetalheId = idAlvo;
+    state.view = "rh_funcionario_detalhe";
+    renderApp(); showToast(isEdit?"Funcionário atualizado.":"Funcionário cadastrado.");
+  });
+}
+
+function modalRhCargo(existing){
+  const isEdit = !!existing;
+  const c = existing || { nome:"", negocio: state.negocios[0]?.nome||"", salarioBase:"", cargaHoraria:"", descricao:"" };
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar cargo":"Novo cargo"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formRhCargo"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Nome do cargo *</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Técnico de Campo, Analista Financeiro..."></div>
+        <div class="field"><label>Negócio</label><select name="negocio">${negOpts||'<option value="">— cadastre um negócio —</option>'}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Salário base (R$)</label><input type="number" step="0.01" min="0" name="salarioBase" value="${c.salarioBase}" placeholder="0,00"></div>
+        <div class="field"><label>Carga horária</label><input type="text" name="cargaHoraria" value="${esc(c.cargaHoraria||"")}" placeholder="Ex: 44h/semana"></div>
+      </div>
+      <div class="field"><label>Descrição</label><textarea name="descricao" rows="2" style="resize:none;" placeholder="Responsabilidades do cargo">${esc(c.descricao||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Criar cargo"}</button></div></form>
+  `);
+  document.getElementById("formRhCargo").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = { nome:fd.get("nome").trim(), negocio:fd.get("negocio"), salarioBase:parseFloat(fd.get("salarioBase"))||0, cargaHoraria:fd.get("cargaHoraria").trim(), descricao:fd.get("descricao").trim() };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.rhCargos.push({ id:uid("cargo"), ...data }); }
+    await saveRhCargos(); closeModal(); renderView(); showToast(isEdit?"Cargo atualizado.":"Cargo criado.");
+  });
+}
+
+function modalRhFolha(existing, funcionarioIdPreset){
+  const isEdit = !!existing;
+  const p = existing || { funcionarioId: funcionarioIdPreset || (state.rhFuncionarios[0]?.id||""), competencia: competenciaAtual(), salarioBase:"", bonus:0, descontos:0, valorLiquido:"", dataPagamento:todayISO(), status:"Pendente", observacoes:"" };
+  if(!isEdit && p.funcionarioId){
+    const f = rhFuncionarioById(p.funcionarioId);
+    if(f){ p.salarioBase = f.salario || 0; p.valorLiquido = f.salario || 0; }
+  }
+  const funcOpts = state.rhFuncionarios.filter(f=>f.status!=="Desligado" || f.id===p.funcionarioId).map(f=>`<option value="${f.id}" ${p.funcionarioId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const statusOpts = RH_STATUS_FOLHA.map(s=>`<option value="${s}" ${p.status===s?"selected":""}>${s}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar pagamento":"Lançar pagamento de folha"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formRhFolha"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Funcionário *</label>
+          ${isEdit ? `<input type="text" value="${esc(rhFuncionarioById(p.funcionarioId)?.nome||"")}" disabled style="background:var(--surface-2); color:var(--ink-4);"><input type="hidden" name="funcionarioId" value="${p.funcionarioId}">`
+                    : `<select required name="funcionarioId" id="rhFolhaFunc">${funcOpts||'<option value="">— cadastre um funcionário —</option>'}</select>`}
+        </div>
+        <div class="field"><label>Competência *</label><input required type="month" name="competencia" value="${p.competencia}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Salário base (R$)</label><input type="number" step="0.01" min="0" name="salarioBase" id="rhFolhaBase" value="${p.salarioBase}"></div>
+        <div class="field"><label>Bônus / horas extra (R$)</label><input type="number" step="0.01" min="0" name="bonus" id="rhFolhaBonus" value="${p.bonus||0}"></div>
+        <div class="field"><label>Descontos (R$)</label><input type="number" step="0.01" min="0" name="descontos" id="rhFolhaDescontos" value="${p.descontos||0}"></div>
+      </div>
+      <div class="field"><label>Valor líquido</label><input type="number" step="0.01" name="valorLiquido" id="rhFolhaLiquido" value="${p.valorLiquido||p.salarioBase||0}">
+        <div class="field-help">Calculado automaticamente (base + bônus − descontos) — pode ajustar na mão se precisar.</div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Data de pagamento</label><input type="date" name="dataPagamento" value="${p.dataPagamento||todayISO()}"></div>
+        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+      </div>
+      ${!isEdit ? `<div class="field"><label class="checkbox-row"><input type="checkbox" name="gerarLancamento" checked> Lançar como Despesa no Financeiro (categoria Salários/Pró-labore)</label>
+        <div class="field-help">Cria automaticamente um lançamento de despesa vinculado ao negócio do funcionário — a conta e a baixa você ajusta depois em Contas a Pagar.</div>
+      </div>` : ""}
+      <div class="field"><label>Observações</label><input type="text" name="observacoes" value="${esc(p.observacoes||"")}"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Lançar pagamento"}</button></div></form>
+  `);
+  const baseInput = document.getElementById("rhFolhaBase");
+  const bonusInput = document.getElementById("rhFolhaBonus");
+  const descInput = document.getElementById("rhFolhaDescontos");
+  const liquidoInput = document.getElementById("rhFolhaLiquido");
+  const recalc = () => {
+    const val = (parseFloat(baseInput.value)||0) + (parseFloat(bonusInput.value)||0) - (parseFloat(descInput.value)||0);
+    liquidoInput.value = Math.max(0, Math.round(val*100)/100);
+  };
+  [baseInput, bonusInput, descInput].forEach(inp => inp.addEventListener("input", recalc));
+  const funcSelect = document.getElementById("rhFolhaFunc");
+  if(funcSelect){
+    funcSelect.addEventListener("change", () => {
+      const f = rhFuncionarioById(funcSelect.value);
+      baseInput.value = f ? (f.salario||0) : 0;
+      recalc();
+    });
+  }
+  document.getElementById("formRhFolha").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const funcionarioId = fd.get("funcionarioId");
+    if(!funcionarioId){ showToast("Escolha um funcionário.", "error"); return; }
+    const data = {
+      funcionarioId, competencia: fd.get("competencia"),
+      salarioBase: parseFloat(fd.get("salarioBase"))||0, bonus: parseFloat(fd.get("bonus"))||0,
+      descontos: parseFloat(fd.get("descontos"))||0, valorLiquido: parseFloat(fd.get("valorLiquido"))||0,
+      dataPagamento: fd.get("dataPagamento"), status: fd.get("status"), observacoes: fd.get("observacoes").trim(),
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{
+      state.rhFolha.push({ id: uid("folha"), ...data });
+      if(fd.get("gerarLancamento") === "on"){
+        const f = rhFuncionarioById(funcionarioId);
+        const catSalarios = categoriaByNome("Salários/Pró-labore");
+        state.lancamentos.push({
+          id: uid("l"), data: data.dataPagamento || todayISO(), tipo: "Despesa",
+          negocio: f ? f.negocio : "", categoria: catSalarios ? catSalarios.nome : "", subcategoria: "",
+          contaOrigem: state.contas.find(c=>c.ativa!==false)?.id || "", contaDestino: "",
+          valor: data.valorLiquido, descricao: `Salário — ${f?f.nome:""} (${fmtCompetencia(data.competencia)})`,
+          status: data.status === "Pago" ? "Pago" : "Provisionado", conciliado: false,
+          lancadoPor: state.perfilAtivo ? state.perfilAtivo.nome : "Master"
+        });
+        await saveLancamentos();
+      }
+    }
+    await saveRhFolha(); closeModal(); renderView(); showToast(isEdit?"Pagamento atualizado.":"Pagamento lançado.");
+  });
+}
+
+function modalRhFerias(existing, funcionarioIdPreset){
+  const isEdit = !!existing;
+  const funcId = funcionarioIdPreset || (existing && existing.funcionarioId) || (state.rhFuncionarios[0]?.id||"");
+  const vencInfo = !isEdit && funcId ? rhProximoVencimentoFerias(funcId) : null;
+  const inicioSugerido = vencInfo ? (() => { const d = new Date(vencInfo.vencimento+"T00:00:00"); d.setFullYear(d.getFullYear()-1); return d.toISOString().slice(0,10); })() : "";
+  const v = existing || { funcionarioId: funcId, periodoAquisitivoInicio: inicioSugerido, periodoAquisitivoFim: vencInfo?vencInfo.vencimento:"", diasDireito:30, dataInicioGozo:"", dataFimGozo:"", diasGozados:30, status:"Programada", observacoes:"" };
+  const funcOpts = state.rhFuncionarios.map(f=>`<option value="${f.id}" ${v.funcionarioId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const statusOpts = RH_STATUS_FERIAS.map(s=>`<option value="${s}" ${v.status===s?"selected":""}>${s}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar férias":"Nova férias"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formRhFerias"><div class="modal-body">
+      <div class="field"><label>Funcionário *</label><select required name="funcionarioId">${funcOpts||'<option value="">— cadastre um funcionário —</option>'}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Período aquisitivo — início</label><input type="date" name="periodoAquisitivoInicio" value="${v.periodoAquisitivoInicio||""}"></div>
+        <div class="field"><label>Período aquisitivo — fim</label><input type="date" name="periodoAquisitivoFim" value="${v.periodoAquisitivoFim||""}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Início do gozo</label><input type="date" name="dataInicioGozo" value="${v.dataInicioGozo||""}"></div>
+        <div class="field"><label>Fim do gozo</label><input type="date" name="dataFimGozo" value="${v.dataFimGozo||""}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Dias de direito</label><input type="number" min="1" max="30" name="diasDireito" value="${v.diasDireito||30}"></div>
+        <div class="field"><label>Dias gozados</label><input type="number" min="0" max="30" name="diasGozados" value="${v.diasGozados||0}"></div>
+        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+      </div>
+      <div class="field"><label>Observações</label><input type="text" name="observacoes" value="${esc(v.observacoes||"")}"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Registrar férias"}</button></div></form>
+  `);
+  document.getElementById("formRhFerias").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(!fd.get("funcionarioId")){ showToast("Escolha um funcionário.", "error"); return; }
+    const data = {
+      funcionarioId: fd.get("funcionarioId"),
+      periodoAquisitivoInicio: fd.get("periodoAquisitivoInicio"), periodoAquisitivoFim: fd.get("periodoAquisitivoFim"),
+      dataInicioGozo: fd.get("dataInicioGozo"), dataFimGozo: fd.get("dataFimGozo"),
+      diasDireito: parseInt(fd.get("diasDireito"))||30, diasGozados: parseInt(fd.get("diasGozados"))||0,
+      status: fd.get("status"), observacoes: fd.get("observacoes").trim(),
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.rhFerias.push({ id: uid("ferias"), ...data }); }
+    await saveRhFerias(); closeModal(); renderView(); showToast(isEdit?"Férias atualizada.":"Férias registrada.");
+  });
+}
+
+async function rhGerarFolhaDoMes(){
+  const competencia = competenciaAtual();
+  const ativos = rhFuncionariosAtivos();
+  if(!ativos.length){ showToast("Nenhum funcionário ativo para gerar folha.", "error"); return; }
+  const jaExistentes = new Set(state.rhFolha.filter(p=>p.competencia===competencia).map(p=>p.funcionarioId));
+  const novos = ativos.filter(f => !jaExistentes.has(f.id));
+  if(!novos.length){ showToast(`Já existe folha de ${fmtCompetencia(competencia)} para todos os ativos.`, "error"); return; }
+  novos.forEach(f => {
+    state.rhFolha.push({
+      id: uid("folha"), funcionarioId: f.id, competencia,
+      salarioBase: f.salario||0, bonus: 0, descontos: 0, valorLiquido: f.salario||0,
+      dataPagamento: "", status: "Pendente", observacoes: "gerado automaticamente"
+    });
+  });
+  await saveRhFolha(); renderView();
+  showToast(`${novos.length} lançamento(s) de folha gerado(s) para ${fmtCompetencia(competencia)}.`);
 }
 
 // ---- Helpers de estoque ----
