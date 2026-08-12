@@ -707,16 +707,17 @@ const HORIZONTE_ANOS = 5;
 // Guardado no localStorage do navegador — não é dado sensível, é só o nome da tela.
 const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
 const VIEWS_VALIDAS = new Set([
+  "vg_sintetico","vg_analitico",
   "cadastro_hub",
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
-  "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe",
+  "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
 ]);
 // Telas de detalhe dependem de um id extra (qual cliente/funcionário) que não é
 // salvo junto — ao restaurar depois de um F5, cai na tela "mãe" do mesmo módulo em
 // vez de ficar numa página de detalhe vazia dizendo "não encontrado".
-const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios", cli_os_detalhe: "cli_os_lista" };
+const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios", cli_os_detalhe: "cli_os_lista", cli_chamado_detalhe: "cli_chamados" };
 let navegacaoRestaurada = false;
 function salvarNavegacaoAtual(){
   try{ localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify({ moduloAtivo: state.moduloAtivo, view: state.view })); }
@@ -751,6 +752,7 @@ const RH_STATUS_FERIAS = ["Programada","Em andamento","Concluída","Cancelada"];
 const RH_TIPOS_DESLIGAMENTO = ["Pedido de demissão","Demissão sem justa causa","Demissão com justa causa","Término de contrato","Acordo (distrato)"];
 
 const MODULOS_CATALOGO = [
+  { id:"visaogeral", ico:"🧭", nome:"Visão Geral", desc:"Painel executivo consolidado da holding", ativo:true },
   { id:"cadastro",  ico:"🗂️", nome:"Cadastro",   desc:"Central de cadastros do projeto", ativo:true },
   { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
   { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
@@ -1601,7 +1603,8 @@ function renderModbar(){
       if(MODULOS_GRANULARES.includes(modId) && !podeVerModulo(modId)){ showToast("Esse usuário não tem acesso a esse módulo.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
-      if(modId==="cadastro") state.view="cadastro_hub";
+      if(modId==="visaogeral") state.view="vg_sintetico";
+      else if(modId==="cadastro") state.view="cadastro_hub";
       else if(modId==="financeiro") state.view="dashboard";
       else if(modId==="estoque") state.view="est_dashboard";
       else if(modId==="clientes") state.view="cli_dashboard";
@@ -1661,9 +1664,13 @@ function renderApp(){
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="mainSidebar">
-      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "visaogeral" ? "🧭 visão geral" : state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
-      ${state.moduloAtivo === "cadastro" ? `
+      ${state.moduloAtivo === "visaogeral" ? `
+        <div class="nav-group-label">Visão Geral</div>
+        ${navItem("vg_sintetico","🧭","Sintético")}
+        ${navItem("vg_analitico","📊","Analítico")}
+      ` : state.moduloAtivo === "cadastro" ? `
         <div class="nav-group-label">Cadastro</div>
         ${navItem("cadastro_hub","🗂️","Central de Cadastros")}
       ` : state.moduloAtivo === "estoque" ? `
@@ -1818,7 +1825,9 @@ function navItemSoon(label){
 function renderView(){
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
+  if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
+  else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
+  else if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
   else if(state.view === "dashboard") main.innerHTML = viewDashboard();
   else if(state.view === "contas") main.innerHTML = viewContas();
   else if(state.view === "cartoes") main.innerHTML = viewCartoes();
@@ -1958,6 +1967,138 @@ function modalSenhaMaster(){
       if(inp){ inp.value = ""; inp.focus(); }
     }
   });
+}
+
+// ============================================================
+// VISÃO GERAL — painel executivo consolidado (Sintético) e comparativo
+// por negócio (Analítico). Não duplica cálculo: reaproveita os mesmos
+// helpers que Dashboard/Estoque/Clientes/RH já usam. Financeiro fica
+// aberto a todo mundo (igual Lançamentos já é), só o Saldo em conta
+// (que depende de Contas, tela master-only) fica restrito ao Master.
+// Estoque/Clientes/RH seguem a permissão granular de cada perfil.
+// ============================================================
+function vgKpiCard(label, value, note, cor){
+  return `<div class="kpi-card"><div class="kpi-label">${esc(label)}</div><div class="kpi-value ${cor||''}" style="font-size:20px;">${value}</div>${note?`<div class="kpi-note">${esc(note)}</div>`:""}</div>`;
+}
+function vgBlocoHTML(titulo, cardsHTML){
+  return `<div style="margin-bottom:22px;">
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px;">${esc(titulo)}</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">${cardsHTML}</div>
+  </div>`;
+}
+function viewVgSintetico(){
+  const master = ehMaster();
+  const hoje = new Date();
+  const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+
+  // ---- Financeiro (aberto a todo mundo, igual Lançamentos já é — só o saldo em
+  // conta some pra quem não é Master, porque Contas em si já é master-only) ----
+  const lancVis = (filtro) => lancamentosVisiveis(state.lancamentos.filter(filtro));
+  const aReceber = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const aPagar = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const receitaMes = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+  const despesaMes = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+  const saldoTotal = master ? state.contas.filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0) : null;
+  const blocoFinanceiro = vgBlocoHTML("💰 Financeiro", [
+    master ? vgKpiCard("Saldo total em contas", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg") : "",
+    vgKpiCard("A receber (em aberto)", fmtBRL(aReceber), "Pendente/agendado", "pos"),
+    vgKpiCard("A pagar (em aberto)", fmtBRL(aPagar), "Pendente/agendado", "neg"),
+    vgKpiCard("Receita do mês", fmtBRL(receitaMes), "Pago, mês atual", "pos"),
+    vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg"),
+  ].join(""));
+
+  // ---- Estoque ----
+  const blocoEstoque = podeVerModulo("estoque") ? (() => {
+    const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id)*estValorUnitarioEstimado(p), 0);
+    const abaixoMinimo = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length;
+    const comprasMes = state.estCompras.filter(c => c.data>=inicioMesISO && c.data<=fimMesISO);
+    const valorComprasMes = comprasMes.reduce((s,c) => s + c.itens.reduce((ss,it)=>ss+it.valorTotal,0) + Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0), 0);
+    return vgBlocoHTML("📦 Estoque", [
+      vgKpiCard("Valor total em estoque", fmtBRL(valorTotal), `${state.estProdutos.length} produto(s) cadastrado(s)`),
+      vgKpiCard("Abaixo do mínimo", abaixoMinimo, abaixoMinimo>0?"Precisa repor":"Tudo certo", abaixoMinimo>0?"neg":"pos"),
+      vgKpiCard("Compras no mês", `${comprasMes.length}`, fmtBRL(valorComprasMes)),
+    ].join(""));
+  })() : "";
+
+  // ---- Clientes + Chamados ----
+  const blocoClientes = podeVerModulo("clientes") ? (() => {
+    const clientesAtivos = state.cliClientes.filter(c => c.status==="Ativo").length;
+    const chamadosAbertos = state.cliChamados.filter(c => ["Aberto","Agendado","Em atendimento"].includes(c.status)).length;
+    const chamadosAtrasados = state.cliChamados.filter(c => c.dataAgendada && c.dataAgendada<todayISO() && !["Concluído","Cancelado"].includes(c.status)).length;
+    const osAndamento = state.cliOS.filter(o => o.status==="Aberta").length;
+    return vgBlocoHTML("👥 Clientes & Atendimento", [
+      vgKpiCard("Clientes ativos", clientesAtivos, `${state.cliClientes.length} cadastrado(s) no total`),
+      vgKpiCard("Chamados abertos", chamadosAbertos, chamadosAtrasados>0?`${chamadosAtrasados} atrasado(s)`:"Nenhum atrasado", chamadosAtrasados>0?"neg":""),
+      vgKpiCard("OS em andamento", osAndamento),
+    ].join(""));
+  })() : "";
+
+  // ---- RH ----
+  const blocoRh = podeVerModulo("rh") ? (() => {
+    const ativos = rhFuncionariosAtivos();
+    const feriasVencendo = ativos.map(f => rhProximoVencimentoFerias(f.id)).filter(v => v && v.diasRestantes<=60).length;
+    return vgBlocoHTML("🏢 RH", [
+      vgKpiCard("Funcionários ativos", ativos.length, `${state.rhFuncionarios.length} no total`),
+      vgKpiCard("Folha do mês (estimada)", fmtBRL(rhCustoFolhaMensal()), "Soma dos salários ativos"),
+      vgKpiCard("Férias vencendo", feriasVencendo, feriasVencendo>0?"Nos próximos 60 dias":"Nada nos próximos 60 dias", feriasVencendo>0?"neg":""),
+    ].join(""));
+  })() : "";
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Visão Geral — Sintético</div><div class="page-sub">Panorama consolidado da holding, em tempo real.</div></div>
+    </div>
+    ${blocoFinanceiro}${blocoEstoque}${blocoClientes}${blocoRh}
+  `;
+}
+
+function viewVgAnalitico(){
+  const negociosVisiveis = state.negocios.filter(n => ehMaster() || podeVerNegocio(n.nome));
+  const hoje = new Date();
+  const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+  const vErEstoque = podeVerModulo("estoque"), vErClientes = podeVerModulo("clientes"), vErRh = podeVerModulo("rh");
+
+  const linhas = negociosVisiveis.map(n => {
+    const lancDoNeg = lancamentosVisiveis(state.lancamentos.filter(l => l.negocio===n.nome && !l.inativo));
+    const receitaMes = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+    const despesaMes = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+    const aReceber = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const aPagar = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const abaixoMinimo = vErEstoque ? state.estProdutos.filter(p => p.negocio===n.nome && estSaldoAtual(p.id)<=Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length : null;
+    const clientesAtivos = vErClientes ? state.cliClientes.filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
+    const chamadosAbertos = vErClientes ? state.cliChamados.filter(c => c.negocio===n.nome && ["Aberto","Agendado","Em atendimento"].includes(c.status)).length : null;
+    const funcionariosAtivos = vErRh ? state.rhFuncionarios.filter(f => f.negocio===n.nome && f.status!=="Desligado").length : null;
+    return `<tr>
+      <td style="font-weight:600;"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(n.nome)}</td>
+      <td class="num" style="color:var(--pos);">${fmtBRL(receitaMes)}</td>
+      <td class="num" style="color:var(--neg);">${fmtBRL(despesaMes)}</td>
+      <td class="num" style="font-weight:600; color:${(receitaMes-despesaMes)>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(receitaMes-despesaMes)}</td>
+      <td class="num" style="color:var(--ink-3);">${fmtBRL(aReceber)}</td>
+      <td class="num" style="color:var(--ink-3);">${fmtBRL(aPagar)}</td>
+      ${vErEstoque ? `<td class="num" style="color:${abaixoMinimo>0?'var(--neg)':'var(--ink-3)'};">${abaixoMinimo}</td>` : ""}
+      ${vErClientes ? `<td class="num">${clientesAtivos}</td><td class="num">${chamadosAbertos}</td>` : ""}
+      ${vErRh ? `<td class="num">${funcionariosAtivos}</td>` : ""}
+    </tr>`;
+  }).join("");
+
+  const totalCols = 6 + (vErEstoque?1:0) + (vErClientes?2:0) + (vErRh?1:0);
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Visão Geral — Analítico</div><div class="page-sub">Comparativo por negócio — só entram os negócios que esse usuário pode ver.</div></div>
+    </div>
+    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+      <table style="min-width:760px;"><thead><tr>
+        <th>Negócio</th><th class="num">Receita (mês)</th><th class="num">Despesa (mês)</th><th class="num">Resultado (mês)</th>
+        <th class="num">A receber</th><th class="num">A pagar</th>
+        ${vErEstoque ? `<th class="num">Abaixo do mín.</th>` : ""}
+        ${vErClientes ? `<th class="num">Clientes ativos</th><th class="num">Chamados abertos</th>` : ""}
+        ${vErRh ? `<th class="num">Funcionários</th>` : ""}
+      </tr></thead>
+      <tbody>${linhas || `<tr><td colspan="${totalCols}">${emptyState("Nenhum negócio visível pra esse usuário.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
 }
 
 // ============================================================
@@ -4064,7 +4205,8 @@ document.addEventListener("click", async e => {
     if(MODULOS_GRANULARES.includes(mod.id) && !podeVerModulo(mod.id)){ showToast("Esse usuário não tem acesso a esse módulo.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
-    if(mod.id === "cadastro"){ state.view = "cadastro_hub"; }
+    if(mod.id === "visaogeral"){ state.view = "vg_sintetico"; }
+    else if(mod.id === "cadastro"){ state.view = "cadastro_hub"; }
     else if(mod.id === "financeiro"){ state.view = "dashboard"; }
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
