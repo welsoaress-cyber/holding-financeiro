@@ -917,7 +917,7 @@ async function saveRows(table, items){
   try{
     const rows = items.map(item => {
       const { id, ...rest } = item;
-      return { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
+      return { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() };
     });
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
@@ -986,12 +986,10 @@ async function loadData(){
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
     const results = await Promise.all(TABELAS_CORE.map(t =>
-      supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
+      supabaseClient.from(t).select("*").eq("user_id", state.user.id)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
-      (r.data || []).map(row => ({ id: row.id, ...row.dados }))
-    );
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r => r.data || []);
     state.contas = contas;
     state.lancamentos = lancamentos;
     state.ajustes = ajustes;
