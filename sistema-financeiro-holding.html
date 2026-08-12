@@ -787,6 +787,78 @@ const CADASTRO_TIPOS = [
 ];
 
 // ============================================================
+// SELEÇÃO EM MASSA — "selecionar tudo" + excluir, reaproveitável em
+// qualquer lista (checkbox no cabeçalho + checkbox por linha + botão
+// de excluir selecionados + botão de limpar tudo, ignorando filtro).
+// Fica de fora de propósito: Contas, Cartões, Categorias, Negócios e
+// Lançamentos (esse último já tinha o próprio seletor em massa) — é o
+// núcleo financeiro, mexer em lote ali merece uma conversa à parte.
+// ============================================================
+const BULK_CONTEXTOS = {
+  est_produtos:     { arr: "estProdutos",     tabela: "est_produtos",     label: "produto(s)" },
+  est_fornecedores: { arr: "estFornecedores", tabela: "est_fornecedores", label: "fornecedor(es)" },
+  est_compras: {
+    arr: "estCompras", tabela: "est_compras", label: "compra(s)",
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const movIds = state.estMovimentos.filter(m => idsSet.has(m.notaFiscalCompraId)).map(m => m.id);
+      state.estMovimentos = state.estMovimentos.filter(m => !idsSet.has(m.notaFiscalCompraId));
+      if(movIds.length) await deleteRows("est_movimentos", movIds);
+    },
+  },
+  est_movimentos: { arr: "estMovimentos", tabela: "est_movimentos", label: "movimentação(ões)" },
+  cli_clientes:   { arr: "cliClientes",   tabela: "cli_clientes",   label: "cliente(s)" },
+  cli_planos:     { arr: "cliPlanos",     tabela: "cli_planos",     label: "plano(s)" },
+  rh_funcionarios: {
+    arr: "rhFuncionarios", tabela: "rh_funcionarios", label: "funcionário(s)",
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const folhaIds = state.rhFolha.filter(f => idsSet.has(f.funcionarioId)).map(f => f.id);
+      const feriasIds = state.rhFerias.filter(f => idsSet.has(f.funcionarioId)).map(f => f.id);
+      state.rhFolha = state.rhFolha.filter(f => !idsSet.has(f.funcionarioId));
+      state.rhFerias = state.rhFerias.filter(f => !idsSet.has(f.funcionarioId));
+      if(folhaIds.length) await deleteRows("rh_folha", folhaIds);
+      if(feriasIds.length) await deleteRows("rh_ferias", feriasIds);
+    },
+  },
+  rh_cargos: { arr: "rhCargos", tabela: "rh_cargos", label: "cargo(s)" },
+  rh_folha:  { arr: "rhFolha",  tabela: "rh_folha",  label: "lançamento(s) de folha" },
+  rh_ferias: { arr: "rhFerias", tabela: "rh_ferias", label: "registro(s) de férias" },
+};
+let bulkSelecao = {};
+function bulkSet(contexto){ if(!bulkSelecao[contexto]) bulkSelecao[contexto] = new Set(); return bulkSelecao[contexto]; }
+function bulkCheckboxHeaderHTML(contexto, idsVisiveis){
+  const sel = bulkSet(contexto);
+  const todosSelecionados = idsVisiveis.length > 0 && idsVisiveis.every(id => sel.has(id));
+  return `<th style="text-align:center; width:32px;"><input type="checkbox" data-action="bulk-toggle-all" data-contexto="${contexto}" data-ids="${idsVisiveis.join(",")}" ${todosSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>`;
+}
+function bulkCheckboxCellHTML(contexto, id){
+  const sel = bulkSet(contexto);
+  return `<td style="text-align:center;"><input type="checkbox" data-action="bulk-toggle" data-contexto="${contexto}" data-id="${id}" ${sel.has(id)?"checked":""}></td>`;
+}
+function bulkBarraAcoesHTML(contexto){
+  const cfg = BULK_CONTEXTOS[contexto];
+  if(!cfg) return "";
+  const sel = bulkSet(contexto);
+  const total = state[cfg.arr].length;
+  return `<div style="display:flex; gap:8px;">
+    ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">🗑 Excluir selecionados (${sel.size})</button>` : ""}
+    ${total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora">🧹 Limpar tudo (${total})</button>` : ""}
+  </div>`;
+}
+async function bulkExecutarExclusao(contexto, ids){
+  const cfg = BULK_CONTEXTOS[contexto];
+  if(!cfg || !ids.length) return;
+  const idsSet = new Set(ids);
+  state[cfg.arr] = state[cfg.arr].filter(x => !idsSet.has(x.id));
+  await deleteRows(cfg.tabela, ids);
+  if(cfg.cascade) await cfg.cascade(ids);
+  bulkSet(contexto).clear();
+  renderView();
+  showToast(`${ids.length} ${cfg.label} excluído(s).`);
+}
+
+// ============================================================
 // UTILITÁRIOS
 // ============================================================
 function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -3715,6 +3787,39 @@ document.addEventListener("click", async e => {
     showToast(`${ids.length} lançamento(s) excluído(s).`);
   }
 
+  else if(action === "bulk-toggle"){
+    const contexto = el.dataset.contexto, idAlvo = el.dataset.id;
+    const sel = bulkSet(contexto);
+    if(sel.has(idAlvo)) sel.delete(idAlvo); else sel.add(idAlvo);
+    renderView();
+  }
+  else if(action === "bulk-toggle-all"){
+    const contexto = el.dataset.contexto;
+    const ids = el.dataset.ids ? el.dataset.ids.split(",").filter(Boolean) : [];
+    const sel = bulkSet(contexto);
+    const todos = ids.length > 0 && ids.every(idv => sel.has(idv));
+    if(todos) ids.forEach(idv => sel.delete(idv));
+    else ids.forEach(idv => sel.add(idv));
+    renderView();
+  }
+  else if(action === "bulk-excluir"){
+    const contexto = el.dataset.contexto;
+    const cfg = BULK_CONTEXTOS[contexto];
+    if(!cfg) return;
+    const ids = Array.from(bulkSet(contexto));
+    if(!ids.length) return;
+    if(!confirm(`Excluir ${ids.length} ${cfg.label} selecionado(s)? Essa ação não pode ser desfeita.`)) return;
+    await bulkExecutarExclusao(contexto, ids);
+  }
+  else if(action === "bulk-limpar-tudo"){
+    const contexto = el.dataset.contexto;
+    const cfg = BULK_CONTEXTOS[contexto];
+    if(!cfg) return;
+    const todosIds = state[cfg.arr].map(x => x.id);
+    if(!todosIds.length){ showToast("Não há nada pra limpar aqui.", "error"); return; }
+    if(!confirm(`Isso apaga TODOS os ${todosIds.length} ${cfg.label} dessa lista — sem filtro, tudo mesmo. Ação irreversível. Quer mesmo limpar tudo?`)) return;
+    await bulkExecutarExclusao(contexto, todosIds);
+  }
   else if(action === "new-conta") modalConta(null);
   else if(action === "new-caixinha") modalCaixinha(id, null);
   else if(action === "edit-conta"){ const c = contaById(id); if(c && c.parentId) modalCaixinha(null, c); else modalConta(c); }
@@ -4157,6 +4262,7 @@ function viewCliLista(){
     const statusClass = c.status==="Ativo"?"status-pago":c.status==="Inadimplente"||c.status==="Cancelado"?"status-pendente":"status-agendado";
     const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
     return `<tr>
+      ${bulkCheckboxCellHTML("cli_clientes", c.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cli-detalhe" data-id="${c.id}">${esc(cliNome(c))}</td>
       <td style="color:var(--ink-3); font-size:12px;">${esc(c.cpfCnpj||"—")}</td>
       <td>${negocios||"—"}</td>
@@ -4178,7 +4284,7 @@ function viewCliLista(){
   return `
     <div class="page-header">
       <div><div class="page-title">Todos os Clientes</div><div class="page-sub">${lista.length} de ${state.cliClientes.length} cliente(s)</div></div>
-      <button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button></div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -4189,8 +4295,8 @@ function viewCliLista(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th><th class="num">MRR</th><th>Status</th><th></th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th><th class="num">MRR</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -4293,6 +4399,7 @@ function viewCliPlanos(){
   const rows = state.cliPlanos.map(p => {
     const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
     return `<tr>
+      ${bulkCheckboxCellHTML("cli_planos", p.id)}
       <td style="font-weight:600;">${esc(p.nome)}</td>
       <td><span class="status-pill status-agendado">${esc(p.negocio)}</span></td>
       <td style="color:var(--ink-3);">${esc(p.descricao||"—")}</td>
@@ -4308,11 +4415,11 @@ function viewCliPlanos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
-      <button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button></div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr><th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="7">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
@@ -4754,6 +4861,7 @@ function viewRhFuncionarios(){
     const statusClass = f.status==="Ativo"?"status-pago":f.status==="Desligado"?"status-pendente":"status-agendado";
     const cor = negocioCor(f.negocio);
     return `<tr>
+      ${bulkCheckboxCellHTML("rh_funcionarios", f.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</td>
       <td>${esc(rhNomeCargo(f.cargoId))}</td>
       <td>${f.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${cor} 14%, white); color:${cor};"><span class="tag-dot" style="background:${cor}"></span>${esc(f.negocio)}</span>` : "—"}</td>
@@ -4774,7 +4882,7 @@ function viewRhFuncionarios(){
   return `
     <div class="page-header">
       <div><div class="page-title">Funcionários</div><div class="page-sub">${lista.length} de ${state.rhFuncionarios.length} funcionário(s)</div></div>
-      <button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_funcionarios")}<button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button></div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -4785,8 +4893,8 @@ function viewRhFuncionarios(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr><th>Nome</th><th>Cargo</th><th>Negócio</th><th>Admissão</th><th>Tempo de casa</th><th class="num">Salário</th><th>Status</th><th></th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum funcionário encontrado.")}</td></tr>`}</tbody></table>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("rh_funcionarios", lista.map(f=>f.id))}<th>Nome</th><th>Cargo</th><th>Negócio</th><th>Admissão</th><th>Tempo de casa</th><th class="num">Salário</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhum funcionário encontrado.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -4891,6 +4999,7 @@ function viewRhCargos(){
   const rows = state.rhCargos.map(c => {
     const qtd = state.rhFuncionarios.filter(f=>f.cargoId===c.id && f.status!=="Desligado").length;
     return `<tr>
+      ${bulkCheckboxCellHTML("rh_cargos", c.id)}
       <td style="font-weight:600;">${esc(c.nome)}</td>
       <td><span class="status-pill status-agendado">${esc(c.negocio||"—")}</span></td>
       <td class="num">${fmtBRL(c.salarioBase)}</td>
@@ -4906,11 +5015,11 @@ function viewRhCargos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Cargos</div><div class="page-sub">Catálogo de cargos e faixas salariais por negócio</div></div>
-      <button class="btn btn-primary" data-action="rh-novo-cargo">+ Novo cargo</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_cargos")}<button class="btn btn-primary" data-action="rh-novo-cargo">+ Novo cargo</button></div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr><th>Cargo</th><th>Negócio</th><th class="num">Salário base</th><th>Carga horária</th><th>Descrição</th><th style="text-align:center;">Ativos</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="7">${emptyState("Nenhum cargo cadastrado ainda.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("rh_cargos", state.rhCargos.map(c=>c.id))}<th>Cargo</th><th>Negócio</th><th class="num">Salário base</th><th>Carga horária</th><th>Descrição</th><th style="text-align:center;">Ativos</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum cargo cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
@@ -4926,6 +5035,7 @@ function viewRhFolha(){
   const rows = lista.map(p => {
     const f = rhFuncionarioById(p.funcionarioId);
     return `<tr>
+      ${bulkCheckboxCellHTML("rh_folha", p.id)}
       <td style="font-weight:600;">${esc(f?f.nome:"— funcionário removido —")}</td>
       <td>${fmtCompetencia(p.competencia)}</td>
       <td class="num">${fmtBRL(p.salarioBase)}</td>
@@ -4945,6 +5055,7 @@ function viewRhFolha(){
     <div class="page-header">
       <div><div class="page-title">Folha de Pagamento</div><div class="page-sub">${lista.length} lançamento(s) · total líquido ${fmtBRL(totalLiquido)}</div></div>
       <div style="display:flex; gap:8px;">
+        ${bulkBarraAcoesHTML("rh_folha")}
         <button class="btn btn-ghost" data-action="rh-gerar-folha-mes">⚙ Gerar folha do mês</button>
         <button class="btn btn-primary" data-action="rh-nova-folha">+ Lançar pagamento</button>
       </div>
@@ -4957,8 +5068,8 @@ function viewRhFolha(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-folha-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr><th>Funcionário</th><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Pagamento</th><th>Status</th><th></th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhum lançamento de folha encontrado.")}</td></tr>`}</tbody></table>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("rh_folha", lista.map(p=>p.id))}<th>Funcionário</th><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Pagamento</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum lançamento de folha encontrado.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -4973,6 +5084,7 @@ function viewRhFerias(){
   const rows = lista.map(v => {
     const f = rhFuncionarioById(v.funcionarioId);
     return `<tr>
+      ${bulkCheckboxCellHTML("rh_ferias", v.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${v.funcionarioId}">${esc(f?f.nome:"— removido —")}</td>
       <td>${fmtDateBR(v.periodoAquisitivoInicio)} — ${fmtDateBR(v.periodoAquisitivoFim)}</td>
       <td>${v.dataInicioGozo?`${fmtDateBR(v.dataInicioGozo)} — ${fmtDateBR(v.dataFimGozo)}`:"—"}</td>
@@ -4987,7 +5099,7 @@ function viewRhFerias(){
   return `
     <div class="page-header">
       <div><div class="page-title">Férias</div><div class="page-sub">Controle de períodos aquisitivos e de gozo</div></div>
-      <button class="btn btn-primary" data-action="rh-nova-ferias">+ Nova férias</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_ferias")}<button class="btn btn-primary" data-action="rh-nova-ferias">+ Nova férias</button></div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -4996,8 +5108,8 @@ function viewRhFerias(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="rh-filtro-ferias-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr><th>Funcionário</th><th>Período aquisitivo</th><th>Período de gozo</th><th class="num">Dias</th><th>Status</th><th></th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="6">${emptyState("Nenhuma férias registrada ainda.")}</td></tr>`}</tbody></table>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("rh_ferias", lista.map(v=>v.id))}<th>Funcionário</th><th>Período aquisitivo</th><th>Período de gozo</th><th class="num">Dias</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="7">${emptyState("Nenhuma férias registrada ainda.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -5472,6 +5584,7 @@ function viewEstProdutos(){
       : (p.precoUnitario ? `${fmtBRL(p.precoUnitario)}<div style="font-size:10px; color:var(--ink-4);">estimado</div>` : "—");
     const valorEstimado = estValorUnitarioEstimado(p);
     return `<tr>
+      ${bulkCheckboxCellHTML("est_produtos", p.id)}
       <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}${p.familia?`<div style="font-size:11px;color:var(--ink-4);">Família: ${esc(p.familia)}</div>`:""}</td>
       <td>${esc(p.codigoInterno||"—")}</td>
       <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
@@ -5495,7 +5608,7 @@ function viewEstProdutos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s) — "Custo" mostra o Custo Médio Real quando já há compra lançada, senão o preço estimado do cadastro.</div></div>
-      <button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_produtos")}<button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button></div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -5505,11 +5618,12 @@ function viewEstProdutos(){
       </div>
       <div class="panel-body">
         <table><thead><tr>
+          ${bulkCheckboxHeaderHTML("est_produtos", lista.map(p=>p.id))}
           <th>Produto</th><th>Código</th><th>Categoria</th><th>Negócio</th><th>Fornecedor</th>
           <th class="num">Saldo</th><th class="num">Un</th><th class="num">Mín.</th>
           <th class="num">Custo</th><th class="num">Valor total</th><th></th>
         </tr></thead>
-        <tbody>${rows || `<tr><td colspan="11">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
+        <tbody>${rows || `<tr><td colspan="12">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -5529,6 +5643,7 @@ function viewEstMovimentos(){
     const sinal = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "+" : m.tipo==="Saída" ? "−" : "~";
     const cor = (m.tipo==="Entrada"||m.tipo==="Devolução") ? "var(--pos)" : m.tipo==="Saída" ? "var(--neg)" : "var(--ink-3)";
     return `<tr>
+      ${bulkCheckboxCellHTML("est_movimentos", m.id)}
       <td style="white-space:nowrap;">${fmtDateBR(m.data)}</td>
       <td><span style="color:${cor}; font-weight:600;">${esc(m.tipo)}</span></td>
       <td>${esc(prod?.nome||"—")}<div style="font-size:11px;color:var(--ink-4);">${esc(prod?.categoria||"")}</div></td>
@@ -5547,7 +5662,7 @@ function viewEstMovimentos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Movimentações</div><div class="page-sub">Entradas, saídas, transferências e ajustes de estoque</div></div>
-      <button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_movimentos")}<button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button></div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -5557,8 +5672,8 @@ function viewEstMovimentos(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="est-movfiltro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhuma movimentação encontrada.")}</td></tr>`}</tbody></table>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("est_movimentos", lista.map(m=>m.id))}<th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhuma movimentação encontrada.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -5570,6 +5685,7 @@ function viewEstFornecedores(){
     const produtos = state.estProdutos.filter(p => p.fornecedorId === f.id).length;
     const negTag = f.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(f.negocio)} 14%, white); color:${negocioCor(f.negocio)};"><span class="tag-dot" style="background:${negocioCor(f.negocio)}"></span>${esc(f.negocio)}</span>` : "—";
     return `<tr>
+      ${bulkCheckboxCellHTML("est_fornecedores", f.id)}
       <td style="font-weight:600;">${esc(f.nome)}</td>
       <td>${esc(f.cnpj||"—")}</td>
       <td>${negTag}</td>
@@ -5586,11 +5702,11 @@ function viewEstFornecedores(){
   return `
     <div class="page-header">
       <div><div class="page-title">Fornecedores</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
-      <button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_fornecedores")}<button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button></div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr><th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("est_fornecedores", state.estFornecedores.map(f=>f.id))}<th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
@@ -5781,6 +5897,7 @@ function viewEstCompras(){
     const totalItens = c.itens.reduce((s,it) => s + it.valorTotal, 0);
     const totalDespesas = Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0);
     return `<tr>
+      ${bulkCheckboxCellHTML("est_compras", c.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="est-ver-compra" data-id="${c.id}">${esc(c.numeroNota)}</td>
       <td>${fmtDateBR(c.data)}</td>
       <td>${esc(fornecedor?.nome||"—")}</td>
@@ -5797,11 +5914,11 @@ function viewEstCompras(){
   return `
     <div class="page-header">
       <div><div class="page-title">Compras (Notas Fiscais)</div><div class="page-sub">Lançar uma compra rateia frete/seguro/outras despesas entre os itens e atualiza o Custo Médio Real do estoque.</div></div>
-      <button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_compras")}<button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button></div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr><th>Nota</th><th>Data</th><th>Fornecedor</th><th>Negócio</th><th style="text-align:center;">Itens</th><th class="num">Despesas</th><th class="num">Total</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhuma compra lançada ainda.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("est_compras", lista.map(c=>c.id))}<th>Nota</th><th>Data</th><th>Fornecedor</th><th>Negócio</th><th style="text-align:center;">Itens</th><th class="num">Despesas</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="9">${emptyState("Nenhuma compra lançada ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
