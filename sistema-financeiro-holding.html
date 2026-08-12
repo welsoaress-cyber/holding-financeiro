@@ -763,8 +763,9 @@ const MODULOS_CATALOGO = [
 // ---- Central de Cadastros — atalhos pra criar qualquer tipo de registro do projeto,
 // já indicando o negócio quando fizer sentido. Reaproveita os mesmos modais que cada
 // módulo já usa (não duplica lógica) — mudou o modal, muda aqui e lá igual.
-// soMaster: true = mesma restrição que a tela original já tinha (Contas, Cartões,
-// Categorias, Negócio e RH só aparecem pro Master).
+// soMaster: true = restrito ao Master (Contas, Cartões, Categorias e Negócio — núcleo
+// financeiro, regra antiga). requerModulo: usa o acesso granular por módulo do perfil
+// (Estoque/Clientes/RH), configurado na tela de usuário.
 const CADASTRO_TIPOS = [
   { grupo: "Financeiro", itens: [
     { id:"negocio",    ico:"🏢", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true, destino:{modulo:"financeiro", view:"negocios"} },
@@ -773,16 +774,16 @@ const CADASTRO_TIPOS = [
     { id:"categoria",  ico:"🏷️", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true, destino:{modulo:"financeiro", view:"categorias"} },
   ]},
   { grupo: "Estoque", itens: [
-    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false, destino:{modulo:"estoque", view:"est_produtos"} },
-    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false, destino:{modulo:"estoque", view:"est_fornecedores"} },
+    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_produtos"} },
+    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_fornecedores"} },
   ]},
   { grupo: "Clientes", itens: [
-    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, destino:{modulo:"clientes", view:"cli_lista"} },
-    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, destino:{modulo:"clientes", view:"cli_planos"} },
+    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_lista"} },
+    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_planos"} },
   ]},
   { grupo: "RH", itens: [
-    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:true, destino:{modulo:"rh", view:"rh_funcionarios"} },
-    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:true, destino:{modulo:"rh", view:"rh_cargos"} },
+    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_funcionarios"} },
+    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_cargos"} },
   ]},
 ];
 
@@ -933,6 +934,76 @@ function podeUsarCategoria(nomeCategoria){
   return !!(state.perfilAtivo.categoriasPermitidas || {})[nomeCategoria];
 }
 function perfilById(id){ return state.perfis.find(p => p.id === id); }
+
+// ---- Acesso por módulo (estilo "operador de banco") — Estoque, Clientes e RH têm
+// controle granular de Ver/Criar/Editar/Excluir por perfil, definido na tela de usuário.
+// Fica de fora de propósito: Financeiro continua com a regra própria (mais antiga e mais
+// sensível), por negócio — permissaoNegocio acima — pra não afrouxar nada que já existe.
+const MODULOS_GRANULARES = ["estoque","clientes","rh"];
+function modulosPadrao(){
+  return {
+    estoque:  { ver:true,  criar:true,  editar:true,  excluir:true  },
+    clientes: { ver:true,  criar:true,  editar:true,  excluir:true  },
+    rh:       { ver:false, criar:false, editar:false, excluir:false },
+  };
+}
+function permissaoModulo(moduloId, acao){
+  if(ehMaster()) return true;
+  if(!MODULOS_GRANULARES.includes(moduloId)) return true; // fora do escopo do controle granular
+  if(!state.perfilAtivo) return false;
+  const perm = (state.perfilAtivo.modulos || {})[moduloId] || modulosPadrao()[moduloId];
+  return !!perm[acao];
+}
+function podeVerModulo(moduloId){ return permissaoModulo(moduloId, "ver"); }
+function podeCriarModulo(moduloId){ return permissaoModulo(moduloId, "criar"); }
+function podeEditarModulo(moduloId){ return permissaoModulo(moduloId, "editar"); }
+function podeExcluirModulo(moduloId){ return permissaoModulo(moduloId, "excluir"); }
+// esconde o botão quando o perfil não tem a ação liberada nesse módulo (o clique já é
+// bloqueado no dispatcher central de qualquer forma — isso é só pra não mostrar à toa)
+function seModulo(moduloId, acao, html){ return permissaoModulo(moduloId, acao) ? html : ""; }
+
+// Ações que mutam dados de Estoque/Clientes/RH, mapeadas pra (módulo, ação exigida) —
+// bloqueia o clique no dispatcher central, mesmo que o botão apareça na tela.
+const ACOES_MODULO = {
+  "est-novo-produto":{modulo:"estoque",acao:"criar"}, "est-novo-fornecedor":{modulo:"estoque",acao:"criar"},
+  "est-nova-compra":{modulo:"estoque",acao:"criar"}, "est-nova-movimentacao":{modulo:"estoque",acao:"criar"},
+  "est-registrar-entrada":{modulo:"estoque",acao:"criar"}, "est-registrar-saida":{modulo:"estoque",acao:"criar"},
+  "est-edit-produto":{modulo:"estoque",acao:"editar"}, "est-edit-fornecedor":{modulo:"estoque",acao:"editar"},
+  "est-del-produto":{modulo:"estoque",acao:"excluir"}, "est-del-fornecedor":{modulo:"estoque",acao:"excluir"},
+  "est-del-compra":{modulo:"estoque",acao:"excluir"}, "est-del-mov":{modulo:"estoque",acao:"excluir"},
+
+  "cli-novo":{modulo:"clientes",acao:"criar"}, "cli-novo-plano":{modulo:"clientes",acao:"criar"},
+  "cli-add-contrato":{modulo:"clientes",acao:"criar"}, "orc-novo":{modulo:"clientes",acao:"criar"}, "os-nova":{modulo:"clientes",acao:"criar"},
+  "cli-edit":{modulo:"clientes",acao:"editar"}, "cli-edit-plano":{modulo:"clientes",acao:"editar"}, "cli-edit-contrato":{modulo:"clientes",acao:"editar"},
+  "orc-edit":{modulo:"clientes",acao:"editar"}, "orc-aprovar":{modulo:"clientes",acao:"editar"}, "orc-recusar":{modulo:"clientes",acao:"editar"},
+  "os-baixar-estoque":{modulo:"clientes",acao:"editar"}, "os-concluir":{modulo:"clientes",acao:"editar"}, "os-gerar-receita":{modulo:"clientes",acao:"editar"},
+  "cli-del":{modulo:"clientes",acao:"excluir"}, "cli-del-plano":{modulo:"clientes",acao:"excluir"}, "cli-del-contrato":{modulo:"clientes",acao:"excluir"},
+  "orc-del":{modulo:"clientes",acao:"excluir"}, "os-del":{modulo:"clientes",acao:"excluir"},
+
+  "rh-novo-funcionario":{modulo:"rh",acao:"criar"}, "rh-novo-cargo":{modulo:"rh",acao:"criar"},
+  "rh-nova-ferias":{modulo:"rh",acao:"criar"}, "rh-nova-folha":{modulo:"rh",acao:"criar"}, "rh-gerar-folha-mes":{modulo:"rh",acao:"criar"},
+  "rh-edit-funcionario":{modulo:"rh",acao:"editar"}, "rh-edit-cargo":{modulo:"rh",acao:"editar"},
+  "rh-edit-ferias":{modulo:"rh",acao:"editar"}, "rh-edit-folha":{modulo:"rh",acao:"editar"}, "rh-marcar-pago":{modulo:"rh",acao:"editar"},
+  "rh-del-funcionario":{modulo:"rh",acao:"excluir"}, "rh-del-cargo":{modulo:"rh",acao:"excluir"},
+  "rh-del-ferias":{modulo:"rh",acao:"excluir"}, "rh-del-folha":{modulo:"rh",acao:"excluir"},
+};
+function contextoParaModulo(contexto){
+  if(contexto && contexto.startsWith("est_")) return "estoque";
+  if(contexto && contexto.startsWith("cli_")) return "clientes";
+  if(contexto && contexto.startsWith("rh_")) return "rh";
+  return null;
+}
+function acaoBloqueadaPorPermissao(action, el){
+  if(action === "bulk-excluir" || action === "bulk-limpar-tudo"){
+    const modulo = contextoParaModulo(el.dataset.contexto);
+    if(modulo && !podeExcluirModulo(modulo)) return "Esse usuário não tem permissão pra excluir aqui.";
+    return null;
+  }
+  const regra = ACOES_MODULO[action];
+  if(!regra) return null;
+  if(!permissaoModulo(regra.modulo, regra.acao)) return "Esse usuário não tem permissão pra fazer isso.";
+  return null;
+}
 
 function contasRaiz(){ return state.contas.filter(c => !c.parentId); }
 function caixinhasDe(contaId){ return state.contas.filter(c => c.parentId === contaId); }
@@ -1474,11 +1545,11 @@ function renderModbar(){
   if(!wrap || !state.user) return;
   const moduloAtual = MODULOS_CATALOGO.find(m => m.id === state.moduloAtivo) || MODULOS_CATALOGO[0];
   const moduloCards = MODULOS_CATALOGO.map(m => {
-    const soMaster = m.id === "rh" && !ehMaster(); // RH é restrito ao Master
-    const bloqueado = !m.ativo || soMaster;
-    const rotulo = !m.ativo ? "em breve" : soMaster ? "só Master" : "";
+    const semAcesso = MODULOS_GRANULARES.includes(m.id) && !podeVerModulo(m.id);
+    const bloqueado = !m.ativo || semAcesso;
+    const rotulo = !m.ativo ? "em breve" : semAcesso ? "sem acesso" : "";
     return `
-    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${bloqueado ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : soMaster ? 'Apenas o Master tem acesso ao RH' : ''}">
+    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${bloqueado ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : semAcesso ? 'Esse usuário não tem acesso a esse módulo' : ''}">
       <div class="modcard-ico">${m.ico}</div>
       <div class="modcard-nome">${m.nome}${rotulo ? ` <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">${rotulo}</span>` : ''}</div>
       <div class="modcard-desc">${m.desc}</div>
@@ -1509,7 +1580,7 @@ function renderModbar(){
       const modId = card.dataset.id; if(!modId) return;
       const mod = MODULOS_CATALOGO.find(m=>m.id===modId);
       if(!mod||!mod.ativo){ showToast("Módulo em construção.","error"); return; }
-      if(modId==="rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.","error"); return; }
+      if(MODULOS_GRANULARES.includes(modId) && !podeVerModulo(modId)){ showToast("Esse usuário não tem acesso a esse módulo.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
       if(modId==="cadastro") state.view="cadastro_hub";
@@ -1648,13 +1719,13 @@ function renderApp(){
       <button class="mob-nav-btn ${state.view==='dashboard'||state.view==='lancamentos'||state.view==='receitas'||state.view==='despesas'?'active':''}" data-action="nav" data-view="dashboard">
         <span class="ico">💰</span><span class="lbl">Financeiro</span>
       </button>
-      <button class="mob-nav-btn ${state.view.startsWith('est_')?'active':''}" data-action="abrir-modulo" data-id="estoque">
+      ${podeVerModulo("estoque") ? `<button class="mob-nav-btn ${state.view.startsWith('est_')?'active':''}" data-action="abrir-modulo" data-id="estoque">
         <span class="ico">📦</span><span class="lbl">Estoque</span>
-      </button>
-      <button class="mob-nav-btn ${state.view.startsWith('cli_')?'active':''}" data-action="abrir-modulo" data-id="clientes">
+      </button>` : ""}
+      ${podeVerModulo("clientes") ? `<button class="mob-nav-btn ${state.view.startsWith('cli_')?'active':''}" data-action="abrir-modulo" data-id="clientes">
         <span class="ico">👥</span><span class="lbl">Clientes</span>
-      </button>
-      ${master ? `<button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
+      </button>` : ""}
+      ${podeVerModulo("rh") ? `<button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
         <span class="ico">🏢</span><span class="lbl">RH</span>
       </button>` : ""}
       <button class="mob-nav-btn" id="mobMenuBtn2">
@@ -1664,12 +1735,15 @@ function renderApp(){
   </nav>`;
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
-  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios/RH — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas"];
+  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
     state.view = "lancamentos";
-    if(state.moduloAtivo === "rh") state.moduloAtivo = "financeiro";
   }
+  // módulos com acesso granular (Estoque/Clientes/RH) — sem "ver" liberado, volta pro Financeiro
+  if(state.view.startsWith("rh_") && !podeVerModulo("rh")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
+  if(state.view.startsWith("est_") && !podeVerModulo("estoque")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
+  if(state.view.startsWith("cli_") && !podeVerModulo("clientes")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
   salvarNavegacaoAtual();
   renderModbar();
   // ---- Mobile drawer ----
@@ -1868,7 +1942,7 @@ function modalSenhaMaster(){
 function viewCadastroHub(){
   const master = ehMaster();
   const gruposHTML = CADASTRO_TIPOS.map(grupo => {
-    const itensVisiveis = grupo.itens.filter(it => !it.soMaster || master);
+    const itensVisiveis = grupo.itens.filter(it => (!it.soMaster || master) && (!it.requerModulo || podeCriarModulo(it.requerModulo)));
     if(!itensVisiveis.length) return "";
     const cardsHTML = itensVisiveis.map(it => `
       <div class="kpi-card" style="cursor:pointer; position:relative; transition:border-color .12s, box-shadow .12s;" data-action="cad-abrir" data-tipo="${it.id}"
@@ -3221,9 +3295,21 @@ function modalNegocio(existing){
 /* =========================================================================
    MODAL — USUÁRIO (Tom, Erica...) com permissões por negócio
 ========================================================================= */
+const MODULOS_ACESSO_LABEL = { estoque:"📦 Estoque", clientes:"👥 Clientes", rh:"🏢 RH" };
 function modalPerfil(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{} };
+  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
+  const padroesModulo = modulosPadrao();
+  const linhasModulo = MODULOS_GRANULARES.map(m => {
+    const perm = (p.modulos || {})[m] || padroesModulo[m];
+    return `<tr>
+      <td>${MODULOS_ACESSO_LABEL[m]}</td>
+      <td style="text-align:center;"><input type="checkbox" name="mod_ver_${m}" ${perm.ver?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="mod_criar_${m}" ${perm.criar?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="mod_editar_${m}" ${perm.editar?"checked":""}></td>
+      <td style="text-align:center;"><input type="checkbox" name="mod_excluir_${m}" ${perm.excluir?"checked":""}></td>
+    </tr>`;
+  }).join("");
   const linhasNegocio = state.negocios.map(n => {
     const perm = p.permissoes[n.nome] || { ver:false, editar:false, excluir:false };
     return `<tr>
@@ -3251,6 +3337,13 @@ function modalPerfil(existing){
         </select>
       </div>
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
+        <div class="field"><label>Acesso por módulo</label>
+          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
+            <table><thead><tr><th>Módulo</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Criar</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
+            <tbody>${linhasModulo}</tbody></table>
+          </div>
+          <div class="field-help">Igual criar um perfil de operador: define exatamente o que esse usuário pode fazer em Estoque, Clientes e RH. Sem "Ver", o módulo inteiro fica invisível pra ele. RH começa fechado por padrão pra quem não é Master.</div>
+        </div>
         <div class="field"><label>Permissões por negócio</label>
           <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
             <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
@@ -3284,6 +3377,15 @@ function modalPerfil(existing){
     const tipo = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
     if(state.perfis.some(x => x.nome === nome && x !== existing)){ showToast("Já existe um usuário com esse nome.", "error"); return; }
+    const modulos = {};
+    MODULOS_GRANULARES.forEach(m => {
+      modulos[m] = {
+        ver: fd.get(`mod_ver_${m}`) === "on",
+        criar: fd.get(`mod_criar_${m}`) === "on",
+        editar: fd.get(`mod_editar_${m}`) === "on",
+        excluir: fd.get(`mod_excluir_${m}`) === "on",
+      };
+    });
     const permissoes = {};
     state.negocios.forEach(n => {
       permissoes[n.nome] = {
@@ -3294,7 +3396,7 @@ function modalPerfil(existing){
     });
     const categoriasPermitidas = {};
     state.categorias.forEach(c => { categoriasPermitidas[c.nome] = fd.get(`cat_${c.id}`) === "on"; });
-    const data = { nome, senha, tipo, permissoes, categoriasPermitidas };
+    const data = { nome, senha, tipo, permissoes, categoriasPermitidas, modulos };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.perfis.push({ id: uid("perfil"), ...data }); }
     await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
@@ -3854,11 +3956,14 @@ document.addEventListener("click", async e => {
   const catId = el.dataset.cat;
   const subId = el.dataset.sub;
 
+  const bloqueioPermissao = acaoBloqueadaPorPermissao(action, el);
+  if(bloqueioPermissao){ showToast(bloqueioPermissao, "error"); return; }
+
   if(action === "nav") setView(el.dataset.view);
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
-    if(mod.id === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
+    if(MODULOS_GRANULARES.includes(mod.id) && !podeVerModulo(mod.id)){ showToast("Esse usuário não tem acesso a esse módulo.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
     if(mod.id === "cadastro"){ state.view = "cadastro_hub"; }
@@ -3873,6 +3978,7 @@ document.addEventListener("click", async e => {
     const item = CADASTRO_TIPOS.flatMap(g => g.itens).find(it => it.id === tipo);
     if(!item) return;
     if(item.soMaster && !ehMaster()){ showToast("Apenas o Master pode cadastrar isso.", "error"); return; }
+    if(item.requerModulo && !podeCriarModulo(item.requerModulo)){ showToast("Esse usuário não tem permissão pra cadastrar isso.", "error"); return; }
     const ABRIR_MODAL = {
       negocio: () => modalNegocio(null),
       conta: () => modalConta(null),
@@ -3889,7 +3995,7 @@ document.addEventListener("click", async e => {
   }
   else if(action === "cad-ver-lista"){
     const modulo = el.dataset.modulo, viewAlvo = el.dataset.view;
-    if(modulo === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
+    if(MODULOS_GRANULARES.includes(modulo) && !podeVerModulo(modulo)){ showToast("Esse usuário não tem acesso a esse módulo.", "error"); return; }
     state.moduloAtivo = modulo;
     state.view = viewAlvo;
     renderApp();
@@ -4402,7 +4508,7 @@ function viewCliDashboard(){
   return `
     <div class="page-header">
       <div><div class="page-title">Clientes — Dashboard</div><div class="page-sub">Visão consolidada de todos os negócios</div></div>
-      <button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>
+      ${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
       <div class="kpi-card"><div class="kpi-label">Total de clientes</div><div class="kpi-value">${total}</div></div>
@@ -4462,7 +4568,7 @@ function viewCliLista(){
   return `
     <div class="page-header">
       <div><div class="page-title">Todos os Clientes</div><div class="page-sub">${lista.length} de ${state.cliClientes.length} cliente(s)</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -4593,7 +4699,7 @@ function viewCliPlanos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
@@ -4933,7 +5039,7 @@ function viewCliOrcamentos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Orçamentos</div><div class="page-sub">Monte a proposta pro cliente — ao aprovar, vira Ordem de Serviço automaticamente.</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_orcamentos")}<button class="btn btn-primary" data-action="orc-novo">+ Novo orçamento</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_orcamentos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="orc-novo">+ Novo orçamento</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
@@ -4967,7 +5073,7 @@ function viewCliOSLista(){
   return `
     <div class="page-header">
       <div><div class="page-title">Ordens de Serviço</div><div class="page-sub">Venda confirmada — dê baixa no estoque realmente usado e gere a conta a receber.</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_os")}<button class="btn btn-primary" data-action="os-nova">+ Nova venda direta</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_os")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="os-nova">+ Nova venda direta</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th><th>Status</th><th></th></tr></thead>
@@ -5400,7 +5506,7 @@ function viewRhDashboard(){
   return `
     <div class="page-header">
       <div><div class="page-title">RH — Dashboard</div><div class="page-sub">Visão geral da equipe da holding</div></div>
-      <button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>
+      ${seModulo("rh","criar",`<button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>`)}
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
       <div class="kpi-card"><div class="kpi-label">Total de funcionários</div><div class="kpi-value">${total}</div></div>
@@ -5460,7 +5566,7 @@ function viewRhFuncionarios(){
   return `
     <div class="page-header">
       <div><div class="page-title">Funcionários</div><div class="page-sub">${lista.length} de ${state.rhFuncionarios.length} funcionário(s)</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_funcionarios")}<button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_funcionarios")}${seModulo("rh","criar",`<button class="btn btn-primary" data-action="rh-novo-funcionario">+ Novo funcionário</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -5593,7 +5699,7 @@ function viewRhCargos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Cargos</div><div class="page-sub">Catálogo de cargos e faixas salariais por negócio</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_cargos")}<button class="btn btn-primary" data-action="rh-novo-cargo">+ Novo cargo</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_cargos")}${seModulo("rh","criar",`<button class="btn btn-primary" data-action="rh-novo-cargo">+ Novo cargo</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("rh_cargos", state.rhCargos.map(c=>c.id))}<th>Cargo</th><th>Negócio</th><th class="num">Salário base</th><th>Carga horária</th><th>Descrição</th><th style="text-align:center;">Ativos</th><th></th></tr></thead>
@@ -5634,8 +5740,8 @@ function viewRhFolha(){
       <div><div class="page-title">Folha de Pagamento</div><div class="page-sub">${lista.length} lançamento(s) · total líquido ${fmtBRL(totalLiquido)}</div></div>
       <div style="display:flex; gap:8px;">
         ${bulkBarraAcoesHTML("rh_folha")}
-        <button class="btn btn-ghost" data-action="rh-gerar-folha-mes">⚙ Gerar folha do mês</button>
-        <button class="btn btn-primary" data-action="rh-nova-folha">+ Lançar pagamento</button>
+        ${seModulo("rh","criar",`<button class="btn btn-ghost" data-action="rh-gerar-folha-mes">⚙ Gerar folha do mês</button>`)}
+        ${seModulo("rh","criar",`<button class="btn btn-primary" data-action="rh-nova-folha">+ Lançar pagamento</button>`)}
       </div>
     </div>
     <div class="panel">
@@ -5677,7 +5783,7 @@ function viewRhFerias(){
   return `
     <div class="page-header">
       <div><div class="page-title">Férias</div><div class="page-sub">Controle de períodos aquisitivos e de gozo</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_ferias")}<button class="btn btn-primary" data-action="rh-nova-ferias">+ Nova férias</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("rh_ferias")}${seModulo("rh","criar",`<button class="btn btn-primary" data-action="rh-nova-ferias">+ Nova férias</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -6112,9 +6218,9 @@ function viewEstDashboard(){
     <div class="page-header">
       <div><div class="page-title">Estoque — Dashboard</div><div class="page-sub">Visão geral de equipamentos e insumos do provedor</div></div>
       <div style="display:flex; gap:8px;">
-        <button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>
-        <button class="btn btn-ghost" data-action="est-nova-compra">+ Compra (NF)</button>
-        <button class="btn btn-primary" data-action="est-novo-produto">+ Produto</button>
+        ${seModulo("estoque","criar",`<button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>`)}
+        ${seModulo("estoque","criar",`<button class="btn btn-ghost" data-action="est-nova-compra">+ Compra (NF)</button>`)}
+        ${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-novo-produto">+ Produto</button>`)}
       </div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(6,1fr);">
@@ -6186,7 +6292,7 @@ function viewEstProdutos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s) — "Custo" mostra o Custo Médio Real quando já há compra lançada, senão o preço estimado do cadastro.</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_produtos")}<button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_produtos")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -6240,7 +6346,7 @@ function viewEstMovimentos(){
   return `
     <div class="page-header">
       <div><div class="page-title">Movimentações</div><div class="page-sub">Entradas, saídas, transferências e ajustes de estoque</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_movimentos")}<button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_movimentos")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-nova-movimentacao">+ Nova movimentação</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
@@ -6280,7 +6386,7 @@ function viewEstFornecedores(){
   return `
     <div class="page-header">
       <div><div class="page-title">Fornecedores</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_fornecedores")}<button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_fornecedores")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("est_fornecedores", state.estFornecedores.map(f=>f.id))}<th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
@@ -6492,7 +6598,7 @@ function viewEstCompras(){
   return `
     <div class="page-header">
       <div><div class="page-title">Compras (Notas Fiscais)</div><div class="page-sub">Lançar uma compra rateia frete/seguro/outras despesas entre os itens e atualiza o Custo Médio Real do estoque.</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_compras")}<button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_compras")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("est_compras", lista.map(c=>c.id))}<th>Nota</th><th>Data</th><th>Fornecedor</th><th>Negócio</th><th style="text-align:center;">Itens</th><th class="num">Despesas</th><th class="num">Total</th><th></th></tr></thead>
