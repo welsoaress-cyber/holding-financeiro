@@ -693,7 +693,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
-  cliClientes: [], cliPlanos: [],
+  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
@@ -710,13 +710,13 @@ const VIEWS_VALIDAS = new Set([
   "cadastro_hub",
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
-  "cli_dashboard","cli_lista","cli_planos","cli_detalhe",
+  "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
 ]);
 // Telas de detalhe dependem de um id extra (qual cliente/funcionário) que não é
 // salvo junto — ao restaurar depois de um F5, cai na tela "mãe" do mesmo módulo em
 // vez de ficar numa página de detalhe vazia dizendo "não encontrado".
-const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios" };
+const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios", cli_os_detalhe: "cli_os_lista" };
 let navegacaoRestaurada = false;
 function salvarNavegacaoAtual(){
   try{ localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify({ moduloAtivo: state.moduloAtivo, view: state.view })); }
@@ -826,6 +826,16 @@ const BULK_CONTEXTOS = {
   est_movimentos: { arr: "estMovimentos", tabela: "est_movimentos", label: "movimentação(ões)" },
   cli_clientes:   { arr: "cliClientes",   tabela: "cli_clientes",   label: "cliente(s)" },
   cli_planos:     { arr: "cliPlanos",     tabela: "cli_planos",     label: "plano(s)" },
+  cli_orcamentos: { arr: "cliOrcamentos", tabela: "cli_orcamentos", label: "orçamento(s)" },
+  cli_os: {
+    arr: "cliOS", tabela: "cli_os", label: "OS(s)",
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const movIds = state.estMovimentos.filter(m => idsSet.has(m.osId)).map(m => m.id);
+      state.estMovimentos = state.estMovimentos.filter(m => !idsSet.has(m.osId));
+      if(movIds.length) await deleteRows("est_movimentos", movIds);
+    },
+  },
   rh_funcionarios: {
     arr: "rhFuncionarios", tabela: "rh_funcionarios", label: "funcionário(s)",
     cascade: async (ids) => {
@@ -1143,6 +1153,8 @@ const saveEstFornecedores = () => saveRows("est_fornecedores", state.estForneced
 const saveEstCompras = () => saveRows("est_compras", state.estCompras);
 const saveCliClientes = () => saveRows("cli_clientes", state.cliClientes);
 const saveCliPlanos = () => saveRows("cli_planos", state.cliPlanos);
+const saveCliOrcamentos = () => saveRows("cli_orcamentos", state.cliOrcamentos);
+const saveCliOS = () => saveRows("cli_os", state.cliOS);
 const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionarios);
 const saveRhCargos = () => saveRows("rh_cargos", state.rhCargos);
 const saveRhFolha = () => saveRows("rh_folha", state.rhFolha);
@@ -1220,7 +1232,7 @@ async function loadData(){
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -1578,6 +1590,8 @@ function renderApp(){
         ${navItem("cli_dashboard","◆","Dashboard")}
         ${navItem("cli_lista","👥","Todos os Clientes")}
         ${navItem("cli_planos","📋","Planos")}
+        ${navItem("cli_orcamentos","📝","Orçamentos")}
+        ${navItem("cli_os_lista","🔧","Ordens de Serviço")}
       ` : state.moduloAtivo === "rh" ? `
         <div class="nav-group-label">RH</div>
         ${navItem("rh_dashboard","◆","Dashboard")}
@@ -1730,6 +1744,9 @@ function renderView(){
   else if(state.view === "cli_lista") main.innerHTML = viewCliLista();
   else if(state.view === "cli_planos") main.innerHTML = viewCliPlanos();
   else if(state.view === "cli_detalhe") main.innerHTML = viewCliDetalhe();
+  else if(state.view === "cli_orcamentos") main.innerHTML = viewCliOrcamentos();
+  else if(state.view === "cli_os_lista") main.innerHTML = viewCliOSLista();
+  else if(state.view === "cli_os_detalhe") main.innerHTML = viewCliOSDetalhe();
   // ---- Módulo RH ----
   else if(state.view === "rh_dashboard") main.innerHTML = viewRhDashboard();
   else if(state.view === "rh_funcionarios") main.innerHTML = viewRhFuncionarios();
@@ -4181,6 +4198,36 @@ document.addEventListener("click", async e => {
     state.view = "cli_lista"; renderApp();
   }
   else if(action === "cli-filtro-clear"){ cliFiltro = {negocio:"",status:"",plano:"",texto:""}; renderView(); }
+  // ---- Orçamento / OS ----
+  else if(action === "orc-novo") modalCliOrcamento(null);
+  else if(action === "orc-edit"){ const o = cliOrcamentoById(id); if(o) modalCliOrcamento(o); }
+  else if(action === "orc-aprovar") aprovarOrcamento(id);
+  else if(action === "orc-recusar") recusarOrcamento(id);
+  else if(action === "orc-del"){
+    const o = cliOrcamentoById(id);
+    if(!o) return;
+    if(!confirm(`Excluir o orçamento ${o.numero}?`)) return;
+    state.cliOrcamentos = state.cliOrcamentos.filter(x=>x.id!==id);
+    await deleteRow("cli_orcamentos", id);
+    renderView(); showToast("Orçamento excluído.");
+  }
+  else if(action === "os-nova") modalCliOrcamento(null, true);
+  else if(action === "os-detalhe"){ cliOSDetalheId = id; state.view = "cli_os_detalhe"; renderApp(); }
+  else if(action === "os-baixar-estoque") modalOSBaixaEstoque(id);
+  else if(action === "os-gerar-receita") osGerarReceita(id);
+  else if(action === "os-concluir") osConcluir(id);
+  else if(action === "os-del"){
+    const os = cliOSById(id);
+    if(!os) return;
+    if(!confirm(`Excluir a ${os.numero}? Isso remove as baixas de estoque vinculadas a ela. Se já tiver conta a receber gerada, ela NÃO é excluída automaticamente — exclua em Lançamentos se quiser.`)) return;
+    state.cliOS = state.cliOS.filter(x=>x.id!==id);
+    const movIds = state.estMovimentos.filter(m=>m.osId===id).map(m=>m.id);
+    state.estMovimentos = state.estMovimentos.filter(m=>m.osId!==id);
+    await deleteRow("cli_os", id);
+    if(movIds.length) await deleteRows("est_movimentos", movIds);
+    if(state.view === "cli_os_detalhe") state.view = "cli_os_lista";
+    renderApp(); showToast("OS excluída.");
+  }
   // ---- RH ----
   else if(action === "rh-novo-funcionario") modalRhFuncionario(null);
   else if(action === "rh-edit-funcionario"){ const f = rhFuncionarioById(id); if(f) modalRhFuncionario(f); }
@@ -4287,6 +4334,10 @@ const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lea
 const CLI_GENEROS = ["Masculino","Feminino","Outro","Pessoa Jurídica","Não informado"];
 const CLI_ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const CLI_TIPOS_CONEXAO = ["Fibra Óptica","Cabo","Rádio","4G/5G","Satélite","ADSL"];
+// ---- Orçamento -> OS (Fase 2: venda amarrada a estoque/cliente/financeiro) ----
+const ORC_STATUS = ["Rascunho","Enviado","Aprovado","Recusado","Convertido em OS"];
+const OS_STATUS = ["Aberta","Em execução","Concluída","Cancelada"];
+const CATEGORIA_VENDAS_SERVICOS = "Vendas/Serviços";
 
 // ---- Helpers ----
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
@@ -4837,6 +4888,406 @@ function modalCliPlano(existing){
     else{ state.cliPlanos.push({ id:uid("pl"), ...data }); }
     await saveCliPlanos(); closeModal(); renderView(); showToast(isEdit?"Plano atualizado.":"Plano criado.");
   });
+}
+
+// =========================================================================
+// ORÇAMENTO -> OS -> BAIXA DE ESTOQUE -> CONTA A RECEBER
+// Fluxo: orçamento aprovado vira OS automaticamente. Na OS, dá baixa dos itens
+// realmente usados na instalação (o custo vem do Custo Médio Real do estoque,
+// no momento da baixa) e gera a conta a receber. A baixa de PAGAMENTO em si
+// reaproveita o "dar baixa" que já existe em Lançamentos — não duplicamos essa
+// lógica, só ligamos a OS ao lançamento gerado (campo lancamentoId) e mostramos
+// o status dele ao vivo na tela da OS.
+// =========================================================================
+let cliOSDetalheId = null;
+function cliOrcamentoById(id){ return state.cliOrcamentos.find(o => o.id === id); }
+function cliOSById(id){ return state.cliOS.find(o => o.id === id); }
+function osItensBaixados(osId){ return state.estMovimentos.filter(m => m.osId === osId && m.tipo === "Saída"); }
+function osCustoImplantacao(osId){ return osItensBaixados(osId).reduce((s,m) => s + Number(m.qtd)*Number(m.custoUnitario||0), 0); }
+function osValorVenda(os){ return (os.itens||[]).reduce((s,it) => s + Number(it.valorTotal||0), 0) + Number(os.valorServico||0); }
+function osLancamento(os){ return os.lancamentoId ? state.lancamentos.find(l => l.id === os.lancamentoId) : null; }
+
+// ---- VIEW: ORÇAMENTOS ----
+function viewCliOrcamentos(){
+  const lista = [...state.cliOrcamentos].sort((a,b) => b.dataCadastro.localeCompare(a.dataCadastro));
+  const rows = lista.map(o => {
+    const cliente = cliClienteById(o.clienteId);
+    const statusClass = (o.status==="Aprovado"||o.status==="Convertido em OS") ? "status-pago" : o.status==="Recusado" ? "status-pendente" : "status-agendado";
+    const podeEditar = o.status==="Rascunho" || o.status==="Enviado";
+    return `<tr>
+      ${bulkCheckboxCellHTML("cli_orcamentos", o.id)}
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="orc-edit" data-id="${o.id}">${esc(o.numero)}</td>
+      <td>${cliente ? esc(cliNome(cliente)) : "— cliente removido —"}</td>
+      <td>${o.negocio?esc(o.negocio):"—"}</td>
+      <td>${fmtDateBR(o.data)}</td>
+      <td class="num" style="font-weight:700;">${fmtBRL(o.valorTotal)}</td>
+      <td><span class="status-pill ${statusClass}">${o.status}</span></td>
+      <td><div class="row-actions">
+        ${podeEditar ? `<button class="btn btn-primary btn-sm" data-action="orc-aprovar" data-id="${o.id}">Aprovar → OS</button>` : ""}
+        ${podeEditar ? `<button class="icon-btn" data-action="orc-recusar" data-id="${o.id}" title="Recusar">✕</button>` : ""}
+        <button class="icon-btn" data-action="orc-edit" data-id="${o.id}" title="${podeEditar?'Editar':'Ver'}">${podeEditar?"✎":"🔍"}</button>
+        <button class="icon-btn danger" data-action="orc-del" data-id="${o.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Orçamentos</div><div class="page-sub">Monte a proposta pro cliente — ao aprovar, vira Ordem de Serviço automaticamente.</div></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_orcamentos")}<button class="btn btn-primary" data-action="orc-novo">+ Novo orçamento</button></div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum orçamento criado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: ORDENS DE SERVIÇO (lista) ----
+function viewCliOSLista(){
+  const lista = [...state.cliOS].sort((a,b) => b.dataCadastro.localeCompare(a.dataCadastro));
+  const rows = lista.map(os => {
+    const cliente = cliClienteById(os.clienteId);
+    const custo = osCustoImplantacao(os.id);
+    const venda = osValorVenda(os);
+    const margem = venda - custo;
+    const statusClass = os.status==="Concluída"?"status-pago":os.status==="Cancelada"?"status-pendente":"status-agendado";
+    return `<tr>
+      ${bulkCheckboxCellHTML("cli_os", os.id)}
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="os-detalhe" data-id="${os.id}">${esc(os.numero)}</td>
+      <td>${cliente?esc(cliNome(cliente)):"— removido —"}</td>
+      <td>${os.negocio?esc(os.negocio):"—"}</td>
+      <td>${fmtDateBR(os.data)}</td>
+      <td class="num">${fmtBRL(venda)}</td>
+      <td class="num" style="color:var(--ink-3);">${fmtBRL(custo)}</td>
+      <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>
+      <td><span class="status-pill ${statusClass}">${os.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="os-detalhe" data-id="${os.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="os-del" data-id="${os.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Ordens de Serviço</div><div class="page-sub">Venda confirmada — dê baixa no estoque realmente usado e gere a conta a receber.</div></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_os")}<button class="btn btn-primary" data-action="os-nova">+ Nova venda direta</button></div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhuma OS ainda. Aprove um orçamento ou crie uma venda direta.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: DETALHE DA OS ----
+function viewCliOSDetalhe(){
+  const os = cliOSById(cliOSDetalheId);
+  if(!os) return `<div>${emptyState("OS não encontrada.")}</div>`;
+  const cliente = cliClienteById(os.clienteId);
+  const custo = osCustoImplantacao(os.id);
+  const venda = osValorVenda(os);
+  const margem = venda - custo;
+  const lanc = osLancamento(os);
+  const itensBaixados = osItensBaixados(os.id);
+  const statusClass = os.status==="Concluída"?"status-pago":os.status==="Cancelada"?"status-pendente":"status-agendado";
+
+  const itensVendaHTML = (os.itens||[]).map(it => `
+    <tr><td>${esc(it.descricao)}</td><td class="num">${it.quantidade}</td><td class="num">${fmtBRL(it.valorUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(it.valorTotal)}</td></tr>
+  `).join("") || `<tr><td colspan="4">${emptyState("Nenhum item.")}</td></tr>`;
+
+  const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
+    const p = estProdutoById(m.produtoId);
+    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`;
+  }).join("") : `<tr><td colspan="4">${emptyState("Nenhuma baixa de estoque ainda.")}</td></tr>`;
+
+  return `
+    <div class="page-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_os_lista">← Voltar</button>
+        <div><div class="page-title">${esc(os.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${os.negocio?` · ${esc(os.negocio)}`:""} · <span class="status-pill ${statusClass}">${os.status}</span></div></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${(os.status!=="Cancelada" && os.status!=="Concluída") ? `<button class="btn btn-ghost" data-action="os-baixar-estoque" data-id="${os.id}">📦 Dar baixa de estoque</button>` : ""}
+        ${!lanc ? `<button class="btn btn-ghost" data-action="os-gerar-receita" data-id="${os.id}">💵 Gerar conta a receber</button>` : ""}
+        ${(os.status!=="Concluída" && os.status!=="Cancelada") ? `<button class="btn btn-primary" data-action="os-concluir" data-id="${os.id}">✓ Concluir OS</button>` : ""}
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">Valor da venda</div><div class="kpi-value pos">${fmtBRL(venda)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Custo de implantação</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custo)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Conta a receber</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:"— não gerada —"}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+    </div>
+    ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
+  `;
+}
+
+/* =========================================================================
+   MODAL — ORÇAMENTO (e "venda direta", que gera a OS sem passar por orçamento)
+========================================================================= */
+function modalCliOrcamento(existing, modoOS){
+  const isEdit = !!existing;
+  if(!state.cliClientes.length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
+  const o = existing || { clienteId: state.cliClientes[0].id, negocio:"", data: todayISO(), validade:"", itens:[], desconto:0, observacoes:"" };
+  const podeEditar = modoOS || !isEdit || o.status==="Rascunho" || o.status==="Enviado";
+  const clienteOptions = state.cliClientes.map(c=>`<option value="${c.id}" ${o.clienteId===c.id?"selected":""}>${esc(cliNome(c))}</option>`).join("");
+  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${o.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const produtoOptionsHTML = (sel) => `<option value="">— Item livre / serviço —</option>` + state.estProdutos.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const linhaItemHTML = (it) => `
+    <tr>
+      <td style="min-width:180px;"><select class="orc-item-produto" ${podeEditar?"":"disabled"}>${produtoOptionsHTML(it?it.produtoId:"")}</select></td>
+      <td style="min-width:160px;"><input type="text" class="orc-item-descricao" value="${esc(it?it.descricao:"")}" placeholder="Descrição" ${podeEditar?"":"disabled"}></td>
+      <td style="width:80px;"><input type="number" min="0.01" step="0.01" class="orc-item-qtd" value="${it?it.quantidade:1}" ${podeEditar?"":"disabled"}></td>
+      <td style="width:110px;"><input type="number" min="0" step="0.01" class="orc-item-valor" value="${it?it.valorUnitario:0}" ${podeEditar?"":"disabled"}></td>
+      <td class="num orc-item-total" style="width:100px;">${fmtBRL((it?Number(it.quantidade):1)*(it?Number(it.valorUnitario):0))}</td>
+      <td>${podeEditar?`<button type="button" class="icon-btn danger orc-item-del" title="Remover">🗑</button>`:""}</td>
+    </tr>`;
+  const itensIniciais = (o.itens&&o.itens.length) ? o.itens : [{produtoId:"",descricao:"",quantidade:1,valorUnitario:0}];
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${modoOS?"Nova venda direta":(isEdit?(podeEditar?"Editar orçamento":`Orçamento ${esc(o.numero)}`):"Novo orçamento")}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formOrc"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Cliente *</label><select required name="clienteId" ${podeEditar?"":"disabled"}>${clienteOptions}</select></div>
+        <div class="field"><label>Negócio</label><select name="negocio" ${podeEditar?"":"disabled"}><option value="">— Selecione —</option>${negOptions}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Data *</label><input required type="date" name="data" value="${o.data}" ${podeEditar?"":"disabled"}></div>
+        ${!modoOS ? `<div class="field"><label>Validade</label><input type="date" name="validade" value="${o.validade||""}" ${podeEditar?"":"disabled"}></div>` : ""}
+      </div>
+      <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens</div>
+      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+        <table style="min-width:640px;"><thead><tr><th>Produto (opcional)</th><th>Descrição</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead>
+        <tbody id="orcItensBody">${itensIniciais.map(linhaItemHTML).join("")}</tbody></table>
+      </div>
+      ${podeEditar?`<button type="button" class="btn btn-ghost btn-sm" id="btnAddItemOrc" style="margin-top:8px;">+ Adicionar item</button>`:""}
+      <div class="field-row" style="margin-top:14px;">
+        <div class="field"><label>Desconto (R$)</label><input type="number" min="0" step="0.01" name="desconto" id="orcDesconto" value="${o.desconto||0}" ${podeEditar?"":"disabled"}></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:10px 0; border-top:2px solid var(--border); margin-top:6px;">
+        <strong>Total</strong>
+        <strong id="orcTotal" style="font-family:var(--font-mono); font-size:15px;">${fmtBRL(0)}</strong>
+      </div>
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;" ${podeEditar?"":"disabled"}>${esc(o.observacoes||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">${podeEditar?"Cancelar":"Fechar"}</button>${podeEditar?`<button type="submit" class="btn btn-primary">${modoOS?"Criar OS":(isEdit?"Salvar":"Criar orçamento")}</button>`:""}</div></form>
+  `);
+
+  const tbody = document.getElementById("orcItensBody");
+  function coletarItens(){
+    return Array.from(tbody.querySelectorAll("tr")).map(tr => ({
+      produtoId: tr.querySelector(".orc-item-produto").value,
+      descricao: tr.querySelector(".orc-item-descricao").value.trim(),
+      quantidade: parseFloat(tr.querySelector(".orc-item-qtd").value)||0,
+      valorUnitario: parseFloat(tr.querySelector(".orc-item-valor").value)||0,
+      tr,
+    }));
+  }
+  function recalcular(){
+    const itens = coletarItens();
+    let soma = 0;
+    itens.forEach(it => {
+      const total = it.quantidade*it.valorUnitario;
+      soma += total;
+      it.tr.querySelector(".orc-item-total").textContent = fmtBRL(total);
+    });
+    const descontoEl = document.getElementById("orcDesconto");
+    const desconto = descontoEl ? (parseFloat(descontoEl.value)||0) : 0;
+    document.getElementById("orcTotal").textContent = fmtBRL(Math.max(0, soma-desconto));
+  }
+  if(podeEditar){
+    tbody.addEventListener("input", recalcular);
+    tbody.addEventListener("change", e => {
+      const sel = e.target.closest(".orc-item-produto");
+      if(sel){
+        const tr = sel.closest("tr");
+        const p = estProdutoById(sel.value);
+        if(p){
+          tr.querySelector(".orc-item-descricao").value = p.nome;
+          tr.querySelector(".orc-item-valor").value = estValorUnitarioEstimado(p) || 0;
+        }
+      }
+      recalcular();
+    });
+    tbody.addEventListener("click", e => {
+      const del = e.target.closest(".orc-item-del");
+      if(!del) return;
+      if(tbody.querySelectorAll("tr").length<=1){ showToast("Precisa de pelo menos 1 item.", "error"); return; }
+      del.closest("tr").remove();
+      recalcular();
+    });
+    document.getElementById("btnAddItemOrc")?.addEventListener("click", () => {
+      tbody.insertAdjacentHTML("beforeend", linhaItemHTML(null));
+      recalcular();
+    });
+    document.getElementById("orcDesconto")?.addEventListener("input", recalcular);
+  }
+  recalcular();
+
+  if(!podeEditar) return; // modo "só ver" — sem listener de submit
+
+  document.getElementById("formOrc").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const itensColetados = coletarItens();
+    if(itensColetados.some(it => !it.descricao)){ showToast("Preencha a descrição de todos os itens.", "error"); return; }
+    const itensSalvos = itensColetados.map(it => ({ produtoId: it.produtoId, descricao: it.descricao, quantidade: it.quantidade, valorUnitario: it.valorUnitario, valorTotal: Math.round(it.quantidade*it.valorUnitario*100)/100 }));
+    const desconto = parseFloat(fd.get("desconto"))||0;
+    const valorTotal = Math.max(0, Math.round((itensSalvos.reduce((s,it)=>s+it.valorTotal,0) - desconto)*100)/100);
+    const dataForm = {
+      clienteId: fd.get("clienteId"), negocio: fd.get("negocio")||"", data: fd.get("data"),
+      itens: itensSalvos, desconto, valorTotal, observacoes: fd.get("observacoes").trim(),
+    };
+
+    if(modoOS){
+      const osId = uid("os");
+      const novaOS = {
+        id: osId, numero: `OS-${String(state.cliOS.length+1).padStart(4,"0")}`, clienteId: dataForm.clienteId,
+        orcamentoId: "", negocio: dataForm.negocio, data: dataForm.data, itens: dataForm.itens, valorServico: 0,
+        valorTotal: dataForm.valorTotal, status: "Aberta", lancamentoId: "", observacoes: dataForm.observacoes,
+        dataCadastro: todayISO(), lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+      };
+      state.cliOS.push(novaOS);
+      await saveCliOS(); closeModal();
+      cliOSDetalheId = osId; state.view = "cli_os_detalhe";
+      renderApp(); showToast(`${novaOS.numero} criada.`);
+      return;
+    }
+
+    dataForm.validade = fd.get("validade")||"";
+    if(isEdit){ Object.assign(existing, dataForm); }
+    else{
+      const numero = `ORC-${String(state.cliOrcamentos.length+1).padStart(4,"0")}`;
+      state.cliOrcamentos.push({ id: uid("orc"), numero, status: "Rascunho", dataCadastro: todayISO(), lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", ...dataForm });
+    }
+    await saveCliOrcamentos(); closeModal(); renderView(); showToast(isEdit?"Orçamento atualizado.":"Orçamento criado.");
+  });
+}
+
+async function aprovarOrcamento(id){
+  const o = cliOrcamentoById(id);
+  if(!o) return;
+  if(!confirm(`Aprovar o orçamento ${o.numero} e gerar a Ordem de Serviço?`)) return;
+  const osId = uid("os");
+  const novaOS = {
+    id: osId, numero: `OS-${String(state.cliOS.length+1).padStart(4,"0")}`, clienteId: o.clienteId, orcamentoId: o.id,
+    negocio: o.negocio, data: todayISO(), itens: o.itens, valorServico: 0, valorTotal: o.valorTotal,
+    status: "Aberta", lancamentoId: "", observacoes: o.observacoes, dataCadastro: todayISO(),
+    lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+  };
+  state.cliOS.push(novaOS);
+  o.status = "Convertido em OS"; o.osId = osId;
+  await saveCliOS(); await saveCliOrcamentos();
+  cliOSDetalheId = osId; state.view = "cli_os_detalhe";
+  renderApp(); showToast(`Orçamento aprovado — ${novaOS.numero} criada.`);
+}
+async function recusarOrcamento(id){
+  const o = cliOrcamentoById(id);
+  if(!o) return;
+  o.status = "Recusado";
+  await saveCliOrcamentos(); renderView(); showToast("Orçamento recusado.");
+}
+
+/* =========================================================================
+   MODAL — DAR BAIXA DE ESTOQUE NA OS (custo real da instalação)
+========================================================================= */
+function modalOSBaixaEstoque(osId){
+  const os = cliOSById(osId);
+  if(!os) return;
+  if(!state.estProdutos.length){ showToast("Cadastre produtos no estoque primeiro.", "error"); return; }
+  const cliente = cliClienteById(os.clienteId);
+  const linhaHTML = () => `
+    <tr>
+      <td style="min-width:220px;"><select class="baixa-item-produto"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select></td>
+      <td style="width:100px;"><input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1"></td>
+      <td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>
+      <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">🗑</button></td>
+    </tr>`;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📦 Dar baixa de estoque — ${esc(os.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formBaixaOS"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado na instalação de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
+      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+        <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th><th class="num">Custo estimado</th><th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
+      <div class="field" style="margin-top:12px;"><label>Data</label><input type="date" name="data" value="${todayISO()}"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar baixa</button></div></form>
+  `);
+  const tbody = document.getElementById("baixaItensBody");
+  function atualizarCustos(){
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const produtoId = tr.querySelector(".baixa-item-produto").value;
+      const qtd = parseFloat(tr.querySelector(".baixa-item-qtd").value)||0;
+      const p = estProdutoById(produtoId);
+      tr.querySelector(".baixa-item-custo").textContent = p ? fmtBRL(estValorUnitarioEstimado(p)*qtd) : "—";
+    });
+  }
+  tbody.addEventListener("input", atualizarCustos);
+  tbody.addEventListener("change", atualizarCustos);
+  tbody.addEventListener("click", e => {
+    const del = e.target.closest(".baixa-item-del");
+    if(!del) return;
+    if(tbody.querySelectorAll("tr").length<=1){ showToast("Precisa de pelo menos 1 item.", "error"); return; }
+    del.closest("tr").remove();
+  });
+  document.getElementById("btnAddItemBaixa").addEventListener("click", () => {
+    tbody.insertAdjacentHTML("beforeend", linhaHTML());
+    atualizarCustos();
+  });
+  document.getElementById("formBaixaOS").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const linhas = Array.from(tbody.querySelectorAll("tr")).map(tr => ({
+      produtoId: tr.querySelector(".baixa-item-produto").value,
+      qtd: parseFloat(tr.querySelector(".baixa-item-qtd").value)||0,
+    })).filter(l => l.produtoId && l.qtd>0);
+    if(!linhas.length){ showToast("Selecione ao menos um item com quantidade.", "error"); return; }
+    const data = fd.get("data") || todayISO();
+    const destinoNome = cliente ? cliNome(cliente) : "Cliente";
+    linhas.forEach(l => {
+      const p = estProdutoById(l.produtoId);
+      const custoUnit = p ? estValorUnitarioEstimado(p) : 0;
+      state.estMovimentos.push({
+        id: uid("em"), data, tipo: "Saída", produtoId: l.produtoId, qtd: l.qtd, custoUnitario: custoUnit,
+        localOrigem: "Estoque", localDestino: destinoNome,
+        motivo: `Instalação ${os.numero}`, responsavel: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+        osId: os.id,
+      });
+    });
+    await saveEstMovimentos();
+    closeModal(); renderView();
+    showToast(`${linhas.length} item(ns) baixado(s) do estoque.`);
+  });
+}
+
+async function osGerarReceita(osId){
+  const os = cliOSById(osId);
+  if(!os) return;
+  if(os.lancamentoId){ showToast("Essa OS já tem uma conta a receber gerada.", "error"); return; }
+  let cat = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
+  if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+  const cliente = cliClienteById(os.clienteId);
+  const conta = state.contas.find(c => c.ativa !== false);
+  const lancId = uid("l");
+  state.lancamentos.push({
+    id: lancId, data: todayISO(), tipo: "Receita", negocio: os.negocio||"", categoria: cat.nome, subcategoria: "",
+    contaOrigem: conta ? conta.id : "", contaDestino: "", valor: osValorVenda(os),
+    descricao: `${os.numero} — ${cliente?cliNome(cliente):"Cliente"}`, status: "Provisionado", conciliado: false,
+    lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", osId: os.id,
+  });
+  os.lancamentoId = lancId;
+  await saveLancamentos(); await saveCliOS();
+  renderView();
+  showToast("Conta a receber gerada — dê baixa nela em Lançamentos quando o cliente pagar.");
+}
+async function osConcluir(osId){
+  const os = cliOSById(osId);
+  if(!os) return;
+  os.status = "Concluída";
+  await saveCliOS();
+  renderView();
+  showToast("OS concluída.");
 }
 
 // =========================================================================
