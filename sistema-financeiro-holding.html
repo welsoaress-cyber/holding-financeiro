@@ -913,7 +913,15 @@ function attachCalculadora(inputId){
 // PERSISTÊNCIA (Supabase — uma tabela por entidade, payload em jsonb)
 // ============================================================
 async function saveRows(table, items){
-  if(!state.user || !items.length) return;
+  // IMPORTANTE: em caso de falha, este erro é relançado (throw) de propósito.
+  // Todas as telas fazem "await saveX(); closeModal(); renderApp(); showToast('salvo!')"
+  // sem try/catch — se engolíssemos o erro aqui (como antes), o app seguia em frente,
+  // fechava o modal e avisava "salvo com sucesso" mesmo quando a gravação no Supabase
+  // falhou. Resultado: o lançamento sumia ao deslogar/logar de novo, porque nunca
+  // tinha sido gravado de verdade. Relançando o erro, o restante da função de quem
+  // chamou para de executar e o modal continua aberto, deixando claro que não salvou.
+  if(!state.user) return;
+  if(!items.length) return;
   try{
     const rows = items.map(item => {
       const { id, ...rest } = item;
@@ -926,8 +934,9 @@ async function saveRows(table, items){
   }catch(e){
     state.storageOK = false;
     console.error(`[saveRows:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Não salvou (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 async function deleteRow(table, id){
@@ -937,8 +946,9 @@ async function deleteRow(table, id){
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRow:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 async function deleteRows(table, ids){
@@ -948,8 +958,9 @@ async function deleteRows(table, ids){
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRows:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 const saveContas = () => saveRows("contas", state.contas);
