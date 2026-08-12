@@ -683,6 +683,11 @@ const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "
 const SENHA_PAGAR = "@2020";
 const SENHA_RECEBER = "@1010";
 const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","cartoes","perfis"];
+// "contas", "categorias" e "negocios" existem no Supabase com colunas soltas
+// (id, user_id, nome, ... , updated_at) — sem coluna "dados". Todas as outras
+// tabelas guardam o registro inteiro dentro de uma coluna "dados" (jsonb).
+// saveRows()/loadData() usam esse conjunto para montar o payload certo por tabela.
+const TABELAS_FLAT = new Set(["contas","categorias","negocios"]);
 const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuários — mude assim que possível
 
 let state = {
@@ -923,9 +928,12 @@ async function saveRows(table, items){
   if(!state.user) return;
   if(!items.length) return;
   try{
+    const flat = TABELAS_FLAT.has(table);
     const rows = items.map(item => {
       const { id, ...rest } = item;
-      return { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() };
+      return flat
+        ? { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() }
+        : { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
     });
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
@@ -1002,18 +1010,28 @@ async function loadData(){
   if(!state.user) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
+    // "contas"/"categorias"/"negocios" têm colunas soltas no banco (ver TABELAS_FLAT) —
+    // precisam de select("*") e não têm coluna "dados" pra desempacotar.
     const results = await Promise.all(TABELAS_CORE.map(t =>
-      supabaseClient.from(t).select("*").eq("user_id", state.user.id)
+      TABELAS_FLAT.has(t)
+        ? supabaseClient.from(t).select("*").eq("user_id", state.user.id)
+        : supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r => r.data || []);
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = TABELAS_CORE.map((t, i) => {
+      const linhas = results[i].data || [];
+      if(TABELAS_FLAT.has(t)){
+        return linhas.map(({ user_id, updated_at, ...resto }) => resto); // já vem com id + colunas soltas
+      }
+      return linhas.map(row => ({ id: row.id, ...row.dados }));
+    });
     state.contas = contas;
     state.lancamentos = lancamentos;
     state.ajustes = ajustes;
     state.categorias = categorias;
     state.negocios = negocios;
     state.cartoes = cartoes;
-    state.storageOK = true;  
+    state.storageOK = true;
 
     // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
     // não trava o resto do app — só fica sem perfis (só o Master existe) até você
