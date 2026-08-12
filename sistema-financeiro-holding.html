@@ -1526,7 +1526,9 @@ function renderApp(){
         <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;" title="Importar backup">
           ⬆<span class="label"> Importar backup</span>
           <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
-        </label>` : ""}
+        </label>
+        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Cria ~10 registros de teste em Fornecedores, Produtos, Compras, Planos, Clientes, Cargos e Funcionários">🌱<span class="label"> Popular dados de teste</span></button>
+        <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Remove tudo que foi criado por 'Popular dados de teste'">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
         <button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
@@ -2268,6 +2270,182 @@ function handleImportarBackup(e){
   };
   reader.readAsText(file);
   e.target.value = "";
+}
+
+// ============================================================
+// DADOS DE TESTE — popular/remover ~10 registros por área (só Master)
+// Propositalmente NÃO mexe em Contas/Cartões/Categorias/Negócios/Lançamentos:
+// são o núcleo financeiro real da holding, e misturar dado fake ali contaminaria
+// saldo e relatórios de verdade. Tudo que é criado aqui vem marcado com
+// "_teste: true" (guardado dentro do jsonb "dados", não é coluna nova) e prefixo
+// "[TESTE]" no nome, pra ficar óbvio e fácil de tirar depois.
+// ============================================================
+async function popularDadosTeste(){
+  if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
+  if(!confirm("Isso cria ~10 registros de teste em Fornecedores, Produtos, Compras, Planos, Clientes, Cargos e Funcionários (marcados com [TESTE]). Não mexe em Contas/Cartões/Categorias/Negócios/Lançamentos. Continuar?")) return;
+  showToast("Gerando dados de teste...");
+
+  const negNomes = state.negocios.map(n => n.nome);
+  const negAleatorio = () => negNomes.length ? negNomes[Math.floor(Math.random()*negNomes.length)] : "";
+  const cpfFake = (i) => `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`;
+  const telFake = (base, i) => `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`;
+
+  // ---- Fornecedores ----
+  const fornNomes = ["Fibra Sul Distribuidora","Conexão Norte Equipamentos","TechNet Atacado","Rede Forte Suprimentos","Ótica Brasil Cabos","Distribuidora Sinal Rápido","Comercial Torres & Postes","Atacado Provedor Total","Fibra Express Insumos","Central de Redes Ltda"];
+  const contatos = ["Carlos","Ana","Marcos","Fernanda","João","Patrícia","Rafael","Juliana","Eduardo","Camila"];
+  const novosFornecedores = fornNomes.map((nome,i) => ({
+    id: uid("ef"), nome: `[TESTE] ${nome}`,
+    cnpj: `${String(10+i).padStart(2,'0')}.${String(345+i*11).padStart(3,'0')}.${String(678+i*7).padStart(3,'0')}/0001-${String(10+i)}`,
+    contato: contatos[i], telefone: telFake(8000,i), email: `contato@fornecedor${i+1}teste.com.br`,
+    endereco: "", negocio: "", observacoes: "Fornecedor de teste", _teste: true,
+  }));
+  state.estFornecedores.push(...novosFornecedores);
+  await saveEstFornecedores();
+
+  // ---- Produtos ----
+  const prodDefs = [
+    ["ONU GPON AC","ONU/ONT","un",0.35,"Residencial"],
+    ["Roteador Wi-Fi 6 AX1800","Roteador","un",0.42,"Residencial"],
+    ["Switch 8 Portas Gigabit","Switch","un",0.60,"Empresarial"],
+    ["Cabo Drop 2FO (rolo 1000m)","Fibra Óptica","rolo",18,""],
+    ["Conector SC/APC","Conector","un",0.01,""],
+    ["Splitter Óptico 1x8","Fibra Óptica","un",0.05,""],
+    ["Caixa de Emenda Óptica 24FO","Rack/Gabinete","un",1.2,""],
+    ["Cordão Óptico SC/APC 2m","Fibra Óptica","un",0.08,""],
+    ["Rack 12U de Parede","Rack/Gabinete","un",9.5,"Empresarial"],
+    ["Fonte Chaveada 12V 2A","Eletrônico","un",0.15,""],
+  ];
+  const novosProdutos = prodDefs.map(([nome,categoria,unidade,peso,familia],i) => ({
+    id: uid("ep"), nome: `[TESTE] ${nome}`, codigoInterno: `TST-${String(i+1).padStart(3,'0')}`,
+    categoria, modelo: "", fabricante: "", familia, peso, unidade,
+    fornecedorId: novosFornecedores[i % novosFornecedores.length].id,
+    negocio: negAleatorio(), precoUnitario: 0, estoqueMinimo: 5+i, localizacao: "Estoque teste",
+    observacoes: "Produto de teste", _teste: true,
+  }));
+  state.estProdutos.push(...novosProdutos);
+  await saveEstProdutos();
+
+  // ---- Compras (3 notas — já populam movimentações e Custo Médio Real) ----
+  for(let n=0; n<3; n++){
+    const itensCompra = novosProdutos.slice(n*3, n*3+3);
+    if(!itensCompra.length) break;
+    const itens = itensCompra.map(p => ({ produtoId: p.id, quantidade: 20+n*5, valorUnitario: Math.round((5+Math.random()*40)*100)/100 }));
+    const valoresTotais = itens.map(it => it.quantidade*it.valorUnitario);
+    const frete = Math.round((30+n*15)*100)/100;
+    const rateios = ratearProporcional(frete, valoresTotais);
+    const compraId = uid("compra");
+    const numeroNota = `TESTE-${1000+n}`;
+    const itensSalvos = itens.map((it,i) => {
+      const valorTotal = valoresTotais[i];
+      const custoUnitarioFinal = Math.round(((valorTotal+rateios[i])/it.quantidade)*100)/100;
+      return { produtoId: it.produtoId, quantidade: it.quantidade, valorUnitario: it.valorUnitario, valorTotal, rateio: rateios[i], custoUnitarioFinal };
+    });
+    state.estCompras.push({
+      id: compraId, numeroNota, fornecedorId: novosFornecedores[n].id, data: todayISO(), negocio: "",
+      frete, seguro: 0, outrasDespesas: 0, baseRateio: "valor", itens: itensSalvos,
+      observacoes: "Compra de teste", lancadoPor: "Master", _teste: true,
+    });
+    itensSalvos.forEach(it => {
+      state.estMovimentos.push({
+        id: uid("em"), data: todayISO(), tipo: "Entrada", produtoId: it.produtoId, qtd: it.quantidade,
+        custoUnitario: it.custoUnitarioFinal, localOrigem: novosFornecedores[n].nome, localDestino: "",
+        motivo: `Compra NF ${numeroNota}`, responsavel: "Master", notaFiscal: numeroNota,
+        notaFiscalCompraId: compraId, _teste: true,
+      });
+    });
+  }
+  await saveEstCompras();
+  await saveEstMovimentos();
+
+  // ---- Planos ----
+  const planoDefs = [
+    ["Fibra 100 Mega",89.9,"100 Mbps","GPON"], ["Fibra 200 Mega",109.9,"200 Mbps","GPON"],
+    ["Fibra 300 Mega",129.9,"300 Mbps","GPON"], ["Fibra 500 Mega",159.9,"500 Mbps","GPON"],
+    ["Fibra 700 Mega Duo",189.9,"700 Mbps","GPON"], ["Fibra 1 Giga",219.9,"1000 Mbps","GPON"],
+    ["Combo TV + Internet 200",169.9,"200 Mbps","GPON + IPTV"], ["Plano Empresarial 300",249.9,"300 Mbps dedicado","GPON"],
+    ["Plano Empresarial 1 Giga",499.9,"1000 Mbps dedicado","GPON"], ["Rádio Rural 20 Mega",99.9,"20 Mbps","Rádio"],
+  ];
+  const novosPlanos = planoDefs.map(([nome,valor,velocidade,tecnologia]) => ({
+    id: uid("pl"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), descricao: "", valor, velocidade, tecnologia,
+    observacoes: "Plano de teste", _teste: true,
+  }));
+  state.cliPlanos.push(...novosPlanos);
+  await saveCliPlanos();
+
+  // ---- Clientes ----
+  const clienteNomes = ["Ana Beatriz Souza","Carlos Eduardo Lima","Fernanda Oliveira","João Pedro Alves","Mariana Costa","Ricardo Santos","Juliana Pereira","Bruno Rodrigues","Camila Ferreira","Lucas Martins"];
+  const cidades = ["Campinas","Sorocaba","Ribeirão Preto","Piracicaba","Bauru","São Carlos","Jundiaí","Limeira","Araraquara","Franca"];
+  const novosClientes = clienteNomes.map((nome,i) => {
+    const neg = negAleatorio();
+    const planosDoNeg = novosPlanos.filter(p => p.negocio === neg);
+    const plano = planosDoNeg.length ? planosDoNeg[i % planosDoNeg.length] : null;
+    return {
+      id: uid("cli"), tipoPessoa: "PF", nome: `[TESTE] ${nome}`, razaoSocial: "", nomeFantasia: "",
+      cpfCnpj: cpfFake(i), rg: "", dataNascimento: "", genero: "Não informado",
+      email: `cliente${i+1}teste@email.com`, telefone: telFake(7000,i), whatsapp: "",
+      logradouro: `Rua Teste ${i+1}`, numero: String(100+i*10), complemento: "", bairro: "Centro",
+      cidade: cidades[i], uf: "SP", cep: "13000-000", status: "Ativo", dataCadastro: todayISO(),
+      observacoes: "Cliente de teste", _teste: true,
+      contratos: neg ? [{ id: uid("ct"), negocio: neg, planoId: plano?plano.id:"", status: "Ativo", dataContrato: todayISO() }] : [],
+    };
+  });
+  state.cliClientes.push(...novosClientes);
+  await saveCliClientes();
+
+  // ---- Cargos ----
+  const cargoDefs = [
+    ["Técnico de Instalação","44h/semana",2200], ["Técnico de Suporte N1","44h/semana",1900],
+    ["Técnico de Suporte N2","44h/semana",2600], ["Atendente SAC","36h/semana",1700],
+    ["Vendedor Externo","44h/semana",1800], ["Analista Financeiro","40h/semana",3200],
+    ["Auxiliar Administrativo","40h/semana",1700], ["Coordenador Comercial","44h/semana",4200],
+    ["Motorista","44h/semana",2100], ["Gerente de Operações","44h/semana",6500],
+  ];
+  const novosCargos = cargoDefs.map(([nome,carga,salario]) => ({
+    id: uid("cargo"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), salarioBase: salario, cargaHoraria: carga,
+    descricao: "", _teste: true,
+  }));
+  state.rhCargos.push(...novosCargos);
+  await saveRhCargos();
+
+  // ---- Funcionários ----
+  const funcNomes = ["Pedro Henrique Silva","Larissa Gomes","Thiago Almeida","Beatriz Cardoso","Gustavo Ribeiro","Amanda Barbosa","Felipe Nascimento","Vanessa Teixeira","Diego Moraes","Priscila Araújo"];
+  const novosFuncionarios = funcNomes.map((nome,i) => {
+    const cargo = novosCargos[i % novosCargos.length];
+    const d = new Date(); d.setMonth(d.getMonth() - (3 + i*4));
+    return {
+      id: uid("func"), nome: `[TESTE] ${nome}`, cpf: cpfFake(i+20), rg: "", dataNascimento: "",
+      genero: "Não informado", email: `func${i+1}teste@empresa.com`, telefone: telFake(6000,i),
+      negocio: cargo.negocio, cargoId: cargo.id, dataAdmissao: d.toISOString().slice(0,10), tipoContrato: "CLT",
+      salario: cargo.salarioBase, status: "Ativo", pix: "",
+      logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "SP", cep: "",
+      dataDemissao: "", tipoDesligamento: "", motivoDesligamento: "", observacoes: "Funcionário de teste", _teste: true,
+    };
+  });
+  state.rhFuncionarios.push(...novosFuncionarios);
+  await saveRhFuncionarios();
+
+  renderApp();
+  showToast(`Dados de teste criados: ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários.`);
+}
+
+async function removerDadosTeste(){
+  if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
+  if(!confirm("Remover TODOS os registros marcados como [TESTE] (fornecedores, produtos, compras, movimentações, planos, clientes, cargos e funcionários)? Não afeta seus dados reais.")) return;
+  const removerDoArray = async (arrName, tabela) => {
+    const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
+    state[arrName] = state[arrName].filter(x => !x._teste);
+    if(idsTeste.length) await deleteRows(tabela, idsTeste);
+  };
+  await removerDoArray("estMovimentos", "est_movimentos");
+  await removerDoArray("estCompras", "est_compras");
+  await removerDoArray("estProdutos", "est_produtos");
+  await removerDoArray("estFornecedores", "est_fornecedores");
+  await removerDoArray("cliClientes", "cli_clientes");
+  await removerDoArray("cliPlanos", "cli_planos");
+  await removerDoArray("rhFuncionarios", "rh_funcionarios");
+  await removerDoArray("rhCargos", "rh_cargos");
+  renderApp();
+  showToast("Dados de teste removidos.");
 }
 
 // ============================================================
@@ -3508,6 +3686,8 @@ document.addEventListener("click", async e => {
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
   else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
   else if(action === "exportar-backup") exportarBackup();
+  else if(action === "popular-dados-teste") popularDadosTeste();
+  else if(action === "remover-dados-teste") removerDadosTeste();
   else if(action === "unlock-pagar") modalSenha("pagar");
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
