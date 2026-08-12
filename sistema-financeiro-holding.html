@@ -703,6 +703,38 @@ let state = {
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HORIZONTE_ANOS = 5;
 
+// ---- Lembrar em que módulo/tela o usuário estava (sobrevive a F5) ----
+// Guardado no localStorage do navegador — não é dado sensível, é só o nome da tela.
+const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
+const VIEWS_VALIDAS = new Set([
+  "cadastro_hub",
+  "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
+  "est_dashboard","est_produtos","est_movimentos","est_fornecedores","est_alertas",
+  "cli_dashboard","cli_lista","cli_planos","cli_detalhe",
+  "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
+]);
+// Telas de detalhe dependem de um id extra (qual cliente/funcionário) que não é
+// salvo junto — ao restaurar depois de um F5, cai na tela "mãe" do mesmo módulo em
+// vez de ficar numa página de detalhe vazia dizendo "não encontrado".
+const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios" };
+let navegacaoRestaurada = false;
+function salvarNavegacaoAtual(){
+  try{ localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify({ moduloAtivo: state.moduloAtivo, view: state.view })); }
+  catch(e){ /* localStorage indisponível (modo privado etc.) — só não persiste, sem quebrar nada */ }
+}
+function restaurarNavegacaoSalva(){
+  try{
+    const salvo = JSON.parse(localStorage.getItem(NAV_STORAGE_KEY) || "null");
+    if(!salvo) return;
+    const mod = MODULOS_CATALOGO.find(m => m.id === salvo.moduloAtivo);
+    if(!mod || !mod.ativo) return; // módulo não existe mais ou ainda não foi liberado
+    const view = VIEWS_FALLBACK_RESTAURACAO[salvo.view] || salvo.view;
+    if(!VIEWS_VALIDAS.has(view)) return;
+    state.moduloAtivo = mod.id;
+    state.view = view;
+  }catch(e){ /* localStorage corrompido/indisponível — ignora e mantém o padrão */ }
+}
+
 // ---- Categorias de estoque para provedor de internet ----
 const EST_CATEGORIAS = ["ONU/ONT","Roteador","Switch","Cabo","Ferramenta","Conector","Torre/Poste","Rack/Gabinete","Fibra Óptica","Eletrônico","Veículo","Consumível","Outro"];
 const EST_UNIDADES = ["un","m","cx","kg","rolo","par","kit","lote"];
@@ -1420,6 +1452,7 @@ function renderApp(){
   const app = document.getElementById("app");
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
   if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
+  if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
 
   const horaSalvo = state.ultimoSalvamento ? state.ultimoSalvamento.toLocaleTimeString("pt-BR") : null;
   const master = ehMaster();
@@ -1529,6 +1562,7 @@ function renderApp(){
     state.view = "lancamentos";
     if(state.moduloAtivo === "rh") state.moduloAtivo = "financeiro";
   }
+  salvarNavegacaoAtual();
   renderModbar();
   // ---- Mobile drawer ----
   const mobMenuBtn = document.getElementById("mobMenuBtn");
@@ -1904,7 +1938,9 @@ function viewContas(){
   const rowHTML = (c, nested) => {
     const sa = saldoAtual(c.id), sp = saldoProjetado(c.id), nc = naoConciliados(c.id);
     const inativa = c.ativa === false;
-    const negTag = c.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)}; margin-left:6px;"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>` : "";
+    const negTag = c.negocio
+      ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)}; margin-left:6px;"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>`
+      : `<span class="tag" style="background:var(--muted-bg); color:var(--muted); margin-left:6px;">🌐 Todos os negócios</span>`;
     const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
@@ -2286,8 +2322,8 @@ function modalConta(existing){
         <div class="field"><label>Instituição</label><input required type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div>
         <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
       </div>
-      <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio específico (conta da holding) —</option>${negOpts}</select>
-        <div class="field-help">Opcional — só marque se essa conta for de um negócio específico, e não compartilhada entre todos.</div>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value="">🌐 Todos os negócios</option>${negOpts}</select>
+        <div class="field-help">Deixe em "Todos os negócios" se essa conta é compartilhada — só escolha uma se ela for exclusiva de um negócio.</div>
       </div>
       <div class="field-row">
         ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || receberDesbloqueado())}
@@ -4084,16 +4120,28 @@ function modalCliCliente(existing){
   const isEdit = !!existing;
   const c = existing || { nome:"", tipoPessoa:"PF", cpfCnpj:"", rg:"", dataNascimento:"", genero:"Não informado", email:"", telefone:"", whatsapp:"", logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"", status:"Ativo", dataCadastro:todayISO(), observacoes:"", contratos:[] };
 
-  const negCheckboxes = state.negocios.map(n => {
-    const hasContrato = (c.contratos||[]).some(ct=>ct.negocio===n.nome);
-    return `<label class="checkbox-row" style="padding:4px 0;">
-      <input type="checkbox" name="neg_${n.id}" value="${n.nome}" ${hasContrato?"checked":""}
-        style="accent-color:${n.cor};">
-      <span style="display:flex; align-items:center; gap:6px;">
-        <span style="width:8px;height:8px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
-        ${esc(n.nome)}
-      </span>
-    </label>`;
+  const negLinhas = state.negocios.map(n => {
+    const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
+    const hasContrato = !!contratoAtual;
+    const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
+    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    return `<tr>
+      <td style="white-space:nowrap;">
+        <label class="checkbox-row" style="padding:4px 0;">
+          <input type="checkbox" name="neg_${n.id}" value="${n.nome}" class="cli-neg-chk" data-negid="${n.id}" ${hasContrato?"checked":""} style="accent-color:${n.cor};">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
+            ${esc(n.nome)}
+          </span>
+        </label>
+      </td>
+      <td style="width:100%;">
+        <select name="plano_${n.id}" id="cliPlanoSel_${n.id}" ${hasContrato?"":"disabled"} style="width:100%; font-family:var(--font-ui); font-size:12.5px; padding:6px 8px; border-radius:var(--r); border:1px solid var(--border-2);">
+          <option value="">— Sem plano ainda —</option>${planoOpts}
+        </select>
+        ${!planosDoNegocio.length ? `<div class="field-help" style="margin-top:2px;">Nenhum plano cadastrado pra ${esc(n.nome)} ainda.</div>` : ""}
+      </td>
+    </tr>`;
   }).join("");
 
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${(c.status||"Ativo")===s?"selected":""}>${s}</option>`).join("");
@@ -4156,9 +4204,11 @@ function modalCliCliente(existing){
       </div>
       <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(c.cidade||"")}" placeholder="Cidade"></div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios vinculados</div>
-      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence</div>
-      <div style="display:flex; flex-wrap:wrap; gap:4px 20px; margin-bottom:10px;">${negCheckboxes||"<span style='color:var(--ink-4);'>Nenhum negócio cadastrado</span>"}</div>
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios e planos vinculados</div>
+      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence e já escolha o plano de cada um — isso é o que vai alimentar os relatórios por plano/negócio depois.</div>
+      <div style="border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:10px;">
+        <table><tbody>${negLinhas||`<tr><td>${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table>
+      </div>
 
       <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Observações</div>
       <div class="field"><textarea name="observacoes" rows="3" style="resize:none;" placeholder="Notas internas, histórico de atendimento, etc.">${esc(c.observacoes||"")}</textarea></div>
@@ -4187,6 +4237,14 @@ function modalCliCliente(existing){
   };
   tipoPessoa.addEventListener("change", atualizarTipo);
   atualizarTipo();
+
+  // Habilita/desabilita o select de plano junto com o checkbox do negócio
+  document.querySelectorAll(".cli-neg-chk").forEach(chk => {
+    chk.addEventListener("change", () => {
+      const sel = document.getElementById(`cliPlanoSel_${chk.dataset.negid}`);
+      if(sel) sel.disabled = !chk.checked;
+    });
+  });
 
   document.getElementById("formCliCliente").addEventListener("submit", async e => {
     e.preventDefault();
@@ -4219,16 +4277,21 @@ function modalCliCliente(existing){
     };
 
     if(isEdit){
-      // Mantém contratos existentes, adiciona novos negócios sem contrato
+      // Mantém contratos existentes (atualizando o plano se foi trocado no formulário),
+      // adiciona novos negócios sem contrato já com o plano escolhido
       const novosNegs = negociosMarcados.filter(n=>!(existing.contratos||[]).some(ct=>ct.negocio===n.nome));
-      const contratosNovos = novosNegs.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+      const contratosNovos = novosNegs.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:fd.get(`plano_${n.id}`)||"", status:"Ativo", dataContrato:todayISO() }));
       // Remove contratos de negócios desmarcados
       const negsMarcadosNomes = negociosMarcados.map(n=>n.nome);
-      const contratosRestantes = (existing.contratos||[]).filter(ct=>negsMarcadosNomes.includes(ct.negocio));
+      const contratosRestantes = (existing.contratos||[]).filter(ct=>negsMarcadosNomes.includes(ct.negocio)).map(ct => {
+        const neg = negocioByNome(ct.negocio);
+        const planoId = neg ? (fd.get(`plano_${neg.id}`)||"") : ct.planoId;
+        return { ...ct, planoId };
+      });
       data.contratos = [...contratosRestantes, ...contratosNovos];
       Object.assign(existing, data);
     }else{
-      data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+      data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:fd.get(`plano_${n.id}`)||"", status:"Ativo", dataContrato:todayISO() }));
     }
 
     if(isEdit){
