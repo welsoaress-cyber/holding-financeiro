@@ -718,12 +718,39 @@ const RH_STATUS_FERIAS = ["Programada","Em andamento","Concluída","Cancelada"];
 const RH_TIPOS_DESLIGAMENTO = ["Pedido de demissão","Demissão sem justa causa","Demissão com justa causa","Término de contrato","Acordo (distrato)"];
 
 const MODULOS_CATALOGO = [
+  { id:"cadastro",  ico:"🗂️", nome:"Cadastro",   desc:"Central de cadastros do projeto", ativo:true },
   { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
   { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
   { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
   { id:"rh",        ico:"🏢", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
   { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
   { id:"bi",        ico:"📊", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
+];
+
+// ---- Central de Cadastros — atalhos pra criar qualquer tipo de registro do projeto,
+// já indicando o negócio quando fizer sentido. Reaproveita os mesmos modais que cada
+// módulo já usa (não duplica lógica) — mudou o modal, muda aqui e lá igual.
+// soMaster: true = mesma restrição que a tela original já tinha (Contas, Cartões,
+// Categorias, Negócio e RH só aparecem pro Master).
+const CADASTRO_TIPOS = [
+  { grupo: "Financeiro", itens: [
+    { id:"negocio",    ico:"🏢", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true },
+    { id:"conta",      ico:"▢",  nome:"Conta Bancária",  desc:"Conta corrente, pagamento ou poupança", soMaster:true },
+    { id:"cartao",     ico:"💳", nome:"Cartão de Crédito", desc:"Vinculado a uma conta de pagamento", soMaster:true },
+    { id:"categoria",  ico:"🏷️", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true },
+  ]},
+  { grupo: "Estoque", itens: [
+    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false },
+    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false },
+  ]},
+  { grupo: "Clientes", itens: [
+    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false },
+    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false },
+  ]},
+  { grupo: "RH", itens: [
+    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:true },
+    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:true },
+  ]},
 ];
 
 // ============================================================
@@ -1350,7 +1377,8 @@ function renderModbar(){
       if(modId==="rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
-      if(modId==="financeiro") state.view="dashboard";
+      if(modId==="cadastro") state.view="cadastro_hub";
+      else if(modId==="financeiro") state.view="dashboard";
       else if(modId==="estoque") state.view="est_dashboard";
       else if(modId==="clientes") state.view="cli_dashboard";
       else if(modId==="rh") state.view="rh_dashboard";
@@ -1402,15 +1430,18 @@ function renderApp(){
         <span></span><span></span><span></span>
       </button>
       <div class="mob-logo"><span class="dot"></span>Holding</div>
-      <div style="margin-left:auto; font-size:10px; color:rgba(255,255,255,.35); font-family:var(--font-mono);">${state.moduloAtivo==="estoque"?"📦":state.moduloAtivo==="clientes"?"👥":state.moduloAtivo==="rh"?"🏢":"💰"}</div>
+      <div style="margin-left:auto; font-size:10px; color:rgba(255,255,255,.35); font-family:var(--font-mono);">${state.moduloAtivo==="cadastro"?"🗂️":state.moduloAtivo==="estoque"?"📦":state.moduloAtivo==="clientes"?"👥":state.moduloAtivo==="rh"?"🏢":"💰"}</div>
       <button id="mobModulosBtn" style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:6px; color:rgba(255,255,255,.7); font-size:11px; padding:4px 10px; cursor:pointer; font-family:var(--font-ui);">⊞</button>
     </div>
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="mainSidebar">
-      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
-      ${state.moduloAtivo === "estoque" ? `
+      ${state.moduloAtivo === "cadastro" ? `
+        <div class="nav-group-label">Cadastro</div>
+        ${navItem("cadastro_hub","🗂️","Central de Cadastros")}
+      ` : state.moduloAtivo === "estoque" ? `
         <div class="nav-group-label">Estoque</div>
         ${navItem("est_dashboard","◆","Dashboard")}
         ${navItem("est_produtos","📦","Produtos")}
@@ -1550,7 +1581,8 @@ function navItemSoon(label){
 function renderView(){
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "dashboard") main.innerHTML = viewDashboard();
+  if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
+  else if(state.view === "dashboard") main.innerHTML = viewDashboard();
   else if(state.view === "contas") main.innerHTML = viewContas();
   else if(state.view === "cartoes") main.innerHTML = viewCartoes();
   else if(state.view === "lancamentos" || state.view === "receitas" || state.view === "despesas" || state.view === "transferencias") main.innerHTML = viewLancamentos();
@@ -1682,6 +1714,35 @@ function modalSenhaMaster(){
       if(inp){ inp.value = ""; inp.focus(); }
     }
   });
+}
+
+// ============================================================
+// VIEW: CENTRAL DE CADASTROS
+// ============================================================
+function viewCadastroHub(){
+  const master = ehMaster();
+  const gruposHTML = CADASTRO_TIPOS.map(grupo => {
+    const itensVisiveis = grupo.itens.filter(it => !it.soMaster || master);
+    if(!itensVisiveis.length) return "";
+    const cardsHTML = itensVisiveis.map(it => `
+      <div class="kpi-card" style="cursor:pointer; transition:border-color .12s, box-shadow .12s;" data-action="cad-abrir" data-tipo="${it.id}"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:22px; margin-bottom:8px;">${it.ico}</div>
+        <div style="font-weight:700; font-size:13.5px; color:var(--ink);">${it.nome}</div>
+        <div class="kpi-note" style="margin-top:4px;">${it.desc}</div>
+      </div>`).join("");
+    return `
+      <div style="margin-bottom:22px;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px;">${grupo.grupo}</div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); margin-bottom:0;">${cardsHTML}</div>
+      </div>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Central de Cadastros</div><div class="page-sub">Escolha o que você quer cadastrar — cada um já pergunta o negócio quando fizer sentido, e vai direto pro módulo dele.</div></div>
+    </div>
+    ${gruposHTML || emptyState("Nenhum tipo de cadastro disponível para o seu perfil.")}
+  `;
 }
 
 // ============================================================
@@ -1843,7 +1904,8 @@ function viewContas(){
   const rowHTML = (c, nested) => {
     const sa = saldoAtual(c.id), sp = saldoProjetado(c.id), nc = naoConciliados(c.id);
     const inativa = c.ativa === false;
-    const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong><div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
+    const negTag = c.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)}; margin-left:6px;"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>` : "";
+    const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
       <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
@@ -1885,11 +1947,12 @@ function viewCartoes(){
       </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-4); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
       : `<div style="font-size:12px; color:var(--ink-4); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
     const cor = PALETA_NEGOCIOS[state.cartoes.indexOf(c) % PALETA_NEGOCIOS.length];
+    const negTag = c.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)};"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>` : "";
     return `<div class="panel" style="margin-bottom:14px; ${inativo?'opacity:.55;':''}">
       <div style="padding:16px 18px; border-bottom:1px solid var(--border);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
-            <div style="display:flex; align-items:center; gap:8px;"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span>${negTag}</div>
             <div style="font-size:12px; color:var(--ink-4); margin-top:3px;">${esc(c.bandeira)} · final ${esc(c.ultimosDigitos)} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento} · paga com ${contaLabel(contaById(c.contaPagamentoId))}</div>
           </div>
           <div class="row-actions"><button class="btn btn-primary btn-sm" data-action="new-compra-cartao" data-id="${c.id}">+ Compra</button><button class="icon-btn" data-action="edit-cartao" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-cartao" data-id="${c.id}" title="Excluir">🗑</button></div>
@@ -2213,7 +2276,8 @@ function modalSenha(kind){
 // ============================================================
 function modalConta(existing){
   const isEdit = !!existing;
-  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true };
+  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true, negocio:"" };
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar conta" : "Nova conta bancária"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formConta"><div class="modal-body">
@@ -2221,6 +2285,9 @@ function modalConta(existing){
       <div class="field-row">
         <div class="field"><label>Instituição</label><input required type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div>
         <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio específico (conta da holding) —</option>${negOpts}</select>
+        <div class="field-help">Opcional — só marque se essa conta for de um negócio específico, e não compartilhada entre todos.</div>
       </div>
       <div class="field-row">
         ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || receberDesbloqueado())}
@@ -2237,6 +2304,7 @@ function modalConta(existing){
     const fd = new FormData(e.target);
     const data = {
       nome: fd.get("nome").trim(), instituicao: fd.get("instituicao").trim(), tipo: fd.get("tipo"),
+      negocio: fd.get("negocio")||"",
       saldoInicial: parseFloat(fd.get("saldoInicial"))||0, limite: parseFloat(fd.get("limite"))||0,
       ativa: fd.get("ativa") === "on"
     };
@@ -2803,8 +2871,9 @@ function modalPerfil(existing){
 // ============================================================
 function modalCartao(existing){
   const isEdit = !!existing;
-  const c = existing || { nome:"", bandeira:"Visa", ultimosDigitos:"", limite:0, diaFechamento:1, diaVencimento:10, contaPagamentoId: state.contas.find(x=>x.ativa!==false)?.id||"", ativo:true };
+  const c = existing || { nome:"", bandeira:"Visa", ultimosDigitos:"", limite:0, diaFechamento:1, diaVencimento:10, contaPagamentoId: state.contas.find(x=>x.ativa!==false)?.id||"", ativo:true, negocio:"" };
   const contaOpts = contasParaSelecao(c.contaPagamentoId).map(x => `<option value="${x.id}" ${c.contaPagamentoId===x.id?"selected":""}>${contaLabel(x)}${x.ativa===false?" (inativa)":""}</option>`).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar cartão" : "Novo cartão de crédito"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCartao"><div class="modal-body">
@@ -2815,6 +2884,7 @@ function modalCartao(existing){
           <div class="field-help">Só os 4 últimos dígitos, pra não confundir com outro cartão.</div>
         </div>
       </div>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio específico —</option>${negOpts}</select></div>
       <div class="field"><label>Limite total (R$)</label><input required type="number" step="0.01" min="0" name="limite" value="${c.limite}"></div>
       <div class="field-row">
         <div class="field"><label>Dia de fechamento</label><input required type="number" min="1" max="31" step="1" name="diaFechamento" value="${c.diaFechamento}"><div class="field-help">Compras depois desse dia caem na fatura seguinte.</div></div>
@@ -2830,6 +2900,7 @@ function modalCartao(existing){
     const data = {
       nome: fd.get("nome").trim(), bandeira: fd.get("bandeira"),
       ultimosDigitos: fd.get("ultimosDigitos").trim().replace(/\D/g,"").slice(-4),
+      negocio: fd.get("negocio")||"",
       limite: parseFloat(fd.get("limite"))||0,
       diaFechamento: Math.min(31, Math.max(1, parseInt(fd.get("diaFechamento"))||1)),
       diaVencimento: Math.min(31, Math.max(1, parseInt(fd.get("diaVencimento"))||1)),
@@ -3355,11 +3426,31 @@ document.addEventListener("click", async e => {
     if(mod.id === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
-    if(mod.id === "financeiro"){ state.view = "dashboard"; }
+    if(mod.id === "cadastro"){ state.view = "cadastro_hub"; }
+    else if(mod.id === "financeiro"){ state.view = "dashboard"; }
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
     else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
     renderApp();
+  }
+  else if(action === "cad-abrir"){
+    const tipo = el.dataset.tipo;
+    const item = CADASTRO_TIPOS.flatMap(g => g.itens).find(it => it.id === tipo);
+    if(!item) return;
+    if(item.soMaster && !ehMaster()){ showToast("Apenas o Master pode cadastrar isso.", "error"); return; }
+    const ABRIR_MODAL = {
+      negocio: () => modalNegocio(null),
+      conta: () => modalConta(null),
+      cartao: () => modalCartao(null),
+      categoria: () => modalCategoria(null),
+      produto: () => modalEstProduto(null),
+      fornecedor: () => modalEstFornecedor(null),
+      cliente: () => modalCliCliente(null),
+      plano: () => modalCliPlano(null),
+      funcionario: () => modalRhFuncionario(null),
+      cargo: () => modalRhCargo(null),
+    };
+    (ABRIR_MODAL[tipo] || (() => showToast("Cadastro ainda não disponível.", "error")))();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
@@ -5064,10 +5155,12 @@ function viewEstProdutos(){
     const minimo = Number(p.estoqueMinimo||0);
     const corSaldo = saldo <= 0 ? "var(--neg)" : saldo <= minimo ? "var(--warn)" : "var(--pos)";
     const fornecedor = estFornecedorById(p.fornecedorId);
+    const negTag = p.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(p.negocio)} 14%, white); color:${negocioCor(p.negocio)};"><span class="tag-dot" style="background:${negocioCor(p.negocio)}"></span>${esc(p.negocio)}</span>` : "—";
     return `<tr>
       <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}</td>
       <td>${esc(p.codigoInterno||"—")}</td>
       <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
+      <td>${negTag}</td>
       <td style="color:var(--ink-3);">${esc(fornecedor?.nome||"—")}</td>
       <td class="num" style="font-weight:700; color:${corSaldo}; font-size:14px;">${saldo}</td>
       <td class="num" style="color:var(--ink-4);">${esc(p.unidade||"un")}</td>
@@ -5097,11 +5190,11 @@ function viewEstProdutos(){
       </div>
       <div class="panel-body">
         <table><thead><tr>
-          <th>Produto</th><th>Código</th><th>Categoria</th><th>Fornecedor</th>
+          <th>Produto</th><th>Código</th><th>Categoria</th><th>Negócio</th><th>Fornecedor</th>
           <th class="num">Saldo</th><th class="num">Un</th><th class="num">Mín.</th>
           <th class="num">Preço unit.</th><th class="num">Valor total</th><th></th>
         </tr></thead>
-        <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
+        <tbody>${rows || `<tr><td colspan="11">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
       </div>
     </div>
   `;
@@ -5160,9 +5253,11 @@ function viewEstMovimentos(){
 function viewEstFornecedores(){
   const rows = state.estFornecedores.map(f => {
     const produtos = state.estProdutos.filter(p => p.fornecedorId === f.id).length;
+    const negTag = f.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(f.negocio)} 14%, white); color:${negocioCor(f.negocio)};"><span class="tag-dot" style="background:${negocioCor(f.negocio)}"></span>${esc(f.negocio)}</span>` : "—";
     return `<tr>
       <td style="font-weight:600;">${esc(f.nome)}</td>
       <td>${esc(f.cnpj||"—")}</td>
+      <td>${negTag}</td>
       <td>${esc(f.contato||"—")}</td>
       <td>${esc(f.telefone||"—")}</td>
       <td>${esc(f.email||"—")}</td>
@@ -5179,8 +5274,8 @@ function viewEstFornecedores(){
       <button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
+      <table><thead><tr><th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
@@ -5220,10 +5315,11 @@ function viewEstAlertas(){
 ========================================================================= */
 function modalEstProduto(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", fornecedorId:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
+  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", fornecedorId:"", negocio:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
   const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
   const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
   const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
+  const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar produto":"Novo produto"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formEstProduto"><div class="modal-body">
@@ -5242,8 +5338,9 @@ function modalEstProduto(existing){
       </div>
       <div class="field-row">
         <div class="field"><label>Fornecedor</label><select name="fornecedorId"><option value="">— Nenhum —</option>${fornOptions}</select></div>
-        <div class="field"><label>Preço unitário (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00"></div>
+        <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Estoque compartilhado —</option>${negOptions}</select></div>
       </div>
+      <div class="field"><label>Preço unitário (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00"></div>
       <div class="field"><label>Localização no estoque</label><input type="text" name="localizacao" value="${esc(p.localizacao)}" placeholder="Ex: Prateleira A3, Sala técnica"></div>
       <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(p.observacoes)}</textarea></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar produto"}</button></div></form>
@@ -5255,7 +5352,7 @@ function modalEstProduto(existing){
       nome: fd.get("nome").trim(), codigoInterno: fd.get("codigoInterno").trim(),
       categoria: fd.get("categoria"), unidade: fd.get("unidade"),
       modelo: fd.get("modelo").trim(), fabricante: fd.get("fabricante").trim(),
-      fornecedorId: fd.get("fornecedorId"),
+      fornecedorId: fd.get("fornecedorId"), negocio: fd.get("negocio")||"",
       precoUnitario: parseFloat(fd.get("precoUnitario"))||0,
       estoqueMinimo: parseInt(fd.get("estoqueMinimo"))||0,
       localizacao: fd.get("localizacao").trim(),
@@ -5321,7 +5418,8 @@ function modalEstMovimentacao(presetProdutoId, presetTipo){
 
 function modalEstFornecedor(existing){
   const isEdit = !!existing;
-  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", observacoes:"" };
+  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", negocio:"", observacoes:"" };
+  const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar fornecedor":"Novo fornecedor"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formEstForn"><div class="modal-body">
@@ -5334,6 +5432,7 @@ function modalEstFornecedor(existing){
         <div class="field"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="${esc(f.telefone)}" placeholder="(00) 00000-0000"></div>
       </div>
       <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email)}" placeholder="fornecedor@email.com"></div>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Fornecedor compartilhado —</option>${negOptions}</select></div>
       <div class="field"><label>Endereço</label><input type="text" name="endereco" value="${esc(f.endereco)}" placeholder="Rua, número, cidade"></div>
       <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(f.observacoes)}</textarea></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar fornecedor"}</button></div></form>
@@ -5341,7 +5440,7 @@ function modalEstFornecedor(existing){
   document.getElementById("formEstForn").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const data = { nome: fd.get("nome").trim(), cnpj: fd.get("cnpj").trim(), contato: fd.get("contato").trim(), telefone: fd.get("telefone").trim(), email: fd.get("email").trim(), endereco: fd.get("endereco").trim(), observacoes: fd.get("observacoes").trim() };
+    const data = { nome: fd.get("nome").trim(), cnpj: fd.get("cnpj").trim(), contato: fd.get("contato").trim(), telefone: fd.get("telefone").trim(), email: fd.get("email").trim(), endereco: fd.get("endereco").trim(), negocio: fd.get("negocio")||"", observacoes: fd.get("observacoes").trim() };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.estFornecedores.push({ id: uid("ef"), ...data }); }
     await saveEstFornecedores(); closeModal(); renderView(); showToast(isEdit?"Fornecedor atualizado.":"Fornecedor adicionado.");
