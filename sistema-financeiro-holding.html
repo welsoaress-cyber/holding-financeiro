@@ -766,22 +766,22 @@ const MODULOS_CATALOGO = [
 // Categorias, Negócio e RH só aparecem pro Master).
 const CADASTRO_TIPOS = [
   { grupo: "Financeiro", itens: [
-    { id:"negocio",    ico:"🏢", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true },
-    { id:"conta",      ico:"▢",  nome:"Conta Bancária",  desc:"Conta corrente, pagamento ou poupança", soMaster:true },
-    { id:"cartao",     ico:"💳", nome:"Cartão de Crédito", desc:"Vinculado a uma conta de pagamento", soMaster:true },
-    { id:"categoria",  ico:"🏷️", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true },
+    { id:"negocio",    ico:"🏢", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true, destino:{modulo:"financeiro", view:"negocios"} },
+    { id:"conta",      ico:"▢",  nome:"Conta Bancária",  desc:"Conta corrente, pagamento ou poupança", soMaster:true, destino:{modulo:"financeiro", view:"contas"} },
+    { id:"cartao",     ico:"💳", nome:"Cartão de Crédito", desc:"Vinculado a uma conta de pagamento", soMaster:true, destino:{modulo:"financeiro", view:"cartoes"} },
+    { id:"categoria",  ico:"🏷️", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true, destino:{modulo:"financeiro", view:"categorias"} },
   ]},
   { grupo: "Estoque", itens: [
-    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false },
-    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false },
+    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false, destino:{modulo:"estoque", view:"est_produtos"} },
+    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false, destino:{modulo:"estoque", view:"est_fornecedores"} },
   ]},
   { grupo: "Clientes", itens: [
-    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false },
-    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false },
+    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, destino:{modulo:"clientes", view:"cli_lista"} },
+    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, destino:{modulo:"clientes", view:"cli_planos"} },
   ]},
   { grupo: "RH", itens: [
-    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:true },
-    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:true },
+    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:true, destino:{modulo:"rh", view:"rh_funcionarios"} },
+    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:true, destino:{modulo:"rh", view:"rh_cargos"} },
   ]},
 ];
 
@@ -1759,10 +1759,11 @@ function viewCadastroHub(){
     const itensVisiveis = grupo.itens.filter(it => !it.soMaster || master);
     if(!itensVisiveis.length) return "";
     const cardsHTML = itensVisiveis.map(it => `
-      <div class="kpi-card" style="cursor:pointer; transition:border-color .12s, box-shadow .12s;" data-action="cad-abrir" data-tipo="${it.id}"
+      <div class="kpi-card" style="cursor:pointer; position:relative; transition:border-color .12s, box-shadow .12s;" data-action="cad-abrir" data-tipo="${it.id}"
         onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        ${it.destino ? `<button type="button" class="icon-btn" data-action="cad-ver-lista" data-modulo="${it.destino.modulo}" data-view="${it.destino.view}" title="Ver lista de ${esc(it.nome)}" style="position:absolute; top:6px; right:6px; font-size:12px; padding:3px 6px;">↗</button>` : ""}
         <div style="font-size:22px; margin-bottom:8px;">${it.ico}</div>
-        <div style="font-weight:700; font-size:13.5px; color:var(--ink);">${it.nome}</div>
+        <div style="font-weight:700; font-size:13.5px; color:var(--ink); padding-right:18px;">${it.nome}</div>
         <div class="kpi-note" style="margin-top:4px;">${it.desc}</div>
       </div>`).join("");
     return `
@@ -3487,6 +3488,13 @@ document.addEventListener("click", async e => {
       cargo: () => modalRhCargo(null),
     };
     (ABRIR_MODAL[tipo] || (() => showToast("Cadastro ainda não disponível.", "error")))();
+  }
+  else if(action === "cad-ver-lista"){
+    const modulo = el.dataset.modulo, viewAlvo = el.dataset.view;
+    if(modulo === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
+    state.moduloAtivo = modulo;
+    state.view = viewAlvo;
+    renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
