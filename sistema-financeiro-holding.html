@@ -772,7 +772,7 @@ function showToast(msg, type){
   const el = document.createElement("div");
   el.className = "toast" + (type === "error" ? " error" : "");
   el.textContent = msg;
-  el.style.cursor = "pointer";
+  el.style.cursor = "pointer";      
   el.title = "Clique para fechar";
   el.addEventListener("click", () => el.remove());
   wrap.appendChild(el);
