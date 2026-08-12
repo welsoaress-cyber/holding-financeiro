@@ -2488,7 +2488,7 @@ function handleImportarBackup(e){
 // ============================================================
 async function popularDadosTeste(){
   if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
-  if(!confirm("Isso cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Cargos, Funcionários, Folha e Férias — 100% do que já existe no sistema, tudo marcado com [TESTE]. Continuar?")) return;
+  if(!confirm("Isso cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Técnicos, Chamados, Cargos, Funcionários, Folha e Férias — 100% do que já existe no sistema, tudo marcado com [TESTE]. Continuar?")) return;
   showToast("Gerando dados de teste...");
 
   const negNomes = state.negocios.map(n => n.nome);
@@ -2666,6 +2666,78 @@ async function popularDadosTeste(){
   state.cliClientes.push(...novosClientes);
   await saveCliClientes();
 
+  // ---- Técnicos ----
+  const tecnicoDefs = [
+    ["Carlos Eduardo","fins de semana e feriados",1000],
+    ["Rafael Souza","segunda a sexta, período da tarde",1800],
+    ["Fernando Lima","plantão 24h",2500],
+    ["André Santos","apenas emergências",800],
+    ["Bruno Costa","fins de semana",900],
+  ];
+  const novosTecnicos = tecnicoDefs.map(([nome,diasAtendimento,valorMensal],i) => ({
+    id: uid("tec"), nome: `[TESTE] ${nome}`, telefone: telFake(9000,i), negocio: negAleatorio(),
+    diasAtendimento, valorMensal, ativo: true, _teste: true,
+  }));
+  state.cliTecnicos.push(...novosTecnicos);
+  await saveCliTecnicos();
+
+  // ---- Chamados (espalhados pelos status, alguns com material baixado e cobrança gerada) ----
+  const chamadoDefs = [
+    ["Instalação","Alta","Aberto",-2], ["Suporte técnico","Urgente","Aberto",0],
+    ["Manutenção","Normal","Agendado",2], ["Instalação","Alta","Agendado",3],
+    ["Suporte técnico","Normal","Em atendimento",-1], ["Manutenção","Baixa","Em atendimento",0],
+    ["Instalação","Alta","Concluído",-5], ["Suporte técnico","Normal","Concluído",-7],
+    ["Mudança de endereço","Normal","Concluído",-10], ["Cancelamento de plano","Baixa","Cancelado",-3],
+  ];
+  const novosChamados = chamadoDefs.map(([tipo,prioridade,status,offsetDias],i) => {
+    const cliente = novosClientes[i % novosClientes.length];
+    const tecnico = novosTecnicos[i % novosTecnicos.length];
+    const d = new Date(); d.setDate(d.getDate()+offsetDias);
+    const dataAgendada = d.toISOString().slice(0,10);
+    const concluido = status === "Concluído";
+    return {
+      id: uid("cham"), numero: `[TESTE] CH-${String(i+1).padStart(4,"0")}`,
+      clienteId: cliente.id, negocio: cliente.contratos[0]?.negocio || negAleatorio(), tecnicoId: tecnico.id,
+      tipo, prioridade, motivo: `Chamado de teste — ${tipo.toLowerCase()}`, dataAgendada, status,
+      valorCobranca: concluido ? 80 : 0, observacoes: concluido ? "Atendimento concluído sem intercorrências." : "",
+      dataCadastro: todayISO(), dataConclusao: concluido ? dataAgendada : "",
+      lancadoPor: "Master", _teste: true,
+    };
+  });
+  state.cliChamados.push(...novosChamados);
+  await saveCliChamados();
+
+  // material baixado nos 3 primeiros chamados concluídos (usa Custo Médio Real)
+  const chamadosConcluidos = novosChamados.filter(c => c.status === "Concluído");
+  chamadosConcluidos.forEach((cham,i) => {
+    const p = novosProdutos[i % novosProdutos.length];
+    const custoUnit = estValorUnitarioEstimado(p) || 10;
+    state.estMovimentos.push({
+      id: uid("em"), data: cham.dataConclusao, tipo: "Saída", produtoId: p.id, qtd: 1, custoUnitario: custoUnit,
+      localOrigem: "Estoque", localDestino: novosClientes.find(c=>c.id===cham.clienteId)?.nome||"Cliente",
+      motivo: `Chamado ${cham.numero}`, responsavel: "Master", chamadoId: cham.id, _teste: true,
+    });
+  });
+  await saveEstMovimentos();
+
+  // cobrança gerada só no 1º chamado concluído, pra mostrar o vínculo com Lançamentos
+  if(chamadosConcluidos.length){
+    let catVendas = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
+    if(!catVendas){ catVendas = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(catVendas); await saveCategorias(); }
+    const chamCobranca = chamadosConcluidos[0];
+    const contaCobranca = novasContas[0];
+    const lancId = uid("l");
+    state.lancamentos.push({
+      id: lancId, data: chamCobranca.dataConclusao, tipo: "Receita", negocio: chamCobranca.negocio||"",
+      categoria: catVendas.nome, subcategoria: "", contaOrigem: contaCobranca?contaCobranca.id:"", contaDestino: "",
+      valor: chamCobranca.valorCobranca, descricao: `[TESTE] ${chamCobranca.numero} — cobrança de visita`,
+      status: "Provisionado", conciliado: false, lancadoPor: "Master", chamadoId: chamCobranca.id, _teste: true,
+    });
+    chamCobranca.lancamentoId = lancId;
+    await saveLancamentos();
+    await saveCliChamados();
+  }
+
   // ---- Cargos ----
   const cargoDefs = [
     ["Técnico de Instalação","44h/semana",2200], ["Técnico de Suporte N1","44h/semana",1900],
@@ -2730,12 +2802,12 @@ async function popularDadosTeste(){
   await saveRhFerias();
 
   renderApp();
-  showToast(`Dados de teste criados: ${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosLancamentos.length} lançamentos, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias.`);
+  showToast(`Dados de teste criados: ${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosLancamentos.length} lançamentos, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosTecnicos.length} técnicos, ${novosChamados.length} chamados, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias.`);
 }
 
 async function removerDadosTeste(){
   if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
-  if(!confirm("Remover TODOS os registros marcados como [TESTE] (contas, cartões, fornecedores, produtos, compras, movimentações, lançamentos, planos, clientes, cargos, funcionários, folha e férias)? Não afeta seus dados reais.")) return;
+  if(!confirm("Remover TODOS os registros marcados como [TESTE] (contas, cartões, fornecedores, produtos, compras, movimentações, lançamentos, planos, clientes, técnicos, chamados, cargos, funcionários, folha e férias)? Não afeta seus dados reais.")) return;
   const removerDoArray = async (arrName, tabela) => {
     const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
     state[arrName] = state[arrName].filter(x => !x._teste);
@@ -2754,6 +2826,8 @@ async function removerDadosTeste(){
   await removerDoArray("estFornecedores", "est_fornecedores");
   await removerDoArray("cliClientes", "cli_clientes");
   await removerDoArray("cliPlanos", "cli_planos");
+  await removerDoArray("cliChamados", "cli_chamados");
+  await removerDoArray("cliTecnicos", "cli_tecnicos");
   await removerDoArray("rhFuncionarios", "rh_funcionarios");
   await removerDoArray("rhCargos", "rh_cargos");
   await removerDoArray("rhFolha", "rh_folha");
