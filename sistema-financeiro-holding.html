@@ -795,6 +795,23 @@ const CADASTRO_TIPOS = [
 // núcleo financeiro, mexer em lote ali merece uma conversa à parte.
 // ============================================================
 const BULK_CONTEXTOS = {
+  contas: {
+    arr: "contas", tabela: "contas", label: "conta(s)",
+    // se uma conta "pai" for selecionada, as caixinhas dela vão junto — senão
+    // ficariam órfãs (parentId apontando pra uma conta que não existe mais).
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const orfas = state.contas.filter(c => c.parentId && idsSet.has(c.parentId) && !idsSet.has(c.id));
+      if(orfas.length){
+        const orfaIds = orfas.map(c => c.id);
+        state.contas = state.contas.filter(c => !orfaIds.includes(c.id));
+        await deleteRows("contas", orfaIds);
+      }
+    },
+  },
+  cartoes:    { arr: "cartoes",    tabela: "cartoes",    label: "cartão/cartões" },
+  categorias: { arr: "categorias", tabela: "categorias", label: "categoria(s)" },
+  negocios:   { arr: "negocios",   tabela: "negocios",   label: "negócio(s)" },
   est_produtos:     { arr: "estProdutos",     tabela: "est_produtos",     label: "produto(s)" },
   est_fornecedores: { arr: "estFornecedores", tabela: "est_fornecedores", label: "fornecedor(es)" },
   est_compras: {
@@ -1599,7 +1616,7 @@ function renderApp(){
           ⬆<span class="label"> Importar backup</span>
           <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
         </label>
-        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Cria ~10 registros de teste em Fornecedores, Produtos, Compras, Planos, Clientes, Cargos e Funcionários">🌱<span class="label"> Popular dados de teste</span></button>
+        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Cargos, Funcionários, Folha e Férias">🌱<span class="label"> Popular dados de teste</span></button>
         <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Remove tudo que foi criado por 'Popular dados de teste'">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
         <button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
@@ -2023,6 +2040,7 @@ function viewContas(){
     const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
+      ${bulkCheckboxCellHTML("contas", c.id)}
       <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
       <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(c.saldoInicial, receberDesbloqueado())}</td>
       <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600;">${maskBRL(sa, receberDesbloqueado())}</td>
@@ -2032,10 +2050,11 @@ function viewContas(){
       <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
   };
+  const todasContas = [...contasRaiz(), ...state.contas.filter(c=>c.parentId)];
   const rows = contasRaiz().map(c => rowHTML(c,false) + caixinhasDe(c.id).map(cx=>rowHTML(cx,true)).join("")).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div></div><button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div>
-    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="7">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
+    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("contas")}<button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div></div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr>${bulkCheckboxHeaderHTML("contas", todasContas.map(c=>c.id))}<th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
 
@@ -2067,7 +2086,7 @@ function viewCartoes(){
       <div style="padding:16px 18px; border-bottom:1px solid var(--border);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
-            <div style="display:flex; align-items:center; gap:8px;"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span>${negTag}</div>
+            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" data-action="bulk-toggle" data-contexto="cartoes" data-id="${c.id}" ${bulkSet("cartoes").has(c.id)?"checked":""} title="Selecionar"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span>${negTag}</div>
             <div style="font-size:12px; color:var(--ink-4); margin-top:3px;">${esc(c.bandeira)} · final ${esc(c.ultimosDigitos)} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento} · paga com ${contaLabel(contaById(c.contaPagamentoId))}</div>
           </div>
           <div class="row-actions"><button class="btn btn-primary btn-sm" data-action="new-compra-cartao" data-id="${c.id}">+ Compra</button><button class="icon-btn" data-action="edit-cartao" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-cartao" data-id="${c.id}" title="Excluir">🗑</button></div>
@@ -2084,7 +2103,7 @@ function viewCartoes(){
     </div>`;
   };
   return `
-    <div class="page-header"><div><div class="page-title">Cartões de Crédito</div><div class="page-sub">Cada compra vira um lançamento na data de vencimento da fatura certa — já entra em Contas a Pagar automaticamente.</div></div><button class="btn btn-primary" data-action="new-cartao">+ Novo cartão</button></div>
+    <div class="page-header"><div><div class="page-title">Cartões de Crédito</div><div class="page-sub">Cada compra vira um lançamento na data de vencimento da fatura certa — já entra em Contas a Pagar automaticamente.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cartoes")}<button class="btn btn-primary" data-action="new-cartao">+ Novo cartão</button></div></div>
     ${state.cartoes.map(cardHTML).join("") || emptyState("Nenhum cartão cadastrado ainda.")}
   `;
 }
@@ -2243,14 +2262,14 @@ function viewCategorias(){
       </div>`).join("");
     return `<div class="panel" style="margin-bottom:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px;">
-        <strong style="font-size:13.5px;">${esc(cat.nome)}</strong>
+        <span style="display:flex; align-items:center; gap:8px;"><input type="checkbox" data-action="bulk-toggle" data-contexto="categorias" data-id="${cat.id}" ${bulkSet("categorias").has(cat.id)?"checked":""} title="Selecionar"><strong style="font-size:13.5px;">${esc(cat.nome)}</strong></span>
         <div class="row-actions"><button class="icon-btn" data-action="add-subcategoria" data-cat="${cat.id}" title="Nova subcategoria">+ subcat.</button><button class="icon-btn" data-action="edit-categoria" data-cat="${cat.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-categoria" data-cat="${cat.id}" title="Excluir">🗑</button></div>
       </div>
       ${subRows}
     </div>`;
   }).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Categorias</div><div class="page-sub">Gerencie as categorias e subcategorias usadas nos lançamentos.</div></div><button class="btn btn-primary" data-action="new-categoria">+ Nova categoria</button></div>
+    <div class="page-header"><div><div class="page-title">Categorias</div><div class="page-sub">Gerencie as categorias e subcategorias usadas nos lançamentos.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("categorias")}<button class="btn btn-primary" data-action="new-categoria">+ Nova categoria</button></div></div>
     ${cards || emptyState("Nenhuma categoria cadastrada ainda.")}
   `;
 }
@@ -2261,11 +2280,11 @@ function viewCategorias(){
 function viewNegocios(){
   const rows = state.negocios.map(n => {
     const emUso = state.lancamentos.filter(l => l.negocio === n.nome).length;
-    return `<tr><td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
+    return `<tr>${bulkCheckboxCellHTML("negocios", n.id)}<td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
   }).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div>
-    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr><th>Negócio</th><th style="text-align:center;">Em uso</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table></div></div>
+    <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("negocios")}<button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div></div>
+    <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr>${bulkCheckboxHeaderHTML("negocios", state.negocios.map(n=>n.id))}<th>Negócio</th><th style="text-align:center;">Em uso</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="4">${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
 
@@ -2354,13 +2373,42 @@ function handleImportarBackup(e){
 // ============================================================
 async function popularDadosTeste(){
   if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
-  if(!confirm("Isso cria ~10 registros de teste em Fornecedores, Produtos, Compras, Planos, Clientes, Cargos e Funcionários (marcados com [TESTE]). Não mexe em Contas/Cartões/Categorias/Negócios/Lançamentos. Continuar?")) return;
+  if(!confirm("Isso cria ~10 registros de teste em Contas, Cartões, Fornecedores, Produtos, Compras, Lançamentos, Planos, Clientes, Cargos, Funcionários, Folha e Férias — 100% do que já existe no sistema, tudo marcado com [TESTE]. Continuar?")) return;
   showToast("Gerando dados de teste...");
 
   const negNomes = state.negocios.map(n => n.nome);
   const negAleatorio = () => negNomes.length ? negNomes[Math.floor(Math.random()*negNomes.length)] : "";
   const cpfFake = (i) => `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`;
   const telFake = (base, i) => `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`;
+
+  // ---- Contas Bancárias (tabela "flat" — sem coluna "dados", não aceita o
+  // marcador _teste; a identificação de teste aqui é só pelo prefixo no nome) ----
+  const contaDefs = [
+    ["Nubank PJ","Nubank","Conta Pagamento"], ["Itaú Empresarial","Itaú","Conta Corrente"],
+    ["C6 Bank","C6 Bank","Conta Corrente"], ["Mercado Pago","Mercado Pago","Conta Pagamento"],
+    ["Caixa Poupança","Caixa Econômica","Poupança"], ["Bradesco","Bradesco","Conta Corrente"],
+    ["Inter PJ","Banco Inter","Conta Pagamento"], ["Santander","Santander","Conta Corrente"],
+  ];
+  const novasContas = contaDefs.map(([nome,instituicao,tipo]) => ({
+    id: uid("c"), parentId: null, nome: `[TESTE] ${nome}`, instituicao, tipo,
+    negocio: negAleatorio(), saldoInicial: Math.round((1000+Math.random()*9000)*100)/100, limite: 0, ativa: true,
+  }));
+  state.contas.push(...novasContas);
+  await saveContas();
+
+  // ---- Cartões de Crédito ----
+  const cartaoDefs = [
+    ["Nubank Ultravioleta","Mastercard",5,15,5000], ["Itaú Click","Visa",10,20,3000],
+    ["C6 Carbon","Mastercard",1,10,8000], ["Inter Gold","Visa",7,17,4000],
+    ["Santander Free","Elo",20,5,2500],
+  ];
+  const novosCartoes = cartaoDefs.map(([nome,bandeira,diaFechamento,diaVencimento,limite],i) => ({
+    id: uid("cartao"), nome: `[TESTE] ${nome}`, bandeira, ultimosDigitos: String(1000+i*111).slice(-4),
+    limite, diaFechamento, diaVencimento, contaPagamentoId: novasContas[i % novasContas.length].id,
+    negocio: negAleatorio(), ativo: true, _teste: true,
+  }));
+  state.cartoes.push(...novosCartoes);
+  await saveCartoes();
 
   // ---- Fornecedores ----
   const fornNomes = ["Fibra Sul Distribuidora","Conexão Norte Equipamentos","TechNet Atacado","Rede Forte Suprimentos","Ótica Brasil Cabos","Distribuidora Sinal Rápido","Comercial Torres & Postes","Atacado Provedor Total","Fibra Express Insumos","Central de Redes Ltda"];
@@ -2429,6 +2477,45 @@ async function popularDadosTeste(){
   await saveEstCompras();
   await saveEstMovimentos();
 
+  // ---- Lançamentos (Receitas/Despesas/Transferências, espalhados em 3 meses) ----
+  const categoriasNomes = state.categorias.map(c => c.nome);
+  const categoriaAleatoria = () => categoriasNomes.length ? categoriasNomes[Math.floor(Math.random()*categoriasNomes.length)] : "";
+  const statusVariados = ["Pago","Provisionado","Agendado"];
+  const novosLancamentos = [];
+  const hoje = new Date();
+  for(let m=-1; m<=1; m++){
+    const anoRef = hoje.getFullYear(), mesRef = hoje.getMonth()+m;
+    for(let i=0;i<4;i++){
+      const data = new Date(anoRef, mesRef, Math.min(3+i*6, 28)).toISOString().slice(0,10);
+      const contaR = novasContas[Math.floor(Math.random()*novasContas.length)];
+      const statusR = statusVariados[i%3];
+      novosLancamentos.push({
+        id: uid("l"), data, tipo: "Receita", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
+        contaOrigem: contaR.id, contaDestino: "", valor: Math.round((300+Math.random()*2000)*100)/100,
+        descricao: "[TESTE] Receita de teste", status: statusR, conciliado: statusR==="Pago",
+        lancadoPor: "Master", _teste: true,
+      });
+      const contaD = novasContas[Math.floor(Math.random()*novasContas.length)];
+      const statusD = statusVariados[(i+1)%3];
+      novosLancamentos.push({
+        id: uid("l"), data, tipo: "Despesa", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
+        contaOrigem: contaD.id, contaDestino: "", valor: Math.round((100+Math.random()*1200)*100)/100,
+        descricao: "[TESTE] Despesa de teste", status: statusD, conciliado: statusD==="Pago",
+        lancadoPor: "Master", _teste: true,
+      });
+    }
+    if(novasContas.length >= 2){
+      novosLancamentos.push({
+        id: uid("l"), data: new Date(anoRef, mesRef, 15).toISOString().slice(0,10), tipo: "Transferência",
+        negocio: "", categoria: "", subcategoria: "", contaOrigem: novasContas[0].id, contaDestino: novasContas[1].id,
+        valor: Math.round((200+Math.random()*800)*100)/100, descricao: "[TESTE] Transferência entre contas",
+        status: "Pago", conciliado: true, lancadoPor: "Master", _teste: true,
+      });
+    }
+  }
+  state.lancamentos.push(...novosLancamentos);
+  await saveLancamentos();
+
   // ---- Planos ----
   const planoDefs = [
     ["Fibra 100 Mega",89.9,"100 Mbps","GPON"], ["Fibra 200 Mega",109.9,"200 Mbps","GPON"],
@@ -2496,18 +2583,56 @@ async function popularDadosTeste(){
   state.rhFuncionarios.push(...novosFuncionarios);
   await saveRhFuncionarios();
 
+  // ---- Folha de Pagamento (2 competências por funcionário) ----
+  const competenciaAnterior = (() => { const d = new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; })();
+  const novaFolha = [];
+  novosFuncionarios.forEach((f,i) => {
+    [[competenciaAnterior,"Pago"], [competenciaAtual(), i%2===0?"Pago":"Pendente"]].forEach(([competencia,status]) => {
+      novaFolha.push({
+        id: uid("folha"), funcionarioId: f.id, competencia, salarioBase: f.salario, bonus: 0, descontos: 0,
+        valorLiquido: f.salario, dataPagamento: status==="Pago"?todayISO():"", status,
+        observacoes: "Folha de teste", _teste: true,
+      });
+    });
+  });
+  state.rhFolha.push(...novaFolha);
+  await saveRhFolha();
+
+  // ---- Férias (1 registro por funcionário) ----
+  const novasFerias = novosFuncionarios.map((f,i) => {
+    const venc = rhProximoVencimentoFerias(f.id);
+    const fim = venc ? venc.vencimento : f.dataAdmissao;
+    const inicio = (() => { const d = new Date(fim+"T00:00:00"); d.setFullYear(d.getFullYear()-1); return d.toISOString().slice(0,10); })();
+    const concluida = i % 3 === 0;
+    return {
+      id: uid("ferias"), funcionarioId: f.id, periodoAquisitivoInicio: inicio, periodoAquisitivoFim: fim,
+      dataInicioGozo: concluida ? inicio : "", dataFimGozo: concluida ? fim : "",
+      diasDireito: 30, diasGozados: concluida ? 30 : 0,
+      status: concluida ? "Concluída" : "Programada", observacoes: "Férias de teste", _teste: true,
+    };
+  });
+  state.rhFerias.push(...novasFerias);
+  await saveRhFerias();
+
   renderApp();
-  showToast(`Dados de teste criados: ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários.`);
+  showToast(`Dados de teste criados: ${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras, ${novosLancamentos.length} lançamentos, ${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias.`);
 }
 
 async function removerDadosTeste(){
   if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
-  if(!confirm("Remover TODOS os registros marcados como [TESTE] (fornecedores, produtos, compras, movimentações, planos, clientes, cargos e funcionários)? Não afeta seus dados reais.")) return;
+  if(!confirm("Remover TODOS os registros marcados como [TESTE] (contas, cartões, fornecedores, produtos, compras, movimentações, lançamentos, planos, clientes, cargos, funcionários, folha e férias)? Não afeta seus dados reais.")) return;
   const removerDoArray = async (arrName, tabela) => {
     const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
     state[arrName] = state[arrName].filter(x => !x._teste);
     if(idsTeste.length) await deleteRows(tabela, idsTeste);
   };
+  // "contas" é tabela flat (sem coluna dados) — não tem campo _teste, identifica pelo nome
+  const idsContasTeste = state.contas.filter(c => (c.nome||"").startsWith("[TESTE]")).map(c => c.id);
+  state.contas = state.contas.filter(c => !(c.nome||"").startsWith("[TESTE]"));
+  if(idsContasTeste.length) await deleteRows("contas", idsContasTeste);
+
+  await removerDoArray("cartoes", "cartoes");
+  await removerDoArray("lancamentos", "lancamentos");
   await removerDoArray("estMovimentos", "est_movimentos");
   await removerDoArray("estCompras", "est_compras");
   await removerDoArray("estProdutos", "est_produtos");
@@ -2516,6 +2641,8 @@ async function removerDadosTeste(){
   await removerDoArray("cliPlanos", "cli_planos");
   await removerDoArray("rhFuncionarios", "rh_funcionarios");
   await removerDoArray("rhCargos", "rh_cargos");
+  await removerDoArray("rhFolha", "rh_folha");
+  await removerDoArray("rhFerias", "rh_ferias");
   renderApp();
   showToast("Dados de teste removidos.");
 }
