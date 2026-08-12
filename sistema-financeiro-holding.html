@@ -692,7 +692,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
-  estProdutos: [], estMovimentos: [], estFornecedores: [],
+  estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
   cliClientes: [], cliPlanos: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
@@ -709,7 +709,7 @@ const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
 const VIEWS_VALIDAS = new Set([
   "cadastro_hub",
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
-  "est_dashboard","est_produtos","est_movimentos","est_fornecedores","est_alertas",
+  "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
   "cli_dashboard","cli_lista","cli_planos","cli_detalhe",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
 ]);
@@ -739,6 +739,7 @@ function restaurarNavegacaoSalva(){
 const EST_CATEGORIAS = ["ONU/ONT","Roteador","Switch","Cabo","Ferramenta","Conector","Torre/Poste","Rack/Gabinete","Fibra Óptica","Eletrônico","Veículo","Consumível","Outro"];
 const EST_UNIDADES = ["un","m","cx","kg","rolo","par","kit","lote"];
 const EST_MOV_TIPOS = ["Entrada","Saída","Transferência","Ajuste","Devolução"];
+const EST_BASE_RATEIO = [{v:"valor", l:"Valor da compra"}, {v:"peso", l:"Peso × quantidade"}];
 
 // ---- RH ----
 const RH_STATUS = ["Ativo","Férias","Afastado","Aviso Prévio","Desligado"];
@@ -1050,6 +1051,7 @@ const savePerfis = () => saveRows("perfis", state.perfis);
 const saveEstProdutos = () => saveRows("est_produtos", state.estProdutos);
 const saveEstMovimentos = () => saveRows("est_movimentos", state.estMovimentos);
 const saveEstFornecedores = () => saveRows("est_fornecedores", state.estFornecedores);
+const saveEstCompras = () => saveRows("est_compras", state.estCompras);
 const saveCliClientes = () => saveRows("cli_clientes", state.cliClientes);
 const saveCliPlanos = () => saveRows("cli_planos", state.cliPlanos);
 const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionarios);
@@ -1129,7 +1131,7 @@ async function loadData(){
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -1478,6 +1480,7 @@ function renderApp(){
         <div class="nav-group-label">Estoque</div>
         ${navItem("est_dashboard","◆","Dashboard")}
         ${navItem("est_produtos","📦","Produtos")}
+        ${navItem("est_compras","📄","Compras (NF)")}
         ${navItem("est_movimentos","↕","Movimentações")}
         ${navItem("est_fornecedores","🏭","Fornecedores")}
         ${navItem("est_alertas","🔔","Alertas de Estoque")}
@@ -1629,6 +1632,7 @@ function renderView(){
   else if(state.view === "est_produtos") main.innerHTML = viewEstProdutos();
   else if(state.view === "est_movimentos") main.innerHTML = viewEstMovimentos();
   else if(state.view === "est_fornecedores") main.innerHTML = viewEstFornecedores();
+  else if(state.view === "est_compras") main.innerHTML = viewEstCompras();
   else if(state.view === "est_alertas") main.innerHTML = viewEstAlertas();
   // ---- Módulo Clientes ----
   else if(state.view === "cli_dashboard") main.innerHTML = viewCliDashboard();
@@ -3714,6 +3718,19 @@ document.addEventListener("click", async e => {
   }
   else if(action === "est-filtro-clear"){ estFiltroCategoria = ""; estFiltroTexto = ""; renderView(); }
   else if(action === "est-movfiltro-clear"){ estMovFiltro = {tipo:"",produto:"",dataDe:"",dataAte:""}; renderView(); }
+  else if(action === "est-nova-compra") modalEstCompra();
+  else if(action === "est-ver-compra") modalDetalheCompra(id);
+  else if(action === "est-del-compra"){
+    const c = estCompraById(id);
+    if(!c) return;
+    if(!confirm(`Excluir a compra da nota ${c.numeroNota}? Isso também remove as entradas de estoque geradas por ela.`)) return;
+    state.estCompras = state.estCompras.filter(x => x.id !== id);
+    const movIds = state.estMovimentos.filter(m => m.notaFiscalCompraId === id).map(m => m.id);
+    state.estMovimentos = state.estMovimentos.filter(m => m.notaFiscalCompraId !== id);
+    await deleteRow("est_compras", id);
+    if(movIds.length) await deleteRows("est_movimentos", movIds);
+    renderView(); showToast("Compra excluída — entradas de estoque associadas também foram removidas.");
+  }
   // ---- Clientes ----
   else if(action === "cli-novo") modalCliCliente(null);
   else if(action === "cli-edit"){ const c = cliClienteById(id); if(c) modalCliCliente(c); }
@@ -5147,15 +5164,55 @@ function estStatusBadge(saldo, minimo){
   return `<span class="status-pill status-pago">${saldo} ${estProdutoById}</span>`;
 }
 
+// ---- Compras / Custo Médio Real ----
+function estCompraById(id){ return state.estCompras.find(c => c.id === id); }
+function ratearProporcional(totalRatear, pesos){
+  // Distribui 'totalRatear' (em reais) proporcionalmente aos 'pesos' (um número por
+  // item — valor da linha ou peso×qtd, dependendo da base escolhida), sem perder
+  // centavo de arredondamento: o último item com peso > 0 absorve a sobra.
+  const totalCentavos = Math.round(Number(totalRatear) * 100);
+  const somaPesos = pesos.reduce((s,p) => s + (Number(p)||0), 0);
+  if(somaPesos <= 0) return pesos.map(() => 0);
+  const resultado = pesos.map(p => Math.floor(totalCentavos * (Number(p)||0) / somaPesos));
+  let resto = totalCentavos - resultado.reduce((s,v)=>s+v, 0);
+  for(let i = pesos.length - 1; i >= 0 && resto !== 0; i--){
+    if(Number(pesos[i]) > 0){ resultado[i] += resto; resto = 0; }
+  }
+  return resultado.map(c => Math.round(c) / 100);
+}
+function estCustoMedio(produtoId){
+  // Custo médio ponderado, calculado só a partir de entradas que vieram de uma
+  // compra (têm custoUnitario registrado, já com o rateio de frete embutido) —
+  // ajustes manuais, devoluções e entradas sem nota não entram na média.
+  let qtdTotal = 0, custoTotal = 0;
+  for(const m of state.estMovimentos){
+    if(m.produtoId !== produtoId || m.tipo !== "Entrada") continue;
+    if(m.custoUnitario === undefined || m.custoUnitario === null || m.custoUnitario === "") continue;
+    const qtd = Number(m.qtd) || 0;
+    qtdTotal += qtd;
+    custoTotal += qtd * Number(m.custoUnitario);
+  }
+  return qtdTotal > 0 ? custoTotal / qtdTotal : null;
+}
+function estValorUnitarioEstimado(produto){
+  // Prioriza o Custo Médio Real (vindo de compras lançadas); sem histórico de
+  // compra ainda, cai no preço unitário manual do cadastro do produto.
+  const custoMedio = estCustoMedio(produto.id);
+  return custoMedio !== null ? custoMedio : (Number(produto.precoUnitario) || 0);
+}
+
 // ---- VIEW: DASHBOARD ESTOQUE ----
 function viewEstDashboard(){
   const totalProdutos = state.estProdutos.length;
   const totalFornecedores = state.estFornecedores.length;
   const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0) > 0);
   const zerados = state.estProdutos.filter(p => estSaldoAtual(p.id) <= 0);
-  const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * Number(p.precoUnitario||0), 0);
+  const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * estValorUnitarioEstimado(p), 0);
   const movsHoje = state.estMovimentos.filter(m => m.data === todayISO()).length;
   const ultMovs = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0,8);
+  const inicioMesISO = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10);
+  const comprasMes = state.estCompras.filter(c => c.data >= inicioMesISO);
+  const totalComprasMes = comprasMes.reduce((s,c) => s + c.itens.reduce((ss,it)=>ss+it.valorTotal,0) + Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0), 0);
 
   const movRow = m => {
     const prod = estProdutoById(m.produtoId);
@@ -5186,12 +5243,14 @@ function viewEstDashboard(){
       <div><div class="page-title">Estoque — Dashboard</div><div class="page-sub">Visão geral de equipamentos e insumos do provedor</div></div>
       <div style="display:flex; gap:8px;">
         <button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>
+        <button class="btn btn-ghost" data-action="est-nova-compra">+ Compra (NF)</button>
         <button class="btn btn-primary" data-action="est-novo-produto">+ Produto</button>
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns: repeat(5,1fr);">
+    <div class="kpi-grid" style="grid-template-columns: repeat(6,1fr);">
       <div class="kpi-card"><div class="kpi-label">Produtos cadastrados</div><div class="kpi-value">${totalProdutos}</div></div>
       <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(valorTotal)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Compras no mês</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(totalComprasMes)}</div><div class="kpi-note">${comprasMes.length} nota(s)</div></div>
       <div class="kpi-card"><div class="kpi-label">Movimentações hoje</div><div class="kpi-value">${movsHoje}</div></div>
       <div class="kpi-card"><div class="kpi-label">Alertas de estoque</div><div class="kpi-value" style="color:${alertas.length?'var(--warn)':'var(--pos)'};">${alertas.length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Itens zerados</div><div class="kpi-value" style="color:${zerados.length?'var(--neg)':'var(--pos)'};">${zerados.length}</div></div>
@@ -5227,8 +5286,13 @@ function viewEstProdutos(){
     const corSaldo = saldo <= 0 ? "var(--neg)" : saldo <= minimo ? "var(--warn)" : "var(--pos)";
     const fornecedor = estFornecedorById(p.fornecedorId);
     const negTag = p.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(p.negocio)} 14%, white); color:${negocioCor(p.negocio)};"><span class="tag-dot" style="background:${negocioCor(p.negocio)}"></span>${esc(p.negocio)}</span>` : "—";
+    const custoMedio = estCustoMedio(p.id);
+    const custoTxt = custoMedio !== null
+      ? `${fmtBRL(custoMedio)}<div style="font-size:10px; color:var(--pos);">real (compras)</div>`
+      : (p.precoUnitario ? `${fmtBRL(p.precoUnitario)}<div style="font-size:10px; color:var(--ink-4);">estimado</div>` : "—");
+    const valorEstimado = estValorUnitarioEstimado(p);
     return `<tr>
-      <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}</td>
+      <td style="font-weight:600;">${esc(p.nome)}${p.modelo?`<div style="font-size:11px;color:var(--ink-4);">${esc(p.modelo)}</div>`:""}${p.familia?`<div style="font-size:11px;color:var(--ink-4);">Família: ${esc(p.familia)}</div>`:""}</td>
       <td>${esc(p.codigoInterno||"—")}</td>
       <td><span class="status-pill status-agendado">${esc(p.categoria)}</span></td>
       <td>${negTag}</td>
@@ -5236,8 +5300,8 @@ function viewEstProdutos(){
       <td class="num" style="font-weight:700; color:${corSaldo}; font-size:14px;">${saldo}</td>
       <td class="num" style="color:var(--ink-4);">${esc(p.unidade||"un")}</td>
       <td class="num">${p.estoqueMinimo||"—"}</td>
-      <td class="num">${p.precoUnitario ? fmtBRL(p.precoUnitario) : "—"}</td>
-      <td class="num" style="color:var(--ink-3);">${p.precoUnitario ? fmtBRL(saldo * Number(p.precoUnitario)) : "—"}</td>
+      <td class="num">${custoTxt}</td>
+      <td class="num" style="color:var(--ink-3);">${valorEstimado ? fmtBRL(saldo * valorEstimado) : "—"}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="est-registrar-entrada" data-id="${p.id}" title="Registrar entrada" style="color:var(--pos);">▲</button>
         <button class="icon-btn" data-action="est-registrar-saida" data-id="${p.id}" title="Registrar saída" style="color:var(--neg);">▼</button>
@@ -5250,7 +5314,7 @@ function viewEstProdutos(){
   const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${estFiltroCategoria===c?"selected":""}>${c}</option>`).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s)</div></div>
+      <div><div class="page-title">Produtos em Estoque</div><div class="page-sub">${lista.length} produto(s) encontrado(s) — "Custo" mostra o Custo Médio Real quando já há compra lançada, senão o preço estimado do cadastro.</div></div>
       <button class="btn btn-primary" data-action="est-novo-produto">+ Novo produto</button>
     </div>
     <div class="panel">
@@ -5263,7 +5327,7 @@ function viewEstProdutos(){
         <table><thead><tr>
           <th>Produto</th><th>Código</th><th>Categoria</th><th>Negócio</th><th>Fornecedor</th>
           <th class="num">Saldo</th><th class="num">Un</th><th class="num">Mín.</th>
-          <th class="num">Preço unit.</th><th class="num">Valor total</th><th></th>
+          <th class="num">Custo</th><th class="num">Valor total</th><th></th>
         </tr></thead>
         <tbody>${rows || `<tr><td colspan="11">${emptyState("Nenhum produto cadastrado ainda.")}</td></tr>`}</tbody></table>
       </div>
@@ -5386,7 +5450,7 @@ function viewEstAlertas(){
 ========================================================================= */
 function modalEstProduto(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", fornecedorId:"", negocio:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
+  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", familia:"", peso:"", fornecedorId:"", negocio:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
   const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
   const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
   const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
@@ -5396,7 +5460,7 @@ function modalEstProduto(existing){
     <form id="formEstProduto"><div class="modal-body">
       <div class="field-row">
         <div class="field" style="flex:2;"><label>Nome do produto *</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: ONU GPON Huawei HG8145V5"></div>
-        <div class="field"><label>Código interno</label><input type="text" name="codigoInterno" value="${esc(p.codigoInterno)}" placeholder="Ex: ONU-001"></div>
+        <div class="field"><label>SKU / Código interno</label><input type="text" name="codigoInterno" value="${esc(p.codigoInterno)}" placeholder="Ex: ONU-001"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>Categoria *</label><select name="categoria">${catOptions}</select></div>
@@ -5408,10 +5472,20 @@ function modalEstProduto(existing){
         <div class="field"><label>Fabricante</label><input type="text" name="fabricante" value="${esc(p.fabricante)}" placeholder="Ex: Huawei"></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Família</label><input type="text" name="familia" value="${esc(p.familia||"")}" placeholder="Ex: Roteador Wi-Fi 6">
+          <div class="field-help">Agrupa variações de uso do mesmo item (ex: residencial x empresarial).</div>
+        </div>
+        <div class="field"><label>Peso (kg)</label><input type="number" step="0.001" min="0" name="peso" value="${p.peso||""}" placeholder="0,000">
+          <div class="field-help">Usado no rateio de frete por peso, nas compras.</div>
+        </div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Fornecedor</label><select name="fornecedorId"><option value="">— Nenhum —</option>${fornOptions}</select></div>
         <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Estoque compartilhado —</option>${negOptions}</select></div>
       </div>
-      <div class="field"><label>Preço unitário (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00"></div>
+      <div class="field"><label>Preço estimado (R$)</label><input type="number" step="0.01" min="0" name="precoUnitario" value="${p.precoUnitario}" placeholder="0,00">
+        <div class="field-help">Só usado pra estimar valor em estoque até a primeira compra ser lançada — depois disso o Custo Médio Real (calculado nas Compras) assume.</div>
+      </div>
       <div class="field"><label>Localização no estoque</label><input type="text" name="localizacao" value="${esc(p.localizacao)}" placeholder="Ex: Prateleira A3, Sala técnica"></div>
       <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(p.observacoes)}</textarea></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Adicionar produto"}</button></div></form>
@@ -5423,6 +5497,7 @@ function modalEstProduto(existing){
       nome: fd.get("nome").trim(), codigoInterno: fd.get("codigoInterno").trim(),
       categoria: fd.get("categoria"), unidade: fd.get("unidade"),
       modelo: fd.get("modelo").trim(), fabricante: fd.get("fabricante").trim(),
+      familia: fd.get("familia").trim(), peso: parseFloat(fd.get("peso"))||0,
       fornecedorId: fd.get("fornecedorId"), negocio: fd.get("negocio")||"",
       precoUnitario: parseFloat(fd.get("precoUnitario"))||0,
       estoqueMinimo: parseInt(fd.get("estoqueMinimo"))||0,
@@ -5516,6 +5591,233 @@ function modalEstFornecedor(existing){
     else{ state.estFornecedores.push({ id: uid("ef"), ...data }); }
     await saveEstFornecedores(); closeModal(); renderView(); showToast(isEdit?"Fornecedor atualizado.":"Fornecedor adicionado.");
   });
+}
+
+// ---- VIEW: COMPRAS (Notas Fiscais) ----
+function viewEstCompras(){
+  const lista = [...state.estCompras].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  const rows = lista.map(c => {
+    const fornecedor = estFornecedorById(c.fornecedorId);
+    const totalItens = c.itens.reduce((s,it) => s + it.valorTotal, 0);
+    const totalDespesas = Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0);
+    return `<tr>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="est-ver-compra" data-id="${c.id}">${esc(c.numeroNota)}</td>
+      <td>${fmtDateBR(c.data)}</td>
+      <td>${esc(fornecedor?.nome||"—")}</td>
+      <td>${c.negocio?esc(c.negocio):"—"}</td>
+      <td style="text-align:center;">${c.itens.length}</td>
+      <td class="num" style="color:var(--ink-3);">${fmtBRL(totalDespesas)}</td>
+      <td class="num" style="font-weight:700;">${fmtBRL(totalItens+totalDespesas)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="est-ver-compra" data-id="${c.id}" title="Ver detalhes">🔍</button>
+        <button class="icon-btn danger" data-action="est-del-compra" data-id="${c.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Compras (Notas Fiscais)</div><div class="page-sub">Lançar uma compra rateia frete/seguro/outras despesas entre os itens e atualiza o Custo Médio Real do estoque.</div></div>
+      <button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr><th>Nota</th><th>Data</th><th>Fornecedor</th><th>Negócio</th><th style="text-align:center;">Itens</th><th class="num">Despesas</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhuma compra lançada ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+/* =========================================================================
+   MODAL — COMPRA (Nota Fiscal): itens + rateio de frete/despesas
+========================================================================= */
+function modalEstCompra(){
+  const fornOptions = state.estFornecedores.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join("");
+  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}">${esc(n.nome)}</option>`).join("");
+  const produtoOptionsHTML = () => `<option value="">— Selecione —</option>` + state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.peso?` (${p.peso}kg)`:""}</option>`).join("");
+  const linhaItemHTML = () => `
+    <tr>
+      <td style="min-width:200px;"><select class="compra-item-produto">${produtoOptionsHTML()}</select></td>
+      <td style="width:90px;"><input type="number" min="0.001" step="0.001" class="compra-item-qtd" value="1"></td>
+      <td style="width:120px;"><input type="number" min="0" step="0.01" class="compra-item-valor" value="0"></td>
+      <td class="num compra-item-total" style="width:100px;">${fmtBRL(0)}</td>
+      <td class="num compra-item-rateio" style="width:100px; color:var(--ink-3);">—</td>
+      <td class="num compra-item-custofinal" style="width:110px; font-weight:700;">—</td>
+      <td><button type="button" class="icon-btn danger compra-item-del" title="Remover item">🗑</button></td>
+    </tr>`;
+
+  if(!state.estFornecedores.length){ showToast("Cadastre um fornecedor primeiro.", "error"); return; }
+  if(!state.estProdutos.length){ showToast("Cadastre ao menos um produto primeiro.", "error"); return; }
+
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📄 Nova compra — Nota Fiscal</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEstCompra"><div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Número da nota *</label><input required type="text" name="numeroNota" placeholder="Ex: 12345"></div>
+        <div class="field"><label>Fornecedor *</label><select required name="fornecedorId">${fornOptions}</select></div>
+        <div class="field"><label>Data *</label><input required type="date" name="data" value="${todayISO()}"></div>
+      </div>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Estoque compartilhado —</option>${negOptions}</select></div>
+
+      <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens da nota</div>
+      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+        <table style="min-width:680px;"><thead><tr>
+          <th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th><th></th>
+        </tr></thead><tbody id="compraItensBody">${linhaItemHTML()}</tbody></table>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemCompra" style="margin-top:8px;">+ Adicionar item</button>
+
+      <div class="field-help" style="margin:14px 0 6px; font-weight:600; color:var(--ink-2);">Despesas acessórias (rateadas entre os itens)</div>
+      <div class="field-row">
+        <div class="field"><label>Frete (R$)</label><input type="number" min="0" step="0.01" name="frete" id="compraFrete" value="0"></div>
+        <div class="field"><label>Seguro (R$)</label><input type="number" min="0" step="0.01" name="seguro" id="compraSeguro" value="0"></div>
+        <div class="field"><label>Outras despesas (R$)</label><input type="number" min="0" step="0.01" name="outrasDespesas" id="compraOutras" value="0"></div>
+      </div>
+      <div class="field"><label>Ratear por</label><select name="baseRateio" id="compraBaseRateio">${EST_BASE_RATEIO.map(o=>`<option value="${o.v}">${o.l}</option>`).join("")}</select>
+        <div class="field-help">Por peso só funciona se os produtos tiverem peso cadastrado — item sem peso cai automaticamente pro rateio por valor.</div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; padding:10px 0; border-top:2px solid var(--border); margin-top:10px;">
+        <strong>Total da nota</strong>
+        <strong id="compraTotalNota" style="font-family:var(--font-mono); font-size:15px;">${fmtBRL(0)}</strong>
+      </div>
+      <div class="field"><label>Observações</label><input type="text" name="observacoes"></div>
+      <div class="field-help">Depois de lançada, a compra não pode ser editada (os itens já viram entrada de estoque com custo fechado) — só excluída e relançada, se precisar corrigir.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Lançar compra</button></div></form>
+  `);
+
+  const tbody = document.getElementById("compraItensBody");
+  function coletarItens(){
+    return Array.from(tbody.querySelectorAll("tr")).map(tr => ({
+      produtoId: tr.querySelector(".compra-item-produto").value,
+      quantidade: parseFloat(tr.querySelector(".compra-item-qtd").value) || 0,
+      valorUnitario: parseFloat(tr.querySelector(".compra-item-valor").value) || 0,
+      tr,
+    }));
+  }
+  function calcularRateio(itens){
+    const frete = parseFloat(document.getElementById("compraFrete").value)||0;
+    const seguro = parseFloat(document.getElementById("compraSeguro").value)||0;
+    const outras = parseFloat(document.getElementById("compraOutras").value)||0;
+    const totalDespesas = frete+seguro+outras;
+    const baseRateio = document.getElementById("compraBaseRateio").value;
+    const valoresTotais = itens.map(it => it.quantidade * it.valorUnitario);
+    let pesos;
+    const temPeso = itens.some(it => { const p = estProdutoById(it.produtoId); return p && Number(p.peso) > 0; });
+    if(baseRateio === "peso" && temPeso){
+      pesos = itens.map((it,i) => { const p = estProdutoById(it.produtoId); const peso = p ? Number(p.peso)||0 : 0; return peso > 0 ? peso*it.quantidade : valoresTotais[i]; });
+    }else{
+      pesos = valoresTotais;
+    }
+    const rateios = ratearProporcional(totalDespesas, pesos);
+    return { valoresTotais, rateios, totalDespesas };
+  }
+  function recalcular(){
+    const itens = coletarItens();
+    const { valoresTotais, rateios, totalDespesas } = calcularRateio(itens);
+    let somaItens = 0;
+    itens.forEach((it, i) => {
+      const valorTotal = valoresTotais[i];
+      somaItens += valorTotal;
+      const rateio = rateios[i] || 0;
+      const custoFinalUnit = it.quantidade > 0 ? (valorTotal + rateio) / it.quantidade : 0;
+      it.tr.querySelector(".compra-item-total").textContent = fmtBRL(valorTotal);
+      it.tr.querySelector(".compra-item-rateio").textContent = fmtBRL(rateio);
+      it.tr.querySelector(".compra-item-custofinal").textContent = fmtBRL(custoFinalUnit);
+    });
+    document.getElementById("compraTotalNota").textContent = fmtBRL(somaItens + totalDespesas);
+  }
+  tbody.addEventListener("input", recalcular);
+  tbody.addEventListener("change", recalcular);
+  tbody.addEventListener("click", e => {
+    const delBtn = e.target.closest(".compra-item-del");
+    if(!delBtn) return;
+    if(tbody.querySelectorAll("tr").length <= 1){ showToast("A compra precisa de pelo menos 1 item.", "error"); return; }
+    delBtn.closest("tr").remove();
+    recalcular();
+  });
+  document.getElementById("btnAddItemCompra").addEventListener("click", () => {
+    tbody.insertAdjacentHTML("beforeend", linhaItemHTML());
+    recalcular();
+  });
+  ["compraFrete","compraSeguro","compraOutras","compraBaseRateio"].forEach(id => {
+    document.getElementById(id).addEventListener("input", recalcular);
+    document.getElementById(id).addEventListener("change", recalcular);
+  });
+  recalcular();
+
+  document.getElementById("formEstCompra").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const itens = coletarItens();
+    if(itens.some(it => !it.produtoId)){ showToast("Escolha o produto de cada item.", "error"); return; }
+    if(itens.some(it => it.quantidade <= 0)){ showToast("Quantidade precisa ser maior que zero em todos os itens.", "error"); return; }
+    const { valoresTotais, rateios } = calcularRateio(itens);
+    const numeroNota = fd.get("numeroNota").trim();
+    const data = fd.get("data");
+    const fornecedorId = fd.get("fornecedorId");
+    const compraId = uid("compra");
+    const itensSalvos = itens.map((it,i) => {
+      const valorTotal = valoresTotais[i];
+      const rateio = rateios[i]||0;
+      const custoUnitarioFinal = it.quantidade > 0 ? Math.round(((valorTotal+rateio)/it.quantidade)*100)/100 : 0;
+      return { produtoId: it.produtoId, quantidade: it.quantidade, valorUnitario: it.valorUnitario, valorTotal, rateio, custoUnitarioFinal };
+    });
+    const compra = {
+      id: compraId, numeroNota, fornecedorId, data, negocio: fd.get("negocio")||"",
+      frete: parseFloat(fd.get("frete"))||0, seguro: parseFloat(fd.get("seguro"))||0, outrasDespesas: parseFloat(fd.get("outrasDespesas"))||0,
+      baseRateio: fd.get("baseRateio"), itens: itensSalvos, observacoes: fd.get("observacoes").trim(),
+      lancadoPor: state.perfilAtivo ? state.perfilAtivo.nome : "Master",
+    };
+    state.estCompras.push(compra);
+    const fornecedor = estFornecedorById(fornecedorId);
+    itensSalvos.forEach(it => {
+      state.estMovimentos.push({
+        id: uid("em"), data, tipo: "Entrada", produtoId: it.produtoId, qtd: it.quantidade,
+        custoUnitario: it.custoUnitarioFinal,
+        localOrigem: fornecedor ? fornecedor.nome : "", localDestino: "",
+        motivo: `Compra NF ${numeroNota}`, responsavel: state.perfilAtivo ? state.perfilAtivo.nome : "Master",
+        notaFiscal: numeroNota, notaFiscalCompraId: compraId,
+      });
+    });
+    await saveEstCompras();
+    await saveEstMovimentos();
+    closeModal(); renderView();
+    showToast(`Compra lançada — ${itensSalvos.length} item(ns), Custo Médio Real atualizado.`);
+  });
+}
+
+function modalDetalheCompra(compraId){
+  const c = estCompraById(compraId);
+  if(!c) return;
+  const fornecedor = estFornecedorById(c.fornecedorId);
+  const totalItens = c.itens.reduce((s,it) => s + it.valorTotal, 0);
+  const totalDespesas = Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0);
+  const rows = c.itens.map(it => {
+    const p = estProdutoById(it.produtoId);
+    return `<tr>
+      <td>${esc(p?p.nome:"— produto removido —")}</td>
+      <td class="num">${it.quantidade}</td>
+      <td class="num">${fmtBRL(it.valorUnitario)}</td>
+      <td class="num">${fmtBRL(it.valorTotal)}</td>
+      <td class="num" style="color:var(--ink-3);">${fmtBRL(it.rateio||0)}</td>
+      <td class="num" style="font-weight:700;">${fmtBRL(it.custoUnitarioFinal)}</td>
+    </tr>`;
+  }).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📋 Compra — Nota ${esc(c.numeroNota)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">${fmtDateBR(c.data)} · Fornecedor: <strong>${esc(fornecedor?.nome||"—")}</strong>${c.negocio?` · ${esc(c.negocio)}`:""} · base do rateio: ${EST_BASE_RATEIO.find(o=>o.v===c.baseRateio)?.l||c.baseRateio}</div>
+      <div style="overflow-x:auto;"><table style="min-width:560px;"><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div style="display:flex; flex-direction:column; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:12.5px;">
+        <div style="display:flex; justify-content:space-between;"><span>Itens</span><strong>${fmtBRL(totalItens)}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Frete</span><strong>${fmtBRL(c.frete||0)}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Seguro</span><strong>${fmtBRL(c.seguro||0)}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Outras despesas</span><strong>${fmtBRL(c.outrasDespesas||0)}</strong></div>
+        <div style="display:flex; justify-content:space-between; font-size:14px; border-top:1px solid var(--border); padding-top:6px; margin-top:2px;"><span>Total da nota</span><strong>${fmtBRL(totalItens+totalDespesas)}</strong></div>
+      </div>
+      ${c.observacoes?`<div class="field-help" style="margin-top:10px;">${esc(c.observacoes)}</div>`:""}
+    </div>
+    <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Fechar</button></div>
+  `);
 }
 
 // ============================================================
