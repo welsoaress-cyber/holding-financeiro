@@ -4120,16 +4120,28 @@ function modalCliCliente(existing){
   const isEdit = !!existing;
   const c = existing || { nome:"", tipoPessoa:"PF", cpfCnpj:"", rg:"", dataNascimento:"", genero:"Não informado", email:"", telefone:"", whatsapp:"", logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"", status:"Ativo", dataCadastro:todayISO(), observacoes:"", contratos:[] };
 
-  const negCheckboxes = state.negocios.map(n => {
-    const hasContrato = (c.contratos||[]).some(ct=>ct.negocio===n.nome);
-    return `<label class="checkbox-row" style="padding:4px 0;">
-      <input type="checkbox" name="neg_${n.id}" value="${n.nome}" ${hasContrato?"checked":""}
-        style="accent-color:${n.cor};">
-      <span style="display:flex; align-items:center; gap:6px;">
-        <span style="width:8px;height:8px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
-        ${esc(n.nome)}
-      </span>
-    </label>`;
+  const negLinhas = state.negocios.map(n => {
+    const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
+    const hasContrato = !!contratoAtual;
+    const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
+    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    return `<tr>
+      <td style="white-space:nowrap;">
+        <label class="checkbox-row" style="padding:4px 0;">
+          <input type="checkbox" name="neg_${n.id}" value="${n.nome}" class="cli-neg-chk" data-negid="${n.id}" ${hasContrato?"checked":""} style="accent-color:${n.cor};">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${n.cor};display:inline-block;flex-shrink:0;"></span>
+            ${esc(n.nome)}
+          </span>
+        </label>
+      </td>
+      <td style="width:100%;">
+        <select name="plano_${n.id}" id="cliPlanoSel_${n.id}" ${hasContrato?"":"disabled"} style="width:100%; font-family:var(--font-ui); font-size:12.5px; padding:6px 8px; border-radius:var(--r); border:1px solid var(--border-2);">
+          <option value="">— Sem plano ainda —</option>${planoOpts}
+        </select>
+        ${!planosDoNegocio.length ? `<div class="field-help" style="margin-top:2px;">Nenhum plano cadastrado pra ${esc(n.nome)} ainda.</div>` : ""}
+      </td>
+    </tr>`;
   }).join("");
 
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${(c.status||"Ativo")===s?"selected":""}>${s}</option>`).join("");
@@ -4192,9 +4204,11 @@ function modalCliCliente(existing){
       </div>
       <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(c.cidade||"")}" placeholder="Cidade"></div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios vinculados</div>
-      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence</div>
-      <div style="display:flex; flex-wrap:wrap; gap:4px 20px; margin-bottom:10px;">${negCheckboxes||"<span style='color:var(--ink-4);'>Nenhum negócio cadastrado</span>"}</div>
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios e planos vinculados</div>
+      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence e já escolha o plano de cada um — isso é o que vai alimentar os relatórios por plano/negócio depois.</div>
+      <div style="border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:10px;">
+        <table><tbody>${negLinhas||`<tr><td>${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table>
+      </div>
 
       <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Observações</div>
       <div class="field"><textarea name="observacoes" rows="3" style="resize:none;" placeholder="Notas internas, histórico de atendimento, etc.">${esc(c.observacoes||"")}</textarea></div>
@@ -4223,6 +4237,14 @@ function modalCliCliente(existing){
   };
   tipoPessoa.addEventListener("change", atualizarTipo);
   atualizarTipo();
+
+  // Habilita/desabilita o select de plano junto com o checkbox do negócio
+  document.querySelectorAll(".cli-neg-chk").forEach(chk => {
+    chk.addEventListener("change", () => {
+      const sel = document.getElementById(`cliPlanoSel_${chk.dataset.negid}`);
+      if(sel) sel.disabled = !chk.checked;
+    });
+  });
 
   document.getElementById("formCliCliente").addEventListener("submit", async e => {
     e.preventDefault();
@@ -4255,16 +4277,21 @@ function modalCliCliente(existing){
     };
 
     if(isEdit){
-      // Mantém contratos existentes, adiciona novos negócios sem contrato
+      // Mantém contratos existentes (atualizando o plano se foi trocado no formulário),
+      // adiciona novos negócios sem contrato já com o plano escolhido
       const novosNegs = negociosMarcados.filter(n=>!(existing.contratos||[]).some(ct=>ct.negocio===n.nome));
-      const contratosNovos = novosNegs.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+      const contratosNovos = novosNegs.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:fd.get(`plano_${n.id}`)||"", status:"Ativo", dataContrato:todayISO() }));
       // Remove contratos de negócios desmarcados
       const negsMarcadosNomes = negociosMarcados.map(n=>n.nome);
-      const contratosRestantes = (existing.contratos||[]).filter(ct=>negsMarcadosNomes.includes(ct.negocio));
+      const contratosRestantes = (existing.contratos||[]).filter(ct=>negsMarcadosNomes.includes(ct.negocio)).map(ct => {
+        const neg = negocioByNome(ct.negocio);
+        const planoId = neg ? (fd.get(`plano_${neg.id}`)||"") : ct.planoId;
+        return { ...ct, planoId };
+      });
       data.contratos = [...contratosRestantes, ...contratosNovos];
       Object.assign(existing, data);
     }else{
-      data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:"", status:"Ativo", dataContrato:todayISO() }));
+      data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:fd.get(`plano_${n.id}`)||"", status:"Ativo", dataContrato:todayISO() }));
     }
 
     if(isEdit){
