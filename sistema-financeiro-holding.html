@@ -683,6 +683,11 @@ const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "
 const SENHA_PAGAR = "@2020";
 const SENHA_RECEBER = "@1010";
 const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","cartoes","perfis"];
+// "contas", "categorias" e "negocios" existem no Supabase com colunas soltas
+// (id, user_id, nome, ... , updated_at) — sem coluna "dados". Todas as outras
+// tabelas guardam o registro inteiro dentro de uma coluna "dados" (jsonb).
+// saveRows()/loadData() usam esse conjunto para montar o payload certo por tabela.
+const TABELAS_FLAT = new Set(["contas","categorias","negocios"]);
 const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuários — mude assim que possível
 
 let state = {
@@ -923,9 +928,12 @@ async function saveRows(table, items){
   if(!state.user) return;
   if(!items.length) return;
   try{
+    const flat = TABELAS_FLAT.has(table);
     const rows = items.map(item => {
       const { id, ...rest } = item;
-      return { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
+      return flat
+        ? { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() }
+        : { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
     });
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
@@ -978,7 +986,13 @@ const saveCliPlanos = () => saveRows("cli_planos", state.cliPlanos);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
-  return msg.includes("jwt") || msg.includes("token") || msg.includes("session") || msg.includes("401") || msg.includes("not authenticated") || msg.includes("invalid claim") || msg.includes("expired");
+  // "row-level security"/"rls" entra aqui de propósito: como todo save já manda o
+  // user_id certo (o do usuário logado), uma violação de RLS ao gravar só acontece
+  // na prática quando a sessão (JWT) usada na requisição está velha/inválida e o
+  // auth.uid() no servidor não bate mais com esse user_id. Tratando como sessão
+  // expirada, o app força um novo login em vez de deixar o usuário tentando salvar
+  // repetidamente com uma sessão morta (o que antes só mostrava um erro genérico).
+  return msg.includes("jwt") || msg.includes("token") || msg.includes("session") || msg.includes("401") || msg.includes("not authenticated") || msg.includes("invalid claim") || msg.includes("expired") || msg.includes("row-level security") || msg.includes("row level security") || msg.includes("rls");
 }
 async function tratarErroDeSessao(e){
   console.error("[sessão inválida]", e);
@@ -996,13 +1010,21 @@ async function loadData(){
   if(!state.user) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
+    // "contas"/"categorias"/"negocios" têm colunas soltas no banco (ver TABELAS_FLAT) —
+    // precisam de select("*") e não têm coluna "dados" pra desempacotar.
     const results = await Promise.all(TABELAS_CORE.map(t =>
-      supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
+      TABELAS_FLAT.has(t)
+        ? supabaseClient.from(t).select("*").eq("user_id", state.user.id)
+        : supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
-      (r.data || []).map(row => ({ id: row.id, ...row.dados }))
-    );
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = TABELAS_CORE.map((t, i) => {
+      const linhas = results[i].data || [];
+      if(TABELAS_FLAT.has(t)){
+        return linhas.map(({ user_id, updated_at, ...resto }) => resto); // já vem com id + colunas soltas
+      }
+      return linhas.map(row => ({ id: row.id, ...row.dados }));
+    });
     state.contas = contas;
     state.lancamentos = lancamentos;
     state.ajustes = ajustes;
