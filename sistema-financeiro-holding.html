@@ -693,7 +693,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
-  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [],
+  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
@@ -780,6 +780,7 @@ const CADASTRO_TIPOS = [
   { grupo: "Clientes", itens: [
     { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_lista"} },
     { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_planos"} },
+    { id:"tecnico",  ico:"🧰", nome:"Técnico", desc:"Quem atende os chamados em campo", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_tecnicos"} },
   ]},
   { grupo: "RH", itens: [
     { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_funcionarios"} },
@@ -834,6 +835,16 @@ const BULK_CONTEXTOS = {
       const idsSet = new Set(ids);
       const movIds = state.estMovimentos.filter(m => idsSet.has(m.osId)).map(m => m.id);
       state.estMovimentos = state.estMovimentos.filter(m => !idsSet.has(m.osId));
+      if(movIds.length) await deleteRows("est_movimentos", movIds);
+    },
+  },
+  cli_tecnicos: { arr: "cliTecnicos", tabela: "cli_tecnicos", label: "técnico(s)" },
+  cli_chamados: {
+    arr: "cliChamados", tabela: "cli_chamados", label: "chamado(s)",
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const movIds = state.estMovimentos.filter(m => idsSet.has(m.chamadoId)).map(m => m.id);
+      state.estMovimentos = state.estMovimentos.filter(m => !idsSet.has(m.chamadoId));
       if(movIds.length) await deleteRows("est_movimentos", movIds);
     },
   },
@@ -979,6 +990,11 @@ const ACOES_MODULO = {
   "os-baixar-estoque":{modulo:"clientes",acao:"editar"}, "os-concluir":{modulo:"clientes",acao:"editar"}, "os-gerar-receita":{modulo:"clientes",acao:"editar"},
   "cli-del":{modulo:"clientes",acao:"excluir"}, "cli-del-plano":{modulo:"clientes",acao:"excluir"}, "cli-del-contrato":{modulo:"clientes",acao:"excluir"},
   "orc-del":{modulo:"clientes",acao:"excluir"}, "os-del":{modulo:"clientes",acao:"excluir"},
+
+  "tec-novo":{modulo:"clientes",acao:"criar"}, "tec-edit":{modulo:"clientes",acao:"editar"}, "tec-del":{modulo:"clientes",acao:"excluir"},
+  "cham-novo":{modulo:"clientes",acao:"criar"}, "cham-edit":{modulo:"clientes",acao:"editar"}, "cham-del":{modulo:"clientes",acao:"excluir"},
+  "cham-iniciar":{modulo:"clientes",acao:"editar"}, "cham-concluir":{modulo:"clientes",acao:"editar"}, "cham-cancelar":{modulo:"clientes",acao:"editar"},
+  "cham-materiais":{modulo:"clientes",acao:"editar"}, "cham-gerar-cobranca":{modulo:"clientes",acao:"editar"},
 
   "rh-novo-funcionario":{modulo:"rh",acao:"criar"}, "rh-novo-cargo":{modulo:"rh",acao:"criar"},
   "rh-nova-ferias":{modulo:"rh",acao:"criar"}, "rh-nova-folha":{modulo:"rh",acao:"criar"}, "rh-gerar-folha-mes":{modulo:"rh",acao:"criar"},
@@ -1226,6 +1242,8 @@ const saveCliClientes = () => saveRows("cli_clientes", state.cliClientes);
 const saveCliPlanos = () => saveRows("cli_planos", state.cliPlanos);
 const saveCliOrcamentos = () => saveRows("cli_orcamentos", state.cliOrcamentos);
 const saveCliOS = () => saveRows("cli_os", state.cliOS);
+const saveCliTecnicos = () => saveRows("cli_tecnicos", state.cliTecnicos);
+const saveCliChamados = () => saveRows("cli_chamados", state.cliChamados);
 const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionarios);
 const saveRhCargos = () => saveRows("rh_cargos", state.rhCargos);
 const saveRhFolha = () => saveRows("rh_folha", state.rhFolha);
@@ -1303,7 +1321,7 @@ async function loadData(){
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -1663,6 +1681,9 @@ function renderApp(){
         ${navItem("cli_planos","📋","Planos")}
         ${navItem("cli_orcamentos","📝","Orçamentos")}
         ${navItem("cli_os_lista","🔧","Ordens de Serviço")}
+        <div class="nav-group-label">Atendimento técnico</div>
+        ${navItem("cli_chamados","📞","Chamados")}
+        ${navItem("cli_tecnicos","🧰","Técnicos")}
       ` : state.moduloAtivo === "rh" ? `
         <div class="nav-group-label">RH</div>
         ${navItem("rh_dashboard","◆","Dashboard")}
@@ -1821,6 +1842,9 @@ function renderView(){
   else if(state.view === "cli_orcamentos") main.innerHTML = viewCliOrcamentos();
   else if(state.view === "cli_os_lista") main.innerHTML = viewCliOSLista();
   else if(state.view === "cli_os_detalhe") main.innerHTML = viewCliOSDetalhe();
+  else if(state.view === "cli_tecnicos") main.innerHTML = viewCliTecnicos();
+  else if(state.view === "cli_chamados") main.innerHTML = viewCliChamados();
+  else if(state.view === "cli_chamado_detalhe") main.innerHTML = viewCliChamadoDetalhe();
   // ---- Módulo RH ----
   else if(state.view === "rh_dashboard") main.innerHTML = viewRhDashboard();
   else if(state.view === "rh_funcionarios") main.innerHTML = viewRhFuncionarios();
@@ -3988,6 +4012,7 @@ document.addEventListener("click", async e => {
       fornecedor: () => modalEstFornecedor(null),
       cliente: () => modalCliCliente(null),
       plano: () => modalCliPlano(null),
+      tecnico: () => modalCliTecnico(null),
       funcionario: () => modalRhFuncionario(null),
       cargo: () => modalRhCargo(null),
     };
@@ -4333,6 +4358,40 @@ document.addEventListener("click", async e => {
     if(movIds.length) await deleteRows("est_movimentos", movIds);
     if(state.view === "cli_os_detalhe") state.view = "cli_os_lista";
     renderApp(); showToast("OS excluída.");
+  }
+  // ---- Técnicos ----
+  else if(action === "tec-novo") modalCliTecnico(null);
+  else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
+  else if(action === "tec-del"){
+    const t = cliTecnicoById(id);
+    if(!t) return;
+    const emUso = state.cliChamados.some(c => c.tecnicoId === id);
+    if(emUso && !confirm(`${t.nome} está atribuído a um ou mais chamados. Excluir mesmo assim? Os chamados continuam existindo, só ficam sem técnico.`)) return;
+    if(!emUso && !confirm(`Excluir o técnico ${t.nome}?`)) return;
+    state.cliTecnicos = state.cliTecnicos.filter(x=>x.id!==id);
+    await deleteRow("cli_tecnicos", id);
+    renderApp(); showToast("Técnico removido.");
+  }
+  // ---- Chamados ----
+  else if(action === "cham-novo") modalCliChamado(null);
+  else if(action === "cham-edit"){ const c = cliChamadoById(id); if(c) modalCliChamado(c); }
+  else if(action === "cham-detalhe"){ cliChamadoDetalheId = id; state.view = "cli_chamado_detalhe"; renderApp(); }
+  else if(action === "cham-materiais") modalChamadoMateriais(id);
+  else if(action === "cham-iniciar") chamadoIniciar(id);
+  else if(action === "cham-concluir") chamadoConcluir(id);
+  else if(action === "cham-cancelar") chamadoCancelar(id);
+  else if(action === "cham-gerar-cobranca") chamadoGerarCobranca(id);
+  else if(action === "cham-del"){
+    const c = cliChamadoById(id);
+    if(!c) return;
+    if(!confirm(`Excluir o chamado ${c.numero}? Isso remove as baixas de estoque vinculadas a ele. Se já tiver conta a receber gerada, ela NÃO é excluída automaticamente — exclua em Lançamentos se quiser.`)) return;
+    state.cliChamados = state.cliChamados.filter(x=>x.id!==id);
+    const movIds = state.estMovimentos.filter(m=>m.chamadoId===id).map(m=>m.id);
+    state.estMovimentos = state.estMovimentos.filter(m=>m.chamadoId!==id);
+    await deleteRow("cli_chamados", id);
+    if(movIds.length) await deleteRows("est_movimentos", movIds);
+    if(state.view === "cli_chamado_detalhe") state.view = "cli_chamados";
+    renderApp(); showToast("Chamado excluído.");
   }
   // ---- RH ----
   else if(action === "rh-novo-funcionario") modalRhFuncionario(null);
@@ -5006,12 +5065,24 @@ function modalCliPlano(existing){
 // o status dele ao vivo na tela da OS.
 // =========================================================================
 let cliOSDetalheId = null;
+let cliChamadoDetalheId = null;
 function cliOrcamentoById(id){ return state.cliOrcamentos.find(o => o.id === id); }
 function cliOSById(id){ return state.cliOS.find(o => o.id === id); }
 function osItensBaixados(osId){ return state.estMovimentos.filter(m => m.osId === osId && m.tipo === "Saída"); }
 function osCustoImplantacao(osId){ return osItensBaixados(osId).reduce((s,m) => s + Number(m.qtd)*Number(m.custoUnitario||0), 0); }
 function osValorVenda(os){ return (os.itens||[]).reduce((s,it) => s + Number(it.valorTotal||0), 0) + Number(os.valorServico||0); }
 function osLancamento(os){ return os.lancamentoId ? state.lancamentos.find(l => l.id === os.lancamentoId) : null; }
+
+// ---- Chamados técnicos (suporte/instalação em campo) ----
+const CHAMADO_TIPOS = ["Instalação","Suporte técnico","Manutenção","Mudança de endereço","Cancelamento de plano","Outro"];
+const CHAMADO_PRIORIDADES = ["Baixa","Normal","Alta","Urgente"];
+const CHAMADO_STATUS = ["Aberto","Agendado","Em atendimento","Concluído","Cancelado"];
+function cliTecnicoById(id){ return state.cliTecnicos.find(t => t.id === id); }
+function cliChamadoById(id){ return state.cliChamados.find(c => c.id === id); }
+function chamadoItensBaixados(chamadoId){ return state.estMovimentos.filter(m => m.chamadoId === chamadoId && m.tipo === "Saída"); }
+function chamadoCustoMateriais(chamadoId){ return chamadoItensBaixados(chamadoId).reduce((s,m) => s + Number(m.qtd)*Number(m.custoUnitario||0), 0); }
+function chamadoLancamento(cham){ return cham.lancamentoId ? state.lancamentos.find(l => l.id === cham.lancamentoId) : null; }
+function chamadoStatusClass(status){ return status==="Concluído"?"status-pago":status==="Cancelado"?"status-pendente":"status-agendado"; }
 
 // ---- VIEW: ORÇAMENTOS ----
 function viewCliOrcamentos(){
@@ -5394,6 +5465,337 @@ async function osConcluir(osId){
   await saveCliOS();
   renderView();
   showToast("OS concluída.");
+}
+
+// =========================================================================
+// ATENDIMENTO TÉCNICO — Chamados (visita/instalação/suporte) e Técnicos
+// Separado da OS comercial de propósito: chamado nasce do cliente ligando
+// (não de uma venda), tem técnico + agenda + status de atendimento em campo.
+// Reaproveita a mesma baixa de estoque (custo real) e o mesmo "gerar conta a
+// receber" que a OS já usa — só que ligados ao chamado em vez da OS.
+// =========================================================================
+
+// ---- VIEW: TÉCNICOS ----
+function viewCliTecnicos(){
+  const lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
+  const rows = lista.map(t => {
+    const negTag = t.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(t.negocio)} 14%, white); color:${negocioCor(t.negocio)};"><span class="tag-dot" style="background:${negocioCor(t.negocio)}"></span>${esc(t.negocio)}</span>` : "—";
+    const qtdChamados = state.cliChamados.filter(c => c.tecnicoId === t.id && c.status!=="Concluído" && c.status!=="Cancelado").length;
+    return `<tr>
+      ${bulkCheckboxCellHTML("cli_tecnicos", t.id)}
+      <td style="font-weight:600;">${esc(t.nome)}${t.ativo===false?` <span style="color:var(--ink-4); font-weight:400;">(inativo)</span>`:""}</td>
+      <td>${esc(t.telefone||"—")}</td>
+      <td>${negTag}</td>
+      <td style="color:var(--ink-3);">${esc(t.diasAtendimento||"—")}</td>
+      <td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>
+      <td class="num">${qtdChamados||"—"}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz.</div></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th><th class="num">Valor mensal</th><th class="num">Chamados abertos</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum técnico cadastrado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+/* =========================================================================
+   MODAL — TÉCNICO
+========================================================================= */
+function modalCliTecnico(existing){
+  const isEdit = !!existing;
+  const t = existing || { nome:"", telefone:"", negocio:"", diasAtendimento:"", valorMensal:0, ativo:true };
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${t.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar técnico" : "Novo técnico"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formTecnico"><div class="modal-body">
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(t.nome)}" placeholder="Ex: Carlos"></div>
+      <div class="field-row">
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(t.telefone)}" placeholder="(11) 90000-0000"></div>
+        <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio específico —</option>${negOpts}</select></div>
+      </div>
+      <div class="field"><label>Quando atende</label><input type="text" name="diasAtendimento" value="${esc(t.diasAtendimento)}" placeholder="Ex: fins de semana e feriados">
+        <div class="field-help">Livre — útil pra terceirizado que só atende fora do horário do emprego fixo.</div>
+      </div>
+      <div class="field"><label>Valor mensal fixo (R$) <span class="field-help" style="display:inline;">— opcional</span></label><input type="number" step="0.01" min="0" name="valorMensal" value="${t.valorMensal||0}">
+        <div class="field-help">Só um registro informativo aqui — pra lançar o pagamento de fato, use um lançamento recorrente em Financeiro.</div>
+      </div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativo" ${t.ativo!==false?"checked":""}> Técnico ativo</label></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar técnico"}</button></div></form>
+  `);
+  document.getElementById("formTecnico").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      nome: fd.get("nome").trim(), telefone: fd.get("telefone").trim(), negocio: fd.get("negocio")||"",
+      diasAtendimento: fd.get("diasAtendimento").trim(), valorMensal: parseFloat(fd.get("valorMensal"))||0,
+      ativo: fd.get("ativo") === "on",
+    };
+    if(isEdit){ Object.assign(existing, data); }
+    else{ state.cliTecnicos.push({ id: uid("tec"), ...data }); }
+    await saveCliTecnicos(); closeModal(); renderApp(); showToast(isEdit ? "Técnico atualizado." : "Técnico adicionado.");
+  });
+}
+
+// ---- VIEW: CHAMADOS ----
+function viewCliChamados(){
+  const lista = [...state.cliChamados].sort((a,b) => (b.dataAgendada||b.dataCadastro).localeCompare(a.dataAgendada||a.dataCadastro));
+  const rows = lista.map(c => {
+    const cliente = cliClienteById(c.clienteId);
+    const tecnico = cliTecnicoById(c.tecnicoId);
+    return `<tr>
+      ${bulkCheckboxCellHTML("cli_chamados", c.id)}
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cham-detalhe" data-id="${c.id}">${esc(c.numero)}</td>
+      <td>${cliente?esc(cliNome(cliente)):"— removido —"}</td>
+      <td>${esc(c.tipo)}</td>
+      <td>${tecnico?esc(tecnico.nome):"— sem técnico —"}</td>
+      <td>${c.dataAgendada?fmtDateBR(c.dataAgendada):"—"}</td>
+      <td><span class="status-pill ${c.prioridade==="Urgente"||c.prioridade==="Alta"?"status-pendente":"status-agendado"}">${c.prioridade}</span></td>
+      <td><span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">🗑</button></div></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Chamados</div><div class="page-sub">O cliente ligou — abra o chamado, agende o técnico e acompanhe até concluir.</div></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_chamados")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cham-novo">+ Novo chamado</button>`)}</div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_chamados", lista.map(c=>c.id))}<th>Número</th><th>Cliente</th><th>Tipo</th><th>Técnico</th><th>Agendado p/</th><th>Prioridade</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum chamado ainda.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+// ---- VIEW: DETALHE DO CHAMADO ----
+function viewCliChamadoDetalhe(){
+  const c = cliChamadoById(cliChamadoDetalheId);
+  if(!c) return `<div>${emptyState("Chamado não encontrado.")}</div>`;
+  const cliente = cliClienteById(c.clienteId);
+  const tecnico = cliTecnicoById(c.tecnicoId);
+  const custoMateriais = chamadoCustoMateriais(c.id);
+  const itensBaixados = chamadoItensBaixados(c.id);
+  const lanc = chamadoLancamento(c);
+
+  const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
+    const p = estProdutoById(m.produtoId);
+    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`;
+  }).join("") : `<tr><td colspan="4">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
+
+  const podeIniciar = c.status==="Aberto" || c.status==="Agendado";
+  const podeConcluir = c.status==="Em atendimento" || c.status==="Agendado" || c.status==="Aberto";
+  const podeCancelar = c.status!=="Concluído" && c.status!=="Cancelado";
+
+  return `
+    <div class="page-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_chamados">← Voltar</button>
+        <div><div class="page-title">${esc(c.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${c.negocio?` · ${esc(c.negocio)}`:""} · <span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></div></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
+        <button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>
+        ${(!lanc && Number(c.valorCobranca)>0) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
+        <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
+        ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
+        ${podeCancelar ? `<button class="btn btn-ghost" style="color:var(--neg);" data-action="cham-cancelar" data-id="${c.id}">✕ Cancelar</button>` : ""}
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">Técnico</div><div class="kpi-value" style="font-size:16px;">${tecnico?esc(tecnico.nome):"— não atribuído —"}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Agendado para</div><div class="kpi-value" style="font-size:16px;">${c.dataAgendada?fmtDateBR(c.dataAgendada):"— sem data —"}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📋 Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
+        <div><strong>Tipo:</strong> ${esc(c.tipo)}</div>
+        <div><strong>Prioridade:</strong> ${esc(c.prioridade)}</div>
+        <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
+        <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
+        ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
+      </div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+    </div>
+    ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px;">${esc(c.observacoes)}</div></div>`:""}
+  `;
+}
+
+/* =========================================================================
+   MODAL — CHAMADO
+========================================================================= */
+function modalCliChamado(existing){
+  const isEdit = !!existing;
+  if(!isEdit && !state.cliClientes.length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
+  const c = existing || { clienteId: state.cliClientes[0]?.id||"", negocio:"", tecnicoId:"", tipo:CHAMADO_TIPOS[0], prioridade:"Normal", motivo:"", dataAgendada:"", status:"Aberto", valorCobranca:0, observacoes:"" };
+  const clienteOptions = state.cliClientes.map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliNome(cl))}</option>`).join("");
+  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const tecnicoOptions = state.cliTecnicos.filter(t=>t.ativo!==false).map(t=>`<option value="${t.id}" ${c.tecnicoId===t.id?"selected":""}>${esc(t.nome)}</option>`).join("");
+  const tipoOptions = CHAMADO_TIPOS.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("");
+  const prioridadeOptions = CHAMADO_PRIORIDADES.map(p=>`<option ${c.prioridade===p?"selected":""}>${p}</option>`).join("");
+  const statusOptions = CHAMADO_STATUS.map(s=>`<option ${c.status===s?"selected":""}>${s}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit ? `Editar ${esc(c.numero)}` : "Novo chamado"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formChamado"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Cliente *</label><select required name="clienteId">${clienteOptions}</select></div>
+        <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Selecione —</option>${negOptions}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tipo</label><select name="tipo">${tipoOptions}</select></div>
+        <div class="field"><label>Prioridade</label><select name="prioridade">${prioridadeOptions}</select></div>
+      </div>
+      <div class="field"><label>Motivo</label><textarea name="motivo" rows="2" style="resize:none;" placeholder="Ex: cliente relatou queda de sinal constante">${esc(c.motivo||"")}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Técnico</label><select name="tecnicoId"><option value="">— Sem técnico atribuído —</option>${tecnicoOptions}</select></div>
+        <div class="field"><label>Data agendada</label><input type="date" name="dataAgendada" value="${c.dataAgendada||""}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Status</label><select name="status">${statusOptions}</select></div>
+        <div class="field"><label>Valor da cobrança (R$) <span class="field-help" style="display:inline;">— opcional</span></label><input type="number" step="0.01" min="0" name="valorCobranca" value="${c.valorCobranca||0}"></div>
+      </div>
+      <div class="field"><label>Relato do atendimento</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Preenche o técnico ao concluir">${esc(c.observacoes||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar chamado"}</button></div></form>
+  `);
+  document.getElementById("formChamado").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+      clienteId: fd.get("clienteId"), negocio: fd.get("negocio")||"", tipo: fd.get("tipo"),
+      prioridade: fd.get("prioridade"), motivo: fd.get("motivo").trim(), tecnicoId: fd.get("tecnicoId")||"",
+      dataAgendada: fd.get("dataAgendada")||"", status: fd.get("status"),
+      valorCobranca: parseFloat(fd.get("valorCobranca"))||0, observacoes: fd.get("observacoes").trim(),
+    };
+    if(data.status === "Concluído" && !c.dataConclusao) data.dataConclusao = todayISO();
+    if(isEdit){ Object.assign(existing, data); }
+    else{
+      const numero = `CH-${String(state.cliChamados.length+1).padStart(4,"0")}`;
+      state.cliChamados.push({ id: uid("cham"), numero, dataCadastro: todayISO(), lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", ...data });
+    }
+    await saveCliChamados(); closeModal(); renderApp(); showToast(isEdit ? "Chamado atualizado." : `${data.numero||""} criado.`.trim());
+  });
+}
+
+/* =========================================================================
+   MODAL — REGISTRAR MATERIAIS USADOS NO CHAMADO (mesma lógica da baixa da OS)
+========================================================================= */
+function modalChamadoMateriais(chamadoId){
+  const cham = cliChamadoById(chamadoId);
+  if(!cham) return;
+  if(!state.estProdutos.length){ showToast("Cadastre produtos no estoque primeiro.", "error"); return; }
+  const cliente = cliClienteById(cham.clienteId);
+  const linhaHTML = () => `
+    <tr>
+      <td style="min-width:220px;"><select class="baixa-item-produto"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select></td>
+      <td style="width:100px;"><input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1"></td>
+      <td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>
+      <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">🗑</button></td>
+    </tr>`;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📦 Materiais usados — ${esc(cham.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formBaixaChamado"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado no atendimento de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
+      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+        <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th><th class="num">Custo estimado</th><th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
+      <div class="field" style="margin-top:12px;"><label>Data</label><input type="date" name="data" value="${todayISO()}"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div></form>
+  `);
+  const tbody = document.getElementById("baixaItensBody");
+  function atualizarCustos(){
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const produtoId = tr.querySelector(".baixa-item-produto").value;
+      const qtd = parseFloat(tr.querySelector(".baixa-item-qtd").value)||0;
+      const p = estProdutoById(produtoId);
+      tr.querySelector(".baixa-item-custo").textContent = p ? fmtBRL(estValorUnitarioEstimado(p)*qtd) : "—";
+    });
+  }
+  tbody.addEventListener("input", atualizarCustos);
+  tbody.addEventListener("change", atualizarCustos);
+  tbody.addEventListener("click", e => {
+    const del = e.target.closest(".baixa-item-del");
+    if(!del) return;
+    if(tbody.querySelectorAll("tr").length<=1){ showToast("Precisa de pelo menos 1 item.", "error"); return; }
+    del.closest("tr").remove();
+  });
+  document.getElementById("btnAddItemBaixa").addEventListener("click", () => {
+    tbody.insertAdjacentHTML("beforeend", linhaHTML());
+    atualizarCustos();
+  });
+  document.getElementById("formBaixaChamado").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const linhas = Array.from(tbody.querySelectorAll("tr")).map(tr => ({
+      produtoId: tr.querySelector(".baixa-item-produto").value,
+      qtd: parseFloat(tr.querySelector(".baixa-item-qtd").value)||0,
+    })).filter(l => l.produtoId && l.qtd>0);
+    if(!linhas.length){ showToast("Selecione ao menos um item com quantidade.", "error"); return; }
+    const data = fd.get("data") || todayISO();
+    const destinoNome = cliente ? cliNome(cliente) : "Cliente";
+    linhas.forEach(l => {
+      const p = estProdutoById(l.produtoId);
+      const custoUnit = p ? estValorUnitarioEstimado(p) : 0;
+      state.estMovimentos.push({
+        id: uid("em"), data, tipo: "Saída", produtoId: l.produtoId, qtd: l.qtd, custoUnitario: custoUnit,
+        localOrigem: "Estoque", localDestino: destinoNome,
+        motivo: `Chamado ${cham.numero}`, responsavel: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+        chamadoId: cham.id,
+      });
+    });
+    await saveEstMovimentos();
+    closeModal(); renderView();
+    showToast(`${linhas.length} item(ns) baixado(s) do estoque.`);
+  });
+}
+
+async function chamadoIniciar(id){
+  const c = cliChamadoById(id);
+  if(!c) return;
+  c.status = "Em atendimento";
+  await saveCliChamados(); renderView(); showToast("Atendimento iniciado.");
+}
+async function chamadoConcluir(id){
+  const c = cliChamadoById(id);
+  if(!c) return;
+  c.status = "Concluído"; c.dataConclusao = todayISO();
+  await saveCliChamados(); renderView(); showToast("Chamado concluído.");
+}
+async function chamadoCancelar(id){
+  const c = cliChamadoById(id);
+  if(!c) return;
+  if(!confirm(`Cancelar o chamado ${c.numero}?`)) return;
+  c.status = "Cancelado";
+  await saveCliChamados(); renderView(); showToast("Chamado cancelado.");
+}
+async function chamadoGerarCobranca(id){
+  const c = cliChamadoById(id);
+  if(!c) return;
+  if(c.lancamentoId){ showToast("Esse chamado já tem uma cobrança gerada.", "error"); return; }
+  if(!(Number(c.valorCobranca)>0)){ showToast("Defina um valor de cobrança no chamado primeiro.", "error"); return; }
+  let cat = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
+  if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+  const cliente = cliClienteById(c.clienteId);
+  const conta = state.contas.find(x => x.ativa !== false);
+  const lancId = uid("l");
+  state.lancamentos.push({
+    id: lancId, data: todayISO(), tipo: "Receita", negocio: c.negocio||"", categoria: cat.nome, subcategoria: "",
+    contaOrigem: conta ? conta.id : "", contaDestino: "", valor: Number(c.valorCobranca),
+    descricao: `${c.numero} — ${cliente?cliNome(cliente):"Cliente"}`, status: "Provisionado", conciliado: false,
+    lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", chamadoId: c.id,
+  });
+  c.lancamentoId = lancId;
+  await saveLancamentos(); await saveCliChamados();
+  renderView();
+  showToast("Conta a receber gerada — dê baixa nela em Lançamentos quando o cliente pagar.");
 }
 
 // =========================================================================
