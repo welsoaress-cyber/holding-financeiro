@@ -1977,8 +1977,9 @@ function modalSenhaMaster(){
 // (que depende de Contas, tela master-only) fica restrito ao Master.
 // Estoque/Clientes/RH seguem a permissão granular de cada perfil.
 // ============================================================
-function vgKpiCard(label, value, note, cor){
-  return `<div class="kpi-card"><div class="kpi-label">${esc(label)}</div><div class="kpi-value ${cor||''}" style="font-size:20px;">${value}</div>${note?`<div class="kpi-note">${esc(note)}</div>`:""}</div>`;
+function vgKpiCard(label, value, note, cor, destino){
+  const clicavel = destino ? `data-action="cad-ver-lista" data-modulo="${destino.modulo}" data-view="${destino.view}" style="cursor:pointer; transition:border-color .12s, box-shadow .12s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" title="Ir para ${esc(destino.label||label)}"` : "";
+  return `<div class="kpi-card" ${clicavel}><div class="kpi-label">${esc(label)}</div><div class="kpi-value ${cor||''}" style="font-size:20px;">${value}</div>${note?`<div class="kpi-note">${esc(note)}</div>`:""}</div>`;
 }
 function vgBlocoHTML(titulo, cardsHTML){
   return `<div style="margin-bottom:22px;">
@@ -2001,11 +2002,11 @@ function viewVgSintetico(){
   const despesaMes = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
   const saldoTotal = master ? state.contas.filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0) : null;
   const blocoFinanceiro = vgBlocoHTML("💰 Financeiro", [
-    master ? vgKpiCard("Saldo total em contas", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg") : "",
-    vgKpiCard("A receber (em aberto)", fmtBRL(aReceber), "Pendente/agendado", "pos"),
-    vgKpiCard("A pagar (em aberto)", fmtBRL(aPagar), "Pendente/agendado", "neg"),
-    vgKpiCard("Receita do mês", fmtBRL(receitaMes), "Pago, mês atual", "pos"),
-    vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg"),
+    master ? vgKpiCard("Saldo total em contas", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : "",
+    vgKpiCard("A receber (em aberto)", fmtBRL(aReceber), "Pendente/agendado", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}),
+    vgKpiCard("A pagar (em aberto)", fmtBRL(aPagar), "Pendente/agendado", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}),
+    vgKpiCard("Receita do mês", fmtBRL(receitaMes), "Pago, mês atual", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}),
+    vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}),
   ].join(""));
 
   // ---- Estoque ----
@@ -2015,9 +2016,9 @@ function viewVgSintetico(){
     const comprasMes = state.estCompras.filter(c => c.data>=inicioMesISO && c.data<=fimMesISO);
     const valorComprasMes = comprasMes.reduce((s,c) => s + c.itens.reduce((ss,it)=>ss+it.valorTotal,0) + Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0), 0);
     return vgBlocoHTML("📦 Estoque", [
-      vgKpiCard("Valor total em estoque", fmtBRL(valorTotal), `${state.estProdutos.length} produto(s) cadastrado(s)`),
-      vgKpiCard("Abaixo do mínimo", abaixoMinimo, abaixoMinimo>0?"Precisa repor":"Tudo certo", abaixoMinimo>0?"neg":"pos"),
-      vgKpiCard("Compras no mês", `${comprasMes.length}`, fmtBRL(valorComprasMes)),
+      vgKpiCard("Valor total em estoque", fmtBRL(valorTotal), `${state.estProdutos.length} produto(s) cadastrado(s)`, "", {modulo:"estoque", view:"est_produtos", label:"Produtos"}),
+      vgKpiCard("Abaixo do mínimo", abaixoMinimo, abaixoMinimo>0?"Precisa repor":"Tudo certo", abaixoMinimo>0?"neg":"pos", {modulo:"estoque", view:"est_alertas", label:"Alertas de Estoque"}),
+      vgKpiCard("Compras no mês", `${comprasMes.length}`, fmtBRL(valorComprasMes), "", {modulo:"estoque", view:"est_compras", label:"Compras (NF)"}),
     ].join(""));
   })() : "";
 
@@ -2028,9 +2029,9 @@ function viewVgSintetico(){
     const chamadosAtrasados = state.cliChamados.filter(c => c.dataAgendada && c.dataAgendada<todayISO() && !["Concluído","Cancelado"].includes(c.status)).length;
     const osAndamento = state.cliOS.filter(o => o.status==="Aberta").length;
     return vgBlocoHTML("👥 Clientes & Atendimento", [
-      vgKpiCard("Clientes ativos", clientesAtivos, `${state.cliClientes.length} cadastrado(s) no total`),
-      vgKpiCard("Chamados abertos", chamadosAbertos, chamadosAtrasados>0?`${chamadosAtrasados} atrasado(s)`:"Nenhum atrasado", chamadosAtrasados>0?"neg":""),
-      vgKpiCard("OS em andamento", osAndamento),
+      vgKpiCard("Clientes ativos", clientesAtivos, `${state.cliClientes.length} cadastrado(s) no total`, "", {modulo:"clientes", view:"cli_lista", label:"Todos os Clientes"}),
+      vgKpiCard("Chamados abertos", chamadosAbertos, chamadosAtrasados>0?`${chamadosAtrasados} atrasado(s)`:"Nenhum atrasado", chamadosAtrasados>0?"neg":"", {modulo:"clientes", view:"cli_chamados", label:"Chamados"}),
+      vgKpiCard("OS em andamento", osAndamento, "", "", {modulo:"clientes", view:"cli_os_lista", label:"Ordens de Serviço"}),
     ].join(""));
   })() : "";
 
@@ -2039,9 +2040,9 @@ function viewVgSintetico(){
     const ativos = rhFuncionariosAtivos();
     const feriasVencendo = ativos.map(f => rhProximoVencimentoFerias(f.id)).filter(v => v && v.diasRestantes<=60).length;
     return vgBlocoHTML("🏢 RH", [
-      vgKpiCard("Funcionários ativos", ativos.length, `${state.rhFuncionarios.length} no total`),
-      vgKpiCard("Folha do mês (estimada)", fmtBRL(rhCustoFolhaMensal()), "Soma dos salários ativos"),
-      vgKpiCard("Férias vencendo", feriasVencendo, feriasVencendo>0?"Nos próximos 60 dias":"Nada nos próximos 60 dias", feriasVencendo>0?"neg":""),
+      vgKpiCard("Funcionários ativos", ativos.length, `${state.rhFuncionarios.length} no total`, "", {modulo:"rh", view:"rh_funcionarios", label:"Funcionários"}),
+      vgKpiCard("Folha do mês (estimada)", fmtBRL(rhCustoFolhaMensal()), "Soma dos salários ativos", "", {modulo:"rh", view:"rh_folha", label:"Folha de Pagamento"}),
+      vgKpiCard("Férias vencendo", feriasVencendo, feriasVencendo>0?"Nos próximos 60 dias":"Nada nos próximos 60 dias", feriasVencendo>0?"neg":"", {modulo:"rh", view:"rh_alertas", label:"Alertas de RH"}),
     ].join(""));
   })() : "";
 
@@ -2071,7 +2072,7 @@ function viewVgAnalitico(){
     const chamadosAbertos = vErClientes ? state.cliChamados.filter(c => c.negocio===n.nome && ["Aberto","Agendado","Em atendimento"].includes(c.status)).length : null;
     const funcionariosAtivos = vErRh ? state.rhFuncionarios.filter(f => f.negocio===n.nome && f.status!=="Desligado").length : null;
     return `<tr>
-      <td style="font-weight:600;"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(n.nome)}</td>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="vg-ver-negocio" data-negocio="${esc(n.nome)}" title="Ver lançamentos de ${esc(n.nome)}"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(n.nome)}</td>
       <td class="num" style="color:var(--pos);">${fmtBRL(receitaMes)}</td>
       <td class="num" style="color:var(--neg);">${fmtBRL(despesaMes)}</td>
       <td class="num" style="font-weight:600; color:${(receitaMes-despesaMes)>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(receitaMes-despesaMes)}</td>
@@ -4239,6 +4240,12 @@ document.addEventListener("click", async e => {
     if(MODULOS_GRANULARES.includes(modulo) && !podeVerModulo(modulo)){ showToast("Esse usuário não tem acesso a esse módulo.", "error"); return; }
     state.moduloAtivo = modulo;
     state.view = viewAlvo;
+    renderApp();
+  }
+  else if(action === "vg-ver-negocio"){
+    lancFilter.negocio = el.dataset.negocio || "";
+    state.moduloAtivo = "financeiro";
+    state.view = "lancamentos";
     renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
