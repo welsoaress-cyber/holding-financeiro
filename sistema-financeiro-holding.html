@@ -1311,12 +1311,17 @@ function renderModbar(){
   const wrap = document.getElementById("modbarWrap");
   if(!wrap || !state.user) return;
   const moduloAtual = MODULOS_CATALOGO.find(m => m.id === state.moduloAtivo) || MODULOS_CATALOGO[0];
-  const moduloCards = MODULOS_CATALOGO.map(m => `
-    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${!m.ativo ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : ''}">
+  const moduloCards = MODULOS_CATALOGO.map(m => {
+    const soMaster = m.id === "rh" && !ehMaster(); // RH é restrito ao Master
+    const bloqueado = !m.ativo || soMaster;
+    const rotulo = !m.ativo ? "em breve" : soMaster ? "só Master" : "";
+    return `
+    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${bloqueado ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : soMaster ? 'Apenas o Master tem acesso ao RH' : ''}">
       <div class="modcard-ico">${m.ico}</div>
-      <div class="modcard-nome">${m.nome}${!m.ativo ? ' <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">em breve</span>' : ''}</div>
+      <div class="modcard-nome">${m.nome}${rotulo ? ` <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">${rotulo}</span>` : ''}</div>
       <div class="modcard-desc">${m.desc}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
   wrap.innerHTML = `
     <div class="modbar">
       <div class="modbar-logo"><span class="dot"></span>Holding</div>
@@ -1342,11 +1347,13 @@ function renderModbar(){
       const modId = card.dataset.id; if(!modId) return;
       const mod = MODULOS_CATALOGO.find(m=>m.id===modId);
       if(!mod||!mod.ativo){ showToast("Módulo em construção.","error"); return; }
+      if(modId==="rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
       if(modId==="financeiro") state.view="dashboard";
       else if(modId==="estoque") state.view="est_dashboard";
       else if(modId==="clientes") state.view="cli_dashboard";
+      else if(modId==="rh") state.view="rh_dashboard";
       renderApp();
     }));
     // Close on tap outside
@@ -1475,9 +1482,9 @@ function renderApp(){
       <button class="mob-nav-btn ${state.view.startsWith('cli_')?'active':''}" data-action="abrir-modulo" data-id="clientes">
         <span class="ico">👥</span><span class="lbl">Clientes</span>
       </button>
-      <button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
+      ${master ? `<button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
         <span class="ico">🏢</span><span class="lbl">RH</span>
-      </button>
+      </button>` : ""}
       <button class="mob-nav-btn" id="mobMenuBtn2">
         <span class="ico">☰</span><span class="lbl">Menu</span>
       </button>
@@ -1485,9 +1492,12 @@ function renderApp(){
   </nav>`;
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
-  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
-  if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){ state.view = "lancamentos"; }
+  // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios/RH — redireciona se necessario
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas"];
+  if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
+    state.view = "lancamentos";
+    if(state.moduloAtivo === "rh") state.moduloAtivo = "financeiro";
+  }
   renderModbar();
   // ---- Mobile drawer ----
   const mobMenuBtn = document.getElementById("mobMenuBtn");
@@ -3342,11 +3352,13 @@ document.addEventListener("click", async e => {
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
+    if(mod.id === "rh" && !ehMaster()){ showToast("Apenas o Master tem acesso ao RH.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
     if(mod.id === "financeiro"){ state.view = "dashboard"; }
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
+    else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
     renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
