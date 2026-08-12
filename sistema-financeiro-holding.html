@@ -913,11 +913,19 @@ function attachCalculadora(inputId){
 // PERSISTÊNCIA (Supabase — uma tabela por entidade, payload em jsonb)
 // ============================================================
 async function saveRows(table, items){
-  if(!state.user || !items.length) return;
+  // IMPORTANTE: em caso de falha, este erro é relançado (throw) de propósito.
+  // Todas as telas fazem "await saveX(); closeModal(); renderApp(); showToast('salvo!')"
+  // sem try/catch — se engolíssemos o erro aqui (como antes), o app seguia em frente,
+  // fechava o modal e avisava "salvo com sucesso" mesmo quando a gravação no Supabase
+  // falhou. Resultado: o lançamento sumia ao deslogar/logar de novo, porque nunca
+  // tinha sido gravado de verdade. Relançando o erro, o restante da função de quem
+  // chamou para de executar e o modal continua aberto, deixando claro que não salvou.
+  if(!state.user) return;
+  if(!items.length) return;
   try{
     const rows = items.map(item => {
       const { id, ...rest } = item;
-      return { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() };
+      return { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
     });
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
@@ -926,8 +934,9 @@ async function saveRows(table, items){
   }catch(e){
     state.storageOK = false;
     console.error(`[saveRows:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Não salvou (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 async function deleteRow(table, id){
@@ -937,8 +946,9 @@ async function deleteRow(table, id){
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRow:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 async function deleteRows(table, ids){
@@ -948,8 +958,9 @@ async function deleteRows(table, ids){
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRows:${table}]`, e);
-    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
     showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    throw e;
   }
 }
 const saveContas = () => saveRows("contas", state.contas);
@@ -986,17 +997,19 @@ async function loadData(){
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
     const results = await Promise.all(TABELAS_CORE.map(t =>
-      supabaseClient.from(t).select("*").eq("user_id", state.user.id)
+      supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
-    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r => r.data || []);
+    const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = results.map(r =>
+      (r.data || []).map(row => ({ id: row.id, ...row.dados }))
+    );
     state.contas = contas;
     state.lancamentos = lancamentos;
     state.ajustes = ajustes;
     state.categorias = categorias;
     state.negocios = negocios;
     state.cartoes = cartoes;
-    state.storageOK = true;  
+    state.storageOK = true;
 
     // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
     // não trava o resto do app — só fica sem perfis (só o Master existe) até você
