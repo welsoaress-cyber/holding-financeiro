@@ -2590,7 +2590,7 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
     const hB = p.b>0 ? Math.max(2, Math.round((p.b/max)*alturaMax)) : 0;
     const tipA = `<div>${esc(p.label)}</div><div class="tip-val">${fmtBRL(p.a)}</div><div>${esc(labelA)}</div>`;
     const tipB = `<div>${esc(p.label)}</div><div class="tip-val">${fmtBRL(p.b)}</div><div>${esc(labelB)}</div>`;
-    return `<div style="display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:34px;">
+    return `<div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:30px;">
       <div style="display:flex; align-items:flex-end; gap:2px; height:${alturaMax}px;">
         <div data-tip="${esc(tipA)}" style="width:14px; height:${hA}px; background:${corA}; border-radius:3px 3px 0 0;"></div>
         <div data-tip="${esc(tipB)}" style="width:14px; height:${hB}px; background:${corB}; border-radius:3px 3px 0 0;"></div>
@@ -2603,7 +2603,7 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corA};display:inline-block;"></span>${esc(labelA)}</div>
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corB};display:inline-block;"></span>${esc(labelB)}</div>
     </div>
-    <div style="display:flex; align-items:flex-end; gap:6px; overflow-x:auto; padding-bottom:2px;">${cols}</div>
+    <div style="display:flex; align-items:flex-end; gap:6px; width:100%; overflow-x:auto; padding-bottom:2px;">${cols}</div>
   `;
 }
 function viewVgExecutivo(){
