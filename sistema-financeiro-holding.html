@@ -719,7 +719,7 @@ const HORIZONTE_ANOS = 5;
 // Guardado no localStorage do navegador — não é dado sensível, é só o nome da tela.
 const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
 const VIEWS_VALIDAS = new Set([
-  "vg_sintetico","vg_analitico",
+  "vg_sintetico","vg_analitico","vg_executivo",
   "cadastro_hub",
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
@@ -1865,7 +1865,7 @@ function renderModbar(){
       if(MODULOS_GRANULARES.includes(modId) && !podeVerModulo(modId)){ showToast("Esse usuário não tem acesso a esse módulo.","error"); return; }
       state.modpanelAberto = false; mobilePanel.remove();
       state.moduloAtivo = modId;
-      if(modId==="visaogeral") state.view="vg_sintetico";
+      if(modId==="visaogeral") state.view="vg_executivo";
       else if(modId==="cadastro") state.view="cadastro_hub";
       else if(modId==="financeiro") state.view="dashboard";
       else if(modId==="estoque") state.view="est_dashboard";
@@ -1939,6 +1939,7 @@ function renderApp(){
 
       ${state.moduloAtivo === "visaogeral" ? `
         <div class="nav-group-label">Visão Geral</div>
+        ${navItem("vg_executivo","🎯","Executivo")}
         ${navItem("vg_sintetico","🧭","Sintético")}
         ${navItem("vg_analitico","📊","Analítico")}
       ` : state.moduloAtivo === "cadastro" ? `
@@ -2100,7 +2101,8 @@ function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
+  if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
+  else if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
   else if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
   else if(state.view === "dashboard") main.innerHTML = viewDashboard();
@@ -2370,6 +2372,158 @@ function vgBlocoNegocio(n, inicioMesISO, fimMesISO){
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));">${cards.join("")}</div>
   </div>`;
 }
+// ============================================================
+// VISÃO GERAL — EXECUTIVO: painel único pra decisão rápida (não pra
+// navegar). Patrimônio consolidado + evolução vs mês passado, performance
+// por negócio com margem/status, top clientes por receita recorrente, e
+// alertas com ação sugerida. Só entra o que dá pra calcular com dado real
+// já existente no sistema — sem inventar número (ex: não tem "churn vs
+// média histórica" porque contrato cancelado não guarda a data em que foi
+// cancelado ainda; e não tem gráfico/projeção, é tudo cálculo direto).
+// ============================================================
+function vgVarPct(atual, anterior){
+  if(!anterior) return atual ? { pct: 100, texto: "novo" } : { pct: 0, texto: "—" };
+  const pct = Math.round(((atual-anterior)/Math.abs(anterior))*100);
+  return { pct, texto: `${pct>=0?"▲":"▼"} ${Math.abs(pct)}%` };
+}
+function vgBarraEvolucao(label, atual, anterior, corBoaSeSobe){
+  const v = vgVarPct(atual, anterior);
+  const bom = anterior===0 ? true : (corBoaSeSobe ? v.pct>=0 : v.pct<=0);
+  const cor = v.texto==="—" ? "var(--ink-4)" : (bom ? "var(--pos)" : "var(--neg)");
+  const pctBarra = Math.max(4, Math.min(100, Math.abs(v.pct)));
+  return `<div class="bar-row">
+    <div class="name">${esc(label)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pctBarra}%; background:${cor};"></div></div>
+    <div class="val" style="color:${cor}; font-weight:700; min-width:64px; text-align:right;">${v.texto}</div>
+  </div>`;
+}
+function viewVgExecutivo(){
+  const master = ehMaster();
+  const hoje = new Date();
+  const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+  const inicioMesAntISO = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1).toISOString().slice(0,10);
+  const fimMesAntISO = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0,10);
+  const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
+
+  const lancVis = (filtro) => lancamentosVisiveis(state.lancamentos.filter(filtro));
+  const somaMes = (tipo, ini, fim) => lancVis(l => l.tipo===tipo && !l.inativo && l.status==="Pago" && l.data>=ini && l.data<=fim).reduce((s,l)=>s+Number(l.valor),0);
+  const receitaMes = somaMes("Receita", inicioMesISO, fimMesISO), receitaMesAnt = somaMes("Receita", inicioMesAntISO, fimMesAntISO);
+  const despesaMes = somaMes("Despesa", inicioMesISO, fimMesISO), despesaMesAnt = somaMes("Despesa", inicioMesAntISO, fimMesAntISO);
+  const resultadoMes = receitaMes-despesaMes, resultadoMesAnt = receitaMesAnt-despesaMesAnt;
+  const aReceber = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const aPagar = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const saldoTotal = master ? state.contas.filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0) : null;
+  const disponivel = master ? saldoTotal + aReceber - aPagar : null;
+
+  const patrimonioHTML = `
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">💰 Patrimônio</div></div><div class="panel-body">
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;">
+        ${master ? vgKpiCard("Saldo total", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : ""}
+        ${master ? vgKpiCard("Disponível", fmtBRL(disponivel), "Saldo + a receber − a pagar", disponivel>=0?"pos":"neg") : ""}
+        ${vgKpiCard("A receber", fmtBRL(aReceber), "Em aberto", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"})}
+        ${vgKpiCard("A pagar", fmtBRL(aPagar), "Em aberto", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
+      </div>
+    </div></div>
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📈 Evolução vs mês passado</div></div><div class="panel-body">
+      ${vgBarraEvolucao("Receita", receitaMes, receitaMesAnt, true)}
+      ${vgBarraEvolucao("Despesa", despesaMes, despesaMesAnt, false)}
+      ${vgBarraEvolucao("Resultado", resultadoMes, resultadoMesAnt, true)}
+    </div></div>
+  `;
+
+  // ---- Performance por negócio (margem + status) ----
+  const alertas = [];
+  const linhasNegocio = negociosVisiveis.map(n => {
+    const lancDoNeg = lancVis(l => l.negocio===n.nome && !l.inativo);
+    const receitaMesNeg = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+    const despesaMesNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+    const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const clientesAtivosNeg = podeVerModulo("clientes") ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
+    const margem = receitaMesNeg>0 ? Math.round(((receitaMesNeg-despesaMesNeg)/receitaMesNeg)*100) : null;
+    const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"⚪" }
+      : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"🟢" }
+      : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"🟡" }
+      : { rotulo:"Crítico", cor:"var(--neg)", ponto:"🔴" };
+    if(margem!==null && margem<40){
+      alertas.push({
+        tipo:"margem", negocio:n.nome,
+        texto: `${n.nome}: margem de ${margem}% este mês — abaixo do ideal.`,
+        acao: `Revisar custos/preços de ${n.nome} (margem crítica: ${margem}%).`,
+      });
+    }
+    return { n, receitaMesNeg, despesaMesNeg, aPagarNeg, clientesAtivosNeg, margem, status };
+  }).filter(l => l.receitaMesNeg>0 || l.despesaMesNeg>0 || l.aPagarNeg>0 || l.clientesAtivosNeg>0); // esconde negócio 100% inativo esse mês
+
+  const tabelaNegociosHTML = linhasNegocio.length ? `
+    <div style="overflow-x:auto;">
+      <table style="min-width:600px;"><thead><tr>
+        <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
+      </tr></thead><tbody>
+        ${linhasNegocio.sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg).map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
+          <td style="font-weight:600;"><span class="tag-dot" style="background:${negocioCor(l.n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(l.n.nome)}</td>
+          <td class="num" style="color:var(--pos);">${fmtBRL(l.receitaMesNeg)}</td>
+          <td class="num" style="color:var(--neg);">${fmtBRL(l.aPagarNeg)}</td>
+          <td class="num" style="color:${l.status.cor}; font-weight:700;">${l.margem===null?"—":l.margem+"%"}</td>
+          ${podeVerModulo("clientes")?`<td class="num">${l.clientesAtivosNeg}</td>`:""}
+          <td>${l.status.ponto} ${l.status.rotulo}</td>
+        </tr>`).join("")}
+      </tbody></table>
+    </div>
+  ` : emptyState("Nenhum negócio com movimento este mês ainda.");
+
+  // ---- Top clientes por receita recorrente (MRR dos contratos ativos) ----
+  const topClientesHTML = podeVerModulo("clientes") ? (() => {
+    const comMrr = state.cliClientes.map(c => {
+      const contratosAtivos = (c.contratos||[]).filter(ct=>ct.status==="Ativo");
+      const mrr = contratosAtivos.reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
+      const negs = [...new Set(contratosAtivos.map(ct=>ct.negocio).filter(Boolean))];
+      return { c, mrr, negs };
+    }).filter(x => x.mrr>0).sort((a,b)=>b.mrr-a.mrr).slice(0,3);
+    if(!comMrr.length) return "";
+    return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🏆 Top clientes (receita recorrente)</div></div><div class="panel-body">
+      ${comMrr.map((x,i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; ${i?'border-top:1px solid var(--border);':''}">
+        <div style="font-size:13px;"><strong>${i+1}.</strong> ${esc(cliNome(x.c))} <span style="color:var(--ink-4); font-size:11.5px;">(${esc(x.negs.join(", ")||"—")})</span></div>
+        <div style="font-weight:700; font-size:13px; color:var(--pos);">${fmtBRL(x.mrr)}/mês</div>
+      </div>`).join("")}
+    </div></div>`;
+  })() : "";
+
+  // ---- Chamados parados há muito tempo (alerta operacional) ----
+  if(podeVerModulo("clientes")){
+    const LIMITE_DIAS = 3;
+    state.cliChamados.filter(c => !["Concluído","Cancelado"].includes(c.status)).forEach(c => {
+      const dias = Math.floor((new Date(todayISO()+"T00:00:00") - new Date((c.dataCadastro||todayISO())+"T00:00:00")) / 86400000);
+      if(dias >= LIMITE_DIAS){
+        alertas.push({
+          tipo:"chamado", negocio:c.negocio||"",
+          texto: `Chamado ${c.numero}${c.negocio?` (${c.negocio})`:""}: em aberto há ${dias} dia(s).`,
+          acao: `Priorizar o chamado ${c.numero} — parado há ${dias} dia(s).`,
+        });
+      }
+    });
+  }
+
+  const alertasHTML = alertas.length ? `
+    <div class="panel" style="margin:0; border-color:var(--neg);"><div class="panel-head"><div class="panel-title" style="color:var(--neg);">🔴 Alertas</div></div><div class="panel-body">
+      ${alertas.map(a => `<div style="font-size:13px; padding:5px 0; display:flex; gap:8px;"><span>⚠</span><span>${esc(a.texto)}</span></div>`).join("")}
+    </div></div>
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📌 Ações recomendadas</div></div><div class="panel-body">
+      ${alertas.map((a,i) => `<div style="font-size:13px; padding:5px 0;">${i+1}. ${esc(a.acao)}</div>`).join("")}
+    </div></div>
+  ` : `<div class="panel" style="margin:0;"><div class="panel-body">${emptyState("Nada precisando de atenção agora. 🎉")}</div></div>`;
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">🎯 Executivo</div><div class="page-sub">Posição em ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">${patrimonioHTML}</div>
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
+    ${topClientesHTML ? `<div style="margin-bottom:16px;">${topClientesHTML}</div>` : ""}
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">${alertasHTML}</div>
+  `;
+}
+
 function viewVgSintetico(){
   const hoje = new Date();
   const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
@@ -4937,7 +5091,7 @@ document.addEventListener("click", async e => {
     if(MODULOS_GRANULARES.includes(mod.id) && !podeVerModulo(mod.id)){ showToast("Esse usuário não tem acesso a esse módulo.", "error"); return; }
     state.modpanelAberto = false;
     state.moduloAtivo = mod.id;
-    if(mod.id === "visaogeral"){ state.view = "vg_sintetico"; }
+    if(mod.id === "visaogeral"){ state.view = "vg_executivo"; }
     else if(mod.id === "cadastro"){ state.view = "cadastro_hub"; }
     else if(mod.id === "financeiro"){ state.view = "dashboard"; }
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
