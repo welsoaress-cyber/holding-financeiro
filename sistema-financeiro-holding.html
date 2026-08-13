@@ -6348,6 +6348,10 @@ const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
+// Texto padrão da cobrança — igual pra todo mundo, do jeito que o usuário
+// pediu. Uma `let` (não `const`) de propósito: se um dia virar uma tela de
+// "editar modelo de mensagem", é só reatribuir aqui, sem mexer em mais nada.
+let MENSAGEM_COBRANCA_PADRAO = "Olá,\n\nSeu vencimento está próximo. Recomendamos que regularize o pagamento para garantir a continuidade do serviço.\n\nEstamos à disposição para qualquer dúvida.\n\nAtt,\nTom";
 // Link "wa.me" pra cobrar um lançamento em aberto pelo WhatsApp — abre o
 // WhatsApp (app ou web) já com a mensagem pronta, mas quem manda de
 // verdade é o usuário, com um clique em "Enviar" (nada de API/automação,
@@ -6366,14 +6370,10 @@ function waLinkCobranca(l){
   const fone = (cliente.whatsapp || cliente.telefone || "").replace(/\D/g,"");
   if(!fone) return null;
   const digits = fone.length <= 11 ? "55"+fone : fone; // assume Brasil se não tiver código de país
-  // Frase de vencimento muda de tempo verbal conforme a data já passou ou
-  // não — "está próximo" fica errado (mentiroso) num título que já venceu.
-  const jaVenceu = l.data < todayISO();
-  const fraseVencimento = jaVenceu
-    ? `Seu vencimento venceu em ${fmtDateBR(l.data)}`
-    : `Seu vencimento está próximo (vence em ${fmtDateBR(l.data)})`;
-  const msg = `Olá, ${cliNome(cliente)}!\n\n${fraseVencimento}, no valor de ${fmtBRL(l.valor)}${l.descricao ? ` (${l.descricao})` : ""}. Recomendamos que regularize o pagamento para garantir a continuidade do serviço.\n\nEstamos à disposição para qualquer dúvida.\n\nAtr,\nTom`;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
+  // Texto exato pedido pelo usuário — igual pra todo mundo, de propósito
+  // (ele quer reaproveitar esse mesmo texto num envio em massa depois, não
+  // dá pra ficar diferente por cliente).
+  return `https://wa.me/${digits}?text=${encodeURIComponent(MENSAGEM_COBRANCA_PADRAO)}`;
 }
 function cliContratosByNegocio(clienteId, negocio){
   const c = cliClienteById(clienteId);
