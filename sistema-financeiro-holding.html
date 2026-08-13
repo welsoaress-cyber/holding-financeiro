@@ -719,7 +719,8 @@ let state = {
   modoCliente: false, clienteAuthInfo: null,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
-  mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
+  mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() },
+  executivoOculto: true, // valores da Visão Geral Executivo começam ocultos — precisa clicar no olho pra ver
 };
 const NOMES_MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const HORIZONTE_ANOS = 5;
@@ -1344,7 +1345,7 @@ async function tratarErroDeSessao(e){
   state.user = null;
   state.contas = []; state.lancamentos = []; state.ajustes = [];
   state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
-  state.pagarUnlocked = false; state.receberUnlocked = false;
+  state.pagarUnlocked = false; state.receberUnlocked = false; state.executivoOculto = true;
   state.perfilAtivo = null; state.perfilEscolhido = false;
   state.modoTecnico = false; state.tecnicoAuthInfo = null;
   state.modoCliente = false; state.clienteAuthInfo = null;
@@ -1665,7 +1666,7 @@ async function doLogout(){
   state.user = null;
   state.contas = []; state.lancamentos = []; state.ajustes = [];
   state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
-  state.pagarUnlocked = false; state.receberUnlocked = false;
+  state.pagarUnlocked = false; state.receberUnlocked = false; state.executivoOculto = true;
   state.perfilAtivo = null; state.perfilEscolhido = false;
   state.modoTecnico = false; state.tecnicoAuthInfo = null;
   state.modoCliente = false; state.clienteAuthInfo = null;
@@ -2408,53 +2409,82 @@ function vgBarraEvolucao(label, atual, anterior, corBoaSeSobe){
 }
 function viewVgExecutivo(){
   const master = ehMaster();
+  const mv = state.mesVisualizado;
   const hoje = new Date();
-  const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
-  const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
-  const inicioMesAntISO = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1).toISOString().slice(0,10);
-  const fimMesAntISO = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0,10);
+  const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
+  const oculto = state.executivoOculto;
+  const vv = (n) => oculto ? "R$ ••••••" : fmtBRL(n); // "valor visível" — some quando oculto
+  const inicioMesISO = new Date(mv.ano, mv.mes, 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(mv.ano, mv.mes+1, 0).toISOString().slice(0,10);
+  const mesAntObj = (() => { const m = mv.mes===0?11:mv.mes-1; const a = mv.mes===0?mv.ano-1:mv.ano; return {ano:a, mes:m}; })();
+  const inicioMesAntISO = new Date(mesAntObj.ano, mesAntObj.mes, 1).toISOString().slice(0,10);
+  const fimMesAntISO = new Date(mesAntObj.ano, mesAntObj.mes+1, 0).toISOString().slice(0,10);
   const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
 
   const lancVis = (filtro) => lancamentosVisiveis(state.lancamentos.filter(filtro));
   const somaMes = (tipo, ini, fim) => lancVis(l => l.tipo===tipo && !l.inativo && l.status==="Pago" && l.data>=ini && l.data<=fim).reduce((s,l)=>s+Number(l.valor),0);
-  const receitaMes = somaMes("Receita", inicioMesISO, fimMesISO), receitaMesAnt = somaMes("Receita", inicioMesAntISO, fimMesAntISO);
-  const despesaMes = somaMes("Despesa", inicioMesISO, fimMesISO), despesaMesAnt = somaMes("Despesa", inicioMesAntISO, fimMesAntISO);
-  const resultadoMes = receitaMes-despesaMes, resultadoMesAnt = receitaMesAnt-despesaMesAnt;
-  const aReceber = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
-  const aPagar = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
-  const saldoTotal = master ? state.contas.filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0) : null;
-  const disponivel = master ? saldoTotal + aReceber - aPagar : null;
+  const somaMesAberto = (tipo, ini, fim) => lancVis(l => l.tipo===tipo && !l.inativo && l.status!=="Pago" && l.data>=ini && l.data<=fim).reduce((s,l)=>s+Number(l.valor),0);
+  // Realizado (já pago) — o valor real, certo. "Aberto" é só o que tem
+  // vencimento DENTRO do mês selecionado (nunca soma os anos de recorrência
+  // futura de um contrato — aquilo é previsão de longo prazo, não "a
+  // receber" do mês; misturar os dois inflava o número de forma irreal).
+  const receitaRealizadaMes = somaMes("Receita", inicioMesISO, fimMesISO), receitaRealizadaMesAnt = somaMes("Receita", inicioMesAntISO, fimMesAntISO);
+  const despesaRealizadaMes = somaMes("Despesa", inicioMesISO, fimMesISO), despesaRealizadaMesAnt = somaMes("Despesa", inicioMesAntISO, fimMesAntISO);
+  const receitaAbertaMes = somaMesAberto("Receita", inicioMesISO, fimMesISO);
+  const despesaAbertaMes = somaMesAberto("Despesa", inicioMesISO, fimMesISO);
+  const receitaPrevistaMes = receitaRealizadaMes + receitaAbertaMes; // total esperado até o fim do mês
+  const despesaPrevistaMes = despesaRealizadaMes + despesaAbertaMes;
+  const resultadoRealizadoMes = receitaRealizadaMes-despesaRealizadaMes, resultadoRealizadoMesAnt = receitaRealizadaMesAnt-despesaRealizadaMesAnt;
+
+  // Saldo no ponto do mês selecionado — mesma lógica que o Dashboard já usa
+  // (saldo realizado até agora + o que ainda está previsto entrar/sair).
+  const saldoMesAnterior = saldoProjetadoAteMes(mesAntObj.ano, mesAntObj.mes);
+  const movReal = movimentoRealizadoDoMes(mv.ano, mv.mes);
+  const movPendente = movimentoPendenteDoMes(mv.ano, mv.mes);
+  const saldoAtualMes = master ? saldoMesAnterior + movReal.entradas - movReal.saidas : null;
+  const saldoFinalPrevisto = master ? saldoAtualMes + movPendente.entradas - movPendente.saidas : null;
+
+  const seletorMesHTML = `
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="icon-btn" data-action="mes-prev" style="font-size:14px; padding:5px 10px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+      <div style="text-align:center; min-width:150px;">
+        <input type="month" id="mesManualInput" value="${mv.ano}-${String(mv.mes+1).padStart(2,'0')}" style="font-family:var(--font-ui); font-weight:700; font-size:14px; border:none; background:transparent; text-align:center; cursor:pointer; color:var(--ink); padding:2px;">
+        <div>${!isMesAtual ? `<span style="font-size:10.5px; color:var(--ink-4); cursor:pointer; text-decoration:underline;" data-action="mes-hoje">voltar pro mês atual</span>` : `<span style="font-size:10.5px; color:var(--ink-4);">mês atual</span>`}</div>
+      </div>
+      <button class="icon-btn" data-action="mes-next" style="font-size:14px; padding:5px 10px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
+      <button class="icon-btn" data-action="toggle-executivo-oculto" title="${oculto?'Mostrar valores':'Ocultar valores'}" style="font-size:16px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); margin-left:6px;">${oculto?'🙈':'👁️'}</button>
+    </div>`;
 
   const patrimonioHTML = `
     <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">💰 Patrimônio</div></div><div class="panel-body">
       <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;">
-        ${master ? vgKpiCard("Saldo total", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : ""}
-        ${master ? vgKpiCard("Disponível", fmtBRL(disponivel), "Saldo + a receber − a pagar", disponivel>=0?"pos":"neg") : ""}
-        ${vgKpiCard("A receber", fmtBRL(aReceber), "Em aberto", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"})}
-        ${vgKpiCard("A pagar", fmtBRL(aPagar), "Em aberto", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
+        ${master ? vgKpiCard("Saldo atual", vv(saldoAtualMes), isMesAtual?"Realizado até hoje":"Realizado até o fim do mês", saldoAtualMes>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : ""}
+        ${master ? vgKpiCard("Saldo previsto (fim do mês)", vv(saldoFinalPrevisto), "Com o que ainda falta entrar/sair", saldoFinalPrevisto>=0?"pos":"neg") : ""}
+        ${vgKpiCard("Receita do mês", vv(receitaPrevistaMes), `Já recebido: ${vv(receitaRealizadaMes)}`, "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"})}
+        ${vgKpiCard("Despesa do mês", vv(despesaPrevistaMes), `Já pago: ${vv(despesaRealizadaMes)}`, "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
       </div>
     </div></div>
-    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📈 Evolução vs mês passado</div></div><div class="panel-body">
-      ${vgBarraEvolucao("Receita", receitaMes, receitaMesAnt, true)}
-      ${vgBarraEvolucao("Despesa", despesaMes, despesaMesAnt, false)}
-      ${vgBarraEvolucao("Resultado", resultadoMes, resultadoMesAnt, true)}
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📈 Evolução vs mês anterior</div></div><div class="panel-body">
+      ${vgBarraEvolucao("Receita (realizada)", receitaRealizadaMes, receitaRealizadaMesAnt, true)}
+      ${vgBarraEvolucao("Despesa (realizada)", despesaRealizadaMes, despesaRealizadaMesAnt, false)}
+      ${vgBarraEvolucao("Resultado (realizado)", resultadoRealizadoMes, resultadoRealizadoMesAnt, true)}
     </div></div>
   `;
 
-  // ---- Performance por negócio (margem + status) ----
+  // ---- Performance por negócio (margem + status), no mês selecionado ----
   const alertas = [];
   const linhasNegocio = negociosVisiveis.map(n => {
     const lancDoNeg = lancVis(l => l.negocio===n.nome && !l.inativo);
     const receitaMesNeg = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const despesaMesNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
-    const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const clientesAtivosNeg = podeVerModulo("clientes") ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const margem = receitaMesNeg>0 ? Math.round(((receitaMesNeg-despesaMesNeg)/receitaMesNeg)*100) : null;
     const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"⚪" }
       : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"🟢" }
       : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"🟡" }
       : { rotulo:"Crítico", cor:"var(--neg)", ponto:"🔴" };
-    if(margem!==null && margem<40){
+    if(isMesAtual && margem!==null && margem<40){
       alertas.push({
         tipo:"margem", negocio:n.nome,
         texto: `${n.nome}: margem de ${margem}% este mês — abaixo do ideal.`,
@@ -2467,21 +2497,21 @@ function viewVgExecutivo(){
   const tabelaNegociosHTML = linhasNegocio.length ? `
     <div style="overflow-x:auto;">
       <table style="min-width:600px;"><thead><tr>
-        <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
+        <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar (mês)</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
       </tr></thead><tbody>
         ${linhasNegocio.sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg).map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
           <td style="font-weight:600;"><span class="tag-dot" style="background:${negocioCor(l.n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(l.n.nome)}</td>
-          <td class="num" style="color:var(--pos);">${fmtBRL(l.receitaMesNeg)}</td>
-          <td class="num" style="color:var(--neg);">${fmtBRL(l.aPagarNeg)}</td>
+          <td class="num" style="color:var(--pos);">${vv(l.receitaMesNeg)}</td>
+          <td class="num" style="color:var(--neg);">${vv(l.aPagarNeg)}</td>
           <td class="num" style="color:${l.status.cor}; font-weight:700;">${l.margem===null?"—":l.margem+"%"}</td>
           ${podeVerModulo("clientes")?`<td class="num">${l.clientesAtivosNeg}</td>`:""}
           <td>${l.status.ponto} ${l.status.rotulo}</td>
         </tr>`).join("")}
       </tbody></table>
     </div>
-  ` : emptyState("Nenhum negócio com movimento este mês ainda.");
+  ` : emptyState("Nenhum negócio com movimento nesse mês.");
 
-  // ---- Top clientes por receita recorrente (MRR dos contratos ativos) ----
+  // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não muda com o mês, é o valor recorrente atual) ----
   const topClientesHTML = podeVerModulo("clientes") ? (() => {
     const comMrr = state.cliClientes.map(c => {
       const contratosAtivos = (c.contratos||[]).filter(ct=>ct.status==="Ativo");
@@ -2493,13 +2523,13 @@ function viewVgExecutivo(){
     return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🏆 Top clientes (receita recorrente)</div></div><div class="panel-body">
       ${comMrr.map((x,i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; ${i?'border-top:1px solid var(--border);':''}">
         <div style="font-size:13px;"><strong>${i+1}.</strong> ${esc(cliNome(x.c))} <span style="color:var(--ink-4); font-size:11.5px;">(${esc(x.negs.join(", ")||"—")})</span></div>
-        <div style="font-weight:700; font-size:13px; color:var(--pos);">${fmtBRL(x.mrr)}/mês</div>
+        <div style="font-weight:700; font-size:13px; color:var(--pos);">${vv(x.mrr)}/mês</div>
       </div>`).join("")}
     </div></div>`;
   })() : "";
 
-  // ---- Chamados parados há muito tempo (alerta operacional) ----
-  if(podeVerModulo("clientes")){
+  // ---- Chamados parados há muito tempo (alerta operacional — sempre em tempo real, não muda com o mês navegado) ----
+  if(podeVerModulo("clientes") && isMesAtual){
     const LIMITE_DIAS = 3;
     state.cliChamados.filter(c => !["Concluído","Cancelado"].includes(c.status)).forEach(c => {
       const dias = Math.floor((new Date(todayISO()+"T00:00:00") - new Date((c.dataCadastro||todayISO())+"T00:00:00")) / 86400000);
@@ -2520,11 +2550,12 @@ function viewVgExecutivo(){
     <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📌 Ações recomendadas</div></div><div class="panel-body">
       ${alertas.map((a,i) => `<div style="font-size:13px; padding:5px 0;">${i+1}. ${esc(a.acao)}</div>`).join("")}
     </div></div>
-  ` : `<div class="panel" style="margin:0;"><div class="panel-body">${emptyState("Nada precisando de atenção agora. 🎉")}</div></div>`;
+  ` : `<div class="panel" style="margin:0;"><div class="panel-body">${emptyState(isMesAtual ? "Nada precisando de atenção agora. 🎉" : "Alertas operacionais só valem pro mês atual.")}</div></div>`;
 
   return `
     <div class="page-header">
-      <div><div class="page-title">🎯 Executivo</div><div class="page-sub">Posição em ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div></div>
+      <div><div class="page-title">🎯 Executivo</div><div class="page-sub">${isMesAtual ? `Posição hoje, ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `Vendo ${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      ${seletorMesHTML}
     </div>
     <div class="two-col" style="margin-bottom:16px;">${patrimonioHTML}</div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
@@ -2575,14 +2606,14 @@ function viewVgAnalitico(){
     const lancDoNeg = lancamentosVisiveis(state.lancamentos.filter(l => l.negocio===n.nome && !l.inativo));
     const receitaMes = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const despesaMes = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
-    const aReceber = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
-    const aPagar = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const aReceber = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+    const aPagar = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const abaixoMinimo = vErEstoque ? state.estProdutos.filter(p => p.negocio===n.nome && estSaldoAtual(p.id)<=Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length : null;
     const clientesAtivos = vErClientes ? state.cliClientes.filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const chamadosAbertos = vErClientes ? state.cliChamados.filter(c => c.negocio===n.nome && ["Aberto","Agendado","Em atendimento"].includes(c.status)).length : null;
     const funcionariosAtivos = vErRh ? state.rhFuncionarios.filter(f => f.negocio===n.nome && f.status!=="Desligado").length : null;
     return `<tr>
-      <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="vg-ver-negocio" data-negocio="${esc(n.nome)}" title="Ver lançamentos de ${esc(n.nome)}"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(n.nome)}</td>
+      <td style="font-weight:600; cursor:pointer; color:var(--accent); white-space:nowrap;" data-action="vg-ver-negocio" data-negocio="${esc(n.nome)}" title="Ver lançamentos de ${esc(n.nome)}"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(n.nome)}</td>
       <td class="num" style="color:var(--pos);">${fmtBRL(receitaMes)}</td>
       <td class="num" style="color:var(--neg);">${fmtBRL(despesaMes)}</td>
       <td class="num" style="font-weight:600; color:${(receitaMes-despesaMes)>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(receitaMes-despesaMes)}</td>
@@ -2602,7 +2633,7 @@ function viewVgAnalitico(){
     <div class="panel"><div class="panel-body" style="overflow-x:auto;">
       <table style="min-width:760px;"><thead><tr>
         <th>Negócio</th><th class="num">Receita (mês)</th><th class="num">Despesa (mês)</th><th class="num">Resultado (mês)</th>
-        <th class="num">A receber</th><th class="num">A pagar</th>
+        <th class="num">A receber (mês)</th><th class="num">A pagar (mês)</th>
         ${vErEstoque ? `<th class="num">Abaixo do mín.</th>` : ""}
         ${vErClientes ? `<th class="num">Clientes ativos</th><th class="num">Chamados abertos</th>` : ""}
         ${vErRh ? `<th class="num">Funcionários</th>` : ""}
@@ -5388,6 +5419,7 @@ document.addEventListener("click", async e => {
     state.mesVisualizado = { ano: hoje.getFullYear(), mes: hoje.getMonth() };
     renderView();
   }
+  else if(action === "toggle-executivo-oculto"){ state.executivoOculto = !state.executivoOculto; renderView(); }
   // ---- Estoque ----
   else if(action === "est-novo-produto") modalEstProduto(null);
   else if(action === "est-edit-produto") modalEstProduto(estProdutoById(id));
