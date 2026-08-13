@@ -678,6 +678,20 @@
 }
 @keyframes fabItemIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ---- Tooltip de gráfico (linha/barras hand-rolled, sem lib) ---- */
+.gtip {
+  position: fixed; z-index: 999; background: var(--ink); color: #fff;
+  font-family: var(--font-ui); font-size: 11.5px; line-height: 1.5;
+  padding: 6px 10px; border-radius: 7px; pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,.28); display: none; max-width: 220px;
+}
+.gtip.show { display: block; }
+.gtip .tip-val { font-weight: 700; font-family: var(--font-mono); font-size: 12.5px; }
+.grafico-linha-pt:hover circle:last-child { r: 5.5; }
+[data-tip] { cursor: default; }
+.bar-row[data-tip] .bar-track { transition: filter .1s; }
+.bar-row[data-tip]:hover .bar-track { filter: brightness(0.94); }
+
 /* Correct the two-column A Pagar/A Receber to single column on mobile */
 @media (max-width: 599px) {
   div[style*="grid-template-columns: repeat(2, minmax(240px"] {
@@ -2471,7 +2485,80 @@ function vgBarraEvolucao(label, atual, anterior, corBoaSeSobe){
     <div class="val" style="color:${cor}; font-weight:700; min-width:64px; text-align:right;">${v.texto}</div>
   </div>`;
 }
+
+// ---- Gráficos hand-rolled (sem lib de charts) — linha/área em SVG e barras
+// horizontais reaproveitando .bar-row/.bar-track já usados no resto do app.
+// Tooltip é um único listener delegado no document (ver garantirTooltipGrafico),
+// então funciona em qualquer gráfico novo só de marcar o elemento com data-tip.
+let graficoTooltipPronto = false;
+function garantirTooltipGrafico(){
+  if(graficoTooltipPronto) return;
+  graficoTooltipPronto = true;
+  const tip = document.createElement("div");
+  tip.className = "gtip"; tip.id = "graficoTooltip";
+  document.body.appendChild(tip);
+  document.addEventListener("mousemove", e => {
+    const el = e.target.closest("[data-tip]");
+    if(!el){ tip.classList.remove("show"); return; }
+    tip.innerHTML = el.getAttribute("data-tip");
+    const x = Math.min(e.clientX+14, window.innerWidth-230);
+    const y = Math.max(e.clientY-38, 6);
+    tip.style.left = x+"px"; tip.style.top = y+"px";
+    tip.classList.add("show");
+  });
+  document.addEventListener("mouseout", e => {
+    if(!e.relatedTarget || !(e.relatedTarget instanceof Element) || !e.relatedTarget.closest("[data-tip]")) tip.classList.remove("show");
+  });
+}
+// Gráfico de linha/área — pontos: [{label, valor}]. Só faz sentido pra série
+// única (saldo consolidado), por isso não tem legenda — o título do painel
+// já diz o que é.
+function svgLinhaSaldo(pontos, h){
+  if(pontos.length < 2) return emptyState("Sem histórico suficiente ainda.");
+  const w = 1000; // viewBox largo, escala 100% via CSS — sem preocupação com o px real da tela
+  const vals = pontos.map(p=>p.valor);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max-min)*0.15 || Math.abs(max)*0.15 || 10;
+  const yMin = min-pad, yMax = max+pad;
+  const stepX = w/(pontos.length-1);
+  const xy = (i,v) => [i*stepX, h - ((v-yMin)/((yMax-yMin)||1))*h];
+  const coords = pontos.map((p,i)=>xy(i,p.valor));
+  const pathLine = coords.map((c,i)=>`${i===0?'M':'L'}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(" ");
+  const pathArea = `${pathLine} L${coords[coords.length-1][0].toFixed(1)},${h} L0,${h} Z`;
+  const pontosHTML = coords.map((c,i) => {
+    const p = pontos[i];
+    const tip = `<div>${esc(p.label)}</div><div class="tip-val">${fmtBRL(p.valor)}</div>`;
+    return `<g class="grafico-linha-pt" data-tip="${esc(tip)}">
+      <circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="14" fill="transparent" style="pointer-events:all;"></circle>
+      <circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2" style="pointer-events:none;"></circle>
+    </g>`;
+  }).join("");
+  // Só 1º, meio e último — em tela estreita, rótulo demais gruda um no outro.
+  const meio = Math.floor((pontos.length-1)/2);
+  const labelsHTML = pontos.map((p,i) => {
+    if(i!==0 && i!==meio && i!==pontos.length-1) return `<div style="flex:1;"></div>`;
+    const alinho = i===0 ? "left" : i===pontos.length-1 ? "right" : "center";
+    return `<div style="flex:1; text-align:${alinho};">${esc(p.label)}</div>`;
+  }).join("");
+  return `
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%; height:${h}px; display:block; overflow:visible;">
+      <path d="${pathArea}" fill="var(--accent)" opacity=".1"></path>
+      <path d="${pathLine}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+      ${pontosHTML}
+    </svg>
+    <div style="display:flex; margin-top:6px; font-size:10.5px; color:var(--ink-4);">${labelsHTML}</div>
+  `;
+}
+// Barra horizontal reaproveitando .bar-row — usada pra receita e margem por negócio.
+function graficoBarraHTML(label, pct, cor, valorTxt, tip, corDot){
+  return `<div class="bar-row" data-tip="${esc(tip)}">
+    <div class="name">${corDot?`<span class="tag-dot" style="background:${corDot}"></span>`:""}${esc(label)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,pct)}%; background:${cor};"></div></div>
+    <div class="val" style="font-weight:700; color:${cor};">${valorTxt}</div>
+  </div>`;
+}
 function viewVgExecutivo(){
+  garantirTooltipGrafico();
   const master = ehMaster();
   const mv = state.mesVisualizado;
   const hoje = new Date();
@@ -2575,6 +2662,81 @@ function viewVgExecutivo(){
     </div>
   ` : emptyState("Nenhum negócio com movimento nesse mês.");
 
+  // ---- Gráfico: evolução do saldo consolidado, últimos 12 meses (master only) ----
+  const graficoSaldoHTML = master ? (() => {
+    const pontos = [];
+    for(let i=11; i>=0; i--){
+      let mes = mv.mes-i, ano = mv.ano;
+      while(mes<0){ mes+=12; ano-=1; }
+      pontos.push({ ano, mes, label: `${NOMES_MESES[mes].slice(0,3)}/${String(ano).slice(2)}`, valor: saldoProjetadoAteMes(ano,mes) });
+    }
+    const primeiro = pontos[0], ultimo = pontos[pontos.length-1];
+    const maiorPico = pontos.reduce((a,b)=>b.valor>a.valor?b:a);
+    const menorPico = pontos.reduce((a,b)=>b.valor<a.valor?b:a);
+    const varTotal = vgVarPct(ultimo.valor, primeiro.valor);
+    return `<div class="panel" style="margin-bottom:16px;">
+      <div class="panel-head"><div class="panel-title">📈 Evolução do saldo — últimos 12 meses</div></div>
+      <div class="panel-body">
+        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no 👁️ pra ver o gráfico</div>` : svgLinhaSaldo(pontos, 140)}
+        <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          <div>📌 Maior saldo: <strong style="color:var(--ink);">${vv(maiorPico.valor)}</strong> (${maiorPico.label})</div>
+          <div>📌 Menor saldo: <strong style="color:var(--ink);">${vv(menorPico.valor)}</strong> (${menorPico.label})</div>
+          <div>📌 Variação em 12 meses: <strong style="color:${varTotal.pct>=0?'var(--pos)':'var(--neg)'};">${varTotal.texto}</strong></div>
+        </div>
+      </div>
+    </div>`;
+  })() : "";
+
+  // ---- Gráfico: receita por negócio (mês selecionado) — linhasNegocio já
+  // vem ordenado desc por receita (o .sort() acima, em tabelaNegociosHTML,
+  // muta o array e reaproveitamos a mesma ordem aqui). ----
+  const comReceita = linhasNegocio.filter(l=>l.receitaMesNeg>0);
+  const graficoReceitaHTML = comReceita.length ? (() => {
+    const totalReceita = comReceita.reduce((s,l)=>s+l.receitaMesNeg,0);
+    const maxReceita = Math.max(...comReceita.map(l=>l.receitaMesNeg));
+    const barras = comReceita.map(l => {
+      const pctDoTotal = totalReceita>0 ? Math.round((l.receitaMesNeg/totalReceita)*100) : 0;
+      const tip = `<div>${esc(l.n.nome)}</div><div class="tip-val">${fmtBRL(l.receitaMesNeg)}</div><div>${pctDoTotal}% do total</div>`;
+      return graficoBarraHTML(l.n.nome, (l.receitaMesNeg/maxReceita)*100, negocioCor(l.n.nome), oculto?"••••":`${pctDoTotal}%`, tip, negocioCor(l.n.nome));
+    }).join("");
+    const top1 = comReceita[0], top2 = comReceita[1];
+    const pctTop1 = totalReceita>0 ? Math.round((top1.receitaMesNeg/totalReceita)*100) : 0;
+    const pctTop2 = (top2 && totalReceita>0) ? Math.round(((top1.receitaMesNeg+top2.receitaMesNeg)/totalReceita)*100) : null;
+    const menor = comReceita[comReceita.length-1];
+    return `<div class="panel" style="margin-bottom:16px;">
+      <div class="panel-head"><div class="panel-title">📊 Receita por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-body">
+        ${barras}
+        <div style="display:flex; flex-direction:column; gap:4px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          <div>📌 <strong style="color:var(--ink);">${esc(top1.n.nome)}</strong> representa ${oculto?"—":pctTop1+"%"} da receita total do período</div>
+          ${top2 ? `<div>📌 <strong style="color:var(--ink);">${esc(top1.n.nome)} + ${esc(top2.n.nome)}</strong> juntos = ${oculto?"—":pctTop2+"%"}</div>` : ""}
+          ${comReceita.length>1 ? `<div>📌 <strong style="color:var(--ink);">${esc(menor.n.nome)}</strong>: menor faturamento do período</div>` : ""}
+        </div>
+      </div>
+    </div>`;
+  })() : "";
+
+  // ---- Gráfico: margem por negócio (mês selecionado) ----
+  const comMargem = linhasNegocio.filter(l=>l.margem!==null).slice().sort((a,b)=>b.margem-a.margem);
+  const graficoMargemHTML = comMargem.length ? (() => {
+    const media = Math.round(comMargem.reduce((s,l)=>s+l.margem,0)/comMargem.length);
+    const barras = comMargem.map(l => {
+      const tip = `<div>${esc(l.n.nome)}</div><div class="tip-val">${l.margem}% de margem</div><div>Receita: ${fmtBRL(l.receitaMesNeg)}</div>`;
+      return graficoBarraHTML(l.n.nome, l.margem, l.status.cor, `${l.status.ponto} ${l.margem}%`, tip);
+    }).join("");
+    const critico = comMargem.filter(l=>l.margem<40);
+    return `<div class="panel" style="margin-bottom:16px;">
+      <div class="panel-head"><div class="panel-title">💼 Margem por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-body">
+        ${barras}
+        <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          <div>📌 Média do holding: <strong style="color:var(--ink);">${media}%</strong></div>
+          ${critico.length ? `<div style="color:var(--neg);">🔴 ${critico.map(l=>esc(l.n.nome)).join(", ")}: margem crítica (abaixo de 40%)</div>` : `<div style="color:var(--pos);">🟢 Nenhum negócio em margem crítica</div>`}
+        </div>
+      </div>
+    </div>`;
+  })() : "";
+
   // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não muda com o mês, é o valor recorrente atual) ----
   const topClientesHTML = podeVerModulo("clientes") ? (() => {
     const comMrr = state.cliClientes.map(c => {
@@ -2622,7 +2784,9 @@ function viewVgExecutivo(){
       ${seletorMesHTML}
     </div>
     <div class="two-col" style="margin-bottom:16px;">${patrimonioHTML}</div>
-    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
+    ${graficoSaldoHTML}
+    <div class="two-col" style="margin-bottom:16px;">${graficoReceitaHTML}${graficoMargemHTML}</div>
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
     ${topClientesHTML ? `<div style="margin-bottom:16px;">${topClientesHTML}</div>` : ""}
     <div class="two-col">${alertasHTML}</div>
   `;
