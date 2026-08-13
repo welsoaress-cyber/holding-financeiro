@@ -989,7 +989,7 @@ const ACOES_MODULO = {
   "est-del-produto":{modulo:"estoque",acao:"excluir"}, "est-del-fornecedor":{modulo:"estoque",acao:"excluir"},
   "est-del-compra":{modulo:"estoque",acao:"excluir"}, "est-del-mov":{modulo:"estoque",acao:"excluir"},
 
-  "cli-novo":{modulo:"clientes",acao:"criar"}, "cli-novo-plano":{modulo:"clientes",acao:"criar"},
+  "cli-novo":{modulo:"clientes",acao:"criar"}, "cli-novo-plano":{modulo:"clientes",acao:"criar"}, "cli-duplicar-plano":{modulo:"clientes",acao:"criar"},
   "cli-add-contrato":{modulo:"clientes",acao:"criar"}, "orc-novo":{modulo:"clientes",acao:"criar"}, "os-nova":{modulo:"clientes",acao:"criar"},
   "cli-edit":{modulo:"clientes",acao:"editar"}, "cli-edit-plano":{modulo:"clientes",acao:"editar"}, "cli-edit-contrato":{modulo:"clientes",acao:"editar"},
   "orc-edit":{modulo:"clientes",acao:"editar"}, "orc-aprovar":{modulo:"clientes",acao:"editar"}, "orc-recusar":{modulo:"clientes",acao:"editar"},
@@ -4930,6 +4930,7 @@ document.addEventListener("click", async e => {
   }
   else if(action === "cli-novo-plano") modalCliPlano(null);
   else if(action === "cli-edit-plano") modalCliPlano(cliPlanoById(id));
+  else if(action === "cli-duplicar-plano") modalCliPlano(cliPlanoById(id), true);
   else if(action === "cli-del-plano"){
     if(!confirm("Excluir este plano?")) return;
     state.cliPlanos = state.cliPlanos.filter(x=>x.id!==id);
@@ -5375,6 +5376,7 @@ function viewCliPlanos(){
       <td style="text-align:center;">${usos}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-edit-plano" data-id="${p.id}" title="Editar">✎</button>
+        <button class="icon-btn" data-action="cli-duplicar-plano" data-id="${p.id}" title="Duplicar">⧉</button>
         <button class="icon-btn danger" data-action="cli-del-plano" data-id="${p.id}" title="Excluir">🗑</button>
       </div></td>
     </tr>`;
@@ -5647,13 +5649,16 @@ function modalCliContrato(clienteId, existing){
   });
 }
 
-function modalCliPlano(existing){
-  const isEdit = !!existing;
-  const p = existing || { nome:"", negocio: state.negocios[0]?.nome||"", descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
+function modalCliPlano(existing, duplicar){
+  const isEdit = !!existing && !duplicar;
+  const p = existing ? { ...existing, nome: duplicar ? `${existing.nome} (cópia)` : existing.nome } : { nome:"", negocio: state.negocios[0]?.nome||"", descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const titulo = duplicar ? "Duplicar plano" : (isEdit?"Editar plano":"Novo plano");
+  const botao = duplicar ? "Criar cópia" : (isEdit?"Salvar":"Criar plano");
   openModal(`
-    <div class="modal-head"><div class="modal-title">${isEdit?"Editar plano":"Novo plano"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">${titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCliPlano"><div class="modal-body">
+      ${duplicar ? `<div class="field-help" style="margin-bottom:10px;">Partindo de <strong>${esc(existing.nome)}</strong> — ajuste o que precisar e salve como um plano novo.</div>` : ""}
       <div class="field-row">
         <div class="field" style="flex:2;"><label>Nome do plano *</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Fibra 100Mb, Plano Básico..."></div>
         <div class="field"><label>Negócio *</label><select name="negocio">${negOpts}</select></div>
@@ -5667,7 +5672,7 @@ function modalCliPlano(existing){
         <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(p.descricao||"")}" placeholder="Resumo do plano"></div>
       </div>
       <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes, franquia, velocidade noturna...">${esc(p.observacoes||"")}</textarea></div>
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Criar plano"}</button></div></form>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${botao}</button></div></form>
   `);
   document.getElementById("formCliPlano").addEventListener("submit", async e => {
     e.preventDefault();
@@ -5675,7 +5680,7 @@ function modalCliPlano(existing){
     const data = { nome:fd.get("nome").trim(), negocio:fd.get("negocio"), descricao:fd.get("descricao").trim(), valor:parseFloat(fd.get("valor"))||0, velocidade:fd.get("velocidade").trim(), tecnologia:fd.get("tecnologia").trim(), observacoes:fd.get("observacoes").trim() };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.cliPlanos.push({ id:uid("pl"), ...data }); }
-    await saveCliPlanos(); closeModal(); renderView(); showToast(isEdit?"Plano atualizado.":"Plano criado.");
+    await saveCliPlanos(); closeModal(); renderView(); showToast(duplicar?"Plano duplicado.":(isEdit?"Plano atualizado.":"Plano criado."));
   });
 }
 
