@@ -1083,7 +1083,7 @@ const ACOES_MODULO = {
   "tec-novo":{modulo:"clientes",acao:"criar"}, "tec-edit":{modulo:"clientes",acao:"editar"}, "tec-del":{modulo:"clientes",acao:"excluir"},
   "cham-novo":{modulo:"clientes",acao:"criar"}, "cham-edit":{modulo:"clientes",acao:"editar"}, "cham-del":{modulo:"clientes",acao:"excluir"},
   "cham-iniciar":{modulo:"clientes",acao:"editar"}, "cham-concluir":{modulo:"clientes",acao:"editar"}, "cham-cancelar":{modulo:"clientes",acao:"editar"},
-  "cham-materiais":{modulo:"clientes",acao:"editar"}, "cham-gerar-cobranca":{modulo:"clientes",acao:"editar"},
+  "cham-materiais":{modulo:"clientes",acao:"editar"}, "cham-gerar-cobranca":{modulo:"clientes",acao:"editar"}, "cham-prorrogar":{modulo:"clientes",acao:"editar"},
   "cham-mat-editar":{modulo:"clientes",acao:"editar"}, "cham-mat-excluir":{modulo:"clientes",acao:"excluir"},
 
   "rh-novo-funcionario":{modulo:"rh",acao:"criar"}, "rh-novo-cargo":{modulo:"rh",acao:"criar"},
@@ -5511,6 +5511,7 @@ document.addEventListener("click", async e => {
   else if(action === "tec-app-iniciar"){ await chamadoIniciar(id); return; }
   else if(action === "tec-app-concluir"){ await chamadoConcluir(id); return; }
   else if(action === "tec-app-materiais"){ modalChamadoMateriais(id); return; }
+  else if(action === "tec-app-prorrogar"){ modalChamadoProrrogar(id); return; }
   else if(action === "tec-app-logout"){ await doLogout(); return; }
   else if(action === "nav") setView(el.dataset.view);
   else if(action === "abrir-modulo"){
@@ -5982,6 +5983,7 @@ document.addEventListener("click", async e => {
   }
   else if(action === "cham-iniciar") chamadoIniciar(id);
   else if(action === "cham-concluir") chamadoConcluir(id);
+  else if(action === "cham-prorrogar") modalChamadoProrrogar(id);
   else if(action === "cham-cancelar") chamadoCancelar(id);
   else if(action === "cham-gerar-cobranca") chamadoGerarCobranca(id);
   else if(action === "cham-del"){
@@ -6766,6 +6768,7 @@ function osLancamento(os){ return os.lancamentoId ? state.lancamentos.find(l => 
 const CHAMADO_TIPOS = ["Instalação","Suporte técnico","Manutenção","Mudança de endereço","Cancelamento de plano","Outro"];
 const CHAMADO_PRIORIDADES = ["Baixa","Normal","Alta","Urgente"];
 const CHAMADO_STATUS = ["Aberto","Agendado","Em atendimento","Concluído","Cancelado"];
+const MOTIVOS_PRORROGACAO = ["Aguardando material","Sem energia/luz no local","Cliente ausente","Acesso não liberado","Outro"];
 function cliTecnicoById(id){ return state.cliTecnicos.find(t => t.id === id); }
 function cliChamadoById(id){ return state.cliChamados.find(c => c.id === id); }
 function chamadoItensBaixados(chamadoId){ return state.estMovimentos.filter(m => m.chamadoId === chamadoId && m.tipo === "Saída"); }
@@ -7363,6 +7366,7 @@ function viewCliChamadoDetalhe(){
         ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
         ${(!lanc && Number(c.valorCobranca)>0) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
         <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
+        ${podeConcluir ? `<button class="btn btn-ghost" data-action="cham-prorrogar" data-id="${c.id}">⏸ Não concluiu</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
         ${podeCancelar ? `<button class="btn btn-ghost" style="color:var(--neg);" data-action="cham-cancelar" data-id="${c.id}">✕ Cancelar</button>` : ""}
       </div>
@@ -7583,6 +7587,45 @@ async function chamadoCancelar(id){
   if(!confirm(`Cancelar o chamado ${c.numero}?`)) return;
   c.status = "Cancelado";
   await saveCliChamados(); renderView(); showToast("Chamado cancelado.");
+}
+
+// ---- Prorrogar atendimento — pro técnico registrar por que não deu pra
+// concluir agora (faltou material, sem luz, cliente ausente, etc.) e marcar
+// uma nova data, sem perder o histórico do que já foi tentado antes. O
+// chamado volta pra "Agendado" com a nova data, e cada prorrogação vira uma
+// linha no relato do atendimento (dá pra prorrogar mais de uma vez).
+function modalChamadoProrrogar(chamadoId){
+  const c = cliChamadoById(chamadoId);
+  if(!c) return;
+  if(c.status==="Concluído" || c.status==="Cancelado"){ showToast(`Chamado ${c.status.toLowerCase()} — não dá pra prorrogar.`, "error"); return; }
+  const motivoOptions = MOTIVOS_PRORROGACAO.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">⏸ Não consegui concluir — ${esc(c.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formProrrogarChamado"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px;">O chamado volta pra "Agendado" com a nova data — nada se perde, dá pra tentar de novo depois.</div>
+      <div class="field"><label>Motivo</label><select name="motivo">${motivoOptions}</select></div>
+      <div class="field"><label>Descreva (opcional)</label><textarea name="detalhe" rows="2" style="resize:none;" placeholder="Ex: chegou o material só semana que vem"></textarea></div>
+      <div class="field"><label>Nova data prevista</label><input type="date" name="novaData" min="${todayISO()}" required></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div></form>
+  `);
+  document.getElementById("formProrrogarChamado").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const novaData = fd.get("novaData");
+    if(!novaData){ showToast("Informe a nova data prevista.", "error"); return; }
+    await chamadoProrrogar(chamadoId, fd.get("motivo"), (fd.get("detalhe")||"").trim(), novaData);
+    closeModal(); renderView(); showToast("Atendimento prorrogado.");
+  });
+}
+async function chamadoProrrogar(id, motivo, detalhe, novaData){
+  const c = cliChamadoById(id);
+  if(!c) return;
+  const dataAntiga = c.dataAgendada;
+  c.status = "Agendado";
+  c.dataAgendada = novaData;
+  const registro = `[${fmtDateBR(todayISO())}] Prorrogado (estava p/ ${dataAntiga?fmtDateBR(dataAntiga):"sem data"}) — Motivo: ${motivo}${detalhe?" — "+detalhe:""}. Nova data: ${fmtDateBR(novaData)}.`;
+  c.observacoes = c.observacoes ? `${c.observacoes}\n${registro}` : registro;
+  await saveCliChamados();
 }
 async function chamadoGerarCobranca(id){
   const c = cliChamadoById(id);
@@ -9259,11 +9302,13 @@ function viewTecnicoChamadoDetalhe(){
           <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
         </div>
         ${itensBaixados.length ? `<div style="margin-top:12px; font-size:12.5px; color:var(--ink-3);"><strong>Materiais já registrados:</strong> ${itensBaixados.map(m=>{const p=estProdutoById(m.produtoId); return `${esc(p?p.nome:"—")} (${m.qtd})`;}).join(", ")}</div>` : ""}
+        ${c.observacoes ? `<div style="margin-top:12px; font-size:12px; color:var(--ink-3); white-space:pre-line; border-top:1px solid var(--border); padding-top:10px;"><strong>Histórico:</strong>\n${esc(c.observacoes)}</div>` : ""}
       </div></div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${podeIniciar ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-concluir" data-id="${c.id}">✓ Concluir atendimento</button>` : ""}
+        ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center; color:var(--neg);" data-action="tec-app-prorrogar" data-id="${c.id}">⏸ Não consegui concluir</button>` : ""}
       </div>
     </div>
   `;
