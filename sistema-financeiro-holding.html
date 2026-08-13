@@ -2596,13 +2596,13 @@ function viewContas(){
       <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(sp, receberDesbloqueado())}</td>
       <td style="text-align:center;">${nc > 0 ? `<span class="status-pill status-pendente">${nc}</span>` : "—"}</td>
       <td style="text-align:center;"><span class="status-pill ${inativa ? 'status-agendado' : 'status-pago'}" style="cursor:pointer;" data-action="toggle-ativa" data-id="${c.id}" title="Clique para ${inativa?'ativar':'inativar'}">${inativa ? "Inativa" : "Ativa"}</span></td>
-      <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="conta-lancar-rendimento" data-id="${c.id}" title="Lançar rendimento (CDI/caixinha)" style="color:var(--pos);">📈</button><button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
   };
   const todasContas = [...contasRaiz(), ...state.contas.filter(c=>c.parentId)];
   const rows = contasRaiz().map(c => rowHTML(c,false) + caixinhasDe(c.id).map(cx=>rowHTML(cx,true)).join("")).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("contas")}<button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div></div>
+    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta, e "📈" pra lançar rendimento (CDI de dia útil, por exemplo).</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("contas")}<button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div></div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr>${bulkCheckboxHeaderHTML("contas", todasContas.map(c=>c.id))}<th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
@@ -3485,9 +3485,19 @@ function contaOptionsComCriacao(selectedId){
   const opts = contasParaSelecao(selectedId).map(c => `<option value="${c.id}" ${selectedId===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   return `${opts}<option value="__nova__">+ Nova conta...</option>`;
 }
-function modalLancamento(existing, tipoPreset){
+async function abrirLancarRendimento(contaId){
+  const conta = contaById(contaId);
+  if(!conta) return;
+  let cat = categoriaByNome(CATEGORIA_RENDIMENTOS);
+  if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_RENDIMENTOS, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+  modalLancamento(null, "Receita", {
+    contaOrigem: contaId, negocio: conta.negocio || "", categoria: cat.nome,
+    descricao: `Rendimento — ${conta.nome}`, status: "Pago", conciliado: true,
+  });
+}
+function modalLancamento(existing, tipoPreset, prefill){
   const isEdit = !!existing;
-  const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false };
+  const l = existing || { data: todayISO(), tipo: tipoPreset || "Despesa", categoria:"", subcategoria:"", negocio:"", contaOrigem: state.contas.find(c=>c.ativa!==false)?.id||"", contaDestino:"", valor:0, descricao:"", status:"Provisionado", conciliado:false, ...(prefill||{}) };
   const unlockedValor = !isEdit || (l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado());
   const contaOpts = contaOptionsComCriacao(l.contaOrigem);
   const contaDestOpts = contaOptionsComCriacao(l.contaDestino);
@@ -4709,6 +4719,7 @@ document.addEventListener("click", async e => {
   }
   else if(action === "new-conta") modalConta(null);
   else if(action === "new-caixinha") modalCaixinha(id, null);
+  else if(action === "conta-lancar-rendimento") await abrirLancarRendimento(id);
   else if(action === "edit-conta"){ const c = contaById(id); if(c && c.parentId) modalCaixinha(null, c); else modalConta(c); }
   else if(action === "toggle-ativa"){
     const c = contaById(id);
@@ -4975,6 +4986,15 @@ document.addEventListener("click", async e => {
   // ---- Técnicos ----
   else if(action === "tec-novo") modalCliTecnico(null);
   else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
+  else if(action === "tec-gerar-pagamento"){
+    const t = cliTecnicoById(id);
+    if(!t) return;
+    const catExistente = state.categorias.find(c => c.nome === "Salários/Pró-labore");
+    modalLancamento(null, "Despesa", {
+      negocio: t.negocio || "", valor: Number(t.valorMensal)||0,
+      descricao: `Pagamento técnico ${t.nome}`, categoria: catExistente ? catExistente.nome : "",
+    });
+  }
   else if(action === "tec-del"){
     const t = cliTecnicoById(id);
     if(!t) return;
@@ -5128,6 +5148,7 @@ const CLI_TIPOS_CONEXAO = ["Fibra Óptica","Cabo","Rádio","4G/5G","Satélite","
 const ORC_STATUS = ["Rascunho","Enviado","Aprovado","Recusado","Convertido em OS"];
 const OS_STATUS = ["Aberta","Em execução","Concluída","Cancelada"];
 const CATEGORIA_VENDAS_SERVICOS = "Vendas/Serviços";
+const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 
 // ---- Helpers ----
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
@@ -6119,6 +6140,7 @@ function viewCliTecnicos(){
       <td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
+        ${Number(t.valorMensal)>0 ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
       </div></td>
@@ -6126,7 +6148,7 @@ function viewCliTecnicos(){
   }).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz.</div></div>
+      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em 💲 pra lançar o pagamento em Contas a Pagar.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
