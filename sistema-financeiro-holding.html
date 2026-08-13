@@ -1357,7 +1357,7 @@ function seedCategorias(){
     .map(nome => ({ id: uid("cat"), nome, subcategorias: [] }));
 }
 function seedNegocios(){
-  return ["TopTV","Uniplay","ServNet","Precautec","Porto Odonto","Pessoal","Compartilhado"]
+  return ["Provedor","Uniplay","Precautec","Porto Odonto","Pessoal","Compartilhado"]
     .map((nome,i) => ({ id: uid("neg"), nome, cor: PALETA_NEGOCIOS[i % PALETA_NEGOCIOS.length] }));
 }
 
@@ -2318,7 +2318,7 @@ function renderImportFase1(){
       <div class="field"><label>Arquivo (CSV ou Excel .xlsx)</label><input type="file" id="importArquivo" accept=".csv,.xlsx,.xls"></div>
       <div class="field-help" style="margin:4px 0 10px;">— ou —</div>
       <div class="field"><label>Colar dados direto (copiado do Excel/Sheets, com a primeira linha de cabeçalho)</label>
-        <textarea id="importColar" rows="6" style="font-family:var(--font-mono); font-size:12px; resize:vertical;" placeholder="nome	telefone	negocio&#10;Ana Souza	11999990000	ServNet"></textarea>
+        <textarea id="importColar" rows="6" style="font-family:var(--font-mono); font-size:12px; resize:vertical;" placeholder="nome	telefone	negocio&#10;Ana Souza	11999990000	Provedor"></textarea>
       </div>
       <div id="importErro" class="field-help" style="color:var(--neg); display:none;"></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="button" class="btn btn-primary" id="importAvancar">Avançar →</button></div>
@@ -3894,7 +3894,7 @@ function modalNegocio(existing){
   const isEdit = !!existing;
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear negócio" : "Novo negócio"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formNegocio"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: TopTV, um negócio futuro..."></div></div>
+    <form id="formNegocio"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Provedor, um negócio futuro..."></div></div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
   `);
   document.getElementById("formNegocio").addEventListener("submit", async e => {
@@ -5669,7 +5669,7 @@ function modalCliContrato(clienteId, existing){
   const c = cliClienteById(clienteId);
   if(!c) return;
   const isEdit = !!existing;
-  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", tipoConexao:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:false };
+  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", tipoConexao:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:true };
 
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
@@ -5695,7 +5695,7 @@ function modalCliContrato(clienteId, existing){
       <div class="field"><label>Endereço de instalação</label><input type="text" name="enderecoInstalacao" value="${esc(ct.enderecoInstalacao||"")}" placeholder="Rua, número — diferente do endereço cadastral?"></div>
       <div class="field"><label>Observações do contrato</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes do plano, SLA, observações...">${esc(ct.observacoes||"")}</textarea></div>
       <div class="field"><label class="checkbox-row"><input type="checkbox" name="cobrancaAutomatica" ${ct.cobrancaAutomatica?"checked":""}> Gerar cobrança mensal automática em Contas a Receber</label>
-        <div class="field-help">Cria a mensalidade (valor do plano, no dia de vencimento) já provisionada em Contas a Receber, pros próximos ${HORIZONTE_ANOS} anos — precisa de Plano e Dia de vencimento preenchidos. Reajustar aqui recria as ocorrências futuras (as já pagas ficam intactas).</div>
+        <div class="field-help">Ligado por padrão em todo contrato novo, em qualquer negócio — cria a mensalidade (valor do plano, no dia de vencimento) já provisionada em Contas a Receber, pros próximos ${HORIZONTE_ANOS} anos. Precisa de Plano e Dia de vencimento preenchidos pra funcionar. Desmarque só se esse contrato específico não deve gerar cobrança (cortesia, teste, etc.). Reajustar valor/plano/vencimento aqui recria as ocorrências futuras — as já pagas ficam intactas.</div>
       </div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Vincular"}</button></div></form>
   `);
