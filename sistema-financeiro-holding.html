@@ -6366,7 +6366,13 @@ function waLinkCobranca(l){
   const fone = (cliente.whatsapp || cliente.telefone || "").replace(/\D/g,"");
   if(!fone) return null;
   const digits = fone.length <= 11 ? "55"+fone : fone; // assume Brasil se não tiver código de país
-  const msg = `Olá, ${cliNome(cliente)}! Passando pra lembrar que ${l.descricao ? `"${l.descricao}"` : "sua mensalidade"} no valor de ${fmtBRL(l.valor)} venceu em ${fmtDateBR(l.data)} e ainda consta em aberto. Pode verificar pra gente, por favor? Qualquer dúvida, é só chamar por aqui. Obrigado!`;
+  // Frase de vencimento muda de tempo verbal conforme a data já passou ou
+  // não — "está próximo" fica errado (mentiroso) num título que já venceu.
+  const jaVenceu = l.data < todayISO();
+  const fraseVencimento = jaVenceu
+    ? `Seu vencimento venceu em ${fmtDateBR(l.data)}`
+    : `Seu vencimento está próximo (vence em ${fmtDateBR(l.data)})`;
+  const msg = `Olá, ${cliNome(cliente)}!\n\n${fraseVencimento}, no valor de ${fmtBRL(l.valor)}${l.descricao ? ` (${l.descricao})` : ""}. Recomendamos que regularize o pagamento para garantir a continuidade do serviço.\n\nEstamos à disposição para qualquer dúvida.\n\nAtr,\nTom`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
 }
 function cliContratosByNegocio(clienteId, negocio){
