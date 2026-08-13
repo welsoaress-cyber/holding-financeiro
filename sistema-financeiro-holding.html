@@ -7387,7 +7387,7 @@ function viewCliChamadoDetalhe(){
       </div></div>
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th><th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
-    ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px;">${esc(c.observacoes)}</div></div>`:""}
+    ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
   `;
 }
 
@@ -7623,8 +7623,16 @@ async function chamadoProrrogar(id, motivo, detalhe, novaData){
   const dataAntiga = c.dataAgendada;
   c.status = "Agendado";
   c.dataAgendada = novaData;
-  const registro = `[${fmtDateBR(todayISO())}] Prorrogado (estava p/ ${dataAntiga?fmtDateBR(dataAntiga):"sem data"}) — Motivo: ${motivo}${detalhe?" — "+detalhe:""}. Nova data: ${fmtDateBR(novaData)}.`;
-  c.observacoes = c.observacoes ? `${c.observacoes}\n${registro}` : registro;
+  // Cada linha da própria entrada quebra separada (não um parágrafo corrido
+  // com travessões) pra ficar legível no card estreito do celular; entre
+  // uma prorrogação e outra fica uma linha em branco.
+  const registro = [
+    `[${fmtDateBR(todayISO())}] Prorrogado`,
+    `Estava agendado p/: ${dataAntiga?fmtDateBR(dataAntiga):"sem data"}`,
+    `Motivo: ${motivo}${detalhe?" — "+detalhe:""}`,
+    `Novo prazo: ${fmtDateBR(novaData)}`,
+  ].join("\n");
+  c.observacoes = c.observacoes ? `${c.observacoes}\n\n${registro}` : registro;
   await saveCliChamados();
 }
 async function chamadoGerarCobranca(id){
@@ -9324,7 +9332,10 @@ function viewTecnicoChamadoDetalhe(){
           <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
         </div>
         ${itensBaixados.length ? `<div style="margin-top:12px; font-size:12.5px; color:var(--ink-3);"><strong>Materiais já registrados:</strong> ${itensBaixados.map(m=>{const p=estProdutoById(m.produtoId); return `${esc(p?p.nome:"—")} (${m.qtd})`;}).join(", ")}</div>` : ""}
-        ${c.observacoes ? `<div style="margin-top:12px; font-size:12px; color:var(--ink-3); white-space:pre-line; border-top:1px solid var(--border); padding-top:10px;"><strong>Histórico:</strong>\n${esc(c.observacoes)}</div>` : ""}
+        ${c.observacoes ? `<div style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
+          <div style="font-size:12px; font-weight:700; color:var(--ink-2); margin-bottom:6px;">Histórico</div>
+          <div style="font-size:12px; color:var(--ink-3); white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div>
+        </div>` : ""}
       </div></div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${podeIniciar ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
