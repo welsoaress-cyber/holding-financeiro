@@ -3178,7 +3178,7 @@ async function seedTesteClientes(){
     const dataAgendada = d.toISOString().slice(0,10);
     const concluido = status === "Concluído";
     return {
-      id: uid("cham"), numero: `[TESTE] CH-${String(i+1).padStart(4,"0")}`,
+      id: uid("cham"), numero: `[TESTE] CH-${String(state.cliChamados.length+i+1).padStart(4,"0")}`,
       clienteId: cliente.id, negocio: cliente.contratos[0]?.negocio || negAleatorio(), tecnicoId: tecnico.id,
       tipo, prioridade, motivo: `Chamado de teste — ${tipo.toLowerCase()}`, dataAgendada, status,
       valorCobranca: concluido ? 80 : 0, observacoes: concluido ? "Atendimento concluído sem intercorrências." : "",
@@ -4585,6 +4585,13 @@ document.addEventListener("click", async e => {
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
     else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
     renderApp();
+  }
+  else if(action === "table-sort"){
+    const contexto = el.dataset.contexto, campo = el.dataset.campo;
+    const s = sortState(contexto, campo);
+    if(s.campo === campo) s.dir = s.dir === "asc" ? "desc" : "asc";
+    else { s.campo = campo; s.dir = "asc"; }
+    renderView();
   }
   else if(action === "importar-abrir") modalImportarDados();
   else if(action === "import-voltar") renderImportFase1();
@@ -6154,8 +6161,44 @@ function modalCliTecnico(existing){
 }
 
 // ---- VIEW: CHAMADOS ----
+// ---- Cabeçalho de tabela clicável, pra ordenar por qualquer coluna ----
+// tableSorts: { [contexto]: { campo, dir } } — genérico, reaproveitável em outras listas.
+let tableSorts = {};
+function sortState(contexto, campoPadrao, dirPadrao){
+  if(!tableSorts[contexto]) tableSorts[contexto] = { campo: campoPadrao, dir: dirPadrao || "asc" };
+  return tableSorts[contexto];
+}
+function thSort(contexto, label, campo){
+  const s = tableSorts[contexto];
+  const ativo = s && s.campo === campo;
+  const seta = ativo ? (s.dir === "asc" ? " ▲" : " ▼") : "";
+  return `<th style="cursor:pointer; user-select:none;" data-action="table-sort" data-contexto="${contexto}" data-campo="${campo}" title="Ordenar por ${esc(label)}">${esc(label)}${seta}</th>`;
+}
+function aplicarSort(contexto, lista, getters){
+  const s = tableSorts[contexto];
+  if(!s) return lista;
+  const getter = getters[s.campo];
+  if(!getter) return lista;
+  const ordenada = [...lista].sort((a,b) => {
+    const va = getter(a), vb = getter(b);
+    const cmp = typeof va === "number" && typeof vb === "number" ? va - vb : String(va??"").localeCompare(String(vb??""), 'pt-BR', {numeric:true, sensitivity:'base'});
+    return s.dir === "asc" ? cmp : -cmp;
+  });
+  return ordenada;
+}
+
+const CHAM_SORT_GETTERS = {
+  numero: c => c.numero || "",
+  cliente: c => { const cl = cliClienteById(c.clienteId); return cl ? cliNome(cl) : ""; },
+  tipo: c => c.tipo || "",
+  tecnico: c => { const t = cliTecnicoById(c.tecnicoId); return t ? t.nome : ""; },
+  dataAgendada: c => c.dataAgendada || c.dataCadastro || "",
+  prioridade: c => ({Baixa:0,Normal:1,Alta:2,Urgente:3})[c.prioridade] ?? 1,
+  status: c => c.status || "",
+};
 function viewCliChamados(){
-  const lista = [...state.cliChamados].sort((a,b) => (b.dataAgendada||b.dataCadastro).localeCompare(a.dataAgendada||a.dataCadastro));
+  sortState("cli_chamados", "dataAgendada", "desc");
+  const lista = aplicarSort("cli_chamados", state.cliChamados, CHAM_SORT_GETTERS);
   const rows = lista.map(c => {
     const cliente = cliClienteById(c.clienteId);
     const tecnico = cliTecnicoById(c.tecnicoId);
@@ -6177,7 +6220,7 @@ function viewCliChamados(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_chamados")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cham-novo">+ Novo chamado</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_chamados", lista.map(c=>c.id))}<th>Número</th><th>Cliente</th><th>Tipo</th><th>Técnico</th><th>Agendado p/</th><th>Prioridade</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_chamados", lista.map(c=>c.id))}${thSort("cli_chamados","Número","numero")}${thSort("cli_chamados","Cliente","cliente")}${thSort("cli_chamados","Tipo","tipo")}${thSort("cli_chamados","Técnico","tecnico")}${thSort("cli_chamados","Agendado p/","dataAgendada")}${thSort("cli_chamados","Prioridade","prioridade")}${thSort("cli_chamados","Status","status")}<th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum chamado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
