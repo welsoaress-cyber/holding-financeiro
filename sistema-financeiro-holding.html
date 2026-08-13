@@ -1753,11 +1753,16 @@ function naoConciliados(contaId){
   return state.lancamentos.filter(l => (l.contaOrigem === contaId || l.contaDestino === contaId) && !l.conciliado).length;
 }
 function saldoProjetadoAteMes(ano, mes){
+  // "Saldo real até esse mês" — só conta o que já foi de fato Pago (igual
+  // saldoAtual() na tela de Contas). Provisionado/Agendado que nunca foi
+  // baixado NÃO entra aqui — senão um lançamento antigo esquecido em aberto
+  // ficaria inflando o saldo de todo mês pra sempre.
   const base = state.contas.reduce((s,c) => s + (Number(c.saldoInicial)||0), 0);
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let total = base;
   for(const l of state.lancamentos){
     if(l.inativo) continue;
+    if(l.status !== "Pago") continue;
     if(l.data > fimISO) continue;
     if(l.tipo === "Receita") total += Number(l.valor);
     if(l.tipo === "Despesa") total -= Number(l.valor);
@@ -1766,12 +1771,14 @@ function saldoProjetadoAteMes(ano, mes){
   return total;
 }
 function saldoContaAteMes(contaId, ano, mes){
+  // Mesma lógica de saldoProjetadoAteMes, mas de uma conta só — só Pago conta.
   const conta = contaById(contaId);
   if(!conta) return 0;
   const fimISO = new Date(ano, mes + 1, 0).toISOString().slice(0,10);
   let total = Number(conta.saldoInicial) || 0;
   for(const l of state.lancamentos){
     if(l.inativo) continue;
+    if(l.status !== "Pago") continue;
     if(l.data > fimISO) continue;
     if(l.tipo === "Receita" && l.contaOrigem === contaId) total += Number(l.valor);
     if(l.tipo === "Despesa" && l.contaOrigem === contaId) total -= Number(l.valor);
