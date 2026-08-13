@@ -8606,6 +8606,17 @@ function estValorUnitarioEstimado(produto){
   const custoMedio = estCustoMedio(produto.id);
   return custoMedio !== null ? custoMedio : (Number(produto.precoUnitario) || 0);
 }
+// Card de KPI clicável do Dashboard de Estoque — leva direto pra tela que
+// explica aquele número (mesma ideia do vgKpiCard do financeiro).
+function estKpiClicavel(label, value, note, cor, view, valueStyle){
+  const corMap = { pos: "var(--pos)", neg: "var(--neg)", warn: "var(--warn)" };
+  const corStyle = corMap[cor] ? `color:${corMap[cor]};` : "";
+  return `<div class="kpi-card" data-action="cad-ver-lista" data-modulo="estoque" data-view="${view}" style="cursor:pointer; transition:border-color .12s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" title="Ir para a lista">
+    <div class="kpi-label">${esc(label)}</div>
+    <div class="kpi-value" style="${valueStyle||""}${corStyle}">${value}</div>
+    ${note?`<div class="kpi-note">${esc(note)}</div>`:""}
+  </div>`;
+}
 
 // ---- VIEW: DASHBOARD ESTOQUE ----
 function viewEstDashboard(){
@@ -8654,12 +8665,12 @@ function viewEstDashboard(){
       </div>
     </div>
     <div class="kpi-grid" style="grid-template-columns: repeat(6,1fr);">
-      <div class="kpi-card"><div class="kpi-label">Produtos cadastrados</div><div class="kpi-value">${totalProdutos}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(valorTotal)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Compras no mês</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(totalComprasMes)}</div><div class="kpi-note">${comprasMes.length} nota(s)</div></div>
-      <div class="kpi-card"><div class="kpi-label">Movimentações hoje</div><div class="kpi-value">${movsHoje}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Alertas de estoque</div><div class="kpi-value" style="color:${alertas.length?'var(--warn)':'var(--pos)'};">${alertas.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Itens zerados</div><div class="kpi-value" style="color:${zerados.length?'var(--neg)':'var(--pos)'};">${zerados.length}</div></div>
+      ${estKpiClicavel("Produtos cadastrados", totalProdutos, "", "", "est_produtos")}
+      ${estKpiClicavel("Valor em estoque", fmtBRL(valorTotal), "", "", "est_produtos", "font-size:18px;")}
+      ${estKpiClicavel("Compras no mês", fmtBRL(totalComprasMes), `${comprasMes.length} nota(s)`, "", "est_compras", "font-size:18px;")}
+      ${estKpiClicavel("Movimentações hoje", movsHoje, "", "", "est_movimentos")}
+      ${estKpiClicavel("Alertas de estoque", alertas.length, "", alertas.length?"warn":"pos", "est_alertas")}
+      ${estKpiClicavel("Itens zerados", zerados.length, "", zerados.length?"neg":"pos", "est_produtos")}
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;">
