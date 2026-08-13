@@ -3423,8 +3423,8 @@ function viewDashboard(){
       </div>
       <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">💰 Pagar total</button>
-        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Geralmente 15% do total — marque as compras que quer pagar">💳 Pagar mínimo</button>
-        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Escolha um valor e quais compras pagar">✏ Pagar parcial</button>
+        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Pague só o mínimo, sem precisar escolher compras">💳 Pagar mínimo</button>
+        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Digite qualquer valor, sem precisar escolher compras">✏ Pagar parcial</button>
         <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">🔍 Detalhes</button>
       </div>
     </div>`).join("");
@@ -3698,10 +3698,11 @@ function viewCartoes(){
     const faturasHTML = faturas.length ? faturas.map(f => `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border); font-size:12px;">
         <span style="color:var(--ink-3); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-4);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
           <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, pagarDesbloqueado())}</span>
           <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
-          <button class="btn btn-ghost btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
+          <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Digite qualquer valor, sem precisar escolher compras">Pagar valor</button>
+          <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
         </div>
       </div>`).join("") + (todasFaturas.length > faturas.length ? `<div style="font-size:11px; color:var(--ink-4); padding-top:6px;">+ ${todasFaturas.length - faturas.length} fatura(s) mais à frente</div>` : "")
       : `<div style="font-size:12px; color:var(--ink-4); padding:6px 0;">Nenhuma fatura em aberto.</div>`;
@@ -4870,6 +4871,27 @@ function modalLancamento(existing, tipoPreset, prefill){
       if(existing.recorrenciaId){
         closeModal();
         modalEscopoEdicaoSerie(existing, data);
+      }else if(existing.status === "Pago" && data.status !== "Pago" && existing.faturaSplitOrigemId){
+        // Esse lançamento nasceu de um pagamento parcial de fatura (ver
+        // aplicarPagamentoFatura) — é só um PEDAÇO pago de uma compra
+        // maior. Desfazer o pagamento não pode virar uma segunda despesa
+        // solta: soma o valor de volta no lançamento original (se ele
+        // ainda existir e ainda estiver em aberto) e apaga este pedaço.
+        const origem = state.lancamentos.find(x => x.id === existing.faturaSplitOrigemId && x.status !== "Pago");
+        if(origem){
+          origem.valor = Math.round((Number(origem.valor) + Number(existing.valor))*100)/100;
+          state.lancamentos = state.lancamentos.filter(x => x.id !== existing.id);
+          await saveLancamentos();
+          await deleteRow("lancamentos", existing.id);
+          closeModal(); renderApp();
+          showToast(`Pagamento desfeito — valor somado de volta na fatura (${fmtBRL(origem.valor)}).`);
+          return;
+        }
+        // Se o lançamento original não existe mais (foi pago ou excluído
+        // por fora), não tem como mesclar — cai no comportamento normal
+        // abaixo e vira um lançamento avulso em aberto mesmo.
+        Object.assign(existing, data);
+        await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento atualizado.");
       }else{
         Object.assign(existing, data);
         await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento atualizado.");
@@ -5425,6 +5447,37 @@ function modalBaixa(l){
   });
 }
 
+// Aplica um valor livre de pagamento contra os itens pendentes de uma
+// fatura, do mais antigo pro mais novo, SEM precisar escolher quais compras
+// entram — paga item inteiro enquanto der, e se sobrar um resto menor que o
+// próximo item, PARTE esse item em dois: uma parte fica Paga (registro
+// novo, com faturaSplitOrigemId apontando pro item original) e a outra
+// parte continua em aberto no PRÓPRIO item original, só com o valor
+// reduzido. Isso é o que permite desfazer depois sem duplicar despesa (ver
+// o tratamento de "faturaSplitOrigemId" no salvar de modalLancamento).
+function aplicarPagamentoFatura(itens, valorPagar, dataPagamento, contaOrigem){
+  let restante = Math.round(valorPagar*100)/100;
+  const afetados = [];
+  for(const l of itens){
+    if(restante <= 0) break;
+    const valorItem = Math.round(Number(l.valor)*100)/100;
+    if(restante >= valorItem - 0.005){
+      l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false;
+      restante = Math.round((restante - valorItem)*100)/100;
+      afetados.push(l);
+    }else{
+      const valorPago = restante;
+      const novoPago = { ...l, id: uid("l"), valor: valorPago, status: "Pago", data: dataPagamento, contaOrigem, conciliado: false, faturaSplitOrigemId: l.id, descricao: `${l.descricao} (parcial)` };
+      delete novoPago.recorrenciaId; delete novoPago.recorrenciaTipo; delete novoPago.recorrenciaIndex; delete novoPago.recorrenciaTotal;
+      l.valor = Math.round((valorItem - valorPago)*100)/100;
+      state.lancamentos.push(novoPago);
+      afetados.push(novoPago);
+      restante = 0;
+    }
+  }
+  return afetados;
+}
+
 // ============================================================
 // MODAL — PAGAR FATURA (baixa todas as compras daquela fatura de uma vez)
 // ============================================================
@@ -5473,101 +5526,39 @@ function modalPagarFatura(cartaoId, dataVencimento){
 }
 
 // ============================================================
-// MODAL — PAGAMENTO MÍNIMO DO CARTÃO (seleciona compras pra cobrir o mínimo)
+// MODAL — PAGAMENTO DE VALOR LIVRE DO CARTÃO (mínimo ou parcial — mesma
+// mecânica pras duas: você digita quanto vai pagar, sem precisar escolher
+// quais compras entram. O sistema aplica esse valor nas compras mais
+// antigas primeiro, pagando inteiras enquanto der, e parte a última em duas
+// se sobrar um resto (ver aplicarPagamentoFatura). Isso resolve o problema
+// de "preciso marcar compra por compra pra bater o valor que quero pagar".
 // ============================================================
-function modalPagarFaturaMinimo(cartaoId, dataVencimento, totalFatura){
+function modalPagarFaturaValor(cartaoId, dataVencimento, totalFatura, valorSugerido, titulo){
   const cartao = cartaoById(cartaoId);
   if(!cartao) return;
-  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
-  const minimoSugerido = Math.round(totalFatura * 0.15 * 100) / 100;
+  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => (a.dataCompra||a.data).localeCompare(b.dataCompra||b.data));
+  if(!itens.length){ showToast("Essa fatura já está paga.", "error"); return; }
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
-  const linhasItens = itens.map(l => `
-    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
-      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-        <input type="checkbox" name="item_${l.id}">
-        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
-      </div>
-      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
-    </label>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">💳 Pagamento mínimo — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formPagarMinimo"><div class="modal-body">
-      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong> · Mínimo sugerido: <strong style="color:var(--neg);">${fmtBRL(minimoSugerido)}</strong> (15%)</div>
-      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
-      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
-      <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="1" name="valorPago" value="${minimoSugerido}" id="valorPagoMinimo">
-        <div class="field-help">Digite o valor e marque as compras que entram nesse pagamento parcial abaixo.</div></div>
-      <div class="field"><label>Compras que entram neste pagamento</label>
-        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
-        <div class="field-help">As compras marcadas serão pagas pelo valor acima. As desmarcadas continuam em aberto.</div>
-      </div>
+    <div class="modal-head"><div class="modal-title">💳 ${esc(titulo)} — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formPagarValor"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong></div>
+      <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="0.01" max="${totalFatura}" name="valorPago" value="${valorSugerido}" id="valorPagoLivre">
+        <div class="field-help">Não precisa bater com nenhuma compra específica — se o valor não fechar exato com um item, esse item fica dividido (uma parte paga, o resto continua em aberto).</div></div>
+      <div class="field-row"><div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento</button></div></form>
   `);
-  document.getElementById("formPagarMinimo").addEventListener("submit", async e => {
+  document.getElementById("formPagarValor").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const valorPago = parseFloat(fd.get("valorPago"))||0;
+    const valorPago = Math.round((parseFloat(fd.get("valorPago"))||0)*100)/100;
+    if(valorPago <= 0){ showToast("Informe um valor maior que zero.", "error"); return; }
+    if(valorPago > totalFatura + 0.01){ showToast("O valor não pode passar do total da fatura.", "error"); return; }
     const dataPagamento = fd.get("data");
     const contaOrigem = fd.get("contaOrigem");
-    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
-    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
-    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
+    aplicarPagamentoFatura(itens, valorPago, dataPagamento, contaOrigem);
     await saveLancamentos(); closeModal(); renderApp();
-    showToast(`Pagamento mínimo de ${fmtBRL(valorPago)} — ${itensPagos.length} compra(s) baixada(s).`);
-  });
-}
-
-// ============================================================
-// MODAL — PAGAMENTO PARCIAL DO CARTÃO (valor livre, seleciona compras)
-// ============================================================
-function modalPagarFaturaParcial(cartaoId, dataVencimento, totalFatura){
-  const cartao = cartaoById(cartaoId);
-  if(!cartao) return;
-  const itens = state.lancamentos.filter(l => l.cartaoId === cartaoId && l.data === dataVencimento && l.status !== "Pago").sort((a,b) => a.dataCompra?.localeCompare(b.dataCompra||a.data)||0);
-  const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
-  let totalSelecionado = 0;
-  const linhasItens = itens.map(l => `
-    <label class="checkbox-row" style="padding:5px 0; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
-      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-        <input type="checkbox" name="item_${l.id}" data-valor="${l.valor}" class="chk-parcial">
-        <div><div style="font-size:12.5px; font-weight:600;">${esc(l.descricao)||"—"}</div><div style="font-size:11px; color:var(--ink-4);">compra em ${fmtDateBR(l.dataCompra||l.data)}</div></div>
-      </div>
-      <span style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--neg); flex-shrink:0;">${fmtBRL(l.valor)}</span>
-    </label>`).join("");
-  openModal(`
-    <div class="modal-head"><div class="modal-title">✏ Pagamento parcial — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formPagarParcial"><div class="modal-body">
-      <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong></div>
-      <div class="field"><label>Data do pagamento</label><input required type="date" name="data" value="${todayISO()}"></div>
-      <div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div>
-      <div class="field"><label>Selecione as compras a pagar</label>
-        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">${linhasItens}</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
-        <strong style="font-size:13px;">Total selecionado</strong>
-        <strong id="totalSelecionadoParcial" style="font-family:var(--font-mono); font-size:15px; color:var(--neg);">${fmtBRL(0)}</strong>
-      </div>
-      <div class="field-help">As compras marcadas serão pagas. As desmarcadas continuam em aberto.</div>
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar pagamento parcial</button></div></form>
-  `);
-  document.querySelectorAll(".chk-parcial").forEach(chk => {
-    chk.addEventListener("change", () => {
-      const total = Array.from(document.querySelectorAll(".chk-parcial:checked")).reduce((s,c) => s + parseFloat(c.dataset.valor||0), 0);
-      const el = document.getElementById("totalSelecionadoParcial");
-      if(el) el.textContent = fmtBRL(total);
-    });
-  });
-  document.getElementById("formPagarParcial").addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const dataPagamento = fd.get("data");
-    const contaOrigem = fd.get("contaOrigem");
-    const itensPagos = itens.filter(l => fd.get(`item_${l.id}`) === "on");
-    if(!itensPagos.length){ showToast("Marque ao menos uma compra.", "error"); return; }
-    const totalPago = itensPagos.reduce((s,l) => s + Number(l.valor), 0);
-    itensPagos.forEach(l => { l.status = "Pago"; l.data = dataPagamento; l.contaOrigem = contaOrigem; l.conciliado = false; });
-    await saveLancamentos(); closeModal(); renderApp();
-    showToast(`Pagamento parcial de ${fmtBRL(totalPago)} — ${itensPagos.length} compra(s) baixada(s).`);
+    showToast(`Pagamento de ${fmtBRL(valorPago)} registrado na fatura.`);
   });
 }
 
@@ -5584,23 +5575,34 @@ function modalDetalheFatura(cartaoId, dataVencimento){
   const total = itens.reduce((s,l) => s + Number(l.valor), 0);
   const unlockedValor = pagarDesbloqueado();
   const temPendente = itens.some(l => l.status !== "Pago");
+  // Cards em vez de tabela — uma tabela de 5 colunas força a tela a rolar
+  // de lado num modal estreito (celular), sem nenhuma pista visual de que
+  // tem mais coisa fora da vista. Com flex-wrap, os campos secundários
+  // quebram linha sozinhos, tudo cabe só rolando pra baixo (mesma correção
+  // já aplicada no modal de materiais do técnico).
   const rows = itens.map(l => {
     const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
-    return `<tr>
-      <td style="white-space:nowrap;">${fmtDateBR(l.dataCompra || l.data)}</td>
-      <td>${esc(l.descricao)}${l.categoria ? `<div style="font-size:11px;color:var(--ink-4)">${esc(l.categoria)}${l.subcategoria?' › '+esc(l.subcategoria):''}</div>` : ""}</td>
-      <td>${l.negocio ? esc(l.negocio) : "—"}</td>
-      <td style="text-align:center;"><span class="status-pill ${statusClass}">${l.status}</span></td>
-      <td class="num ${unlockedValor?'':'masked-value'}">${maskBRL(l.valor, unlockedValor)}</td>
-    </tr>`;
+    const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
+    return `<div style="border:1px solid var(--border); border-radius:var(--r); padding:10px 12px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div style="min-width:0;">
+          <div style="font-size:13px; font-weight:600;">${esc(l.descricao)}</div>
+          ${catTxt ? `<div style="font-size:11px; color:var(--ink-4);">${esc(catTxt)}</div>` : ""}
+        </div>
+        <div class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-weight:700; font-size:13.5px; white-space:nowrap;">${maskBRL(l.valor, unlockedValor)}</div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:7px; font-size:11px; color:var(--ink-3);">
+        <span>📅 ${fmtDateBR(l.dataCompra || l.data)}</span>
+        ${l.negocio ? `<span>🏢 ${esc(l.negocio)}</span>` : ""}
+        <span class="status-pill ${statusClass}" style="font-size:10px;">${esc(l.status)}</span>
+      </div>
+    </div>`;
   }).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">📋 Detalhe da fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} compra${itens.length===1?'':'s'} · ordenado por data da compra</div>
-      <div style="max-height:320px; overflow-y:auto;">
-        <table><thead><tr><th>Data compra</th><th>Descrição</th><th>Negócio</th><th style="text-align:center;">Status</th><th class="num">Valor</th></tr></thead><tbody>${rows}</tbody></table>
-      </div>
+      <div style="max-height:340px; overflow-y:auto;">${rows}</div>
       <div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:2px solid var(--border); margin-top:10px;">
         <strong style="font-size:13px;">Total da fatura</strong>
         <strong class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-size:15px;">${maskBRL(total, unlockedValor)}</strong>
@@ -6000,8 +6002,16 @@ document.addEventListener("click", async e => {
   }
   else if(action === "new-compra-cartao") modalCompraCartao(id);
   else if(action === "pagar-fatura"){ closeModal(); modalPagarFatura(id, el.dataset.venc); }
-  else if(action === "pagar-fatura-minimo"){ closeModal(); modalPagarFaturaMinimo(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
-  else if(action === "pagar-fatura-parcial"){ closeModal(); modalPagarFaturaParcial(id, el.dataset.venc, parseFloat(el.dataset.total)||0); }
+  else if(action === "pagar-fatura-minimo"){
+    closeModal();
+    const total = parseFloat(el.dataset.total)||0;
+    modalPagarFaturaValor(id, el.dataset.venc, total, Math.round(total*0.15*100)/100, "Pagamento mínimo");
+  }
+  else if(action === "pagar-fatura-parcial"){
+    closeModal();
+    const total = parseFloat(el.dataset.total)||0;
+    modalPagarFaturaValor(id, el.dataset.venc, total, "", "Pagamento parcial");
+  }
   else if(action === "ver-fatura") modalDetalheFatura(id, el.dataset.venc);
 
   else if(action === "mes-prev"){
