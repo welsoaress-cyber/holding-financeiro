@@ -707,6 +707,7 @@ let state = {
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   modoTecnico: false, tecnicoAuthInfo: null,
+  modoCliente: false, clienteAuthInfo: null,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
@@ -928,6 +929,15 @@ async function bulkExecutarExclusao(contexto, ids){
 // UTILITÁRIOS
 // ============================================================
 function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function gerarCodigoAcesso(){
+  // Código curto pro cliente digitar no App do Cliente (funciona como senha,
+  // então usamos um alfabeto sem caracteres ambíguos: sem 0/O, 1/I/L).
+  const alfabeto = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for(let i=0;i<8;i++) s += alfabeto[Math.floor(Math.random()*alfabeto.length)];
+  return s;
+}
+function apenasDigitos(s){ return String(s||"").replace(/\D/g, ""); }
 function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function fmtBRL(n){ n = Number(n)||0; return n.toLocaleString("pt-BR", {style:"currency", currency:"BRL"}); }
 function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ ••••••"; }
@@ -1205,7 +1215,11 @@ function attachCalculadora(inputId){
 // contas de auth diferentes) — ver bloco "MODO TÉCNICO" mais abaixo. donoAtual()
 // garante que toda gravação continua marcada com o user_id do Master mesmo
 // quando quem está gravando é o técnico logado com a própria conta.
-function donoAtual(){ return state.modoTecnico && state.tecnicoAuthInfo ? state.tecnicoAuthInfo.masterUserId : (state.user ? state.user.id : null); }
+function donoAtual(){
+  if(state.modoTecnico && state.tecnicoAuthInfo) return state.tecnicoAuthInfo.masterUserId;
+  if(state.modoCliente && state.clienteAuthInfo) return state.clienteAuthInfo.masterUserId;
+  return state.user ? state.user.id : null;
+}
 
 async function saveRows(table, items){
   // IMPORTANTE: em caso de falha, este erro é relançado (throw) de propósito.
@@ -1234,31 +1248,31 @@ async function saveRows(table, items){
     state.storageOK = false;
     console.error(`[saveRows:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
-    showToast(`Não salvou (${table}): ${e.message || e}`, "error");
+    showToast(ehErroDePermissao(e) ? "Não salvou — sem permissão para isso." : `Não salvou (${table}): ${e.message || e}`, "error");
     throw e;
   }
 }
 async function deleteRow(table, id){
   if(!state.user || !id) return;
   try{
-    const { error } = await supabaseClient.from(table).delete().eq("id", id).eq("user_id", state.user.id);
+    const { error } = await supabaseClient.from(table).delete().eq("id", id).eq("user_id", donoAtual());
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRow:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
-    showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    showToast(ehErroDePermissao(e) ? "Não excluiu — sem permissão para isso." : `Erro ao excluir (${table}): ${e.message || e}`, "error");
     throw e;
   }
 }
 async function deleteRows(table, ids){
   if(!state.user || !ids || !ids.length) return;
   try{
-    const { error } = await supabaseClient.from(table).delete().in("id", ids).eq("user_id", state.user.id);
+    const { error } = await supabaseClient.from(table).delete().in("id", ids).eq("user_id", donoAtual());
     if(error) throw error;
   }catch(e){
     console.error(`[deleteRows:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
-    showToast(`Erro ao excluir (${table}): ${e.message || e}`, "error");
+    showToast(ehErroDePermissao(e) ? "Não excluiu — sem permissão para isso." : `Erro ao excluir (${table}): ${e.message || e}`, "error");
     throw e;
   }
 }
@@ -1287,16 +1301,35 @@ const saveRhFerias = () => saveRows("rh_ferias", state.rhFerias);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
-  // "row-level security"/"rls" entra aqui de propósito: como todo save já manda o
-  // user_id certo (o do usuário logado), uma violação de RLS ao gravar só acontece
-  // na prática quando a sessão (JWT) usada na requisição está velha/inválida e o
-  // auth.uid() no servidor não bate mais com esse user_id. Tratando como sessão
-  // expirada, o app força um novo login em vez de deixar o usuário tentando salvar
-  // repetidamente com uma sessão morta (o que antes só mostrava um erro genérico).
-  return msg.includes("jwt") || msg.includes("token") || msg.includes("session") || msg.includes("401") || msg.includes("not authenticated") || msg.includes("invalid claim") || msg.includes("expired") || msg.includes("row-level security") || msg.includes("row level security") || msg.includes("rls");
+  // OBS: "row-level security"/"rls" foi tirado daqui de propósito. A ideia
+  // original era que uma violação de RLS ao gravar só podia acontecer com
+  // sessão (JWT) velha/inválida — verdade enquanto todo save usava o
+  // user_id do próprio usuário logado. Isso deixou de valer com o App do
+  // Técnico/Cliente: lá o save grava com o user_id do Master (donoAtual()),
+  // então uma violação de RLS ali é um problema de permissão de verdade
+  // (ex: técnico tentando mexer num chamado que não é dele), não sessão
+  // expirada — e forçar logout nesse caso só derruba o usuário no meio do
+  // trabalho sem explicar o que realmente aconteceu. Ver ehErroDePermissao().
+  return msg.includes("jwt") || msg.includes("token") || msg.includes("401") || msg.includes("not authenticated") || msg.includes("invalid claim") || msg.includes("expired") || (msg.includes("session") && !msg.includes("permission"));
+}
+function ehErroDePermissao(e){
+  const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
+  return msg.includes("row-level security") || msg.includes("row level security") || msg.includes("rls") || msg.includes("permission denied");
 }
 async function tratarErroDeSessao(e){
   console.error("[sessão inválida]", e);
+  // Antes de desistir e forçar login de novo: em celular é comum o app
+  // ficar em segundo plano tempo suficiente pro token de acesso vencer sem
+  // o navegador ter chance de renovar sozinho. Se conseguir renovar aqui,
+  // a sessão continua válida e o usuário só precisa repetir a ação (não
+  // perde o que tava preenchendo, o modal continua aberto).
+  try{
+    const { data, error } = await supabaseClient.auth.refreshSession();
+    if(!error && data && data.session){
+      showToast("Conexão renovada — tente salvar de novo.", "error");
+      return;
+    }
+  }catch(err){}
   showToast("Sua sessão expirou ou ficou inválida. Confira a data/hora do aparelho e entre novamente.", "error");
   try{ await supabaseClient.auth.signOut(); }catch(err){}
   state.user = null;
@@ -1304,6 +1337,8 @@ async function tratarErroDeSessao(e){
   state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
   state.pagarUnlocked = false; state.receberUnlocked = false;
   state.perfilAtivo = null; state.perfilEscolhido = false;
+  state.modoTecnico = false; state.tecnicoAuthInfo = null;
+  state.modoCliente = false; state.clienteAuthInfo = null;
   authMode = "login";
   renderApp();
 }
@@ -1405,8 +1440,10 @@ async function detectarModoTecnico(){
 }
 async function carregarSessao(){
   await detectarModoTecnico();
-  if(state.modoTecnico) await loadDataTecnico();
-  else await loadData();
+  if(state.modoTecnico){ await loadDataTecnico(); return; }
+  await detectarModoCliente();
+  if(state.modoCliente){ await loadDataCliente(); return; }
+  await loadData();
 }
 async function loadDataTecnico(){
   try{
@@ -1448,6 +1485,64 @@ async function vincularTecnico(codTecnico, codHolding){
     return { ok:true };
   }catch(e){
     return { ok:false, msg: "Não consegui vincular — confira os códigos. (" + (e.message||e) + ")" };
+  }
+}
+
+// =========================================================================
+// MODO CLIENTE — o cliente entra com CPF/CNPJ + um código de acesso curto
+// (nada de e-mail/senha tradicional pra ele decorar). Por baixo, isso ainda
+// usa o login de verdade do Supabase (mais seguro que inventar um sistema de
+// autenticação do zero): CPF vira um e-mail sintético e o código vira a
+// senha. O vínculo (qual cliente, de qual Master) é resolvido no banco por
+// uma função (vincular_cliente_app), que confere CPF+código contra o
+// cadastro real — assim o cliente nunca precisa saber nem digitar nenhum
+// "código da holding" separado.
+// =========================================================================
+async function detectarModoCliente(){
+  try{
+    const { data, error } = await supabaseClient.from("clientes_auth")
+      .select("master_user_id,cliente_id").eq("auth_user_id", state.user.id).maybeSingle();
+    if(error) throw error;
+    if(data){ state.modoCliente = true; state.clienteAuthInfo = { masterUserId: data.master_user_id, clienteId: data.cliente_id, nome: "" }; }
+    else{ state.modoCliente = false; state.clienteAuthInfo = null; }
+  }catch(e){
+    console.warn("[detectarModoCliente]", e.message || e);
+    state.modoCliente = false; state.clienteAuthInfo = null;
+  }
+}
+async function loadDataCliente(){
+  try{
+    const masterId = state.clienteAuthInfo.masterUserId;
+    const clienteId = state.clienteAuthInfo.clienteId;
+    const [cliRes, chamRes, lancRes] = await Promise.all([
+      supabaseClient.from("cli_clientes").select("id,dados").eq("user_id", masterId).eq("id", clienteId).maybeSingle(),
+      supabaseClient.from("cli_chamados").select("id,dados").eq("user_id", masterId),
+      supabaseClient.from("lancamentos").select("id,dados").eq("user_id", masterId),
+    ]);
+    if(cliRes.error) throw cliRes.error;
+    if(chamRes.error) throw chamRes.error;
+    if(lancRes.error) throw lancRes.error;
+    state.clienteAuthInfo.nome = cliRes.data ? (cliRes.data.dados.nome || "Cliente") : "Cliente";
+    state.cliClientes = cliRes.data ? [{ id: cliRes.data.id, ...cliRes.data.dados }] : [];
+    state.cliChamados = (chamRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    state.lancamentos = (lancRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    state.cliPlanos = []; // carregado sob demanda em viewClienteContrato, se precisar do nome do plano
+    state.storageOK = true;
+  }catch(e){
+    state.storageOK = false;
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    showToast("Erro ao carregar seus dados: " + (e.message || e), "error");
+  }
+}
+async function vincularClienteApp(cpf, codigo){
+  if(!cpf || !codigo) return { ok:false, msg:"Preencha o CPF/CNPJ e o código de acesso." };
+  try{
+    const { data, error } = await supabaseClient.rpc("vincular_cliente_app", { p_cpf: apenasDigitos(cpf), p_codigo: codigo.trim().toUpperCase() });
+    if(error) throw error;
+    if(!data || !data.ok) return { ok:false, msg: (data && data.msg) || "CPF ou código inválido." };
+    return { ok:true };
+  }catch(e){
+    return { ok:false, msg: "Não consegui validar — tente de novo. (" + (e.message||e) + ")" };
   }
 }
 function seedCategorias(){
@@ -1526,6 +1621,36 @@ async function doAuthTecnico(email, password, codTecnico, codHolding){
     return true;
   }catch(e){ showToast("Erro ao entrar como técnico.", "error"); return false; }
 }
+async function doAuthCliente(cpf, codigo){
+  const cpfDigits = apenasDigitos(cpf);
+  const codigoNorm = (codigo||"").trim().toUpperCase();
+  if(!cpfDigits || !codigoNorm){ showToast("Preencha o CPF/CNPJ e o código de acesso.", "error"); return false; }
+  // CPF vira o "usuário" e o código de acesso vira a "senha" — nos bastidores
+  // ainda é um login real do Supabase (email sintético, nunca enviado a
+  // lugar nenhum), então continua com a mesma segurança de sempre.
+  const email = `cliente_${cpfDigits}@app.holding.local`;
+  const password = codigoNorm.length >= 6 ? codigoNorm : (codigoNorm + "000000").slice(0, 6);
+  try{
+    let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      const signup = await supabaseClient.auth.signUp({ email, password });
+      if(signup.error){ showToast(signup.error.message === "Invalid login credentials" ? "CPF/CNPJ ou código incorretos." : signup.error.message, "error"); return false; }
+      if(!signup.data.session){ showToast("Não consegui entrar agora — tente de novo em instantes.", "error"); return false; }
+      data = signup.data;
+    }
+    state.user = data.user;
+    const link = await vincularClienteApp(cpf, codigo);
+    if(!link.ok){
+      // login funcionou mas CPF/código não batem com nenhum cliente cadastrado
+      await supabaseClient.auth.signOut();
+      state.user = null;
+      showToast(link.msg, "error");
+      return false;
+    }
+    await carregarSessao();
+    return true;
+  }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
+}
 async function doLogout(){
   await supabaseClient.auth.signOut();
   state.user = null;
@@ -1534,6 +1659,7 @@ async function doLogout(){
   state.pagarUnlocked = false; state.receberUnlocked = false;
   state.perfilAtivo = null; state.perfilEscolhido = false;
   state.modoTecnico = false; state.tecnicoAuthInfo = null;
+  state.modoCliente = false; state.clienteAuthInfo = null;
   renderApp();
 }
 
@@ -1781,6 +1907,13 @@ function renderModbar(){
 }
 
 function renderApp(){
+  // Trava de segurança: o menu lateral (mobile) trava a rolagem da página
+  // enquanto aberto (document.body.style.overflow="hidden") e libera de novo
+  // ao fechar. Uma renderização completa como essa sempre desenha o menu já
+  // fechado, então força a rolagem de volta ao normal aqui — garante que
+  // nenhum caminho esquecido de fechar o menu deixe a tela travada sem poder
+  // rolar.
+  document.body.style.overflow = "";
   const app = document.getElementById("app");
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
   if(state.modoTecnico){ renderAppTecnico(); return; }
@@ -6685,52 +6818,65 @@ function modalChamadoMateriais(chamadoId){
   if(!state.estProdutos.length){ showToast("Cadastre produtos no estoque primeiro.", "error"); return; }
   const cliente = cliClienteById(cham.clienteId);
   const mostraCusto = !state.modoTecnico; // técnico registra o que usou, não precisa ver valor/custo dos itens
+  // Cartão por item em vez de tabela: numa tela estreita, uma tabela larga o
+  // bastante pra caber Produto+Qtd+Custo só dá pra ver rolando de lado escondido
+  // (sem indicação nenhuma de que tem mais coisa pros lados) — várias pessoas
+  // relataram não conseguir ver o conteúdo completo. Com flex-wrap, os campos
+  // quebram linha sozinhos e tudo fica visível só rolando a tela pra baixo,
+  // do jeito normal.
   const linhaHTML = () => `
-    <tr>
-      <td style="min-width:220px;"><select class="baixa-item-produto"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select></td>
-      <td style="width:100px;"><input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1"></td>
-      ${mostraCusto ? `<td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>` : ""}
-      <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">🗑</button></td>
-    </tr>`;
+    <div class="baixa-item-linha" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; border:1px solid var(--border); border-radius:var(--r); padding:10px; margin-bottom:8px;">
+      <div style="flex:2; min-width:180px;">
+        <label style="display:block; font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:4px;">Produto</label>
+        <select class="baixa-item-produto" style="width:100%;"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select>
+      </div>
+      <div style="flex:1; min-width:80px;">
+        <label style="display:block; font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:4px;">Qtd usada</label>
+        <input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1" style="width:100%;">
+      </div>
+      ${mostraCusto ? `<div style="flex:1; min-width:90px;">
+        <label style="display:block; font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:4px;">Custo estimado</label>
+        <div class="baixa-item-custo" style="font-size:13px; color:var(--ink-3); padding:8px 0;">—</div>
+      </div>` : ""}
+      <button type="button" class="icon-btn danger baixa-item-del" title="Remover" style="margin-bottom:4px;">🗑</button>
+    </div>`;
   openModal(`
     <div class="modal-head"><div class="modal-title">📦 Materiais usados — ${esc(cham.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaChamado"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado no atendimento de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong>${mostraCusto ? " — o custo usa o Custo Médio Real do produto agora." : ""}</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
-        <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th>${mostraCusto ? `<th class="num">Custo estimado</th>` : ""}<th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
-      </div>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
-      <div class="field" style="margin-top:12px;"><label>Data</label><input type="date" name="data" value="${todayISO()}"></div>
+      <div id="baixaItensBody">${linhaHTML()}</div>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:4px;">+ Adicionar item</button>
+      <div class="field" style="margin-top:12px;"><label>Data da visita</label><input type="date" name="data" value="${todayISO()}"></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div></form>
   `);
-  const tbody = document.getElementById("baixaItensBody");
+  const corpo = document.getElementById("baixaItensBody");
   function atualizarCustos(){
     if(!mostraCusto) return;
-    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
-      const produtoId = tr.querySelector(".baixa-item-produto").value;
-      const qtd = parseFloat(tr.querySelector(".baixa-item-qtd").value)||0;
+    Array.from(corpo.querySelectorAll(".baixa-item-linha")).forEach(linha => {
+      const produtoId = linha.querySelector(".baixa-item-produto").value;
+      const qtd = parseFloat(linha.querySelector(".baixa-item-qtd").value)||0;
       const p = estProdutoById(produtoId);
-      tr.querySelector(".baixa-item-custo").textContent = p ? fmtBRL(estValorUnitarioEstimado(p)*qtd) : "—";
+      linha.querySelector(".baixa-item-custo").textContent = p ? fmtBRL(estValorUnitarioEstimado(p)*qtd) : "—";
     });
   }
-  tbody.addEventListener("input", atualizarCustos);
-  tbody.addEventListener("change", atualizarCustos);
-  tbody.addEventListener("click", e => {
+  corpo.addEventListener("input", atualizarCustos);
+  corpo.addEventListener("change", atualizarCustos);
+  corpo.addEventListener("click", e => {
     const del = e.target.closest(".baixa-item-del");
     if(!del) return;
-    if(tbody.querySelectorAll("tr").length<=1){ showToast("Precisa de pelo menos 1 item.", "error"); return; }
-    del.closest("tr").remove();
+    if(corpo.querySelectorAll(".baixa-item-linha").length<=1){ showToast("Precisa de pelo menos 1 item.", "error"); return; }
+    del.closest(".baixa-item-linha").remove();
   });
   document.getElementById("btnAddItemBaixa").addEventListener("click", () => {
-    tbody.insertAdjacentHTML("beforeend", linhaHTML());
+    corpo.insertAdjacentHTML("beforeend", linhaHTML());
     atualizarCustos();
   });
   document.getElementById("formBaixaChamado").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const linhas = Array.from(tbody.querySelectorAll("tr")).map(tr => ({
-      produtoId: tr.querySelector(".baixa-item-produto").value,
-      qtd: parseFloat(tr.querySelector(".baixa-item-qtd").value)||0,
+    const linhas = Array.from(corpo.querySelectorAll(".baixa-item-linha")).map(linha => ({
+      produtoId: linha.querySelector(".baixa-item-produto").value,
+      qtd: parseFloat(linha.querySelector(".baixa-item-qtd").value)||0,
     })).filter(l => l.produtoId && l.qtd>0);
     if(!linhas.length){ showToast("Selecione ao menos um item com quantidade.", "error"); return; }
     const data = fd.get("data") || todayISO();
