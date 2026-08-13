@@ -4,7 +4,7 @@
 // e só cai no cache (versão anterior) se a rede falhar (ex: sem sinal por
 // um instante) — melhor que tela em branco, mas os dados podem estar
 // desatualizados até a conexão voltar.
-const CACHE_NAME = "holding-app-shell-v1";
+const CACHE_NAME = "holding-app-shell-v2";
 const APP_SHELL = [
   "./sistema-financeiro-holding.html",
   "./manifest.json",
@@ -34,7 +34,11 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // deixa Supabase/CDNs passarem direto
 
   event.respondWith(
-    fetch(event.request)
+    // "reload" força ignorar o cache HTTP do navegador e ir na rede de verdade —
+    // sem isso, o navegador podia responder com uma versão antiga direto do disco
+    // (sem nem passar pela rede), e o "rede primeiro" daqui virava só teoria,
+    // fazendo correções (como a de layout mobile) demorarem pra chegar no celular.
+    fetch(event.request, { cache: "reload" })
       .then((resp) => {
         const clone = resp.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
