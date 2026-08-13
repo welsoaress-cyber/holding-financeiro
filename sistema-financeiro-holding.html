@@ -695,6 +695,7 @@ let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
   cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [],
+  comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
@@ -714,6 +715,7 @@ const VIEWS_VALIDAS = new Set([
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
   "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
+  "cv_lista",
 ]);
 // Telas de detalhe dependem de um id extra (qual cliente/funcionário) que não é
 // salvo junto — ao restaurar depois de um F5, cai na tela "mãe" do mesmo módulo em
@@ -759,6 +761,7 @@ const MODULOS_CATALOGO = [
   { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
   { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
   { id:"rh",        ico:"🏢", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
+  { id:"comprasvendas", ico:"🔄", nome:"Compra e Venda", desc:"Itens comprados e revendidos (OLX etc.)", ativo:true },
   { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
   { id:"bi",        ico:"📊", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
 ];
@@ -869,6 +872,7 @@ const BULK_CONTEXTOS = {
   rh_cargos: { arr: "rhCargos", tabela: "rh_cargos", label: "cargo(s)" },
   rh_folha:  { arr: "rhFolha",  tabela: "rh_folha",  label: "lançamento(s) de folha" },
   rh_ferias: { arr: "rhFerias", tabela: "rh_ferias", label: "registro(s) de férias" },
+  compras_vendas: { arr: "comprasVendas", tabela: "compras_vendas", label: "item(ns)" },
 };
 let bulkSelecao = {};
 function bulkSet(contexto){ if(!bulkSelecao[contexto]) bulkSelecao[contexto] = new Set(); return bulkSelecao[contexto]; }
@@ -1250,6 +1254,7 @@ const saveCliOrcamentos = () => saveRows("cli_orcamentos", state.cliOrcamentos);
 const saveCliOS = () => saveRows("cli_os", state.cliOS);
 const saveCliTecnicos = () => saveRows("cli_tecnicos", state.cliTecnicos);
 const saveCliChamados = () => saveRows("cli_chamados", state.cliChamados);
+const saveComprasVendas = () => saveRows("compras_vendas", state.comprasVendas);
 const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionarios);
 const saveRhCargos = () => saveRows("rh_cargos", state.rhCargos);
 const saveRhFolha = () => saveRows("rh_folha", state.rhFolha);
@@ -1327,7 +1332,7 @@ async function loadData(){
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -1613,6 +1618,7 @@ function renderModbar(){
       else if(modId==="estoque") state.view="est_dashboard";
       else if(modId==="clientes") state.view="cli_dashboard";
       else if(modId==="rh") state.view="rh_dashboard";
+      else if(modId==="comprasvendas") state.view="cv_lista";
       renderApp();
     }));
     // Close on tap outside
@@ -1668,7 +1674,7 @@ function renderApp(){
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="mainSidebar">
-      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "visaogeral" ? "🧭 visão geral" : state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "visaogeral" ? "🧭 visão geral" : state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : state.moduloAtivo === "comprasvendas" ? "🔄 compra e venda" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
 
       ${state.moduloAtivo === "visaogeral" ? `
         <div class="nav-group-label">Visão Geral</div>
@@ -1703,6 +1709,9 @@ function renderApp(){
         ${navItem("rh_folha","💵","Folha de Pagamento")}
         ${navItem("rh_ferias","🏖️","Férias")}
         ${navItem("rh_alertas","🔔","Alertas")}
+      ` : state.moduloAtivo === "comprasvendas" ? `
+        <div class="nav-group-label">Compra e Venda</div>
+        ${navItem("cv_lista","🔄","Itens")}
       ` : `
       ${master ? `
       <div class="nav-group-label">Visão geral</div>
@@ -1866,6 +1875,7 @@ function renderView(){
   else if(state.view === "rh_folha") main.innerHTML = viewRhFolha();
   else if(state.view === "rh_ferias") main.innerHTML = viewRhFerias();
   else if(state.view === "rh_alertas") main.innerHTML = viewRhAlertas();
+  else if(state.view === "cv_lista") main.innerHTML = viewComprasVendas();
 }
 
 // ============================================================
@@ -4594,6 +4604,7 @@ document.addEventListener("click", async e => {
     else if(mod.id === "estoque"){ state.view = "est_dashboard"; }
     else if(mod.id === "clientes"){ state.view = "cli_dashboard"; }
     else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
+    else if(mod.id === "comprasvendas"){ state.view = "cv_lista"; }
     renderApp();
   }
   else if(action === "table-sort"){
@@ -5032,6 +5043,18 @@ document.addEventListener("click", async e => {
     if(movIds.length) await deleteRows("est_movimentos", movIds);
     if(state.view === "cli_chamado_detalhe") state.view = "cli_chamados";
     renderApp(); showToast("Chamado excluído.");
+  }
+  // ---- Compra e Venda ----
+  else if(action === "cv-novo") modalCompraVenda(null);
+  else if(action === "cv-edit"){ const item = cvItemById(id); if(item) modalCompraVenda(item); }
+  else if(action === "cv-registrar-venda"){ const item = cvItemById(id); if(item) modalCvVenda(item); }
+  else if(action === "cv-del"){
+    const item = cvItemById(id);
+    if(!item) return;
+    if(!confirm(`Excluir "${item.nome}"? Isso NÃO exclui os lançamentos de compra/venda já gerados — apague-os em Lançamentos se quiser.`)) return;
+    state.comprasVendas = state.comprasVendas.filter(x=>x.id!==id);
+    await deleteRow("compras_vendas", id);
+    renderApp(); showToast("Item excluído.");
   }
   // ---- RH ----
   else if(action === "rh-novo-funcionario") modalRhFuncionario(null);
@@ -6542,6 +6565,176 @@ async function chamadoGerarCobranca(id){
   await saveLancamentos(); await saveCliChamados();
   renderView();
   showToast("Conta a receber gerada — dê baixa nela em Lançamentos quando o cliente pagar.");
+}
+
+// =========================================================================
+// MÓDULO COMPRA E VENDA — itens comprados pra revender (OLX etc.). Compra
+// já lança a despesa (Pago) na hora; "Registrar venda" lança a receita
+// (Pago) e fecha o item — reaproveita o mesmo modalLancamento de sempre
+// via prefill, não duplica lógica de lançamento.
+// =========================================================================
+const CATEGORIA_COMPRA_VENDA = "Compra e Venda";
+const CV_STATUS = ["Em posse","Anunciado","Vendido"];
+function cvItemById(id){ return state.comprasVendas.find(x => x.id === id); }
+function cvMargem(item){ return item.status === "Vendido" ? Number(item.valorVenda||0) - Number(item.valorCompra||0) : null; }
+function cvStatusClass(status){ return status==="Vendido"?"status-pago":status==="Anunciado"?"status-agendado":"status-pendente"; }
+async function cvGarantirCategoria(){
+  let cat = categoriaByNome(CATEGORIA_COMPRA_VENDA);
+  if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_COMPRA_VENDA, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+  return cat;
+}
+function cvNegocioPadrao(){
+  const nomeado = state.negocios.find(n => n.nome.trim().toLowerCase() === "compra/venda");
+  return (nomeado || state.negocios[0])?.nome || "";
+}
+
+function viewComprasVendas(){
+  const lista = [...state.comprasVendas].sort((a,b) => (b.dataCompra||"").localeCompare(a.dataCompra||""));
+  const emPosse = lista.filter(i => i.status !== "Vendido");
+  const vendidos = lista.filter(i => i.status === "Vendido");
+  const investidoEmPosse = emPosse.reduce((s,i) => s + Number(i.valorCompra||0), 0);
+  const totalVendido = vendidos.reduce((s,i) => s + Number(i.valorVenda||0), 0);
+  const margemRealizada = vendidos.reduce((s,i) => s + cvMargem(i), 0);
+
+  const rows = lista.map(i => {
+    const margem = cvMargem(i);
+    const negTag = i.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(i.negocio)} 14%, white); color:${negocioCor(i.negocio)};"><span class="tag-dot" style="background:${negocioCor(i.negocio)}"></span>${esc(i.negocio)}</span>` : "—";
+    return `<tr>
+      ${bulkCheckboxCellHTML("compras_vendas", i.id)}
+      <td style="font-weight:600;">${esc(i.nome)}${i.origem?`<div style="font-size:11px;color:var(--ink-4);">via ${esc(i.origem)}</div>`:""}</td>
+      <td>${negTag}</td>
+      <td><span class="status-pill ${cvStatusClass(i.status)}">${esc(i.status)}</span></td>
+      <td>${i.dataCompra?fmtDateBR(i.dataCompra):"—"}</td>
+      <td class="num" style="color:var(--neg);">${fmtBRL(i.valorCompra)}</td>
+      <td>${i.dataVenda?fmtDateBR(i.dataVenda):"—"}${i.canalVenda?`<div style="font-size:11px;color:var(--ink-4);">via ${esc(i.canalVenda)}</div>`:""}</td>
+      <td class="num" style="color:var(--pos);">${i.status==="Vendido"?fmtBRL(i.valorVenda):"—"}</td>
+      <td class="num" style="font-weight:700; color:${margem===null?'var(--ink-4)':margem>=0?'var(--pos)':'var(--neg)'};">${margem===null?"—":fmtBRL(margem)}</td>
+      <td><div class="row-actions">
+        ${i.status!=="Vendido" ? `<button class="icon-btn" data-action="cv-registrar-venda" data-id="${i.id}" title="Registrar venda" style="color:var(--pos);">💲</button>` : ""}
+        <button class="icon-btn" data-action="cv-edit" data-id="${i.id}" title="Editar">✎</button>
+        <button class="icon-btn danger" data-action="cv-del" data-id="${i.id}" title="Excluir">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Compra e Venda</div><div class="page-sub">Qualquer coisa que você compra pra revender — a compra já lança a despesa, a venda lança a receita.</div></div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("compras_vendas")}<button class="btn btn-primary" data-action="cv-novo">+ Novo item</button></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">Investido (em posse)</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(investidoEmPosse)}</div><div class="kpi-note">${emPosse.length} item(ns) parado(s)</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total vendido</div><div class="kpi-value pos" style="font-size:18px;">${fmtBRL(totalVendido)}</div><div class="kpi-note">${vendidos.length} item(ns) vendido(s)</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margem realizada</div><div class="kpi-value ${margemRealizada>=0?'pos':'neg'}" style="font-size:18px;">${fmtBRL(margemRealizada)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Itens cadastrados</div><div class="kpi-value" style="font-size:18px;">${lista.length}</div></div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      <table><thead><tr>${bulkCheckboxHeaderHTML("compras_vendas", lista.map(i=>i.id))}<th>Item</th><th>Negócio</th><th>Status</th><th>Data compra</th><th class="num">Valor compra</th><th>Data venda</th><th class="num">Valor venda</th><th class="num">Margem</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum item ainda — comprou algo pra revender? Registra aqui.")}</td></tr>`}</tbody></table>
+    </div></div>
+  `;
+}
+
+/* =========================================================================
+   MODAL — ITEM DE COMPRA E VENDA
+========================================================================= */
+function modalCompraVenda(existing){
+  const isEdit = !!existing;
+  const i = existing || { nome:"", negocio: cvNegocioPadrao(), status:"Em posse", origem:"", linkAnuncio:"", dataCompra: todayISO(), valorCompra:0, contaCompra: state.contas.find(x=>x.ativa!==false)?.id||"", observacoes:"" };
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${i.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const statusOpts = CV_STATUS.map(s=>`<option value="${s}" ${i.status===s?"selected":""}>${s}</option>`).join("");
+  const contaOpts = state.contas.map(c=>`<option value="${c.id}" ${i.contaCompra===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar item":"Novo item comprado"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCv"><div class="modal-body">
+      <div class="field-row">
+        <div class="field" style="flex:2;"><label>Item *</label><input required type="text" name="nome" value="${esc(i.nome)}" placeholder="Ex: Bicicleta Caloi 10"></div>
+        <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio —</option>${negOpts}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Onde comprou</label><input type="text" name="origem" value="${esc(i.origem||"")}" placeholder="Ex: OLX, Mercado Livre, indicação..."></div>
+        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+      </div>
+      <div class="field"><label>Link do anúncio (opcional)</label><input type="url" name="linkAnuncio" value="${esc(i.linkAnuncio||"")}" placeholder="https://..."></div>
+      <div class="field-row">
+        <div class="field"><label>Data da compra *</label><input required type="date" name="dataCompra" value="${i.dataCompra}" ${isEdit?"disabled":""}></div>
+        <div class="field"><label>Valor pago (R$) *</label><input required type="number" step="0.01" min="0" name="valorCompra" value="${i.valorCompra}" ${isEdit?"disabled":""}></div>
+      </div>
+      ${!isEdit ? `<div class="field"><label>Conta que pagou</label><select name="contaCompra">${contaOpts}</select>
+        <div class="field-help">Lança uma despesa Paga nessa conta assim que você salvar.</div>
+      </div>` : `<div class="field-help">Valor/data/conta da compra não dá pra editar depois — o lançamento já foi gerado. Se errou, exclua o item e cadastre de novo.</div>`}
+      <div class="field"><label>Observações</label><textarea name="observacoes" rows="2" style="resize:none;">${esc(i.observacoes||"")}</textarea></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Cadastrar e lançar despesa"}</button></div></form>
+  `);
+  document.getElementById("formCv").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    if(isEdit){
+      const data = {
+        nome: fd.get("nome").trim(), negocio: fd.get("negocio")||"", origem: fd.get("origem").trim(),
+        linkAnuncio: fd.get("linkAnuncio").trim(), status: fd.get("status"), observacoes: fd.get("observacoes").trim(),
+      };
+      Object.assign(existing, data);
+      await saveComprasVendas(); closeModal(); renderApp(); showToast("Item atualizado.");
+      return;
+    }
+    const cat = await cvGarantirCategoria();
+    const novoItem = {
+      id: uid("cv"), nome: fd.get("nome").trim(), negocio: fd.get("negocio")||"", status: fd.get("status"),
+      origem: fd.get("origem").trim(), linkAnuncio: fd.get("linkAnuncio").trim(),
+      dataCompra: fd.get("dataCompra"), valorCompra: parseFloat(fd.get("valorCompra"))||0,
+      dataVenda: "", valorVenda: 0, observacoes: fd.get("observacoes").trim(),
+      lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+    };
+    const lancId = uid("l");
+    state.lancamentos.push({
+      id: lancId, data: novoItem.dataCompra, tipo: "Despesa", negocio: novoItem.negocio, categoria: cat.nome, subcategoria: "",
+      contaOrigem: fd.get("contaCompra"), contaDestino: "", valor: novoItem.valorCompra,
+      descricao: `Compra — ${novoItem.nome}`, status: "Pago", conciliado: false,
+      lancadoPor: novoItem.lancadoPor, compraVendaId: novoItem.id,
+    });
+    novoItem.lancamentoCompraId = lancId;
+    state.comprasVendas.push(novoItem);
+    await saveLancamentos(); await saveComprasVendas();
+    closeModal(); renderApp(); showToast("Item cadastrado e despesa lançada.");
+  });
+}
+
+/* =========================================================================
+   MODAL — REGISTRAR VENDA
+========================================================================= */
+function modalCvVenda(item){
+  if(!item) return;
+  const contaOpts = state.contas.map(c=>`<option value="${c.id}" ${state.contas.find(x=>x.ativa!==false)?.id===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">💲 Registrar venda — ${esc(item.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formCvVenda"><div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px;">Comprado por <strong>${fmtBRL(item.valorCompra)}</strong> em ${fmtDateBR(item.dataCompra)}.</div>
+      <div class="field-row">
+        <div class="field"><label>Data da venda *</label><input required type="date" name="dataVenda" value="${todayISO()}"></div>
+        <div class="field"><label>Valor da venda (R$) *</label><input required type="number" step="0.01" min="0.01" name="valorVenda" value="${item.valorCompra}"></div>
+      </div>
+      <div class="field"><label>Vendido onde</label><input type="text" name="canalVenda" value="${esc(item.origem||"")}" placeholder="Ex: OLX, Mercado Livre..."></div>
+      <div class="field"><label>Conta que recebeu</label><select name="contaVenda">${contaOpts}</select></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar venda</button></div></form>
+  `);
+  document.getElementById("formCvVenda").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const cat = await cvGarantirCategoria();
+    const dataVenda = fd.get("dataVenda"), valorVenda = parseFloat(fd.get("valorVenda"))||0;
+    const lancId = uid("l");
+    state.lancamentos.push({
+      id: lancId, data: dataVenda, tipo: "Receita", negocio: item.negocio||"", categoria: cat.nome, subcategoria: "",
+      contaOrigem: fd.get("contaVenda"), contaDestino: "", valor: valorVenda,
+      descricao: `Venda — ${item.nome}`, status: "Pago", conciliado: false,
+      lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", compraVendaId: item.id,
+    });
+    item.dataVenda = dataVenda; item.valorVenda = valorVenda; item.status = "Vendido";
+    item.canalVenda = fd.get("canalVenda").trim(); item.lancamentoVendaId = lancId;
+    await saveLancamentos(); await saveComprasVendas();
+    closeModal(); renderApp(); showToast(`Venda registrada — margem de ${fmtBRL(cvMargem(item))}.`);
+  });
 }
 
 // =========================================================================
