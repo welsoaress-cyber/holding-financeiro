@@ -8546,12 +8546,19 @@ async function rhGerarFolhaDoMes(){
 function estProdutoById(id){ return state.estProdutos.find(p => p.id === id); }
 function estFornecedorById(id){ return state.estFornecedores.find(f => f.id === id); }
 function estSaldoAtual(produtoId){
+  // "Ajuste" SOBRESCREVE o saldo (não soma/subtrai) — por isso a ordem importa
+  // de verdade aqui: precisa processar em ordem cronológica (por data), senão
+  // um ajuste antigo pode "vencer" e apagar o efeito de entradas/saídas mais
+  // recentes só por causa da ordem em que o Supabase devolveu as linhas (a
+  // consulta não tem ORDER BY — a ordem natural NÃO é garantida ser por data).
   let saldo = 0;
-  for(const m of state.estMovimentos){
-    if(m.produtoId !== produtoId) continue;
+  const movs = state.estMovimentos
+    .filter(m => m.produtoId === produtoId)
+    .sort((a,b) => (a.data||"").localeCompare(b.data||"") || (a.id||"").localeCompare(b.id||""));
+  for(const m of movs){
     if(m.tipo === "Entrada" || m.tipo === "Devolução") saldo += Number(m.qtd);
     if(m.tipo === "Saída") saldo -= Number(m.qtd);
-    if(m.tipo === "Ajuste") saldo = Number(m.qtdFinal);
+    if(m.tipo === "Ajuste") saldo = Number(m.qtdFinal) || 0;
     if(m.tipo === "Transferência" && m.localDestino) {} // apenas muda local, qtd total igual
   }
   return saldo;
@@ -8654,7 +8661,7 @@ function viewEstDashboard(){
       <div class="kpi-card"><div class="kpi-label">Alertas de estoque</div><div class="kpi-value" style="color:${alertas.length?'var(--warn)':'var(--pos)'};">${alertas.length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Itens zerados</div><div class="kpi-value" style="color:${zerados.length?'var(--neg)':'var(--pos)'};">${zerados.length}</div></div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
+    <div class="two-col">
       <div class="panel" style="margin:0;">
         <div class="panel-head"><div class="panel-title">🔔 Alertas — estoque abaixo do mínimo</div></div>
         <div class="panel-body" style="padding-top:6px;">
@@ -8951,10 +8958,14 @@ function modalEstMovimentacao(presetProdutoId, presetTipo){
     e.preventDefault();
     const fd = new FormData(e.target);
     if(!fd.get("produtoId")){ showToast("Selecione um produto.", "error"); return; }
+    // OBS: "||undefined" quebraria um Ajuste pra saldo 0 (0||undefined vira
+    // undefined, porque 0 é falsy em JS) — "zerar estoque" é um caso real e
+    // comum, não pode virar NaN. Por isso checa NaN explicitamente.
+    const qtdFinalNum = parseInt(fd.get("qtdFinal"));
     const mov = {
       id: uid("em"), data: fd.get("data"), tipo: fd.get("tipo"),
       produtoId: fd.get("produtoId"), qtd: parseInt(fd.get("qtd"))||0,
-      qtdFinal: parseInt(fd.get("qtdFinal"))||undefined,
+      qtdFinal: Number.isNaN(qtdFinalNum) ? undefined : qtdFinalNum,
       localOrigem: fd.get("localOrigem").trim(), localDestino: fd.get("localDestino").trim(),
       motivo: fd.get("motivo").trim(), responsavel: fd.get("responsavel").trim(),
       notaFiscal: fd.get("notaFiscal").trim(),
