@@ -759,6 +759,7 @@ const VIEWS_VALIDAS = new Set([
   "vg_sintetico","vg_analitico","vg_executivo",
   "cadastro_hub",
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
+  "rel_fluxo","rel_dre",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
   "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
@@ -2028,6 +2029,12 @@ function renderApp(){
       ${master ? navItem("usuarios","👤","Usuários") : ""}
 
       ${master ? `
+      <div class="nav-group-label">Relatórios</div>
+      ${navItem("rel_fluxo","💵","Fluxo de Caixa")}
+      ${navItem("rel_dre","📑","DRE")}
+      ` : ""}
+
+      ${master ? `
       <div class="nav-group-label">Em construção</div>
       ${navItemSoon("Contas Fixas")}
       ${navItemSoon("Carteira")}
@@ -2086,7 +2093,7 @@ function renderApp(){
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios"];
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
     state.view = "lancamentos";
   }
@@ -2171,6 +2178,8 @@ function renderView(){
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
   else if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
   else if(state.view === "dashboard") main.innerHTML = viewDashboard();
+  else if(state.view === "rel_fluxo") main.innerHTML = viewRelFluxoCaixa();
+  else if(state.view === "rel_dre") main.innerHTML = viewRelDre();
   else if(state.view === "contas") main.innerHTML = viewContas();
   else if(state.view === "cartoes") main.innerHTML = viewCartoes();
   else if(state.view === "lancamentos" || state.view === "receitas" || state.view === "despesas" || state.view === "transferencias") main.innerHTML = viewLancamentos();
@@ -3047,12 +3056,14 @@ function viewDashboard(){
   const listaItemHTML = (l, tipo) => `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
       <div style="min-width:0;">
-        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(l.descricao)||"—"}</div>
+        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.cartaoId ? `<span title="Despesa de cartão de crédito" style="margin-right:4px;">💳</span>` : ""}${esc(l.descricao)||"—"}</div>
         <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
       </div>
       <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
         <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'var(--pos)':'var(--neg)'};">${fmtBRL(l.valor)}</span>
-        ${podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;">💲</button>` : ""}
+        ${l.cartaoId
+          ? (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos); font-size:14px;">💳</button>` : "")
+          : (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;">💲</button>` : "")}
       </div>
     </div>`;
 
@@ -3165,6 +3176,137 @@ function viewDashboard(){
       <div class="panel" style="margin-bottom:0;"><div class="panel-head"><div class="panel-title">Top 5 maiores despesas do mês</div></div><div class="panel-body" style="padding-top:6px;">${topListHTML(topDespesas, true)}</div></div>
     </div>
     <div class="panel"><div class="panel-head"><div class="panel-title">Saldo por conta${!isMesAtual ? ` — projetado até ${NOMES_MESES[mv.mes]} de ${mv.ano}` : ''}</div></div><div class="panel-body">${barsHTML || emptyState("Nenhuma conta cadastrada ainda.")}</div></div>
+  `;
+}
+
+// ============================================================
+// RELATÓRIOS — Fluxo de Caixa e DRE. Ambos usam state.mesVisualizado (o
+// mesmo seletor de mês do Dashboard/Executivo) como mês/mês-final de
+// referência, pra ficar consistente com o resto do sistema.
+// ============================================================
+let relFluxoPeriodo = 6; // quantos meses pra trás mostrar, terminando no mês selecionado
+
+function viewRelFluxoCaixa(){
+  const mv = state.mesVisualizado;
+  const hoje = new Date();
+  const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
+  const lancVis = (filtro) => lancamentosVisiveis(state.lancamentos.filter(filtro));
+
+  const meses = [];
+  for(let i=relFluxoPeriodo-1; i>=0; i--){
+    let mes = mv.mes - i, ano = mv.ano;
+    while(mes < 0){ mes += 12; ano -= 1; }
+    meses.push({ ano, mes });
+  }
+  let saldoAcumulado = null; // só existe se master (saldo de contas é master-only)
+  const master = ehMaster();
+  if(master && meses.length){
+    const primeiro = meses[0];
+    const mesAntesDoPrimeiro = primeiro.mes===0 ? {ano:primeiro.ano-1, mes:11} : {ano:primeiro.ano, mes:primeiro.mes-1};
+    saldoAcumulado = saldoProjetadoAteMes(mesAntesDoPrimeiro.ano, mesAntesDoPrimeiro.mes);
+  }
+  const linhas = meses.map(({ano,mes}) => {
+    const ini = new Date(ano,mes,1).toISOString().slice(0,10);
+    const fim = new Date(ano,mes+1,0).toISOString().slice(0,10);
+    const entradas = lancVis(l=>l.tipo==="Receita" && !l.inativo && l.status==="Pago" && l.data>=ini && l.data<=fim).reduce((s,l)=>s+Number(l.valor),0);
+    const saidas = lancVis(l=>l.tipo==="Despesa" && !l.inativo && l.status==="Pago" && l.data>=ini && l.data<=fim).reduce((s,l)=>s+Number(l.valor),0);
+    if(saldoAcumulado!==null) saldoAcumulado += entradas - saidas;
+    return { ano, mes, entradas, saidas, resultado: entradas-saidas, saldo: saldoAcumulado };
+  });
+  const totalEntradas = linhas.reduce((s,l)=>s+l.entradas,0);
+  const totalSaidas = linhas.reduce((s,l)=>s+l.saidas,0);
+
+  const linhasHTML = linhas.map(l => `<tr>
+    <td style="font-weight:600;">${NOMES_MESES[l.mes]}/${l.ano}</td>
+    <td class="num" style="color:var(--pos);">${fmtBRL(l.entradas)}</td>
+    <td class="num" style="color:var(--neg);">${fmtBRL(l.saidas)}</td>
+    <td class="num" style="font-weight:600; color:${l.resultado>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(l.resultado)}</td>
+    ${master ? `<td class="num">${fmtBRL(l.saldo)}</td>` : ""}
+  </tr>`).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">💵 Fluxo de Caixa</div><div class="page-sub">Entradas e saídas realizadas (pagas) mês a mês — termina em ${isMesAtual?"o mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}.</div></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <select id="relFluxoPeriodoSelect" style="font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border);">
+          <option value="3" ${relFluxoPeriodo===3?"selected":""}>Últimos 3 meses</option>
+          <option value="6" ${relFluxoPeriodo===6?"selected":""}>Últimos 6 meses</option>
+          <option value="12" ${relFluxoPeriodo===12?"selected":""}>Últimos 12 meses</option>
+        </select>
+        <button class="icon-btn" data-action="mes-prev" title="Mês anterior" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+        <button class="icon-btn" data-action="mes-next" title="Próximo mês" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
+      </div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${master?3:2},1fr); margin-bottom:16px;">
+      ${vgKpiCard("Total de entradas", fmtBRL(totalEntradas), `${relFluxoPeriodo} meses`, "pos")}
+      ${vgKpiCard("Total de saídas", fmtBRL(totalSaidas), `${relFluxoPeriodo} meses`, "neg")}
+      ${master ? vgKpiCard("Resultado do período", fmtBRL(totalEntradas-totalSaidas), "Entradas − saídas", (totalEntradas-totalSaidas)>=0?"pos":"neg") : ""}
+    </div>
+    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+      <table style="min-width:${master?560:460}px;"><thead><tr>
+        <th>Mês</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Resultado</th>${master?`<th class="num">Saldo acumulado</th>`:""}
+      </tr></thead><tbody>${linhasHTML}</tbody></table>
+    </div></div>
+    <div class="field-help" style="margin-top:10px;">Mostra só o que já foi de fato pago/recebido (realizado) — não entra provisionado nem recorrência futura. Diário/semanal ainda não tem tela própria; peça se precisar.</div>
+  `;
+}
+
+// ---- DRE (Demonstração de Resultado) — simplificado: sem linha de
+// "Deduções" (impostos/comissões não são rastreados separado ainda) e sem
+// separar juros/depreciação do resultado final (por isso "EBITDA" e "Lucro
+// líquido" saem iguais aqui) — mas os números que ELE mostra são reais,
+// batidos com o que está lançado, não inventados.
+let relDreNegocio = "";
+function viewRelDre(){
+  const mv = state.mesVisualizado;
+  const hoje = new Date();
+  const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
+  const ini = new Date(mv.ano,mv.mes,1).toISOString().slice(0,10);
+  const fim = new Date(mv.ano,mv.mes+1,0).toISOString().slice(0,10);
+  const negociosVisiveis = state.negocios.filter(n => ehMaster() || podeVerNegocio(n.nome));
+  if(relDreNegocio && !negociosVisiveis.some(n=>n.nome===relDreNegocio)) relDreNegocio = "";
+
+  const base = lancamentosVisiveis(state.lancamentos.filter(l => !l.inativo && l.status==="Pago" && l.data>=ini && l.data<=fim && (!relDreNegocio || l.negocio===relDreNegocio)));
+  const receitaBruta = base.filter(l=>l.tipo==="Receita").reduce((s,l)=>s+Number(l.valor),0);
+  const despesas = base.filter(l=>l.tipo==="Despesa");
+  const grupoDaCategoria = (nomeCat) => { const c = state.categorias.find(x=>x.nome===nomeCat); return (c && c.grupoDre) || "operacional"; };
+  const custosDiretos = despesas.filter(l=>grupoDaCategoria(l.categoria)==="custo_direto").reduce((s,l)=>s+Number(l.valor),0);
+  const despesasOperacionais = despesas.filter(l=>grupoDaCategoria(l.categoria)!=="custo_direto").reduce((s,l)=>s+Number(l.valor),0);
+  const receitaLiquida = receitaBruta; // sem dedução rastreada ainda
+  const lucroBruto = receitaLiquida - custosDiretos;
+  const resultado = lucroBruto - despesasOperacionais;
+  const margem = receitaBruta>0 ? Math.round((resultado/receitaBruta)*100) : null;
+
+  const linha = (label, valor, opts={}) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:${opts.grande?'12px 0':'8px 0'}; ${opts.semBorda?'':'border-top:1px solid var(--border);'} ${opts.indent?'padding-left:16px;':''}">
+    <div style="font-size:${opts.grande?'14.5px':'13px'}; font-weight:${opts.grande?'700':opts.negrito?'600':'400'}; color:${opts.cor||'var(--ink)'};">${esc(label)}</div>
+    <div style="font-family:var(--font-mono); font-size:${opts.grande?'15px':'13px'}; font-weight:${opts.grande||opts.negrito?'700':'400'}; color:${opts.cor||'var(--ink)'};">${valor}</div>
+  </div>`;
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">📑 DRE — Demonstração de Resultado</div><div class="page-sub">${isMesAtual?"Mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}${relDreNegocio?` · ${relDreNegocio}`:" · todos os negócios"} — simplificado (sem deduções fiscais rastreadas à parte)</div></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <select id="relDreNegocioSelect" style="font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border);">
+          <option value="">Todos os negócios</option>
+          ${negociosVisiveis.map(n=>`<option value="${esc(n.nome)}" ${relDreNegocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("")}
+        </select>
+        <button class="icon-btn" data-action="mes-prev" title="Mês anterior" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+        <button class="icon-btn" data-action="mes-next" title="Próximo mês" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-body">
+      ${linha("Receita Bruta", fmtBRL(receitaBruta), {negrito:true, semBorda:true})}
+      ${linha("(−) Custos diretos", fmtBRL(-custosDiretos), {indent:true, cor:"var(--neg)"})}
+      ${linha("= Lucro Bruto", fmtBRL(lucroBruto), {negrito:true})}
+      ${linha("(−) Despesas operacionais", fmtBRL(-despesasOperacionais), {indent:true, cor:"var(--neg)"})}
+      ${linha("= Resultado do período", fmtBRL(resultado), {grande:true, cor: resultado>=0?"var(--pos)":"var(--neg)"})}
+    </div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr); margin-top:16px;">
+      ${vgKpiCard("Receita bruta", fmtBRL(receitaBruta), "", "pos")}
+      ${vgKpiCard("Total de despesas", fmtBRL(custosDiretos+despesasOperacionais), `${fmtBRL(custosDiretos)} custo direto + ${fmtBRL(despesasOperacionais)} operacional`, "neg")}
+      ${vgKpiCard("Margem", margem===null?"—":margem+"%", "Resultado / receita bruta", margem===null?"":(margem>=0?"pos":"neg"))}
+    </div>
+    <div class="field-help" style="margin-top:10px;">"Custo direto" vs "Despesa operacional" é definido por categoria — edite em Categorias (Ajustes) pra reclassificar. Categoria sem grupo definido entra como despesa operacional.</div>
   `;
 }
 
@@ -3310,10 +3452,15 @@ function viewLancamentos(){
     const sinal = l.tipo === "Despesa" ? "−" : (l.tipo === "Receita" ? "+" : "⇄");
     const unlocked = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
-    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'💳':'🔁'}</span>` : "";
+    // OBS: o emoji 💳 fica reservado pra despesa de cartão de verdade
+    // (l.cartaoId) — "Parcelado" sozinho não quer dizer cartão (dá pra
+    // parcelar uma despesa direto, sem cartão nenhum, ex: financiamento).
+    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'📅':'🔁'}</span>` : "";
+    const cartaoBadge = l.cartaoId ? ` <span title="Despesa de cartão de crédito — pagamento é pela fatura" style="font-size:11px;">💳</span>` : "";
     const podeEditar = podeEditarNegocio(l.negocio);
     const podeExcluir = podeExcluirNegocio(l.negocio);
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
+    const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar && !l.inativo;
     const marcado = lancSelecionados.has(l.id);
     const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
@@ -3337,11 +3484,11 @@ function viewLancamentos(){
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${esc(l.descricao)}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}</td>
+      <td>${esc(l.descricao)}${cartaoBadge}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);">💲</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
+      <td><div class="row-actions">${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);">💲</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">💳</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -4431,23 +4578,36 @@ function modalAjuste(existing){
 // ============================================================
 function modalCategoria(existing){
   const isEdit = !!existing;
+  const grupoAtual = (existing && existing.grupoDre) || "operacional";
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear categoria" : "Nova categoria"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formCategoria"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Marketing"></div></div>
+    <form id="formCategoria"><div class="modal-body">
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Marketing"></div>
+      <div class="field">
+        <label>Grupo no DRE <span class="field-help" style="display:inline;">(só importa pra despesas)</span></label>
+        <select name="grupoDre">
+          <option value="operacional" ${grupoAtual==="operacional"?"selected":""}>Despesa operacional</option>
+          <option value="custo_direto" ${grupoAtual==="custo_direto"?"selected":""}>Custo direto (ligado à operação)</option>
+        </select>
+      </div>
+    </div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
   `);
   document.getElementById("formCategoria").addEventListener("submit", async e => {
     e.preventDefault();
-    const nome = new FormData(e.target).get("nome").trim();
+    const fd = new FormData(e.target);
+    const nome = fd.get("nome").trim();
+    const grupoDre = fd.get("grupoDre") || "operacional";
     if(!nome) return;
     if(state.categorias.some(c => c.nome === nome && c !== existing)){ showToast("Já existe uma categoria com esse nome.", "error"); return; }
     if(isEdit){
       const nomeAntigo = existing.nome;
       existing.nome = nome;
+      existing.grupoDre = grupoDre;
       state.lancamentos.forEach(l => { if(l.categoria === nomeAntigo) l.categoria = nome; });
       await saveLancamentos();
     }else{
-      state.categorias.push({ id: uid("cat"), nome, subcategorias: [] });
+      state.categorias.push({ id: uid("cat"), nome, subcategorias: [], grupoDre });
     }
     await saveCategorias(); closeModal(); renderApp(); showToast(isEdit ? "Categoria atualizada." : "Categoria criada.");
   });
@@ -5387,6 +5547,14 @@ document.addEventListener("click", async e => {
     if(l){ l.conciliado = !l.conciliado; await saveLancamentos(); renderApp(); }
   }
   else if(action === "baixar-titulo"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalBaixa(l); }
+  else if(action === "ver-fatura-item"){
+    // Despesa de cartão não se baixa sozinha — quem baixa é a fatura inteira
+    // (ou uma parte dela). Em vez de um 💲 que faria pouco sentido isolado,
+    // isso abre o mesmo detalhe/opções de pagamento que aparecem no bloco
+    // da fatura no Dashboard.
+    const l = state.lancamentos.find(x=>x.id===id);
+    if(l && l.cartaoId) modalDetalheFatura(l.cartaoId, l.data);
+  }
 
   else if(action === "new-ajuste") modalAjuste(null);
   else if(action === "edit-ajuste") modalAjuste(state.ajustes.find(a=>a.id===id));
@@ -5760,6 +5928,8 @@ document.addEventListener("change", e => {
     state.mesVisualizado = { ano: parseInt(anoStr), mes: parseInt(mesStr) - 1 };
     renderView();
   }
+  if(e.target.id === "relFluxoPeriodoSelect"){ relFluxoPeriodo = parseInt(e.target.value)||6; renderView(); }
+  if(e.target.id === "relDreNegocioSelect"){ relDreNegocio = e.target.value; renderView(); }
 });
 // Busca por texto: espera uma pausa de digitação antes de atualizar o
 // resultado (em vez de re-renderizar a cada tecla) — evita que a lista
