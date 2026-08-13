@@ -2303,70 +2303,101 @@ function vgBlocoHTML(titulo, cardsHTML){
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">${cardsHTML}</div>
   </div>`;
 }
-function viewVgSintetico(){
+// Um bloco de KPIs por negócio (em vez de por módulo) — só entram os
+// cartões de Estoque/Clientes/Chamados/RH que fazem sentido pra ESSE
+// negócio (só aparecem se ele realmente tiver algo cadastrado ali), pra não
+// empilhar "0" irrelevante em negócios que não usam aquele módulo (ex: um
+// negócio sem clientes vinculados não precisa mostrar "Clientes ativos: 0").
+function vgBlocoNegocio(n, inicioMesISO, fimMesISO){
   const master = ehMaster();
+  const lancDoNeg = lancamentosVisiveis(state.lancamentos.filter(l => l.negocio===n.nome && !l.inativo));
+  const aReceber = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const aPagar = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+  const receitaMes = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+  const despesaMes = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
+
+  const cards = [];
+  if(master && state.contas.some(c=>c.negocio===n.nome)){
+    const saldoContas = state.contas.filter(c=>c.negocio===n.nome && c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0);
+    cards.push(vgKpiCard("Saldo em contas", fmtBRL(saldoContas), "Contas ativas desse negócio", saldoContas>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}));
+  }
+  cards.push(vgKpiCard("A receber", fmtBRL(aReceber), "Pendente/agendado", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}));
+  cards.push(vgKpiCard("A pagar", fmtBRL(aPagar), "Pendente/agendado", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}));
+  cards.push(vgKpiCard("Receita do mês", fmtBRL(receitaMes), "Pago, mês atual", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}));
+  cards.push(vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}));
+
+  if(podeVerModulo("clientes")){
+    const clientesDoNeg = state.cliClientes.filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome));
+    if(clientesDoNeg.length){
+      const clientesAtivos = clientesDoNeg.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length;
+      cards.push(vgKpiCard("Clientes ativos", clientesAtivos, `${clientesDoNeg.length} vinculado(s) no total`, "", {modulo:"clientes", view:"cli_lista", label:"Clientes"}));
+    }
+    const chamadosDoNeg = state.cliChamados.filter(c => c.negocio===n.nome);
+    if(chamadosDoNeg.length){
+      const chamadosAbertos = chamadosDoNeg.filter(c=>["Aberto","Agendado","Em atendimento"].includes(c.status)).length;
+      const atrasados = chamadosDoNeg.filter(c=>c.dataAgendada && c.dataAgendada<todayISO() && !["Concluído","Cancelado"].includes(c.status)).length;
+      cards.push(vgKpiCard("Chamados abertos", chamadosAbertos, atrasados>0?`${atrasados} atrasado(s)`:"Nenhum atrasado", atrasados>0?"neg":"", {modulo:"clientes", view:"cli_chamados", label:"Chamados"}));
+    }
+    const osDoNeg = state.cliOS.filter(o => o.negocio===n.nome);
+    if(osDoNeg.length){
+      const osAndamento = osDoNeg.filter(o=>o.status==="Aberta").length;
+      cards.push(vgKpiCard("OS em andamento", osAndamento, `${osDoNeg.length} no total`, "", {modulo:"clientes", view:"cli_os_lista", label:"Ordens de Serviço"}));
+    }
+  }
+  if(podeVerModulo("estoque")){
+    const produtosDoNeg = state.estProdutos.filter(p => p.negocio===n.nome);
+    if(produtosDoNeg.length){
+      const valorEstoque = produtosDoNeg.reduce((s,p)=>s+estSaldoAtual(p.id)*estValorUnitarioEstimado(p), 0);
+      const abaixoMinimo = produtosDoNeg.filter(p=>estSaldoAtual(p.id)<=Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length;
+      cards.push(vgKpiCard("Valor em estoque", fmtBRL(valorEstoque), `${produtosDoNeg.length} produto(s)`, "", {modulo:"estoque", view:"est_produtos", label:"Produtos"}));
+      cards.push(vgKpiCard("Abaixo do mínimo", abaixoMinimo, abaixoMinimo>0?"Precisa repor":"Tudo certo", abaixoMinimo>0?"neg":"pos", {modulo:"estoque", view:"est_alertas", label:"Alertas de Estoque"}));
+    }
+  }
+  if(podeVerModulo("rh")){
+    const funcionariosDoNeg = state.rhFuncionarios.filter(f => f.negocio===n.nome);
+    if(funcionariosDoNeg.length){
+      const ativos = funcionariosDoNeg.filter(f=>f.status!=="Desligado");
+      cards.push(vgKpiCard("Funcionários ativos", ativos.length, `${funcionariosDoNeg.length} no total`, "", {modulo:"rh", view:"rh_funcionarios", label:"Funcionários"}));
+      const folhaDoNeg = ativos.reduce((s,f)=>s+(Number(f.salario)||0), 0);
+      cards.push(vgKpiCard("Folha do mês (estimada)", fmtBRL(folhaDoNeg), "Soma dos salários ativos", "", {modulo:"rh", view:"rh_folha", label:"Folha de Pagamento"}));
+    }
+  }
+
+  return `<div style="margin-bottom:22px;">
+    <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px; display:flex; align-items:center;">
+      <span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:7px;"></span>${esc(n.nome)}
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));">${cards.join("")}</div>
+  </div>`;
+}
+function viewVgSintetico(){
   const hoje = new Date();
   const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
   const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+  const negociosVisiveis = state.negocios.filter(n => ehMaster() || podeVerNegocio(n.nome));
 
-  // ---- Financeiro (aberto a todo mundo, igual Lançamentos já é — só o saldo em
-  // conta some pra quem não é Master, porque Contas em si já é master-only) ----
-  const lancVis = (filtro) => lancamentosVisiveis(state.lancamentos.filter(filtro));
-  const aReceber = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
-  const aPagar = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
-  const receitaMes = lancVis(l => l.tipo==="Receita" && !l.inativo && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
-  const despesaMes = lancVis(l => l.tipo==="Despesa" && !l.inativo && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
-  const saldoTotal = master ? state.contas.filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoAtual(c.id),0) : null;
-  const blocoFinanceiro = vgBlocoHTML("💰 Financeiro", [
-    master ? vgKpiCard("Saldo total em contas", fmtBRL(saldoTotal), "Todas as contas ativas", saldoTotal>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : "",
-    vgKpiCard("A receber (em aberto)", fmtBRL(aReceber), "Pendente/agendado", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}),
-    vgKpiCard("A pagar (em aberto)", fmtBRL(aPagar), "Pendente/agendado", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}),
-    vgKpiCard("Receita do mês", fmtBRL(receitaMes), "Pago, mês atual", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"}),
-    vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}),
-  ].join(""));
-
-  // ---- Estoque ----
-  const blocoEstoque = podeVerModulo("estoque") ? (() => {
-    const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id)*estValorUnitarioEstimado(p), 0);
-    const abaixoMinimo = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length;
-    const comprasMes = state.estCompras.filter(c => c.data>=inicioMesISO && c.data<=fimMesISO);
-    const valorComprasMes = comprasMes.reduce((s,c) => s + c.itens.reduce((ss,it)=>ss+it.valorTotal,0) + Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0), 0);
-    return vgBlocoHTML("📦 Estoque", [
-      vgKpiCard("Valor total em estoque", fmtBRL(valorTotal), `${state.estProdutos.length} produto(s) cadastrado(s)`, "", {modulo:"estoque", view:"est_produtos", label:"Produtos"}),
-      vgKpiCard("Abaixo do mínimo", abaixoMinimo, abaixoMinimo>0?"Precisa repor":"Tudo certo", abaixoMinimo>0?"neg":"pos", {modulo:"estoque", view:"est_alertas", label:"Alertas de Estoque"}),
-      vgKpiCard("Compras no mês", `${comprasMes.length}`, fmtBRL(valorComprasMes), "", {modulo:"estoque", view:"est_compras", label:"Compras (NF)"}),
-    ].join(""));
+  // Lançamentos sem negócio marcado não somem — entram num bloco à parte,
+  // pra não ficar "invisível" quando alguém esquece de marcar o negócio.
+  const semNegocio = lancamentosVisiveis(state.lancamentos.filter(l => !l.negocio && !l.inativo && l.tipo!=="Transferência"));
+  const blocoSemNegocio = semNegocio.length ? (() => {
+    const aReceber = semNegocio.filter(l=>l.tipo==="Receita" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    const aPagar = semNegocio.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
+    return `<div style="margin-bottom:22px;">
+      <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px;">🗂️ Sem negócio definido</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));">
+        ${vgKpiCard("A receber", fmtBRL(aReceber), "Pendente/agendado", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"})}
+        ${vgKpiCard("A pagar", fmtBRL(aPagar), "Pendente/agendado", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
+      </div>
+    </div>`;
   })() : "";
 
-  // ---- Clientes + Chamados ----
-  const blocoClientes = podeVerModulo("clientes") ? (() => {
-    const clientesAtivos = state.cliClientes.filter(c => c.status==="Ativo").length;
-    const chamadosAbertos = state.cliChamados.filter(c => ["Aberto","Agendado","Em atendimento"].includes(c.status)).length;
-    const chamadosAtrasados = state.cliChamados.filter(c => c.dataAgendada && c.dataAgendada<todayISO() && !["Concluído","Cancelado"].includes(c.status)).length;
-    const osAndamento = state.cliOS.filter(o => o.status==="Aberta").length;
-    return vgBlocoHTML("👥 Clientes & Atendimento", [
-      vgKpiCard("Clientes ativos", clientesAtivos, `${state.cliClientes.length} cadastrado(s) no total`, "", {modulo:"clientes", view:"cli_lista", label:"Todos os Clientes"}),
-      vgKpiCard("Chamados abertos", chamadosAbertos, chamadosAtrasados>0?`${chamadosAtrasados} atrasado(s)`:"Nenhum atrasado", chamadosAtrasados>0?"neg":"", {modulo:"clientes", view:"cli_chamados", label:"Chamados"}),
-      vgKpiCard("OS em andamento", osAndamento, "", "", {modulo:"clientes", view:"cli_os_lista", label:"Ordens de Serviço"}),
-    ].join(""));
-  })() : "";
-
-  // ---- RH ----
-  const blocoRh = podeVerModulo("rh") ? (() => {
-    const ativos = rhFuncionariosAtivos();
-    const feriasVencendo = ativos.map(f => rhProximoVencimentoFerias(f.id)).filter(v => v && v.diasRestantes<=60).length;
-    return vgBlocoHTML("🏢 RH", [
-      vgKpiCard("Funcionários ativos", ativos.length, `${state.rhFuncionarios.length} no total`, "", {modulo:"rh", view:"rh_funcionarios", label:"Funcionários"}),
-      vgKpiCard("Folha do mês (estimada)", fmtBRL(rhCustoFolhaMensal()), "Soma dos salários ativos", "", {modulo:"rh", view:"rh_folha", label:"Folha de Pagamento"}),
-      vgKpiCard("Férias vencendo", feriasVencendo, feriasVencendo>0?"Nos próximos 60 dias":"Nada nos próximos 60 dias", feriasVencendo>0?"neg":"", {modulo:"rh", view:"rh_alertas", label:"Alertas de RH"}),
-    ].join(""));
-  })() : "";
+  const blocos = negociosVisiveis.map(n => vgBlocoNegocio(n, inicioMesISO, fimMesISO)).join("");
 
   return `
     <div class="page-header">
-      <div><div class="page-title">Visão Geral — Sintético</div><div class="page-sub">Panorama consolidado da holding, em tempo real.</div></div>
+      <div><div class="page-title">Visão Geral — Sintético</div><div class="page-sub">Panorama por negócio, em tempo real.</div></div>
     </div>
-    ${blocoFinanceiro}${blocoEstoque}${blocoClientes}${blocoRh}
+    ${blocos || emptyState("Nenhum negócio visível pra esse usuário.")}${blocoSemNegocio}
   `;
 }
 
@@ -5473,7 +5504,7 @@ document.addEventListener("change", e => {
 // Busca por texto: espera uma pausa de digitação antes de atualizar o
 // resultado (em vez de re-renderizar a cada tecla) — evita que a lista
 // pisque/mude embaixo do dedo enquanto ainda tá digitando o termo.
-const BUSCA_DEBOUNCE_MS = 5000;
+const BUSCA_DEBOUNCE_MS = 2000;
 const buscaDebounceTimers = {};
 function debounceBusca(chave, fn){
   clearTimeout(buscaDebounceTimers[chave]);
