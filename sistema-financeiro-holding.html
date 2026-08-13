@@ -872,7 +872,15 @@ const BULK_CONTEXTOS = {
   rh_cargos: { arr: "rhCargos", tabela: "rh_cargos", label: "cargo(s)" },
   rh_folha:  { arr: "rhFolha",  tabela: "rh_folha",  label: "lançamento(s) de folha" },
   rh_ferias: { arr: "rhFerias", tabela: "rh_ferias", label: "registro(s) de férias" },
-  compras_vendas: { arr: "comprasVendas", tabela: "compras_vendas", label: "item(ns)" },
+  compras_vendas: {
+    arr: "comprasVendas", tabela: "compras_vendas", label: "item(ns)",
+    cascade: async (ids) => {
+      const idsSet = new Set(ids);
+      const lancIds = state.lancamentos.filter(l => idsSet.has(l.compraVendaId)).map(l => l.id);
+      state.lancamentos = state.lancamentos.filter(l => !idsSet.has(l.compraVendaId));
+      if(lancIds.length) await deleteRows("lancamentos", lancIds);
+    },
+  },
 };
 let bulkSelecao = {};
 function bulkSet(contexto){ if(!bulkSelecao[contexto]) bulkSelecao[contexto] = new Set(); return bulkSelecao[contexto]; }
@@ -5051,10 +5059,13 @@ document.addEventListener("click", async e => {
   else if(action === "cv-del"){
     const item = cvItemById(id);
     if(!item) return;
-    if(!confirm(`Excluir "${item.nome}"? Isso NÃO exclui os lançamentos de compra/venda já gerados — apague-os em Lançamentos se quiser.`)) return;
+    if(!confirm(`Excluir "${item.nome}"? Isso também apaga o(s) lançamento(s) de compra/venda gerados por ele em Financeiro.`)) return;
+    const idsLanc = state.lancamentos.filter(l=>l.compraVendaId===id).map(l=>l.id);
+    state.lancamentos = state.lancamentos.filter(l=>l.compraVendaId!==id);
     state.comprasVendas = state.comprasVendas.filter(x=>x.id!==id);
     await deleteRow("compras_vendas", id);
-    renderApp(); showToast("Item excluído.");
+    if(idsLanc.length) await deleteRows("lancamentos", idsLanc);
+    renderApp(); showToast("Item e lançamento(s) vinculado(s) excluídos.");
   }
   // ---- RH ----
   else if(action === "rh-novo-funcionario") modalRhFuncionario(null);
