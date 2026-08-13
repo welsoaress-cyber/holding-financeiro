@@ -706,6 +706,7 @@ let state = {
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
+  modoTecnico: false, tecnicoAuthInfo: null,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() }
@@ -1199,6 +1200,12 @@ function attachCalculadora(inputId){
 // ============================================================
 // PERSISTÊNCIA (Supabase — uma tabela por entidade, payload em jsonb)
 // ============================================================
+// ---- App do Técnico: sessão própria e separada da do Master (mesmo Supabase,
+// contas de auth diferentes) — ver bloco "MODO TÉCNICO" mais abaixo. donoAtual()
+// garante que toda gravação continua marcada com o user_id do Master mesmo
+// quando quem está gravando é o técnico logado com a própria conta.
+function donoAtual(){ return state.modoTecnico && state.tecnicoAuthInfo ? state.tecnicoAuthInfo.masterUserId : (state.user ? state.user.id : null); }
+
 async function saveRows(table, items){
   // IMPORTANTE: em caso de falha, este erro é relançado (throw) de propósito.
   // Todas as telas fazem "await saveX(); closeModal(); renderApp(); showToast('salvo!')"
@@ -1211,11 +1218,12 @@ async function saveRows(table, items){
   if(!items.length) return;
   try{
     const flat = TABELAS_FLAT.has(table);
+    const dono = donoAtual();
     const rows = items.map(item => {
       const { id, ...rest } = item;
       return flat
-        ? { id, user_id: state.user.id, ...rest, updated_at: new Date().toISOString() }
-        : { id, user_id: state.user.id, dados: rest, updated_at: new Date().toISOString() };
+        ? { id, user_id: dono, ...rest, updated_at: new Date().toISOString() }
+        : { id, user_id: dono, dados: rest, updated_at: new Date().toISOString() };
     });
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
@@ -1373,6 +1381,74 @@ async function loadData(){
     showToast("Erro ao carregar dados: " + (e.message || e), "error");
   }
 }
+
+// =========================================================================
+// MODO TÉCNICO — o técnico loga com a PRÓPRIA conta Supabase (não a do
+// Master). "tecnicos_auth" é a tabela-ponte: liga o auth.uid() do técnico
+// ao user_id do Master + ao id dele em cli_tecnicos. As regras de acesso
+// (RLS) no Supabase é que de fato restringem o que essa conta consegue ler/
+// gravar — o código aqui só decide QUAL interface mostrar depois que o
+// Supabase já autenticou alguém.
+// =========================================================================
+async function detectarModoTecnico(){
+  try{
+    const { data, error } = await supabaseClient.from("tecnicos_auth")
+      .select("master_user_id,tecnico_id").eq("auth_user_id", state.user.id).maybeSingle();
+    if(error) throw error;
+    if(data){ state.modoTecnico = true; state.tecnicoAuthInfo = { masterUserId: data.master_user_id, tecnicoId: data.tecnico_id, nome: "" }; }
+    else{ state.modoTecnico = false; state.tecnicoAuthInfo = null; }
+  }catch(e){
+    console.warn("[detectarModoTecnico]", e.message || e);
+    state.modoTecnico = false; state.tecnicoAuthInfo = null;
+  }
+}
+async function carregarSessao(){
+  await detectarModoTecnico();
+  if(state.modoTecnico) await loadDataTecnico();
+  else await loadData();
+}
+async function loadDataTecnico(){
+  try{
+    const masterId = state.tecnicoAuthInfo.masterUserId;
+    const [tecRes, chamRes, prodRes] = await Promise.all([
+      supabaseClient.from("cli_tecnicos").select("id,dados").eq("user_id", masterId).eq("id", state.tecnicoAuthInfo.tecnicoId).maybeSingle(),
+      supabaseClient.from("cli_chamados").select("id,dados").eq("user_id", masterId),
+      supabaseClient.from("est_produtos").select("id,dados").eq("user_id", masterId),
+    ]);
+    if(tecRes.error) throw tecRes.error;
+    if(chamRes.error) throw chamRes.error;
+    if(prodRes.error) throw prodRes.error;
+    state.tecnicoAuthInfo.nome = tecRes.data ? (tecRes.data.dados.nome || "Técnico") : "Técnico";
+    state.cliChamados = (chamRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    state.estProdutos = (prodRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    const clienteIds = [...new Set(state.cliChamados.map(c => c.clienteId).filter(Boolean))];
+    if(clienteIds.length){
+      const { data, error } = await supabaseClient.from("cli_clientes").select("id,dados").eq("user_id", masterId).in("id", clienteIds);
+      if(error) throw error;
+      state.cliClientes = (data || []).map(r => ({ id: r.id, ...r.dados }));
+    }else{
+      state.cliClientes = [];
+    }
+    state.estMovimentos = [];
+    state.storageOK = true;
+  }catch(e){
+    state.storageOK = false;
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
+    showToast("Erro ao carregar seus chamados: " + (e.message || e), "error");
+  }
+}
+async function vincularTecnico(codTecnico, codHolding){
+  if(!codTecnico || !codHolding) return { ok:false, msg:"Preencha os dois códigos." };
+  try{
+    const { error } = await supabaseClient.from("tecnicos_auth").upsert({
+      auth_user_id: state.user.id, master_user_id: codHolding.trim(), tecnico_id: codTecnico.trim(),
+    }, { onConflict: "auth_user_id" });
+    if(error) throw error;
+    return { ok:true };
+  }catch(e){
+    return { ok:false, msg: "Não consegui vincular — confira os códigos. (" + (e.message||e) + ")" };
+  }
+}
 function seedCategorias(){
   return ["Servidores/Hospedagem","Aluguel","Assinaturas/Softwares","Marketing","Salários/Pró-labore","Impostos/Taxas","Outros"]
     .map(nome => ({ id: uid("cat"), nome, subcategorias: [] }));
@@ -1393,7 +1469,7 @@ async function doLogin(email, password){
     if(error){ showToast(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message, "error"); return false; }
     state.user = data.user;
     state.perfilAtivo = null; state.perfilEscolhido = false;
-    await loadData();
+    await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
 }
@@ -1416,6 +1492,26 @@ async function doSignup(email, password){
     return false;
   }catch(e){ showToast("Erro ao criar conta.", "error"); return false; }
 }
+async function doAuthTecnico(email, password, codTecnico, codHolding){
+  try{
+    let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      // ainda não tem conta — tenta criar (mesma senha que ele acabou de digitar)
+      const signup = await supabaseClient.auth.signUp({ email, password });
+      if(signup.error){ showToast(signup.error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : signup.error.message, "error"); return false; }
+      if(!signup.data.session){
+        showToast("Conta criada! Confirme seu e-mail (verifique a caixa de entrada) e volte aqui pra concluir.");
+        return true;
+      }
+      data = signup.data;
+    }
+    state.user = data.user;
+    const link = await vincularTecnico(codTecnico, codHolding);
+    if(!link.ok){ showToast(link.msg, "error"); return false; }
+    await carregarSessao();
+    return true;
+  }catch(e){ showToast("Erro ao entrar como técnico.", "error"); return false; }
+}
 async function doLogout(){
   await supabaseClient.auth.signOut();
   state.user = null;
@@ -1423,6 +1519,7 @@ async function doLogout(){
   state.categorias = []; state.negocios = []; state.cartoes = []; state.perfis = [];
   state.pagarUnlocked = false; state.receberUnlocked = false;
   state.perfilAtivo = null; state.perfilEscolhido = false;
+  state.modoTecnico = false; state.tecnicoAuthInfo = null;
   renderApp();
 }
 
@@ -1672,6 +1769,7 @@ function renderModbar(){
 function renderApp(){
   const app = document.getElementById("app");
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
+  if(state.modoTecnico){ renderAppTecnico(); return; }
   if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
   if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
 
@@ -1852,6 +1950,7 @@ function navItemSoon(label){
   </div>`;
 }
 function renderView(){
+  if(state.modoTecnico){ renderAppTecnico(); return; }
   const main = document.getElementById("mainArea");
   if(!main) return;
   if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
@@ -1898,6 +1997,7 @@ function renderView(){
 // TELA DE LOGIN
 // ============================================================
 function renderLogin(){
+  if(authMode === "tecnico") return renderLoginTecnico();
   const isLogin = authMode === "login";
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
@@ -1913,23 +2013,62 @@ function renderLogin(){
           ${isLogin ? "Não tem conta?" : "Já tem conta?"}
           <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
         </div>
+        <div style="text-align:center; margin-top:10px; font-size:12.5px; color:var(--ink-4);">
+          É técnico? <a data-action="switch-auth-tecnico" style="color:var(--accent); cursor:pointer; font-weight:600;">Entrar por aqui</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderLoginTecnico(){
+  return `
+    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
+      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">🧰 Acesso do Técnico</h2>
+        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou.</div>
+        <form id="authTecnicoForm">
+          <div class="field"><label>Seu e-mail</label><input type="email" id="tecEmail" placeholder="seu@email.com" required></div>
+          <div class="field"><label>Sua senha</label><input type="password" id="tecPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          <div class="field"><label>Código do técnico</label><input type="text" id="tecCodTecnico" placeholder="Código que o Master te passou" required></div>
+          <div class="field"><label>Código da holding</label><input type="text" id="tecCodHolding" placeholder="Código que o Master te passou" required></div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
+        </form>
+        <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
+          <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou técnico</a>
+        </div>
       </div>
     </div>
   `;
 }
 function wireAuthForm(){
   const form = document.getElementById("authForm");
-  if(!form) return;
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const email = document.getElementById("authEmail").value.trim();
-    const password = document.getElementById("authPassword").value;
-    if(!email || !password) { showToast("Preencha email e senha.", "error"); return; }
-    authBusy = true; renderApp();
-    const ok = authMode === "login" ? await doLogin(email, password) : await doSignup(email, password);
-    authBusy = false;
-    renderApp();
-  });
+  if(form){
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value;
+      if(!email || !password) { showToast("Preencha email e senha.", "error"); return; }
+      authBusy = true; renderApp();
+      const ok = authMode === "login" ? await doLogin(email, password) : await doSignup(email, password);
+      authBusy = false;
+      renderApp();
+    });
+  }
+  const formTec = document.getElementById("authTecnicoForm");
+  if(formTec){
+    formTec.addEventListener("submit", async e => {
+      e.preventDefault();
+      const email = document.getElementById("tecEmail").value.trim();
+      const password = document.getElementById("tecPassword").value;
+      const codTecnico = document.getElementById("tecCodTecnico").value.trim();
+      const codHolding = document.getElementById("tecCodHolding").value.trim();
+      if(!email || !password || !codTecnico || !codHolding){ showToast("Preencha todos os campos.", "error"); return; }
+      authBusy = true; renderApp();
+      await doAuthTecnico(email, password, codTecnico, codHolding);
+      authBusy = false;
+      renderApp();
+    });
+  }
 }
 
 // ============================================================
@@ -4607,7 +4746,13 @@ document.addEventListener("click", async e => {
   const bloqueioPermissao = acaoBloqueadaPorPermissao(action, el);
   if(bloqueioPermissao){ showToast(bloqueioPermissao, "error"); return; }
 
-  if(action === "nav") setView(el.dataset.view);
+  if(action === "tec-app-ver"){ tecnicoChamadoAtualId = id; tecnicoView = "detalhe"; renderAppTecnico(); return; }
+  else if(action === "tec-app-voltar"){ tecnicoView = "lista"; tecnicoChamadoAtualId = null; renderAppTecnico(); return; }
+  else if(action === "tec-app-iniciar"){ await chamadoIniciar(id); return; }
+  else if(action === "tec-app-concluir"){ await chamadoConcluir(id); return; }
+  else if(action === "tec-app-materiais"){ modalChamadoMateriais(id); return; }
+  else if(action === "tec-app-logout"){ await doLogout(); return; }
+  else if(action === "nav") setView(el.dataset.view);
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
@@ -4672,6 +4817,8 @@ document.addEventListener("click", async e => {
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
+  else if(action === "switch-auth-tecnico"){ authMode = "tecnico"; renderApp(); }
+  else if(action === "switch-auth-master"){ authMode = "login"; renderApp(); }
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
@@ -5020,6 +5167,7 @@ document.addEventListener("click", async e => {
   // ---- Técnicos ----
   else if(action === "tec-novo") modalCliTecnico(null);
   else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
+  else if(action === "tec-app-codigo"){ const t = cliTecnicoById(id); if(t) modalCodigoTecnico(t); }
   else if(action === "tec-gerar-pagamento"){
     const t = cliTecnicoById(id);
     if(!t) return;
@@ -6241,6 +6389,7 @@ function viewCliTecnicos(){
       <td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
+        <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">🔗</button>
         ${Number(t.valorMensal)>0 ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
@@ -6257,6 +6406,35 @@ function viewCliTecnicos(){
       <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum técnico cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
+}
+
+/* =========================================================================
+   MODAL — CÓDIGO DE ACESSO AO APP DO TÉCNICO
+========================================================================= */
+function modalCodigoTecnico(tecnico){
+  const campoCopiavel = (label, valor, campoId) => `
+    <div class="field"><label>${esc(label)}</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="${campoId}" value="${esc(valor)}" readonly style="font-family:var(--font-mono); font-size:12.5px;">
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">📋 Copiar</button>
+      </div>
+    </div>`;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">🔗 App do Técnico — ${esc(tecnico.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px;">Passe esses 2 códigos pro técnico (WhatsApp, por exemplo). Na tela de login do app, ele clica em <strong>"É técnico? Entrar por aqui"</strong>, escolhe um e-mail e senha PRÓPRIOS (não os seus) e cola os códigos abaixo — a conta dele é criada na hora, já vinculada só aos chamados que você atribuir a ele.</div>
+      ${campoCopiavel("Código do técnico", tecnico.id, "codTecTecnico")}
+      ${campoCopiavel("Código da holding", state.user?.id||"", "codTecHolding")}
+      <div class="field-help">O código da holding é sempre o mesmo, pra qualquer técnico que você cadastrar.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Fechar</button></div>
+  `);
+  document.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.copy);
+      input.select();
+      navigator.clipboard?.writeText(input.value).then(() => showToast("Copiado.")).catch(() => document.execCommand("copy"));
+    });
+  });
 }
 
 /* =========================================================================
@@ -6535,7 +6713,7 @@ function modalChamadoMateriais(chamadoId){
       state.estMovimentos.push({
         id: uid("em"), data, tipo: "Saída", produtoId: l.produtoId, qtd: l.qtd, custoUnitario: custoUnit,
         localOrigem: "Estoque", localDestino: destinoNome,
-        motivo: `Chamado ${cham.numero}`, responsavel: state.perfilAtivo?state.perfilAtivo.nome:"Master",
+        motivo: `Chamado ${cham.numero}`, responsavel: nomeUsuarioAtual(),
         chamadoId: cham.id,
       });
     });
@@ -8162,6 +8340,94 @@ function modalDetalheCompra(compraId){
 }
 
 // ============================================================
+// APP DO TÉCNICO — interface enxuta, separada da administrativa. Só os
+// chamados atribuídos a ele (RLS garante isso no servidor), com endereço/
+// telefone do cliente, mudar status e registrar material usado. Nada de
+// financeiro, estoque completo, outros clientes, etc.
+// ============================================================
+let tecnicoView = "lista";
+let tecnicoChamadoAtualId = null;
+function nomeUsuarioAtual(){
+  if(state.modoTecnico) return state.tecnicoAuthInfo?.nome || "Técnico";
+  return state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+}
+function renderAppTecnico(){
+  const app = document.getElementById("app");
+  const modbar = document.getElementById("modbarWrap");
+  if(modbar) modbar.innerHTML = "";
+  app.innerHTML = `
+    <div style="min-height:100vh; background:var(--bg); display:flex; flex-direction:column;">
+      <div style="background:var(--brand); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10;">
+        <div style="font-weight:700; font-size:14px;">🧰 ${esc(nomeUsuarioAtual())}</div>
+        <button class="sidebar-lock-btn" data-action="tec-app-logout" style="padding:6px 10px; font-size:12px;">🚪 Sair</button>
+      </div>
+      <div style="flex:1;">${tecnicoView === "detalhe" && tecnicoChamadoAtualId ? viewTecnicoChamadoDetalhe() : viewTecnicoLista()}</div>
+    </div>
+  `;
+}
+function viewTecnicoLista(){
+  const lista = [...state.cliChamados]
+    .filter(c => c.status !== "Cancelado")
+    .sort((a,b) => (a.status==="Concluído")-(b.status==="Concluído") || (a.dataAgendada||"").localeCompare(b.dataAgendada||""));
+  const rows = lista.map(c => {
+    const cliente = cliClienteById(c.clienteId);
+    return `<div class="panel" data-action="tec-app-ver" data-id="${c.id}" style="cursor:pointer; margin:0 0 10px;">
+      <div class="panel-body" style="padding:14px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div style="font-weight:700; font-size:14.5px;">${cliente?esc(cliNome(cliente)):"— cliente removido —"}</div>
+          <span class="status-pill ${chamadoStatusClass(c.status)}">${esc(c.status)}</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--ink-3); margin-top:4px;">${esc(c.tipo)} · ${c.dataAgendada?fmtDateBR(c.dataAgendada):"sem data marcada"}${c.prioridade==="Urgente"||c.prioridade==="Alta"?` · <span style="color:var(--neg); font-weight:600;">${esc(c.prioridade)}</span>`:""}</div>
+      </div>
+    </div>`;
+  }).join("");
+  return `
+    <div style="max-width:560px; margin:0 auto; padding:16px;">
+      <div style="font-size:19px; font-weight:800; margin-bottom:4px;">Meus chamados</div>
+      <div style="font-size:12.5px; color:var(--ink-3); margin-bottom:16px;">${lista.length} chamado(s) em aberto ou concluído recentemente</div>
+      ${rows || emptyState("Nenhum chamado atribuído a você no momento.")}
+    </div>
+  `;
+}
+function viewTecnicoChamadoDetalhe(){
+  const c = cliChamadoById(tecnicoChamadoAtualId);
+  if(!c) return `<div style="max-width:560px; margin:0 auto; padding:16px;">${emptyState("Chamado não encontrado.")}</div>`;
+  const cliente = cliClienteById(c.clienteId);
+  const endereco = cliente ? [cliente.logradouro, cliente.numero, cliente.bairro, cliente.cidade&&cliente.uf?`${cliente.cidade}/${cliente.uf}`:cliente.cidade].filter(Boolean).join(", ") : "";
+  const podeIniciar = c.status === "Aberto" || c.status === "Agendado";
+  const podeConcluir = c.status !== "Concluído" && c.status !== "Cancelado";
+  const itensBaixados = chamadoItensBaixados(c.id);
+  return `
+    <div style="max-width:560px; margin:0 auto; padding:16px;">
+      <button class="btn btn-ghost btn-sm" data-action="tec-app-voltar" style="margin-bottom:12px;">← Voltar</button>
+      <div class="panel" style="margin:0 0 14px;"><div class="panel-body">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div style="font-weight:800; font-size:17px;">${cliente?esc(cliNome(cliente)):"— cliente removido —"}</div>
+          <span class="status-pill ${chamadoStatusClass(c.status)}">${esc(c.status)}</span>
+        </div>
+        <div style="margin-top:10px; font-size:13.5px; line-height:1.8;">
+          <div>📞 ${cliente&&cliente.telefone?`<a href="tel:${esc(cliente.telefone)}" style="color:var(--ink); text-decoration:none;">${esc(cliente.telefone)}</a>`:"—"}</div>
+          <div>📍 ${esc(endereco||"Endereço não informado")}</div>
+        </div>
+        <hr style="margin:14px 0; border:none; border-top:1px solid var(--border);">
+        <div style="font-size:13.5px; line-height:1.9;">
+          <div><strong>Tipo:</strong> ${esc(c.tipo)}</div>
+          <div><strong>Prioridade:</strong> ${esc(c.prioridade)}</div>
+          <div><strong>Agendado p/:</strong> ${c.dataAgendada?fmtDateBR(c.dataAgendada):"—"}</div>
+          <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
+        </div>
+        ${itensBaixados.length ? `<div style="margin-top:12px; font-size:12.5px; color:var(--ink-3);"><strong>Materiais já registrados:</strong> ${itensBaixados.map(m=>{const p=estProdutoById(m.produtoId); return `${esc(p?p.nome:"—")} (${m.qtd})`;}).join(", ")}</div>` : ""}
+      </div></div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${podeIniciar ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
+        <button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>
+        ${podeConcluir ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-concluir" data-id="${c.id}">✓ Concluir atendimento</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
 // INIT — reage à sessão do Supabase
 // ============================================================
 async function init(){
@@ -8174,10 +8440,11 @@ async function init(){
     state.user = session ? session.user : null;
     if(state.user && (!jaLogado || !carregouUmaVez)){
       carregouUmaVez = true;
-      await loadData();
+      await carregarSessao();
       renderApp();
     }else if(!state.user){
       carregouUmaVez = false;
+      state.modoTecnico = false; state.tecnicoAuthInfo = null;
       renderApp();
     }
   });
