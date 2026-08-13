@@ -4935,7 +4935,14 @@ document.addEventListener("click", async e => {
   else if(action === "cli-del-contrato"){
     const c = cliClienteById(id);
     if(!c) return;
-    if(!confirm("Remover este contrato?")) return;
+    if(!confirm("Remover este contrato? Isso também cancela as cobranças futuras (ainda não pagas) geradas automaticamente por ele, se houver.")) return;
+    const ct = (c.contratos||[]).find(x=>x.id===el.dataset.cid);
+    if(ct && ct.cobrancaRecorrenciaId){
+      const idsCancelar = state.lancamentos.filter(l => l.recorrenciaId === ct.cobrancaRecorrenciaId && l.status !== "Pago").map(l=>l.id);
+      state.lancamentos = state.lancamentos.filter(l => !(l.recorrenciaId === ct.cobrancaRecorrenciaId && l.status !== "Pago"));
+      if(idsCancelar.length) await deleteRows("lancamentos", idsCancelar);
+      await saveLancamentos();
+    }
     c.contratos = (c.contratos||[]).filter(x=>x.id!==el.dataset.cid);
     await saveCliClientes(); renderView(); showToast("Contrato removido.");
   }
@@ -5311,6 +5318,7 @@ function viewCliDetalhe(){
               Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano?`· ${fmtBRL(plano.valor)}/mês`:""}
               ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
               ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
+              ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">🔁 cobrança automática</span>`:""}
             </div>
             ${ct.observacoes?`<div style="font-size:11.5px;color:var(--ink-4);margin-top:3px;">${esc(ct.observacoes)}</div>`:""}
             ${ct.tipoConexao?`<div style="font-size:11.5px;color:var(--ink-4);">Conexão: ${esc(ct.tipoConexao)}</div>`:""}
@@ -5612,11 +5620,56 @@ function modalCliCliente(existing){
   });
 }
 
+// ---- Cobrança automática do contrato (mensalidade recorrente em Contas a
+// Receber) — opt-in por contrato, ninguém liga sozinho. Reaproveita o mesmo
+// mecanismo de recorrência que "Novo lançamento > Recorrente" já usa.
+function primeiraDataVencimento(diaVencimento){
+  const hoje = new Date();
+  const ultimoDiaMesAtual = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+  let d = new Date(hoje.getFullYear(), hoje.getMonth(), Math.min(diaVencimento, ultimoDiaMesAtual));
+  if(d < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())){
+    const ultimoDiaProxMes = new Date(hoje.getFullYear(), hoje.getMonth()+2, 0).getDate();
+    d = new Date(hoje.getFullYear(), hoje.getMonth()+1, Math.min(diaVencimento, ultimoDiaProxMes));
+  }
+  return d.toISOString().slice(0,10);
+}
+async function sincronizarCobrancaContrato(cliente, contrato){
+  // cancela a série anterior (só o que ainda não foi pago) antes de recriar —
+  // evita duplicar ao editar valor/vencimento/plano várias vezes
+  if(contrato.cobrancaRecorrenciaId){
+    const idsCancelar = state.lancamentos.filter(l => l.recorrenciaId === contrato.cobrancaRecorrenciaId && l.status !== "Pago").map(l=>l.id);
+    state.lancamentos = state.lancamentos.filter(l => !(l.recorrenciaId === contrato.cobrancaRecorrenciaId && l.status !== "Pago"));
+    if(idsCancelar.length) await deleteRows("lancamentos", idsCancelar);
+    contrato.cobrancaRecorrenciaId = "";
+  }
+  if(!contrato.cobrancaAutomatica || !contrato.planoId || !contrato.diaVencimento) return;
+  const plano = state.cliPlanos.find(p => p.id === contrato.planoId);
+  if(!plano || !(Number(plano.valor)>0)) return;
+  let cat = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
+  if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+  const grupoId = uid("rec");
+  const qtd = 12 * HORIZONTE_ANOS;
+  let dataOcorrencia = primeiraDataVencimento(Number(contrato.diaVencimento));
+  const novos = [];
+  for(let i=0;i<qtd;i++){
+    novos.push({
+      id: uid("l"), data: dataOcorrencia, tipo: "Receita", negocio: contrato.negocio, categoria: cat.nome, subcategoria: "",
+      contaOrigem: state.contas.find(x=>x.ativa!==false)?.id||"", contaDestino: "", valor: Number(plano.valor),
+      descricao: `Mensalidade ${plano.nome} — ${cliNome(cliente)}`, status: "Provisionado", conciliado: false,
+      lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", clienteId: cliente.id, contratoId: contrato.id,
+      recorrenciaId: grupoId, recorrenciaTipo: "recorrente", recorrenciaIndex: i+1, recorrenciaTotal: qtd,
+    });
+    dataOcorrencia = proximaData(dataOcorrencia, "Mensal");
+  }
+  state.lancamentos.push(...novos);
+  contrato.cobrancaRecorrenciaId = grupoId;
+  await saveLancamentos();
+}
 function modalCliContrato(clienteId, existing){
   const c = cliClienteById(clienteId);
   if(!c) return;
   const isEdit = !!existing;
-  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", tipoConexao:"", enderecoInstalacao:"", observacoes:"" };
+  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", tipoConexao:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:false };
 
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
@@ -5641,6 +5694,9 @@ function modalCliContrato(clienteId, existing){
       <div class="field"><label>Tipo de conexão</label><select name="tipoConexao"><option value="">— Selecione —</option>${conexaoOpts}</select></div>
       <div class="field"><label>Endereço de instalação</label><input type="text" name="enderecoInstalacao" value="${esc(ct.enderecoInstalacao||"")}" placeholder="Rua, número — diferente do endereço cadastral?"></div>
       <div class="field"><label>Observações do contrato</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes do plano, SLA, observações...">${esc(ct.observacoes||"")}</textarea></div>
+      <div class="field"><label class="checkbox-row"><input type="checkbox" name="cobrancaAutomatica" ${ct.cobrancaAutomatica?"checked":""}> Gerar cobrança mensal automática em Contas a Receber</label>
+        <div class="field-help">Cria a mensalidade (valor do plano, no dia de vencimento) já provisionada em Contas a Receber, pros próximos ${HORIZONTE_ANOS} anos — precisa de Plano e Dia de vencimento preenchidos. Reajustar aqui recria as ocorrências futuras (as já pagas ficam intactas).</div>
+      </div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Vincular"}</button></div></form>
   `);
 
@@ -5657,13 +5713,16 @@ function modalCliContrato(clienteId, existing){
       negocio: fd.get("negocio"), planoId: fd.get("planoId"), status: fd.get("status"),
       dataContrato: fd.get("dataContrato"), diaVencimento: fd.get("diaVencimento"),
       tipoConexao: fd.get("tipoConexao"), enderecoInstalacao: fd.get("enderecoInstalacao").trim(),
-      observacoes: fd.get("observacoes").trim(),
+      observacoes: fd.get("observacoes").trim(), cobrancaAutomatica: fd.get("cobrancaAutomatica") === "on",
     };
-    if(isEdit){ Object.assign(existing, data); }
+    let contratoSalvo;
+    if(isEdit){ Object.assign(existing, data); contratoSalvo = existing; }
     else{
       if(!(c.contratos)) c.contratos = [];
-      c.contratos.push({ id:uid("ct"), ...data });
+      contratoSalvo = { id:uid("ct"), ...data };
+      c.contratos.push(contratoSalvo);
     }
+    await sincronizarCobrancaContrato(c, contratoSalvo);
     await saveCliClientes(); closeModal();
     state.view = "cli_detalhe";
     renderApp(); showToast(isEdit?"Contrato atualizado.":"Negócio vinculado.");
