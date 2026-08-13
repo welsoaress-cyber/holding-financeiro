@@ -6572,6 +6572,7 @@ function viewCliChamadoDetalhe(){
   const podeIniciar = c.status==="Aberto" || c.status==="Agendado";
   const podeConcluir = c.status==="Em atendimento" || c.status==="Agendado" || c.status==="Aberto";
   const podeCancelar = c.status!=="Concluído" && c.status!=="Cancelado";
+  const podeRegistrarMateriais = c.status!=="Concluído" && c.status!=="Cancelado";
 
   return `
     <div class="page-header">
@@ -6581,7 +6582,7 @@ function viewCliChamadoDetalhe(){
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
-        <button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>
+        ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
         ${(!lanc && Number(c.valorCobranca)>0) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
         <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
         ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
@@ -6669,6 +6670,7 @@ function modalCliChamado(existing){
 function modalChamadoMateriais(chamadoId){
   const cham = cliChamadoById(chamadoId);
   if(!cham) return;
+  if(cham.status==="Concluído" || cham.status==="Cancelado"){ showToast(`Chamado ${cham.status.toLowerCase()} — não dá mais pra registrar materiais nele.`, "error"); return; }
   if(!state.estProdutos.length){ showToast("Cadastre produtos no estoque primeiro.", "error"); return; }
   const cliente = cliClienteById(cham.clienteId);
   const linhaHTML = () => `
@@ -8433,7 +8435,7 @@ function viewTecnicoChamadoDetalhe(){
       </div></div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${podeIniciar ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
-        <button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>
+        ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-concluir" data-id="${c.id}">✓ Concluir atendimento</button>` : ""}
       </div>
     </div>
