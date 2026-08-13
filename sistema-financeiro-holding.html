@@ -3398,6 +3398,7 @@ function viewRelFluxoCaixa(){
           <option value="12" ${relFluxoPeriodo===12?"selected":""}>Últimos 12 meses</option>
         </select>
         <button class="icon-btn" data-action="mes-prev" title="Mês anterior" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+        ${!isMesAtual ? `<button class="icon-btn" data-action="mes-hoje" title="Voltar para o mês atual" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); white-space:nowrap;">Hoje</button>` : ""}
         <button class="icon-btn" data-action="mes-next" title="Próximo mês" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
       </div>
     </div>
@@ -3455,6 +3456,7 @@ function viewRelDre(){
           ${negociosVisiveis.map(n=>`<option value="${esc(n.nome)}" ${relDreNegocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("")}
         </select>
         <button class="icon-btn" data-action="mes-prev" title="Mês anterior" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+        ${!isMesAtual ? `<button class="icon-btn" data-action="mes-hoje" title="Voltar para o mês atual" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); white-space:nowrap;">Hoje</button>` : ""}
         <button class="icon-btn" data-action="mes-next" title="Próximo mês" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
       </div>
     </div>
