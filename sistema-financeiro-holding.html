@@ -283,6 +283,12 @@
 
   /* ---- KPI Cards ---- */
   .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  /* ---- Duas colunas de PAINÉIS lado a lado (não cartõezinhos de KPI) ----
+     Diferente de .kpi-grid (que é fixado em 2 colunas no mobile de
+     propósito, pra cartão pequeno) — aqui cada lado é um painel completo
+     (tabela, lista, cards internos), então no mobile precisa empilhar em
+     1 coluna, senão o conteúdo fica espremido demais e corta. */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .kpi-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -549,6 +555,9 @@
   .kpi-card { padding: 10px 12px; }
   .kpi-value { font-size: 18px !important; }
   .kpi-label { font-size: 10.5px; }
+  /* Painéis lado a lado (.two-col) empilham em 1 coluna — cada um é grande
+     demais (tabela, lista) pra caber espremido na metade de uma tela estreita */
+  .two-col { grid-template-columns: 1fr; gap: 12px; }
 
   /* Panel */
   .panel { border-radius: var(--r-lg); }
@@ -2517,10 +2526,10 @@ function viewVgExecutivo(){
     <div class="page-header">
       <div><div class="page-title">🎯 Executivo</div><div class="page-sub">Posição em ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div></div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">${patrimonioHTML}</div>
+    <div class="two-col" style="margin-bottom:16px;">${patrimonioHTML}</div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
     ${topClientesHTML ? `<div style="margin-bottom:16px;">${topClientesHTML}</div>` : ""}
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">${alertasHTML}</div>
+    <div class="two-col">${alertasHTML}</div>
   `;
 }
 
@@ -5887,7 +5896,7 @@ function viewCliDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:16px;"><span class="status-pill ${statusClass} " style="font-size:13px;">${c.status}</span></div></div>
     </div>
 
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+    <div class="two-col">
       <div>
         <div class="panel">
           <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
@@ -6432,7 +6441,7 @@ function viewCliOSDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Conta a receber</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:"— não gerada —"}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+    <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
@@ -6924,7 +6933,7 @@ function viewCliChamadoDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+    <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📋 Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
         <div><strong>Tipo:</strong> ${esc(c.tipo)}</div>
         <div><strong>Prioridade:</strong> ${esc(c.prioridade)}</div>
@@ -7449,7 +7458,7 @@ function viewRhDashboard(){
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); margin-bottom:16px;">
       ${negCards || `<div class="kpi-card" style="grid-column:1/-1; text-align:center; color:var(--ink-4);">Nenhum funcionário vinculado a um negócio ainda.</div>`}
     </div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="two-col">
       <div class="panel" style="margin:0;">
         <div class="panel-head"><div class="panel-title">🏖️ Férias vencendo (60 dias)</div><span style="font-size:12px;color:var(--ink-3);">${feriasVencendo.length} alerta(s)</span></div>
         <div class="panel-body" style="padding-top:6px;">${feriasHTML}</div>
@@ -7567,7 +7576,7 @@ function viewRhFuncionarioDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Próximas férias</div><div class="kpi-value" style="font-size:14px; color:${vencFerias&&vencFerias.diasRestantes<0?'var(--neg)':vencFerias&&vencFerias.diasRestantes<=30?'var(--warn)':'inherit'};">${vencFerias ? (vencFerias.diasRestantes<0?`vencidas há ${Math.abs(vencFerias.diasRestantes)}d`:`em ${vencFerias.diasRestantes}d`) : "—"}</div></div>
     </div>
 
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+    <div class="two-col">
       <div>
         <div class="panel">
           <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
