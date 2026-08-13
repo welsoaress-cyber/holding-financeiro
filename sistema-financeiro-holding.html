@@ -1022,6 +1022,7 @@ const ACOES_MODULO = {
   "cham-novo":{modulo:"clientes",acao:"criar"}, "cham-edit":{modulo:"clientes",acao:"editar"}, "cham-del":{modulo:"clientes",acao:"excluir"},
   "cham-iniciar":{modulo:"clientes",acao:"editar"}, "cham-concluir":{modulo:"clientes",acao:"editar"}, "cham-cancelar":{modulo:"clientes",acao:"editar"},
   "cham-materiais":{modulo:"clientes",acao:"editar"}, "cham-gerar-cobranca":{modulo:"clientes",acao:"editar"},
+  "cham-mat-editar":{modulo:"clientes",acao:"editar"}, "cham-mat-excluir":{modulo:"clientes",acao:"excluir"},
 
   "rh-novo-funcionario":{modulo:"rh",acao:"criar"}, "rh-novo-cargo":{modulo:"rh",acao:"criar"},
   "rh-nova-ferias":{modulo:"rh",acao:"criar"}, "rh-nova-folha":{modulo:"rh",acao:"criar"}, "rh-gerar-folha-mes":{modulo:"rh",acao:"criar"},
@@ -5205,6 +5206,15 @@ document.addEventListener("click", async e => {
   else if(action === "cham-edit"){ const c = cliChamadoById(id); if(c) modalCliChamado(c); }
   else if(action === "cham-detalhe"){ cliChamadoDetalheId = id; state.view = "cli_chamado_detalhe"; renderApp(); }
   else if(action === "cham-materiais") modalChamadoMateriais(id);
+  else if(action === "cham-mat-editar") modalEditarMaterialChamado(id);
+  else if(action === "cham-mat-excluir"){
+    const m = state.estMovimentos.find(x=>x.id===id);
+    if(!m) return;
+    if(!confirm("Excluir este item de material? O saldo do produto no estoque será recalculado.")) return;
+    state.estMovimentos = state.estMovimentos.filter(x=>x.id!==id);
+    await deleteRow("est_movimentos", id);
+    renderView(); showToast("Item removido.");
+  }
   else if(action === "cham-iniciar") chamadoIniciar(id);
   else if(action === "cham-concluir") chamadoConcluir(id);
   else if(action === "cham-cancelar") chamadoCancelar(id);
@@ -6566,8 +6576,9 @@ function viewCliChamadoDetalhe(){
 
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
-    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`;
-  }).join("") : `<tr><td colspan="4">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
+    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>
+      <td class="num"><button class="icon-btn" data-action="cham-mat-editar" data-id="${m.id}" title="Editar item">✎</button><button class="icon-btn danger" data-action="cham-mat-excluir" data-id="${m.id}" title="Excluir item">🗑</button></td></tr>`;
+  }).join("") : `<tr><td colspan="5">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
 
   const podeIniciar = c.status==="Aberto" || c.status==="Agendado";
   const podeConcluir = c.status==="Em atendimento" || c.status==="Agendado" || c.status==="Aberto";
@@ -6603,7 +6614,7 @@ function viewCliChamadoDetalhe(){
         <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
         ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
       </div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th><th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px;">${esc(c.observacoes)}</div></div>`:""}
   `;
@@ -6673,19 +6684,20 @@ function modalChamadoMateriais(chamadoId){
   if(cham.status==="Concluído" || cham.status==="Cancelado"){ showToast(`Chamado ${cham.status.toLowerCase()} — não dá mais pra registrar materiais nele.`, "error"); return; }
   if(!state.estProdutos.length){ showToast("Cadastre produtos no estoque primeiro.", "error"); return; }
   const cliente = cliClienteById(cham.clienteId);
+  const mostraCusto = !state.modoTecnico; // técnico registra o que usou, não precisa ver valor/custo dos itens
   const linhaHTML = () => `
     <tr>
       <td style="min-width:220px;"><select class="baixa-item-produto"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select></td>
       <td style="width:100px;"><input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1"></td>
-      <td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>
+      ${mostraCusto ? `<td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>` : ""}
       <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">🗑</button></td>
     </tr>`;
   openModal(`
     <div class="modal-head"><div class="modal-title">📦 Materiais usados — ${esc(cham.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaChamado"><div class="modal-body">
-      <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado no atendimento de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
+      <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado no atendimento de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong>${mostraCusto ? " — o custo usa o Custo Médio Real do produto agora." : ""}</div>
       <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
-        <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th><th class="num">Custo estimado</th><th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
+        <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th>${mostraCusto ? `<th class="num">Custo estimado</th>` : ""}<th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
       <div class="field" style="margin-top:12px;"><label>Data</label><input type="date" name="data" value="${todayISO()}"></div>
@@ -6693,6 +6705,7 @@ function modalChamadoMateriais(chamadoId){
   `);
   const tbody = document.getElementById("baixaItensBody");
   function atualizarCustos(){
+    if(!mostraCusto) return;
     Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
       const produtoId = tr.querySelector(".baixa-item-produto").value;
       const qtd = parseFloat(tr.querySelector(".baixa-item-qtd").value)||0;
@@ -6735,6 +6748,40 @@ function modalChamadoMateriais(chamadoId){
     await saveEstMovimentos();
     closeModal(); renderView();
     showToast(`${linhas.length} item(ns) baixado(s) do estoque.`);
+  });
+}
+
+// Correção pontual de um item de material já lançado num chamado — pra quando
+// o técnico liga avisando que baixou o produto errado ou a quantidade errada.
+// Só o Master mexe aqui (a tela de detalhe do chamado onde isso aparece nem
+// existe no app do técnico); o custo é recalculado igual ao lançamento normal.
+function modalEditarMaterialChamado(movId){
+  const m = state.estMovimentos.find(x => x.id === movId);
+  if(!m) return;
+  const produtoOptions = state.estProdutos.map(p => `<option value="${p.id}" ${m.produtoId===p.id?"selected":""}>${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">✎ Editar item de material</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formEditarMaterialChamado"><div class="modal-body">
+      <div class="field"><label>Produto</label><select name="produtoId" required>${produtoOptions}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Qtd usada</label><input type="number" min="0.001" step="0.001" name="qtd" value="${m.qtd}" required></div>
+        <div class="field"><label>Data</label><input type="date" name="data" value="${m.data||todayISO()}"></div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form>
+  `);
+  document.getElementById("formEditarMaterialChamado").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const qtd = parseFloat(fd.get("qtd")) || 0;
+    if(qtd <= 0){ showToast("Informe uma quantidade válida.", "error"); return; }
+    const p = estProdutoById(fd.get("produtoId"));
+    m.produtoId = fd.get("produtoId");
+    m.qtd = qtd;
+    m.data = fd.get("data") || m.data;
+    m.custoUnitario = p ? estValorUnitarioEstimado(p) : m.custoUnitario;
+    await saveEstMovimentos();
+    closeModal(); renderView();
+    showToast("Item atualizado.");
   });
 }
 
