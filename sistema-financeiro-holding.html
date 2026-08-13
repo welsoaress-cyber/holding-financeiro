@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Holding — Painel Financeiro</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -2130,9 +2131,297 @@ function viewCadastroHub(){
   return `
     <div class="page-header">
       <div><div class="page-title">Central de Cadastros</div><div class="page-sub">Escolha o que você quer cadastrar — cada um já pergunta o negócio quando fizer sentido, e vai direto pro módulo dele.</div></div>
+      <button class="btn btn-primary" data-action="importar-abrir">📥 Importar dados</button>
     </div>
     ${gruposHTML || emptyState("Nenhum tipo de cadastro disponível para o seu perfil.")}
   `;
+}
+
+// ============================================================
+// IMPORTAÇÃO DE DADOS EXTERNOS — CSV, Excel (.xlsx) ou colar direto de
+// uma planilha. Fluxo genérico em 2 telas: (1) escolhe o que importar +
+// carrega os dados, (2) mapeia cada coluna encontrada pra um campo do
+// sistema, vê uma prévia e confirma. Cada entidade reaproveita os mesmos
+// campos/regras que o cadastro manual já usa — não duplica validação.
+// ============================================================
+const IMPORT_ENTIDADES = {
+  negocio: {
+    nome: "Negócio", tabela: "negocios", arr: "negocios", flat: true,
+    campos: [ { key:"nome", label:"Nome", obrigatorio:true } ],
+    montar: (v) => ({ nome: v.nome, cor: proximaCorNegocio() }),
+  },
+  conta: {
+    nome: "Conta Bancária", tabela: "contas", arr: "contas", flat: true,
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true },
+      { key:"instituicao", label:"Instituição" },
+      { key:"tipo", label:"Tipo (Conta Corrente/Conta Pagamento/Poupança)" },
+      { key:"negocio", label:"Negócio (nome)" },
+      { key:"saldoInicial", label:"Saldo Inicial", numero:true },
+    ],
+    montar: (v) => ({
+      nome: v.nome, instituicao: v.instituicao||"", tipo: TIPOS_CONTA.includes(v.tipo)?v.tipo:"Conta Corrente",
+      negocio: v.negocio||"", saldoInicial: parseFloat(v.saldoInicial)||0, limite:0, ativa:true, parentId:null,
+    }),
+  },
+  categoria: {
+    nome: "Categoria", tabela: "categorias", arr: "categorias", flat: true,
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true },
+      { key:"subcategorias", label:"Subcategorias (separadas por vírgula)" },
+    ],
+    montar: (v) => ({ nome: v.nome, subcategorias: (v.subcategorias||"").split(",").map(s=>s.trim()).filter(Boolean).map(nome=>({id:uid("sub"),nome})) }),
+  },
+  fornecedor: {
+    nome: "Fornecedor", tabela: "est_fornecedores", arr: "estFornecedores",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true },
+      { key:"cnpj", label:"CNPJ/CPF" }, { key:"contato", label:"Contato" },
+      { key:"telefone", label:"Telefone" }, { key:"email", label:"E-mail" },
+      { key:"endereco", label:"Endereço" }, { key:"negocio", label:"Negócio (nome)" },
+      { key:"observacoes", label:"Observações" },
+    ],
+    montar: (v) => ({ nome:v.nome, cnpj:v.cnpj||"", contato:v.contato||"", telefone:v.telefone||"", email:v.email||"", endereco:v.endereco||"", negocio:v.negocio||"", observacoes:v.observacoes||"" }),
+  },
+  produto: {
+    nome: "Produto", tabela: "est_produtos", arr: "estProdutos",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true },
+      { key:"codigoInterno", label:"Código interno" }, { key:"categoria", label:"Categoria" },
+      { key:"modelo", label:"Modelo" }, { key:"fabricante", label:"Fabricante" }, { key:"familia", label:"Família" },
+      { key:"peso", label:"Peso", numero:true }, { key:"unidade", label:"Unidade (un/m/kg...)" },
+      { key:"fornecedor", label:"Fornecedor (nome, já cadastrado)" }, { key:"negocio", label:"Negócio (nome)" },
+      { key:"precoUnitario", label:"Preço unitário estimado", numero:true }, { key:"estoqueMinimo", label:"Estoque mínimo", numero:true },
+      { key:"localizacao", label:"Localização" }, { key:"observacoes", label:"Observações" },
+    ],
+    montar: (v) => {
+      const forn = v.fornecedor ? state.estFornecedores.find(f=>f.nome.trim().toLowerCase()===v.fornecedor.trim().toLowerCase()) : null;
+      return { nome:v.nome, codigoInterno:v.codigoInterno||"", categoria: EST_CATEGORIAS.includes(v.categoria)?v.categoria:(EST_CATEGORIAS[EST_CATEGORIAS.length-1]),
+        modelo:v.modelo||"", fabricante:v.fabricante||"", familia:v.familia||"", peso:parseFloat(v.peso)||0, unidade:v.unidade||"un",
+        fornecedorId: forn?forn.id:"", negocio:v.negocio||"", precoUnitario:parseFloat(v.precoUnitario)||0, estoqueMinimo:parseFloat(v.estoqueMinimo)||0,
+        localizacao:v.localizacao||"", observacoes:v.observacoes||"" };
+    },
+  },
+  plano: {
+    nome: "Plano", tabela: "cli_planos", arr: "cliPlanos",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true }, { key:"negocio", label:"Negócio (nome)" },
+      { key:"valor", label:"Valor (R$)", numero:true }, { key:"velocidade", label:"Velocidade" },
+      { key:"tecnologia", label:"Tecnologia" }, { key:"descricao", label:"Descrição" }, { key:"observacoes", label:"Observações" },
+    ],
+    montar: (v) => ({ nome:v.nome, negocio:v.negocio||"", descricao:v.descricao||"", valor:parseFloat(v.valor)||0, velocidade:v.velocidade||"", tecnologia:v.tecnologia||"", observacoes:v.observacoes||"" }),
+  },
+  cliente: {
+    nome: "Cliente", tabela: "cli_clientes", arr: "cliClientes",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true }, { key:"tipoPessoa", label:"Tipo (PF/PJ)" },
+      { key:"cpfCnpj", label:"CPF/CNPJ" }, { key:"email", label:"E-mail" }, { key:"telefone", label:"Telefone" },
+      { key:"cidade", label:"Cidade" }, { key:"uf", label:"UF" }, { key:"status", label:"Status" },
+      { key:"negocio", label:"Negócio do contrato (nome)" }, { key:"plano", label:"Plano do contrato (nome)" },
+      { key:"observacoes", label:"Observações" },
+    ],
+    montar: (v) => {
+      const negocio = v.negocio && state.negocios.some(n=>n.nome.trim().toLowerCase()===v.negocio.trim().toLowerCase()) ? v.negocio.trim() : "";
+      const plano = negocio ? state.cliPlanos.find(p=>p.negocio===negocio && p.nome.trim().toLowerCase()===(v.plano||"").trim().toLowerCase()) : null;
+      return {
+        nome:v.nome, tipoPessoa: v.tipoPessoa==="PJ"?"PJ":"PF", razaoSocial:"", nomeFantasia:"", cpfCnpj:v.cpfCnpj||"", rg:"",
+        dataNascimento:"", genero:"Não informado", email:v.email||"", telefone:v.telefone||"", whatsapp:"",
+        logradouro:"", numero:"", complemento:"", bairro:"", cidade:v.cidade||"", uf:v.uf||"SP", cep:"",
+        status: CLI_STATUS.includes(v.status)?v.status:"Ativo", dataCadastro: todayISO(), observacoes:v.observacoes||"",
+        contratos: negocio ? [{ id:uid("ct"), negocio, planoId: plano?plano.id:"", status:"Ativo", dataContrato: todayISO() }] : [],
+      };
+    },
+  },
+  tecnico: {
+    nome: "Técnico", tabela: "cli_tecnicos", arr: "cliTecnicos",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true }, { key:"telefone", label:"Telefone" },
+      { key:"negocio", label:"Negócio (nome)" }, { key:"diasAtendimento", label:"Quando atende" },
+      { key:"valorMensal", label:"Valor mensal", numero:true },
+    ],
+    montar: (v) => ({ nome:v.nome, telefone:v.telefone||"", negocio:v.negocio||"", diasAtendimento:v.diasAtendimento||"", valorMensal:parseFloat(v.valorMensal)||0, ativo:true }),
+  },
+  cargo: {
+    nome: "Cargo", tabela: "rh_cargos", arr: "rhCargos",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true }, { key:"negocio", label:"Negócio (nome)" },
+      { key:"salarioBase", label:"Salário base", numero:true }, { key:"cargaHoraria", label:"Carga horária" },
+      { key:"descricao", label:"Descrição" },
+    ],
+    montar: (v) => ({ nome:v.nome, negocio:v.negocio||"", salarioBase:parseFloat(v.salarioBase)||0, cargaHoraria:v.cargaHoraria||"44h/semana", descricao:v.descricao||"" }),
+  },
+  funcionario: {
+    nome: "Funcionário", tabela: "rh_funcionarios", arr: "rhFuncionarios",
+    campos: [
+      { key:"nome", label:"Nome", obrigatorio:true }, { key:"cpf", label:"CPF" }, { key:"email", label:"E-mail" },
+      { key:"telefone", label:"Telefone" }, { key:"negocio", label:"Negócio (nome)" }, { key:"cargo", label:"Cargo (nome, já cadastrado)" },
+      { key:"dataAdmissao", label:"Data de admissão (AAAA-MM-DD)" }, { key:"salario", label:"Salário", numero:true }, { key:"status", label:"Status" },
+    ],
+    montar: (v) => {
+      const cargo = v.cargo ? state.rhCargos.find(c=>c.nome.trim().toLowerCase()===v.cargo.trim().toLowerCase()) : null;
+      return {
+        nome:v.nome, cpf:v.cpf||"", rg:"", dataNascimento:"", genero:"Não informado", email:v.email||"", telefone:v.telefone||"",
+        negocio: v.negocio||(cargo?cargo.negocio:""), cargoId: cargo?cargo.id:"", dataAdmissao: v.dataAdmissao||todayISO(), tipoContrato:"CLT",
+        salario: parseFloat(v.salario)|| (cargo?cargo.salarioBase:0), status: RH_STATUS.includes(v.status)?v.status:"Ativo", pix:"",
+        logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"",
+        dataDemissao:"", tipoDesligamento:"", motivoDesligamento:"", observacoes:"",
+      };
+    },
+  },
+};
+
+let importState = { entidade:"", headers:[], rows:[], mapa:{} };
+
+function parseTabularText(texto){
+  const t = texto.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
+  if(!t) return { headers:[], rows:[] };
+  const linhas = t.split("\n").filter(l => l.length);
+  const candidatos = [",",";","\t"];
+  const delim = candidatos.reduce((melhor,d) => linhas[0].split(d).length > linhas[0].split(melhor).length ? d : melhor, ",");
+  const parseLinha = (linha) => {
+    const campos = []; let atual = "", dentroAspas = false;
+    for(let i=0;i<linha.length;i++){
+      const ch = linha[i];
+      if(ch === '"'){ if(dentroAspas && linha[i+1] === '"'){ atual += '"'; i++; } else dentroAspas = !dentroAspas; }
+      else if(ch === delim && !dentroAspas){ campos.push(atual); atual = ""; }
+      else atual += ch;
+    }
+    campos.push(atual);
+    return campos.map(c => c.trim());
+  };
+  const headers = parseLinha(linhas[0]);
+  const rows = linhas.slice(1).map(parseLinha);
+  return { headers, rows };
+}
+function parseXlsxArrayBuffer(buffer){
+  const wb = XLSX.read(buffer, { type:"array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const linhas = XLSX.utils.sheet_to_json(sheet, { header:1, raw:false, defval:"" });
+  const naoVazias = linhas.filter(l => l.some(c => String(c||"").trim() !== ""));
+  if(!naoVazias.length) return { headers:[], rows:[] };
+  const headers = naoVazias[0].map(h => String(h||"").trim());
+  const rows = naoVazias.slice(1).map(l => headers.map((_,i) => String(l[i]??"").trim()));
+  return { headers, rows };
+}
+
+function modalImportarDados(){
+  if(!ehMaster()){ showToast("Apenas o Master pode importar dados.", "error"); return; }
+  importState = { entidade:"", headers:[], rows:[], mapa:{} };
+  renderImportFase1();
+}
+function renderImportFase1(){
+  const opts = Object.entries(IMPORT_ENTIDADES).map(([id,e]) => `<option value="${id}" ${importState.entidade===id?"selected":""}>${esc(e.nome)}</option>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📥 Importar dados</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>O que você quer importar?</label><select id="importEntidade">${opts}</select></div>
+      <div class="field"><label>Arquivo (CSV ou Excel .xlsx)</label><input type="file" id="importArquivo" accept=".csv,.xlsx,.xls"></div>
+      <div class="field-help" style="margin:4px 0 10px;">— ou —</div>
+      <div class="field"><label>Colar dados direto (copiado do Excel/Sheets, com a primeira linha de cabeçalho)</label>
+        <textarea id="importColar" rows="6" style="font-family:var(--font-mono); font-size:12px; resize:vertical;" placeholder="nome	telefone	negocio&#10;Ana Souza	11999990000	ServNet"></textarea>
+      </div>
+      <div id="importErro" class="field-help" style="color:var(--neg); display:none;"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="button" class="btn btn-primary" id="importAvancar">Avançar →</button></div>
+  `);
+  document.getElementById("importAvancar").addEventListener("click", async () => {
+    const entidade = document.getElementById("importEntidade").value;
+    const arquivo = document.getElementById("importArquivo").files[0];
+    const colado = document.getElementById("importColar").value;
+    const erroEl = document.getElementById("importErro");
+    const mostrarErro = (msg) => { erroEl.textContent = msg; erroEl.style.display = "block"; };
+    let parsed;
+    try{
+      if(arquivo){
+        if(/\.xlsx?$/i.test(arquivo.name)){
+          const buffer = await arquivo.arrayBuffer();
+          parsed = parseXlsxArrayBuffer(buffer);
+        }else{
+          parsed = parseTabularText(await arquivo.text());
+        }
+      }else if(colado.trim()){
+        parsed = parseTabularText(colado);
+      }else{
+        mostrarErro("Carregue um arquivo ou cole os dados antes de avançar.");
+        return;
+      }
+    }catch(e){
+      mostrarErro("Não consegui ler esse arquivo: " + (e.message||e));
+      return;
+    }
+    if(!parsed.headers.length || !parsed.rows.length){
+      mostrarErro("Não encontrei nenhuma linha de dados (verifique se a primeira linha é o cabeçalho).");
+      return;
+    }
+    importState.entidade = entidade;
+    importState.headers = parsed.headers;
+    importState.rows = parsed.rows;
+    importState.mapa = {};
+    renderImportFase2();
+  });
+}
+function renderImportFase2(){
+  const cfg = IMPORT_ENTIDADES[importState.entidade];
+  // tenta casar automaticamente pelo nome da coluna, mas o usuário confirma/ajusta tudo
+  importState.headers.forEach((h,i) => {
+    if(importState.mapa[i] !== undefined) return;
+    const hNorm = h.trim().toLowerCase();
+    const campo = cfg.campos.find(c => c.key.toLowerCase() === hNorm || c.label.toLowerCase().startsWith(hNorm));
+    importState.mapa[i] = campo ? campo.key : "";
+  });
+  const linhasMapeamento = importState.headers.map((h,i) => `
+    <tr>
+      <td style="font-weight:600;">${esc(h)}</td>
+      <td>
+        <select class="import-map-select" data-col="${i}">
+          <option value="">— Ignorar essa coluna —</option>
+          ${cfg.campos.map(c => `<option value="${c.key}" ${importState.mapa[i]===c.key?"selected":""}>${esc(c.label)}${c.obrigatorio?" *":""}</option>`).join("")}
+        </select>
+      </td>
+      <td style="color:var(--ink-4); font-size:11.5px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(importState.rows.slice(0,2).map(r=>r[i]).filter(Boolean).join(" · "))}</td>
+    </tr>`).join("");
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📥 Importar ${esc(cfg.nome)} — mapear colunas</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:10px;">${importState.rows.length} linha(s) encontrada(s). Escolha qual campo do sistema cada coluna preenche — campos marcados com * são obrigatórios.</div>
+      <div style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
+        <table><thead><tr><th>Coluna do arquivo</th><th>Vira no sistema</th><th>Exemplo</th></tr></thead><tbody>${linhasMapeamento}</tbody></table>
+      </div>
+      <div id="importErro2" class="field-help" style="color:var(--neg); display:none; margin-top:10px;"></div>
+    </div><div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="import-voltar">← Voltar</button>
+      <button type="button" class="btn btn-primary" id="importConfirmar">Importar ${importState.rows.length} registro(s)</button>
+    </div>
+  `);
+  document.querySelectorAll(".import-map-select").forEach(sel => {
+    sel.addEventListener("change", () => { importState.mapa[Number(sel.dataset.col)] = sel.value; });
+  });
+  document.getElementById("importConfirmar").addEventListener("click", async () => {
+    const camposObrigatorios = cfg.campos.filter(c => c.obrigatorio).map(c => c.key);
+    const colunaDoCampo = {};
+    Object.entries(importState.mapa).forEach(([col,key]) => { if(key) colunaDoCampo[key] = Number(col); });
+    const faltando = camposObrigatorios.filter(k => colunaDoCampo[k] === undefined);
+    if(faltando.length){
+      const el = document.getElementById("importErro2");
+      const labels = faltando.map(k => cfg.campos.find(c=>c.key===k).label).join(", ");
+      el.textContent = `Mapeie os campos obrigatórios antes de importar: ${labels}.`;
+      el.style.display = "block";
+      return;
+    }
+    let importados = 0, ignorados = 0;
+    const novos = [];
+    importState.rows.forEach(row => {
+      const valores = {};
+      Object.entries(colunaDoCampo).forEach(([key,col]) => { valores[key] = row[col] ?? ""; });
+      if(camposObrigatorios.some(k => !String(valores[k]||"").trim())){ ignorados++; return; }
+      novos.push({ id: uid(cfg.arr), ...cfg.montar(valores) });
+      importados++;
+    });
+    if(!novos.length){ document.getElementById("importErro2").textContent = "Nenhuma linha válida pra importar (confira os campos obrigatórios)."; document.getElementById("importErro2").style.display = "block"; return; }
+    state[cfg.arr].push(...novos);
+    await saveRows(cfg.tabela, novos);
+    closeModal(); renderApp();
+    showToast(`${importados} ${cfg.nome.toLowerCase()}(s) importado(s)${ignorados?`, ${ignorados} ignorado(s) por falta de dado obrigatório`:""}.`);
+  });
 }
 
 // ============================================================
@@ -2469,7 +2758,7 @@ function viewLancamentos(){
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
   const catNomeOptions = state.categorias.map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
-  const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s)}" ${lancFilter.subcatNome===s?"selected":""}>${esc(s)}</option>`).join("");
+  const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s.nome)}" ${lancFilter.subcatNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
   const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte;
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   return `
@@ -4297,6 +4586,8 @@ document.addEventListener("click", async e => {
     else if(mod.id === "rh"){ state.view = "rh_dashboard"; }
     renderApp();
   }
+  else if(action === "importar-abrir") modalImportarDados();
+  else if(action === "import-voltar") renderImportFase1();
   else if(action === "cad-abrir"){
     const tipo = el.dataset.tipo;
     const item = CADASTRO_TIPOS.flatMap(g => g.itens).find(it => it.id === tipo);
