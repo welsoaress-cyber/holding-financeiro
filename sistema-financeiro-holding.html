@@ -2564,6 +2564,44 @@ function graficoBarraHTML(label, pct, cor, valorTxt, tip, corDot){
     <div class="val" style="font-weight:700; color:${cor};">${valorTxt}</div>
   </div>`;
 }
+// Mesma barra, mas com um selo de classificação (usado na Curva ABC) depois do valor.
+function graficoBarraComSeloHTML(label, pct, cor, valorTxt, tip, corDot, selo, corSelo){
+  return `<div class="bar-row" data-tip="${esc(tip)}">
+    <div class="name">${corDot?`<span class="tag-dot" style="background:${corDot}"></span>`:""}${esc(label)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,pct)}%; background:${cor};"></div></div>
+    <div class="val" style="display:flex; align-items:center; gap:6px; justify-content:flex-end;">
+      <span style="font-weight:700; color:${cor};">${valorTxt}</span>
+      <span style="font-size:10px; font-weight:700; color:#fff; background:${corSelo}; padding:1px 7px; border-radius:8px; line-height:1.6;">${esc(selo)}</span>
+    </div>
+  </div>`;
+}
+// Colunas pareadas (2 séries) por período — usado pra Receita vs Despesa mês
+// a mês. Com legenda (obrigatória a partir de 2 séries, ver skill de dataviz)
+// e rolagem horizontal em vez de espremer rótulo — em tela estreita é melhor
+// arrastar pro lado do que rótulo ilegível.
+function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
+  const max = Math.max(1, ...pontos.flatMap(p=>[p.a,p.b]));
+  const cols = pontos.map(p => {
+    const hA = Math.max(2, Math.round((p.a/max)*alturaMax));
+    const hB = Math.max(2, Math.round((p.b/max)*alturaMax));
+    const tipA = `<div>${esc(p.label)}</div><div class="tip-val">${fmtBRL(p.a)}</div><div>${esc(labelA)}</div>`;
+    const tipB = `<div>${esc(p.label)}</div><div class="tip-val">${fmtBRL(p.b)}</div><div>${esc(labelB)}</div>`;
+    return `<div style="display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:34px;">
+      <div style="display:flex; align-items:flex-end; gap:2px; height:${alturaMax}px;">
+        <div data-tip="${esc(tipA)}" style="width:14px; height:${hA}px; background:${corA}; border-radius:3px 3px 0 0;"></div>
+        <div data-tip="${esc(tipB)}" style="width:14px; height:${hB}px; background:${corB}; border-radius:3px 3px 0 0;"></div>
+      </div>
+      <div style="font-size:9.5px; color:var(--ink-4); margin-top:5px; white-space:nowrap;">${esc(p.label)}</div>
+    </div>`;
+  }).join("");
+  return `
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px; font-size:11.5px; color:var(--ink-3);">
+      <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corA};display:inline-block;"></span>${esc(labelA)}</div>
+      <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corB};display:inline-block;"></span>${esc(labelB)}</div>
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:6px; overflow-x:auto; padding-bottom:2px;">${cols}</div>
+  `;
+}
 function viewVgExecutivo(){
   garantirTooltipGrafico();
   const master = ehMaster();
@@ -2694,6 +2732,30 @@ function viewVgExecutivo(){
     </div>`;
   })() : "";
 
+  // ---- Gráfico: Receita vs Despesa mês a mês, últimos 12 meses (2 séries,
+  // por isso tem legenda — diferente da evolução do saldo, que é acumulado,
+  // esse mostra se CADA mês isolado deu resultado positivo ou não) ----
+  const graficoRecDespMesHTML = master ? (() => {
+    const pontos = [];
+    for(let i=11; i>=0; i--){
+      let mes = mv.mes-i, ano = mv.ano;
+      while(mes<0){ mes+=12; ano-=1; }
+      const iniM = new Date(ano,mes,1).toISOString().slice(0,10);
+      const fimM = new Date(ano,mes+1,0).toISOString().slice(0,10);
+      pontos.push({ ano, mes, label: `${NOMES_MESES[mes].slice(0,3)}/${String(ano).slice(2)}`, a: somaMes("Receita",iniM,fimM), b: somaMes("Despesa",iniM,fimM) });
+    }
+    const mesesPositivos = pontos.filter(p=>p.a>=p.b).length;
+    return `<div class="panel" style="margin-bottom:16px;">
+      <div class="panel-head"><div class="panel-title">📊 Receita vs Despesa — últimos 12 meses</div></div>
+      <div class="panel-body">
+        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no 👁️ pra ver o gráfico</div>` : graficoColunasParesHTML(pontos, "var(--pos)", "var(--neg)", "Receita", "Despesa", 110)}
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          📌 <strong style="color:var(--ink);">${mesesPositivos} de 12</strong> meses fecharam com receita ≥ despesa (realizado)
+        </div>
+      </div>
+    </div>`;
+  })() : "";
+
   // ---- Gráfico: receita por negócio (mês selecionado) — linhasNegocio já
   // vem ordenado desc por receita (o .sort() acima, em tabelaNegociosHTML,
   // muta o array e reaproveitamos a mesma ordem aqui). ----
@@ -2744,21 +2806,122 @@ function viewVgExecutivo(){
     </div>`;
   })() : "";
 
-  // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não muda com o mês, é o valor recorrente atual) ----
+  // ---- Gráfico: despesas por categoria (mês selecionado) — hue único (não
+  // é identidade de negócio, então nada de paleta categórica aqui — só
+  // ranking por tamanho, igual a skill de dataviz recomenda). ----
+  const porCategoriaDespesa = {};
+  lancVis(l=>l.tipo==="Despesa" && l.status==="Pago" && !l.inativo && l.data>=inicioMesISO && l.data<=fimMesISO).forEach(l=>{
+    const cat = l.categoria || "Sem categoria";
+    porCategoriaDespesa[cat] = (porCategoriaDespesa[cat]||0) + Number(l.valor);
+  });
+  const listaCategoriasDespesa = Object.entries(porCategoriaDespesa).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
+  const graficoDespesaCategoriaHTML = listaCategoriasDespesa.length ? (() => {
+    const total = listaCategoriasDespesa.reduce((s,c)=>s+c.valor,0);
+    const max = Math.max(...listaCategoriasDespesa.map(c=>c.valor));
+    const barras = listaCategoriasDespesa.map(c => {
+      const pct = total>0 ? Math.round((c.valor/total)*100) : 0;
+      const tip = `<div>${esc(c.nome)}</div><div class="tip-val">${fmtBRL(c.valor)}</div><div>${pct}% do total</div>`;
+      return graficoBarraHTML(c.nome, (c.valor/max)*100, "var(--neg)", vv(c.valor), tip);
+    }).join("");
+    const maior = listaCategoriasDespesa[0];
+    const pctMaior = total>0 ? Math.round((maior.valor/total)*100) : 0;
+    return `<div class="panel" style="margin:0;">
+      <div class="panel-head"><div class="panel-title">🧾 Despesas por categoria — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-body">
+        ${barras}
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          📌 <strong style="color:var(--ink);">${esc(maior.nome)}</strong> é a maior despesa do período (${oculto?"—":pctMaior+"%"} do total)
+        </div>
+      </div>
+    </div>`;
+  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🧾 Despesas por categoria</div></div><div class="panel-body">${emptyState("Nenhuma despesa paga nesse mês.")}</div></div>`;
+
+  // ---- Curva ABC de negócios por receita — classifica pelo % ACUMULADO
+  // antes de somar o próprio item (senão um negócio sozinho responsável por
+  // 90% da receita cairia incorretamente pra fora da classe A). ----
+  const comReceitaAbc = linhasNegocio.filter(l=>l.receitaMesNeg>0).slice().sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg);
+  const graficoAbcHTML = comReceitaAbc.length ? (() => {
+    const totalAbc = comReceitaAbc.reduce((s,l)=>s+l.receitaMesNeg,0);
+    let acumuladoAntes = 0;
+    const linhasAbc = comReceitaAbc.map(l => {
+      const pctIndividual = totalAbc>0 ? (l.receitaMesNeg/totalAbc)*100 : 0;
+      const classe = acumuladoAntes<80 ? "A" : acumuladoAntes<95 ? "B" : "C";
+      acumuladoAntes += pctIndividual;
+      return { ...l, pctIndividual, pctAcumulado: acumuladoAntes, classe };
+    });
+    const maxPct = Math.max(...linhasAbc.map(l=>l.pctIndividual));
+    const corSelo = { A:"var(--pos)", B:"#D97706", C:"var(--ink-4)" };
+    const barras = linhasAbc.map(l => {
+      const tip = `<div>${esc(l.n.nome)}</div><div class="tip-val">${fmtBRL(l.receitaMesNeg)}</div><div>${Math.round(l.pctIndividual)}% do total · acumulado ${Math.round(l.pctAcumulado)}%</div>`;
+      return graficoBarraComSeloHTML(l.n.nome, (l.pctIndividual/maxPct)*100, negocioCor(l.n.nome), oculto?"••••":`${Math.round(l.pctIndividual)}%`, tip, negocioCor(l.n.nome), l.classe, corSelo[l.classe]);
+    }).join("");
+    const classeA = linhasAbc.filter(l=>l.classe==="A");
+    return `<div class="panel" style="margin:0;">
+      <div class="panel-head"><div class="panel-title">🔠 Curva ABC — negócios por receita</div></div>
+      <div class="panel-body">
+        ${barras}
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+          📌 <strong style="color:var(--ink);">${classeA.length} negócio(s) classe A</strong> (${classeA.map(l=>esc(l.n.nome)).join(", ")}) já respondem pelos primeiros ~80% da receita
+        </div>
+        <div class="field-help" style="margin-top:6px;">A = essencial (até 80% acumulado) · B = relevante (até 95%) · C = complementar (resto)</div>
+      </div>
+    </div>`;
+  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🔠 Curva ABC — negócios por receita</div></div><div class="panel-body">${emptyState("Nenhum negócio com receita nesse mês.")}</div></div>`;
+
+  // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não
+  // muda com o mês, é o valor recorrente atual; os lançamentos não guardam
+  // qual cliente pagou, então não dá pra fazer isso com o realizado do mês
+  // sem inventar um vínculo que não existe de verdade). ----
   const topClientesHTML = podeVerModulo("clientes") ? (() => {
     const comMrr = state.cliClientes.map(c => {
       const contratosAtivos = (c.contratos||[]).filter(ct=>ct.status==="Ativo");
       const mrr = contratosAtivos.reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
       const negs = [...new Set(contratosAtivos.map(ct=>ct.negocio).filter(Boolean))];
       return { c, mrr, negs };
-    }).filter(x => x.mrr>0).sort((a,b)=>b.mrr-a.mrr).slice(0,3);
+    }).filter(x => x.mrr>0).sort((a,b)=>b.mrr-a.mrr).slice(0,8);
     if(!comMrr.length) return "";
-    return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🏆 Top clientes (receita recorrente)</div></div><div class="panel-body">
-      ${comMrr.map((x,i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; ${i?'border-top:1px solid var(--border);':''}">
-        <div style="font-size:13px;"><strong>${i+1}.</strong> ${esc(cliNome(x.c))} <span style="color:var(--ink-4); font-size:11.5px;">(${esc(x.negs.join(", ")||"—")})</span></div>
-        <div style="font-weight:700; font-size:13px; color:var(--pos);">${vv(x.mrr)}/mês</div>
-      </div>`).join("")}
+    const maxMrr = Math.max(...comMrr.map(x=>x.mrr));
+    const barras = comMrr.map((x,i) => {
+      const cor = x.negs[0] ? negocioCor(x.negs[0]) : "var(--accent)";
+      const tip = `<div>${esc(cliNome(x.c))}</div><div class="tip-val">${fmtBRL(x.mrr)}/mês</div><div>${esc(x.negs.join(", ")||"—")}</div>`;
+      return graficoBarraHTML(`${i+1}. ${cliNome(x.c)}`, (x.mrr/maxMrr)*100, cor, vv(x.mrr), tip, cor);
+    }).join("");
+    return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🏆 Top clientes — receita recorrente (MRR)</div></div><div class="panel-body">
+      ${barras}
+      <div class="field-help" style="margin-top:10px;">Baseado no valor do plano dos contratos ativos — é o que está contratado, não necessariamente o que já foi pago esse mês.</div>
     </div></div>`;
+  })() : "";
+
+  // ---- Inadimplência: contas a receber com vencimento já passado e ainda
+  // não pagas — sempre "hoje", não navega com o mês (atraso é sempre em
+  // relação a agora, não faz sentido perguntar "quem estava atrasado em
+  // março passado" do jeito que os dados são guardados hoje). ----
+  const inadimplenciaHTML = (master && isMesAtual) ? (() => {
+    const hojeISO = todayISO();
+    const vencidos = lancVis(l=>l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data < hojeISO);
+    if(!vencidos.length) return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">⏰ Inadimplência</div></div><div class="panel-body">${emptyState("Nada vencido. Tudo em dia! 🎉")}</div></div>`;
+    const hoje = new Date(hojeISO+"T00:00:00");
+    const buckets = [
+      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"🟡" },
+      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"🟠" },
+      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"🔴" },
+    ].map(b => {
+      const itens = vencidos.filter(l => { const dias = Math.floor((hoje-new Date(l.data+"T00:00:00"))/86400000); return dias>=b.min && dias<=b.max; });
+      return { ...b, count: itens.length, valor: itens.reduce((s,l)=>s+Number(l.valor),0) };
+    });
+    const totalVencido = vencidos.reduce((s,l)=>s+Number(l.valor),0);
+    const maxBucket = Math.max(1, ...buckets.map(b=>b.valor));
+    const barras = buckets.filter(b=>b.count>0).map(b => {
+      const tip = `<div>${b.label}</div><div class="tip-val">${fmtBRL(b.valor)}</div><div>${b.count} título(s)</div>`;
+      return graficoBarraHTML(`${b.ponto} ${b.label}`, (b.valor/maxBucket)*100, b.cor, vv(b.valor), tip);
+    }).join("");
+    return `<div class="panel" style="margin:0; border-color:var(--neg);">
+      <div class="panel-head"><div class="panel-title" style="color:var(--neg);">⏰ Inadimplência — ${vv(totalVencido)}</div></div>
+      <div class="panel-body">
+        ${barras}
+        <div class="field-help" style="margin-top:10px;">${vencidos.length} título(s) vencido(s) e ainda não pago(s), a partir de hoje (${fmtDateBR(hojeISO)}).</div>
+      </div>
+    </div>`;
   })() : "";
 
   // ---- Chamados parados há muito tempo (alerta operacional — sempre em tempo real, não muda com o mês navegado) ----
@@ -2792,9 +2955,11 @@ function viewVgExecutivo(){
     </div>
     <div class="two-col" style="margin-bottom:16px;">${patrimonioHTML}</div>
     ${graficoSaldoHTML}
-    <div class="two-col" style="margin-bottom:16px;">${graficoReceitaHTML}${graficoMargemHTML}</div>
+    ${graficoRecDespMesHTML}
+    <div class="two-col" style="margin-bottom:16px;">${graficoReceitaHTML}${graficoDespesaCategoriaHTML}</div>
+    <div class="two-col" style="margin-bottom:16px;">${graficoMargemHTML}${graficoAbcHTML}</div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
-    ${topClientesHTML ? `<div style="margin-bottom:16px;">${topClientesHTML}</div>` : ""}
+    ${(topClientesHTML || inadimplenciaHTML) ? `<div class="two-col" style="margin-bottom:16px;">${topClientesHTML}${inadimplenciaHTML}</div>` : ""}
     <div class="two-col">${alertasHTML}</div>
   `;
 }
@@ -3583,6 +3748,7 @@ const CATEGORIA_FILTRO_LABELS = {
   transferencia: "⇄ Transferências",
 };
 function viewLancamentos(){
+  if(state.view === "lancamentos") garantirTooltipGrafico();
   const cfg = LANC_VIEW_CONFIG[state.view] || LANC_VIEW_CONFIG.lancamentos;
   let list = [...state.lancamentos].sort((a,b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
   list = lancamentosVisiveis(list); // membros so veem os negocios liberados pra eles; Master ve tudo
@@ -3603,6 +3769,28 @@ function viewLancamentos(){
   if(lancFilter.texto) list = list.filter(l => (l.descricao||"").toLowerCase().includes(lancFilter.texto.toLowerCase()));
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
+
+  // ---- Gráfico Receita vs Despesa do que está filtrado agora — só na aba
+  // "Todos os Lançamentos" (nas abas Receitas/Despesas um dos dois lados
+  // sempre ia ficar zerado, então não faz sentido comparar). Soma tudo que
+  // está sendo mostrado na tabela abaixo (qualquer status), não só o pago —
+  // por isso o rótulo deixa claro que é "do que está filtrado", não "realizado".
+  const graficoRecDespFiltroHTML = state.view === "lancamentos" ? (() => {
+    const ativos = list.filter(l => !l.inativo);
+    const totalReceita = ativos.filter(l=>l.tipo==="Receita").reduce((s,l)=>s+Number(l.valor),0);
+    const totalDespesa = ativos.filter(l=>l.tipo==="Despesa").reduce((s,l)=>s+Number(l.valor),0);
+    if(totalReceita<=0 && totalDespesa<=0) return "";
+    const max = Math.max(totalReceita, totalDespesa, 1);
+    const resultado = totalReceita - totalDespesa;
+    return `<div class="panel" style="margin-bottom:16px;"><div class="panel-body" style="padding-top:16px;">
+      ${graficoBarraHTML("Receita", (totalReceita/max)*100, "var(--pos)", fmtBRL(totalReceita), `<div>Receita</div><div class="tip-val">${fmtBRL(totalReceita)}</div>`)}
+      ${graficoBarraHTML("Despesa", (totalDespesa/max)*100, "var(--neg)", fmtBRL(totalDespesa), `<div>Despesa</div><div class="tip-val">${fmtBRL(totalDespesa)}</div>`)}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
+        Resultado do que está filtrado: <strong style="color:${resultado>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(resultado)}</strong> · qualquer status (Pago, Provisionado, Agendado) — não é só o realizado.
+      </div>
+    </div></div>`;
+  })() : "";
+
   lancVisibleIds = list.map(l => l.id);
   // limpa da selecao qualquer id que nao existe mais (ja excluido em outra tela, etc.)
   const idsValidos = new Set(state.lancamentos.map(l=>l.id));
@@ -3681,6 +3869,7 @@ function viewLancamentos(){
         <button class="btn btn-primary" data-action="new-lanc" data-tipo-preset="${cfg.tipoPreset||''}">${cfg.novoLabel}</button>
       </div>
     </div>
+    ${graficoRecDespFiltroHTML}
     <div class="panel"><div class="filter-bar">
       <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
