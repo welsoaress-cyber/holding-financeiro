@@ -5096,10 +5096,19 @@ document.addEventListener("change", e => {
     renderView();
   }
 });
+// Busca por texto: espera uma pausa de digitação antes de atualizar o
+// resultado (em vez de re-renderizar a cada tecla) — evita que a lista
+// pisque/mude embaixo do dedo enquanto ainda tá digitando o termo.
+const BUSCA_DEBOUNCE_MS = 5000;
+const buscaDebounceTimers = {};
+function debounceBusca(chave, fn){
+  clearTimeout(buscaDebounceTimers[chave]);
+  buscaDebounceTimers[chave] = setTimeout(fn, BUSCA_DEBOUNCE_MS);
+}
 document.addEventListener("input", e => {
-  if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; renderView(); }
-  if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; renderView(); }
-  if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; renderView(); }
+  if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; debounceBusca("est-filtro-texto", renderView); }
+  if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; debounceBusca("cli-filtro-texto", renderView); }
+  if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; debounceBusca("rh-filtro-texto", renderView); }
 });
 // =========================================================================
 // MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
