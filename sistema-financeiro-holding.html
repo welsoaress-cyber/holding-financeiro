@@ -1505,6 +1505,19 @@ async function doAuthTecnico(email, password, codTecnico, codHolding){
       }
       data = signup.data;
     }
+    // Trava de segurança: "código da holding" é sempre o próprio user.id do
+    // Master. Se bater com o id de quem acabou de logar aqui, é a conta do
+    // Master tentando entrar como se fosse o técnico dela mesma (ex: alguém
+    // testou essa tela com o próprio e-mail/senha do Master por engano) —
+    // isso corromperia o login normal do Master pra sempre (toda entrada
+    // futura, mesmo pela tela certa, cairia no modo técnico). Bloqueia aqui
+    // e desfaz o login antes de gravar qualquer vínculo.
+    if(data.user.id === codHolding.trim()){
+      await supabaseClient.auth.signOut();
+      state.user = null;
+      showToast("Essa conta é a do Master, não de um técnico — use um e-mail/senha exclusivos do técnico nessa tela.", "error");
+      return false;
+    }
     state.user = data.user;
     const link = await vincularTecnico(codTecnico, codHolding);
     if(!link.ok){ showToast(link.msg, "error"); return false; }
