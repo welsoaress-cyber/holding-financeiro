@@ -752,7 +752,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
-  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [], cliMensagensModelo: [],
+  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [], cliMensagensModelo: [], cliMensagensEnviadas: [],
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
@@ -1367,6 +1367,10 @@ async function saveMensagensModelo(){
     throw e;
   }
 }
+// Log de "pra quem eu já mandei o quê" — uma linha por envio marcado como
+// feito na fila. É o que evita cobrar/avisar a mesma pessoa duas vezes sem
+// perceber (ver ultimoEnvioParaCliente).
+const saveCliMensagensEnviadas = () => saveRows("cli_mensagens_enviadas", state.cliMensagensEnviadas);
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
@@ -1477,7 +1481,7 @@ async function loadData(){
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
+    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
         const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
         if(error) throw error;
@@ -6240,7 +6244,10 @@ document.addEventListener("click", async e => {
   else if(action === "envio-iniciar") iniciarFilaEnvioMassa();
   else if(action === "envio-fila-proximo"){
     const fila = envioMassaFila; if(!fila) return;
-    fila.enviados.add(fila.itens[fila.indice].clienteId);
+    const atual = fila.itens[fila.indice];
+    fila.enviados.add(atual.clienteId);
+    state.cliMensagensEnviadas.push({ id: uid("msgenv"), clienteId: atual.clienteId, modeloId: fila.modeloId, modeloNome: fila.modeloNome, data: todayISO() });
+    await saveCliMensagensEnviadas();
     fila.indice++;
     renderFilaEnvioMassa();
   }
@@ -6251,6 +6258,16 @@ document.addEventListener("click", async e => {
     renderFilaEnvioMassa();
   }
   else if(action === "envio-fila-fechar"){ envioMassaFila = null; closeModal(); renderView(); }
+  else if(action === "envio-selecionar-vencidos"){
+    const mapaAbertos = lancamentosAbertosPorCliente();
+    const sel = bulkSet("envio_massa");
+    clientesParaEnvio(envioMassaNegocioFiltro).forEach(c => {
+      const dados = dadosCobrancaCliente(c.id, mapaAbertos);
+      if(dados && dados.vencido) sel.add(c.id);
+    });
+    renderView();
+  }
+  else if(action === "envio-toggle-ocultar-enviados"){ envioMassaOcultarEnviados = !envioMassaOcultarEnviados; renderView(); }
   else if(action === "cham-del"){
     const c = cliChamadoById(id);
     if(!c) return;
@@ -6502,9 +6519,56 @@ function viewCliMensagens(){
 let envioMassaNegocioFiltro = "";
 let envioMassaModeloId = "";
 let envioMassaFila = null; // {itens:[{clienteId,nome,link}], indice, enviados:Set, pulados:Set} quando a fila está em andamento
+let envioMassaOcultarEnviados = false;
+// Mapa clienteId -> lançamentos em aberto (Receita, não Pago) — cobrança de
+// contrato já vem com clienteId; a gerada a partir de chamado só tem
+// chamadoId, então resolve o cliente por esse caminho também (mesma lógica
+// do waLinkCobranca, só que pra todos de uma vez em vez de um lançamento).
+function lancamentosAbertosPorCliente(){
+  const mapa = {};
+  const add = (clienteId, l) => { if(!clienteId) return; (mapa[clienteId] = mapa[clienteId]||[]).push(l); };
+  state.lancamentos.forEach(l => {
+    if(l.tipo!=="Receita" || l.status==="Pago" || l.inativo) return;
+    if(l.clienteId) add(l.clienteId, l);
+    else if(l.chamadoId){
+      const cham = state.cliChamados.find(c=>c.id===l.chamadoId);
+      if(cham) add(cham.clienteId, l);
+    }
+  });
+  return mapa;
+}
+// Pega o título mais urgente (o de vencimento mais antigo) e soma tudo que
+// esse cliente deve — é o que importa pra decidir quem cobrar primeiro.
+function dadosCobrancaCliente(clienteId, mapa){
+  const abertos = (mapa[clienteId] || []).slice().sort((a,b)=>a.data.localeCompare(b.data));
+  if(!abertos.length) return null;
+  const proximo = abertos[0];
+  const dias = Math.floor((new Date(todayISO()+"T00:00:00") - new Date(proximo.data+"T00:00:00")) / 86400000);
+  return { data: proximo.data, dias, vencido: dias>0, totalAberto: abertos.reduce((s,l)=>s+Number(l.valor),0), qtd: abertos.length };
+}
+function statusCobranca(dados){
+  if(!dados) return { rotulo: "Sem cobrança em aberto", cor: "var(--ink-4)", ponto: "⚪" };
+  if(dados.dias > 0) return { rotulo: `Vencido há ${dados.dias} dia${dados.dias===1?"":"s"}`, cor: "var(--neg)", ponto: "🔴" };
+  if(dados.dias === 0) return { rotulo: "Vence hoje", cor: "#D97706", ponto: "🟡" };
+  const faltam = -dados.dias;
+  return faltam<=5
+    ? { rotulo: `Vence em ${faltam} dia${faltam===1?"":"s"}`, cor: "#D97706", ponto: "🟡" }
+    : { rotulo: `Vence em ${faltam} dias`, cor: "var(--ink-4)", ponto: "⚪" };
+}
+// Já mandei ESSE modelo pra essa pessoa antes? (pega o mais recente) — é o
+// que evita cobrar/avisar a mesma coisa duas vezes sem perceber.
+function ultimoEnvioParaCliente(clienteId, modeloId){
+  return state.cliMensagensEnviadas
+    .filter(x => x.clienteId===clienteId && x.modeloId===modeloId)
+    .sort((a,b) => b.data.localeCompare(a.data))[0] || null;
+}
+// Só entra quem dá pra mandar mensagem de verdade — sem WhatsApp/telefone
+// cadastrado nem aparece pra selecionar (mas o resumo abaixo avisa quantos
+// ficaram de fora, pra lembrar de completar o cadastro).
 function clientesParaEnvio(negocioFiltro){
   return state.cliClientes.filter(c => {
     if(c.status && c.status !== "Ativo") return false;
+    if(!waDigits(c.whatsapp||c.telefone)) return false;
     if(!negocioFiltro) return true;
     return (c.contratos||[]).some(ct => ct.negocio === negocioFiltro);
   });
@@ -6514,19 +6578,47 @@ function viewCliEnvioMassa(){
   const modeloOptions = state.cliMensagensModelo.map(m=>`<option value="${m.id}" ${envioMassaModeloId===m.id?"selected":""}>${esc(m.nome)}</option>`).join("");
   const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId) || state.cliMensagensModelo[0];
   if(!envioMassaModeloId && modeloAtual) envioMassaModeloId = modeloAtual.id;
-  const clientes = clientesParaEnvio(envioMassaNegocioFiltro);
+
+  const mapaAbertos = lancamentosAbertosPorCliente();
+  const semWhatsapp = state.cliClientes.filter(c =>
+    (!c.status || c.status==="Ativo") &&
+    (!envioMassaNegocioFiltro || (c.contratos||[]).some(ct=>ct.negocio===envioMassaNegocioFiltro)) &&
+    !waDigits(c.whatsapp||c.telefone)
+  ).length;
+
+  let lista = clientesParaEnvio(envioMassaNegocioFiltro).map(c => ({ c, dados: dadosCobrancaCliente(c.id, mapaAbertos) }));
+  // Mais atrasado primeiro (maior "dias"), depois quem vence antes, depois
+  // quem não tem cobrança nenhuma em aberto (por último, por nome).
+  lista.sort((a,b) => {
+    if(a.dados && b.dados) return b.dados.dias - a.dados.dias;
+    if(a.dados && !b.dados) return -1;
+    if(!a.dados && b.dados) return 1;
+    return cliNome(a.c).localeCompare(cliNome(b.c));
+  });
+  if(envioMassaOcultarEnviados && envioMassaModeloId){
+    lista = lista.filter(({c}) => !ultimoEnvioParaCliente(c.id, envioMassaModeloId));
+  }
+
   const sel = bulkSet("envio_massa");
-  // limpa da seleção qualquer id que não está mais na lista filtrada atual
-  Array.from(sel).forEach(id => { if(!clientes.some(c=>c.id===id)) sel.delete(id); });
-  const idsVisiveis = clientes.map(c=>c.id);
-  const linhas = clientes.map(c => {
+  const idsValidos = new Set(clientesParaEnvio(envioMassaNegocioFiltro).map(c=>c.id));
+  Array.from(sel).forEach(id => { if(!idsValidos.has(id)) sel.delete(id); }); // limpa seleção de quem saiu do filtro
+  const idsVisiveis = lista.map(({c})=>c.id);
+  const idsVencidos = lista.filter(({dados})=>dados && dados.vencido).map(({c})=>c.id);
+
+  const linhas = lista.map(({c, dados}) => {
     const fone = c.whatsapp || c.telefone || "";
-    const temFone = !!waDigits(fone);
-    return `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border);">
-      <input type="checkbox" data-action="bulk-toggle" data-contexto="envio_massa" data-id="${c.id}" ${sel.has(c.id)?"checked":""} ${temFone?"":"disabled"}>
+    const status = statusCobranca(dados);
+    const envio = envioMassaModeloId ? ultimoEnvioParaCliente(c.id, envioMassaModeloId) : null;
+    return `<div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--border);">
+      <input type="checkbox" data-action="bulk-toggle" data-contexto="envio_massa" data-id="${c.id}" ${sel.has(c.id)?"checked":""}>
       <div style="min-width:0; flex:1;">
         <div style="font-size:13px; font-weight:600;">${esc(cliNome(c))}</div>
-        <div style="font-size:11px; color:${temFone?'var(--ink-4)':'var(--neg)'};">${temFone ? esc(fone) : "sem WhatsApp/telefone cadastrado"}</div>
+        <div style="font-size:11px; color:var(--ink-4);">${esc(fone)}</div>
+      </div>
+      <div style="text-align:right; flex-shrink:0;">
+        <div style="font-size:11.5px; font-weight:700; color:${status.cor};">${status.ponto} ${status.rotulo}</div>
+        ${dados ? `<div style="font-size:11px; color:var(--ink-4);">${fmtBRL(dados.totalAberto)}${dados.qtd>1?` (${dados.qtd} títulos)`:""}</div>` : ""}
+        ${envio ? `<div style="font-size:10.5px; color:var(--pos);">✓ enviado em ${fmtDateBR(envio.data)}</div>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -6543,12 +6635,19 @@ function viewCliEnvioMassa(){
       ${modeloAtual ? `<div class="field-help" style="white-space:pre-line; border:1px solid var(--border); border-radius:var(--r); padding:8px 10px; margin-top:4px;">${esc(modeloAtual.texto)}</div>` : ""}
     </div></div>
     <div class="panel">
-      <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center;">
-        <div class="panel-title">Contatos (${clientes.length}) — ${qtdSelecionados} selecionado(s)</div>
-        <button class="btn btn-primary btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"}>📤 Iniciar envio</button>
+      <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div class="panel-title">Contatos (${lista.length}) — ${qtdSelecionados} selecionado(s)</div>
+        <div style="display:flex; gap:8px;">
+          ${idsVencidos.length ? `<button class="btn btn-ghost btn-sm" data-action="envio-selecionar-vencidos" title="Marca só quem está com pagamento vencido">🔴 Selecionar vencidos (${idsVencidos.length})</button>` : ""}
+          <button class="btn btn-primary btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"}>📤 Iniciar envio</button>
+        </div>
       </div>
       <div class="panel-body">
-        <label class="checkbox-row" style="margin-bottom:4px;"><input type="checkbox" data-action="bulk-toggle-all" data-contexto="envio_massa" data-ids="${idsVisiveis.join(",")}" ${idsVisiveis.length>0 && idsVisiveis.every(id=>sel.has(id))?"checked":""}> Selecionar todos os visíveis</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+          <label class="checkbox-row"><input type="checkbox" data-action="bulk-toggle-all" data-contexto="envio_massa" data-ids="${idsVisiveis.join(",")}" ${idsVisiveis.length>0 && idsVisiveis.every(id=>sel.has(id))?"checked":""}> Selecionar todos os visíveis</label>
+          <label class="checkbox-row" style="font-size:12px; color:var(--ink-3);"><input type="checkbox" data-action="envio-toggle-ocultar-enviados" ${envioMassaOcultarEnviados?"checked":""}> Ocultar quem já recebeu esse modelo</label>
+        </div>
+        ${semWhatsapp>0 ? `<div class="field-help" style="color:var(--neg); margin-bottom:8px;">⚠ ${semWhatsapp} cliente(s) sem WhatsApp/telefone cadastrado não aparecem aqui — atualize o cadastro deles pra poder cobrar/avisar.</div>` : ""}
         ${linhas || emptyState("Nenhum cliente encontrado com esse filtro.")}
       </div>
     </div>
@@ -6563,6 +6662,7 @@ function iniciarFilaEnvioMassa(){
   envioMassaFila = {
     itens: clientes.map(c => ({ clienteId: c.id, nome: cliNome(c), link: waLinkTexto(c.whatsapp||c.telefone, modeloAtual.texto) })),
     indice: 0, enviados: new Set(), pulados: new Set(),
+    modeloId: modeloAtual.id, modeloNome: modeloAtual.nome,
   };
   renderFilaEnvioMassa();
 }
