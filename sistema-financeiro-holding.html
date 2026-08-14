@@ -221,7 +221,9 @@
   .nav-item.active .nav-ico { color: var(--accent); }
   .nav-item.disabled { color: rgba(255,255,255,.22); cursor: default; }
   .nav-item.disabled:hover { background: transparent; }
-  .nav-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+  .nav-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .nav-ico svg { display: block; opacity: .85; }
+  .nav-item.active .nav-ico svg { opacity: 1; }
   .soon-badge {
     font-size: 9px; font-family: var(--font-mono);
     background: rgba(255,255,255,.06);
@@ -716,26 +718,40 @@
   tbody tr:hover { background: transparent; }
 }
 
-/* ---- Tela de login (split-screen) ---- */
+/* ---- Tela de login (split-screen) — visual puxado do site (fundo quase
+   preto + brilho radial teal + badge piscando), não mais um azul-marinho
+   genérico. ---- */
 .auth-shell { display: flex; min-height: 100vh; background: #fff; }
 .auth-hero {
   flex: 1 1 46%; max-width: 620px; position: relative; overflow: hidden;
-  background: linear-gradient(160deg, var(--brand) 0%, var(--brand-2) 100%);
+  background: radial-gradient(ellipse 65% 55% at 22% 60%, rgba(0,196,216,.16) 0%, transparent 70%), #030F18;
   color: #fff; display: flex; flex-direction: column; padding: 40px 48px;
 }
 .auth-hero::after {
-  content: ""; position: absolute; right: -80px; bottom: -80px; width: 280px; height: 280px;
-  border-radius: 50%; border: 1px solid rgba(255,255,255,.12); pointer-events: none;
+  content: ""; position: absolute; right: -100px; bottom: -100px; width: 320px; height: 320px;
+  border-radius: 50%; border: 1px solid rgba(0,196,216,.14); pointer-events: none;
 }
 .auth-hero::before {
-  content: ""; position: absolute; right: -20px; bottom: -20px; width: 180px; height: 180px;
-  border-radius: 50%; border: 1px solid rgba(255,255,255,.12); pointer-events: none;
+  content: ""; position: absolute; right: -30px; bottom: -30px; width: 210px; height: 210px;
+  border-radius: 50%; border: 1px solid rgba(0,196,216,.14); pointer-events: none;
 }
-.auth-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .04em; }
-.auth-hero-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.auth-hero-title { font-family: var(--font-ui); font-size: 34px; line-height: 1.15; font-weight: 800; margin: auto 0 14px; max-width: 380px; }
-.auth-hero-sub { color: rgba(255,255,255,.65); font-size: 14px; line-height: 1.5; max-width: 340px; margin-bottom: auto; }
-.auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.35); position: relative; z-index: 1; }
+.auth-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .04em; position: relative; z-index: 1; }
+.auth-hero-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
+@keyframes auth-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.auth-hero-tag {
+  display: inline-flex; align-items: center; gap: 8px; width: fit-content;
+  font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid rgba(0,196,216,.35); border-radius: 100px;
+  padding: 5px 14px; margin: auto 0 18px; position: relative; z-index: 1;
+}
+.auth-hero-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
+.auth-hero-title {
+  font-family: var(--font-ui); font-size: 36px; line-height: 1.12; font-weight: 800;
+  margin-bottom: 14px; max-width: 380px; color: #C5E8F2; position: relative; z-index: 1;
+}
+.auth-hero-title em { font-style: normal; color: var(--accent); text-shadow: 0 0 30px rgba(0,196,216,.45); }
+.auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; position: relative; z-index: 1; }
+.auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); position: relative; z-index: 1; }
 .auth-form-side { flex: 1 1 54%; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
 .auth-form-card { width: 380px; max-width: 100%; min-width: 0; }
 @media (max-width: 899px) {
@@ -884,7 +900,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.4.1";
+const APP_VERSION = "1.5.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -898,7 +914,8 @@ let state = {
   modoTecnico: false, tecnicoAuthInfo: null,
   modoCliente: false, clienteAuthInfo: null,
   modoMembro: false, membroAuthInfo: null,
-  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, ajustesMenuFechado: false, modpanelAberto: false,
+  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, ajustesMenuFechado: false,
+  cadastrosMenuAberto: false, cadastrosMenuFechado: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() },
   executivoOculto: true, // valores da Visão Geral Executivo começam ocultos — precisa clicar no olho pra ver
@@ -2347,7 +2364,7 @@ function renderApp(){
   // fechar um grupo (senão expandir "Financeiro" no celular fechava o
   // menu inteiro em vez de mostrar os itens de dentro).
   mainSidebar?.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => {
-    if(el.dataset.action === "toggle-nav-grupo" || el.dataset.action === "toggle-ajustes-menu") return;
+    if(el.dataset.action === "toggle-nav-grupo" || el.dataset.action === "toggle-ajustes-menu" || el.dataset.action === "toggle-cadastros-menu") return;
     if(window.innerWidth < 900) closeDrawer();
   }));
   // ---- Botão flutuante "+" ----
@@ -2370,6 +2387,56 @@ function renderApp(){
   }
   renderView();
 }
+// ============================================================
+// ÍCONES — SVG de linha (estilo Lucide), no lugar de emoji, pro menu
+// lateral. currentColor herda a cor do texto ao redor (inclusive o teal
+// quando o item está ativo) — não precisa de classe extra pra colorir.
+// Cobre só o menu por enquanto; o resto do sistema (botões, cabeçalhos)
+// continua com emoji e é migrado aos poucos nas próximas rodadas.
+// ============================================================
+function svgIcon(inner){
+  return `<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+const ICONS = {
+  visao: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M12.7 7.3 8.8 8.8l-1.5 3.9 3.9-1.5z"/>`),
+  financeiro: svgIcon(`<rect x="2.5" y="5" width="15" height="11" rx="1.6"/><path d="M2.5 8.5h15"/><circle cx="14" cy="12" r="1"/>`),
+  projetos: svgIcon(`<path d="M7 6V4.8A1.3 1.3 0 0 1 8.3 3.5h3.4A1.3 1.3 0 0 1 13 4.8V6"/><rect x="2.5" y="6" width="15" height="10" rx="1.6"/><path d="M2.5 10.5h15"/>`),
+  estoque: svgIcon(`<path d="M10 3 3 6.5 10 10l7-3.5z"/><path d="M3 6.5v7L10 17l7-3.5v-7"/><path d="M10 10v7"/>`),
+  clientes: svgIcon(`<circle cx="7.2" cy="7" r="2.6"/><path d="M2.5 16c.6-3 2.3-4.6 4.7-4.6S11.4 13 12 16"/><circle cx="14" cy="7.5" r="2"/><path d="M13 11.6c1.9.3 3.1 1.7 3.5 4"/>`),
+  rh: svgIcon(`<rect x="4" y="2.5" width="12" height="15" rx="1"/><path d="M7.3 6h1.4M11.3 6h1.4M7.3 9h1.4M11.3 9h1.4M7.3 12h1.4M11.3 12h1.4"/>`),
+  comprasvendas: svgIcon(`<path d="M3 6.5h11l-2.5-2.5"/><path d="M17 13.5H6l2.5 2.5"/>`),
+  cadastro: svgIcon(`<path d="M2.5 5.8A1.3 1.3 0 0 1 3.8 4.5h3.4l1.4 1.6h7A1.3 1.3 0 0 1 16.9 7.4v7.3a1.3 1.3 0 0 1-1.3 1.3H3.8a1.3 1.3 0 0 1-1.3-1.3z"/>`),
+  dashboard: svgIcon(`<rect x="2.7" y="2.7" width="6" height="6" rx="1"/><rect x="11.3" y="2.7" width="6" height="6" rx="1"/><rect x="2.7" y="11.3" width="6" height="6" rx="1"/><rect x="11.3" y="11.3" width="6" height="6" rx="1"/>`),
+  contas: svgIcon(`<path d="M2.5 8 10 3l7.5 5"/><path d="M4 8v7.5M8 8v7.5M12 8v7.5M16 8v7.5"/><path d="M2.5 15.5h15"/>`),
+  cartoes: svgIcon(`<rect x="2.2" y="4.5" width="15.6" height="11" rx="1.6"/><path d="M2.2 8h15.6"/><path d="M4.5 12.3h3"/>`),
+  lancamentos: svgIcon(`<path d="M3.3 6h13.4M3.3 10h13.4M3.3 14h13.4"/>`),
+  receber: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 6v7M6.8 10.3 10 13.5l3.2-3.2"/>`),
+  pagar: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 14V7M6.8 9.7 10 6.5l3.2 3.2"/>`),
+  transferencias: svgIcon(`<path d="M4 6.5h10.5L12 4"/><path d="M16 13.5H5.5L8 16"/>`),
+  fluxocaixa: svgIcon(`<path d="M2.7 13.5 7.4 8.8l3 3 5.4-6.1"/><path d="M12.6 5.5h3.2v3.2"/>`),
+  dre: svgIcon(`<path d="M5 2.7h7l3 3v11.6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3.7a1 1 0 0 1 1-1z"/><path d="M7 10h6M7 13h6"/>`),
+  ajustes: svgIcon(`<path d="M4 6h9M15.5 6h.5"/><path d="M4 14h.5M6.5 14H16"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/>`),
+  usuarios: svgIcon(`<circle cx="10" cy="6.8" r="3.2"/><path d="M3.5 17c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"/>`),
+  logs: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 5.8V10l3 2"/>`),
+  produtos: svgIcon(`<path d="M10 3 3 6.5 10 10l7-3.5z"/><path d="M3 6.5v7L10 17l7-3.5v-7"/><path d="M10 10v7"/>`),
+  compras: svgIcon(`<path d="M5.5 2.7h6l3.2 3.2v10.7a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V3.7a1 1 0 0 1 1-1z"/><path d="M7.3 10h5.4M7.3 13h5.4"/>`),
+  movimentacoes: svgIcon(`<path d="M7 3.5v10.8M4.3 11.6 7 14.3l2.7-2.7"/><path d="M13 16.5V5.7M15.7 8.4 13 5.7l-2.7 2.7"/>`),
+  fornecedores: svgIcon(`<path d="M3 17V7l4-2 4 2v10"/><path d="M11 17V9.5l4-1.5 2 1v8"/><path d="M2.5 17h15"/>`),
+  alertas: svgIcon(`<path d="M10 3.3c-2.4 0-3.7 2-3.7 5v2.7L4.7 13.5h10.6L13.7 11V8.3c0-3-1.3-5-3.7-5z"/><path d="M8.3 15.8a1.7 1.7 0 0 0 3.4 0"/>`),
+  planos: svgIcon(`<rect x="4" y="3.5" width="12" height="13" rx="1.3"/><path d="M7.5 2.5h5v2.3h-5z"/><path d="M6.8 9h6.4M6.8 12h6.4"/>`),
+  orcamentos: svgIcon(`<path d="M12.7 3 15 5.3 6.3 14 3.5 14.5 4 11.7z"/>`),
+  os: svgIcon(`<path d="M13.4 4.2a3 3 0 0 1-4 4l-5.4 5.4a1.4 1.4 0 0 0 2 2l5.4-5.4a3 3 0 0 1 4-4l-2 2-1.6-.4-.4-1.6z"/>`),
+  chamados: svgIcon(`<path d="M4 3.5h3l1.3 3.3-1.6 1.4a9 9 0 0 0 4.6 4.6l1.4-1.6 3.3 1.3v3a1 1 0 0 1-1.1 1C8.7 15.5 4.5 11.3 3 5.1a1 1 0 0 1 1-1.1z"/>`),
+  tecnicos: svgIcon(`<rect x="3" y="7" width="14" height="9" rx="1.3"/><path d="M7 7V5.3A1.3 1.3 0 0 1 8.3 4h3.4A1.3 1.3 0 0 1 13 5.3V7"/><path d="M3 11h14"/>`),
+  enviomassa: svgIcon(`<path d="M17 3 2.5 9.3l5.6 1.9L15 5z"/><path d="M8.1 11.2 9.5 16 12 12.8"/>`),
+  mensagens: svgIcon(`<path d="M3 4.5h14v9H8.5L4.5 16.5V13.5H3z"/>`),
+  funcionarios: svgIcon(`<circle cx="10" cy="6.8" r="3.2"/><path d="M3.5 17c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"/>`),
+  cargos: svgIcon(`<path d="M8.5 3H4a1 1 0 0 0-1 1v4.5l7 7 5.5-5.5-7-7z"/><circle cx="6.3" cy="6.3" r="1"/>`),
+  folha: svgIcon(`<path d="M2.7 13.5 7.4 8.8l3 3 5.4-6.1"/><path d="M12.6 5.5h3.2v3.2"/>`),
+  ferias: svgIcon(`<rect x="3" y="4" width="14" height="12.5" rx="1.3"/><path d="M3 7.5h14"/><path d="M6.3 2.5v3M13.7 2.5v3"/><path d="M6.5 11h1.6M9.2 11h1.6M11.9 11h1.6"/>`),
+  leads: svgIcon(`<circle cx="10" cy="10" r="7.3"/><circle cx="10" cy="10" r="3.8"/><circle cx="10" cy="10" r=".7" fill="currentColor"/>`),
+};
+function ic(nome){ return ICONS[nome] || ""; }
 function navItem(view, icon, label){
   const active = state.view === view ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav" data-view="${view}">
@@ -2419,82 +2486,81 @@ function sidebarConteudo(){
   const grupos = [];
 
   if(podeVerModulo("visao")){
-    grupos.push(navGrupo("visao", "🧭", "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
-      navItem("vg_executivo","🎯","Executiva"),
-      navItem("vg_sintetico","🧭","Sintética"),
-      navItem("vg_analitico","📊","Analítica"),
+    grupos.push(navGrupo("visao", ic("visao"), "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
+      navItem("vg_executivo",ic("leads"),"Executiva"),
+      navItem("vg_sintetico",ic("visao"),"Sintética"),
+      navItem("vg_analitico",ic("fluxocaixa"),"Analítica"),
     ].join("")));
   }
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   if(podeVerModulo("financeiro")){
-    grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
-      master ? navItem("dashboard","◆","Dashboard") : "",
-      master ? navItem("contas","▢","Contas") : "",
-      master ? navItem("cartoes","💳","Cartões de Crédito") : "",
-      navItem("lancamentos","≡","Todos os Lançamentos"),
-      navItem("receitas","📥","Contas a Receber"),
-      navItem("despesas","📤","Contas a Pagar"),
-      navItem("transferencias","⇄","Transferências"),
-      master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
-      master ? navItem("rel_dre","📑","DRE") : "",
+    grupos.push(navGrupo("financeiro", ic("financeiro"), "Financeiro", financeiroViews, [
+      master ? navItem("dashboard",ic("dashboard"),"Dashboard") : "",
+      master ? navItem("contas",ic("contas"),"Contas") : "",
+      master ? navItem("cartoes",ic("cartoes"),"Cartões de Crédito") : "",
+      navItem("lancamentos",ic("lancamentos"),"Todos os Lançamentos"),
+      navItem("receitas",ic("receber"),"Contas a Receber"),
+      navItem("despesas",ic("pagar"),"Contas a Pagar"),
+      navItem("transferencias",ic("transferencias"),"Transferências"),
+      master ? navItem("rel_fluxo",ic("fluxocaixa"),"Fluxo de Caixa") : "",
+      master ? navItem("rel_dre",ic("dre"),"DRE") : "",
       master ? navSubmenuAjustes() : "",
     ].join("")));
   }
 
   const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
   if(negociosVisiveis.length){
-    grupos.push(navGrupo("projetos", "📋", "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
+    grupos.push(navGrupo("projetos", ic("projetos"), "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
       <div class="nav-item ${state.view==="negocio_"+n.id?"active":""}" data-action="nav" data-view="negocio_${n.id}">
         <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
       </div>`).join("")));
   }
 
   if(podeVerModulo("estoque")){
-    grupos.push(navGrupo("estoque", "📦", "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
-      navItem("est_dashboard","◆","Dashboard"),
-      navItem("est_produtos","📦","Produtos"),
-      navItem("est_compras","📄","Compras (NF)"),
-      navItem("est_movimentos","↕","Movimentações"),
-      navItem("est_fornecedores","🏭","Fornecedores"),
-      navItem("est_alertas","🔔","Alertas de Estoque"),
+    grupos.push(navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
+      navItem("est_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("est_produtos",ic("produtos"),"Produtos"),
+      navItem("est_compras",ic("compras"),"Compras (NF)"),
+      navItem("est_movimentos",ic("movimentacoes"),"Movimentações"),
+      navItem("est_fornecedores",ic("fornecedores"),"Fornecedores"),
+      navItem("est_alertas",ic("alertas"),"Alertas de Estoque"),
     ].join("")));
   }
 
   if(podeVerModulo("clientes")){
-    grupos.push(navGrupo("clientes", "👥", "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
-      navItem("cli_dashboard","◆","Dashboard"),
-      navItem("cli_leads","🎯","Leads do Site"),
-      navItem("cli_lista","👥","Todos os Clientes"),
-      navItem("cli_planos","📋","Planos"),
-      navItem("cli_orcamentos","📝","Orçamentos"),
-      navItem("cli_os_lista","🔧","Ordens de Serviço"),
-      navItem("cli_chamados","📞","Chamados"),
-      navItem("cli_tecnicos","🧰","Técnicos"),
-      navItem("cli_envio_massa","📤","Enviar mensagens"),
-      navItem("cli_mensagens","💬","Modelos de mensagem"),
+    grupos.push(navGrupo("clientes", ic("clientes"), "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
+      navItem("cli_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("cli_leads",ic("leads"),"Leads do Site"),
+      navItem("cli_lista",ic("clientes"),"Todos os Clientes"),
+      navItem("cli_planos",ic("planos"),"Planos"),
+      navItem("cli_orcamentos",ic("orcamentos"),"Orçamentos"),
+      navItem("cli_os_lista",ic("os"),"Ordens de Serviço"),
+      navItem("cli_chamados",ic("chamados"),"Chamados"),
+      navItem("cli_tecnicos",ic("tecnicos"),"Técnicos"),
+      navItem("cli_envio_massa",ic("enviomassa"),"Enviar mensagens"),
+      navItem("cli_mensagens",ic("mensagens"),"Modelos de mensagem"),
     ].join("")));
   }
 
   if(podeVerModulo("rh")){
-    grupos.push(navGrupo("rh", "🏢", "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
-      navItem("rh_dashboard","◆","Dashboard"),
-      navItem("rh_funcionarios","🧑‍💼","Funcionários"),
-      navItem("rh_cargos","🏷️","Cargos"),
-      navItem("rh_folha","💵","Folha de Pagamento"),
-      navItem("rh_ferias","🏖️","Férias"),
-      navItem("rh_alertas","🔔","Alertas"),
+    grupos.push(navGrupo("rh", ic("rh"), "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
+      navItem("rh_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("rh_funcionarios",ic("funcionarios"),"Funcionários"),
+      navItem("rh_cargos",ic("cargos"),"Cargos"),
+      navItem("rh_folha",ic("folha"),"Folha de Pagamento"),
+      navItem("rh_ferias",ic("ferias"),"Férias"),
+      navItem("rh_alertas",ic("alertas"),"Alertas"),
     ].join("")));
   }
 
   if(podeVerModulo("comprasvendas")){
-    grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
+    grupos.push(navGrupo("comprasvendas", ic("comprasvendas"), "Compra e Venda", ["cv_lista"], navItem("cv_lista",ic("comprasvendas"),"Itens")));
   }
   if(podeVerModulo("cadastro")){
-    grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
-      navItem("cadastro_hub","🗂️","Central de Cadastros"),
-      master ? navItem("usuarios","👤","Usuários") : "",
-      master ? navItem("logs_auditoria","🕘","Logs de Auditoria") : "",
+    grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
+      navSubmenuCadastros(),
+      master ? navItem("logs_auditoria",ic("logs"),"Logs de Auditoria") : "",
     ].join("")));
   }
 
@@ -2516,6 +2582,24 @@ function navSubmenuAjustes(){
   return `
     <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" data-aberto="${aberto}" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
+      <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
+    </div>
+    ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
+  `;
+}
+const CADASTROS_SUBVIEWS = ["cadastro_hub","usuarios"];
+function navSubmenuCadastros(){
+  const master = ehMaster();
+  const dentroDoSubmenu = CADASTROS_SUBVIEWS.includes(state.view);
+  const aberto = state.cadastrosMenuFechado ? false : (state.cadastrosMenuAberto || dentroDoSubmenu);
+  const cabecalhoAtivo = dentroDoSubmenu && !aberto;
+  const subItens = [
+    navItem("cadastro_hub","🗂️","Central de Cadastros"),
+    master ? navItem("usuarios","👤","Usuários") : "",
+  ].join("");
+  return `
+    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-cadastros-menu" data-aberto="${aberto}" style="cursor:pointer;">
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">🗂️</span><span class="label">Cadastros</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
@@ -2580,11 +2664,12 @@ function renderView(){
 // escuro com a marca à esquerda (só desktop, some no celular pra não roubar
 // espaço) e o formulário num cartão limpo à direita. "tituloHero"/"subHero"
 // mudam por tela pra dar contexto sem poluir o formulário em si.
-function authShell(conteudoForm, tituloHero, subHero){
+function authShell(conteudoForm, tagHero, tituloHero, subHero){
   return `
     <div class="auth-shell">
       <div class="auth-hero">
         <div class="auth-hero-brand"><span class="dot"></span>GRUPOTOM</div>
+        <div class="auth-hero-tag"><span class="dot"></span>${tagHero}</div>
         <div class="auth-hero-title">${tituloHero}</div>
         <div class="auth-hero-sub">${subHero}</div>
         <div class="auth-hero-foot">Acesso restrito — contas criadas pelo administrador do sistema.</div>
@@ -2611,7 +2696,7 @@ function renderLogin(){
       ${isLogin ? "Não tem conta?" : "Já tem conta?"}
       <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
     </div>
-  `, "Gestão financeira centralizada para sua holding.", "Contas, lançamentos, estoque, clientes e equipe — tudo em um só lugar.");
+  `, "Painel de Gestão", "Gestão financeira <em>centralizada</em> para sua holding.", "Contas, lançamentos, estoque, clientes e equipe — tudo em um só lugar.");
 }
 function renderLoginMembro(){
   // Se veio de um link de convite (🔗 em Usuários), os códigos já estão na
@@ -2632,7 +2717,7 @@ function renderLoginMembro(){
     <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
       <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou da equipe</a>
     </div>
-  `, "Seu acesso, do seu jeito.", "Entre com seu próprio e-mail e senha — sem dividir login com ninguém.");
+  `, "Acesso da Equipe", "Seu acesso, <em>do seu jeito</em>.", "Entre com seu próprio e-mail e senha — sem dividir login com ninguém.");
 }
 function renderLoginTecnico(){
   // Se veio de um link de convite (🔗 em Técnicos, com os códigos já
@@ -2653,7 +2738,7 @@ function renderLoginTecnico(){
     <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
       <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou técnico</a>
     </div>
-  `, "No campo, sem burocracia.", "Registre chamados e materiais direto do celular, com seu próprio login.");
+  `, "App do Técnico", "No campo, <em>sem burocracia</em>.", "Registre chamados e materiais direto do celular, com seu próprio login.");
 }
 function wireAuthForm(){
   const form = document.getElementById("authForm");
@@ -5877,6 +5962,12 @@ document.addEventListener("click", async e => {
     const estavaAberto = el.dataset.aberto === "true";
     state.ajustesMenuAberto = !estavaAberto;
     state.ajustesMenuFechado = estavaAberto;
+    renderApp();
+  }
+  else if(action === "toggle-cadastros-menu"){
+    const estavaAberto = el.dataset.aberto === "true";
+    state.cadastrosMenuAberto = !estavaAberto;
+    state.cadastrosMenuFechado = estavaAberto;
     renderApp();
   }
   else if(action === "toggle-nav-grupo"){
