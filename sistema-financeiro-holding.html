@@ -753,6 +753,7 @@ let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
   cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [], cliMensagensModelo: [], cliMensagensEnviadas: [],
+  siteLeads: [],
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
@@ -1492,6 +1493,17 @@ async function loadData(){
       }
     }
 
+    // Leads do site (tabela sem user_id — lê todos os registros autenticados)
+    try{
+      const { data: leadsData, error: leadsErr } = await supabaseClient
+        .from("site_leads").select("id,dados,created_at").order("created_at", {ascending:false});
+      if(leadsErr) throw leadsErr;
+      state.siteLeads = (leadsData||[]).map(r=>({ id:r.id, created_at:r.created_at, ...(r.dados||{}) }));
+    }catch(e){
+      console.warn("[loadData:site_leads] tabela ainda não existe — rode setup-leads.sql.", e.message||e);
+      state.siteLeads = [];
+    }
+
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
     if(state.categorias.length === 0 && state.negocios.length === 0){
       state.categorias = seedCategorias();
@@ -2159,8 +2171,9 @@ function sidebarConteudo(){
   }
 
   if(podeVerModulo("clientes")){
-    grupos.push(navGrupo("clientes", "👥", "Clientes", ["cli_dashboard","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
+    grupos.push(navGrupo("clientes", "👥", "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
       navItem("cli_dashboard","◆","Dashboard"),
+      navItem("cli_leads","🎯","Leads do Site"),
       navItem("cli_lista","👥","Todos os Clientes"),
       navItem("cli_planos","📋","Planos"),
       navItem("cli_orcamentos","📝","Orçamentos"),
@@ -2247,6 +2260,7 @@ function renderView(){
   else if(state.view === "est_alertas") main.innerHTML = viewEstAlertas();
   // ---- Módulo Clientes ----
   else if(state.view === "cli_dashboard") main.innerHTML = viewCliDashboard();
+  else if(state.view === "cli_leads") main.innerHTML = viewCliLeads();
   else if(state.view === "cli_lista") main.innerHTML = viewCliLista();
   else if(state.view === "cli_planos") main.innerHTML = viewCliPlanos();
   else if(state.view === "cli_detalhe") main.innerHTML = viewCliDetalhe();
@@ -6124,6 +6138,36 @@ document.addEventListener("click", async e => {
     if(movIds.length) await deleteRows("est_movimentos", movIds);
     renderView(); showToast("Compra excluída — entradas de estoque associadas também foram removidas.");
   }
+  // ---- Leads do Site ----
+  else if(action === "leads-filtro-status"){ leadsFiltro.status = el.value; renderView(); }
+  else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
+  else if(action === "lead-wa"){
+    const t = (el.dataset.tel||"").replace(/\D/g,"");
+    const n = el.dataset.nome||"Lead";
+    const msg = encodeURIComponent(`Olá, ${n}! Tudo bem? Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
+    window.open(`https://wa.me/55${t}?text=${msg}`,"_blank");
+  }
+  else if(action === "lead-status"){
+    const lead = state.siteLeads.find(l=>l.id===id);
+    if(!lead) return;
+    const novoStatus = el.dataset.status;
+    lead.status = novoStatus;
+    try{
+      await supabaseClient.from("site_leads")
+        .update({ dados: { nome:lead.nome, telefone:lead.telefone, plano:lead.plano||"", endereco:lead.endereco||"", status:novoStatus, origem:lead.origem||"site" } })
+        .eq("id", id);
+    }catch(e){ console.warn("[lead-status]",e); }
+    renderView();
+    showToast(`Lead marcado como: ${novoStatus}`);
+    // Se convertido, sugere criar cliente
+    if(novoStatus === "Convertido"){
+      setTimeout(()=>{
+        if(confirm(`Deseja criar um cliente para "${lead.nome}" agora?`)){
+          modalCliCliente({ nome:lead.nome, telefone:lead.telefone||"", email:"", status:"Ativo" });
+        }
+      }, 300);
+    }
+  }
   // ---- Clientes ----
   else if(action === "cli-novo") modalCliCliente(null);
   else if(action === "cli-edit"){ const c = cliClienteById(id); if(c) modalCliCliente(c); }
@@ -6412,6 +6456,7 @@ document.addEventListener("input", e => {
   if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; debounceBusca("est-filtro-texto", renderView); }
   if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; debounceBusca("cli-filtro-texto", renderView); }
   if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; debounceBusca("rh-filtro-texto", renderView); }
+  if(e.target.dataset.action === "leads-filtro-texto"){ leadsFiltro.texto = e.target.value; debounceBusca("leads-filtro-texto", renderView); }
 });
 // =========================================================================
 // MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
@@ -6420,6 +6465,7 @@ document.addEventListener("input", e => {
 // ---- Estado de navegação e filtros ----
 let cliViewDetalheId = null;
 let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
+let leadsFiltro = { status:"", texto:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
@@ -6784,6 +6830,140 @@ function viewCliDashboard(){
       </div>
     </div>
   `;
+}
+
+// ---- VIEW: LEADS DO SITE ----
+function viewCliLeads(){
+  const STATUS_CORES = {
+    "Novo":      "background:rgba(59,130,246,0.15);color:#60A5FA;border:1px solid rgba(59,130,246,0.3)",
+    "Contatado": "background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.3)",
+    "Convertido":"background:rgba(34,197,94,0.15);color:#4ADE80;border:1px solid rgba(34,197,94,0.3)",
+    "Descartado":"background:rgba(100,116,139,0.15);color:#94A3B8;border:1px solid rgba(100,116,139,0.3)"
+  };
+  const txt = (leadsFiltro.texto||"").toLowerCase();
+  const sts = leadsFiltro.status;
+  let lista = state.siteLeads.filter(l=>{
+    if(sts && l.status !== sts) return false;
+    if(txt){
+      const hay = `${l.nome||""} ${l.telefone||""} ${l.plano||""} ${l.endereco||""}`.toLowerCase();
+      if(!hay.includes(txt)) return false;
+    }
+    return true;
+  });
+
+  const totalLeads  = state.siteLeads.length;
+  const novos       = state.siteLeads.filter(l=>l.status==="Novo").length;
+  const convertidos = state.siteLeads.filter(l=>l.status==="Convertido").length;
+
+  const fmtTel = t => t ? t.replace(/(\d{2})(\d{4,5})(\d{4})/,"($1) $2-$3") : "—";
+  const fmtData = d => d ? new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
+
+  const temFiltro = sts || txt;
+
+  return `
+  <div style="padding:1.5rem;max-width:1100px;margin:0 auto">
+
+    <!-- Cabeçalho -->
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem">
+      <span style="font-size:1.5rem">🎯</span>
+      <div>
+        <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:var(--text-primary)">Leads do Site</h2>
+        <p style="margin:0;font-size:0.8rem;color:var(--text-muted)">Contatos capturados pelo site servnet.net.br</p>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem">
+        <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem">Total de Leads</div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--text-primary)">${totalLeads}</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem">
+        <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem">Aguardando Contato</div>
+        <div style="font-size:1.6rem;font-weight:700;color:#60A5FA">${novos}</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem">
+        <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem">Convertidos</div>
+        <div style="font-size:1.6rem;font-weight:700;color:#4ADE80">${convertidos}</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.2rem">
+      <input type="text"
+        placeholder="🔍 Buscar por nome, telefone, plano…"
+        value="${(leadsFiltro.texto||"").replace(/"/g,"&quot;")}"
+        data-action="leads-filtro-texto"
+        style="flex:1;min-width:180px;max-width:340px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem;outline:none"
+      />
+      <select data-action="leads-filtro-status"
+        style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem">
+        <option value="" ${!sts?"selected":""}>Todos os status</option>
+        <option value="Novo" ${sts==="Novo"?"selected":""}>Novo</option>
+        <option value="Contatado" ${sts==="Contatado"?"selected":""}>Contatado</option>
+        <option value="Convertido" ${sts==="Convertido"?"selected":""}>Convertido</option>
+        <option value="Descartado" ${sts==="Descartado"?"selected":""}>Descartado</option>
+      </select>
+      ${temFiltro?`<button data-action="leads-filtro-clear"
+        style="background:rgba(100,116,139,0.12);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.9rem;color:var(--text-muted);font-size:0.82rem;cursor:pointer">✕ Limpar</button>`:""}
+    </div>
+
+    <!-- Tabela -->
+    ${lista.length === 0 ? `
+      <div style="text-align:center;padding:3rem;color:var(--text-muted);font-size:0.9rem">
+        ${temFiltro ? "Nenhum lead encontrado com esses filtros." : "Nenhum lead cadastrado ainda. Eles aparecerão aqui quando alguém preencher o formulário no site."}
+      </div>
+    ` : `
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Nome</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Telefone</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Plano</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Endereço</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Status</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Recebido</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lista.map((l,i)=>{
+              const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
+              return `<tr style="border-bottom:1px solid var(--border);${i%2===1?"background:rgba(255,255,255,0.02)":""}">
+                <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500;white-space:nowrap">${l.nome||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${fmtTel(l.telefone)}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${l.plano||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.endereco||"").replace(/"/g,"&quot;")}">${l.endereco||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;text-align:center">
+                  <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
+                </td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);white-space:nowrap;font-size:0.78rem">${fmtData(l.created_at)}</td>
+                <td style="padding:0.7rem 0.75rem;text-align:center;white-space:nowrap">
+                  <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap">
+                    <button data-action="lead-wa" data-id="${l.id}"
+                      title="Contatar no WhatsApp"
+                      style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.78rem;color:#4ADE80">📱 WA</button>
+                    ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
+                      style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#FCD34D">Contatado</button>`:""}
+                    ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
+                      style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#4ADE80">Convertido</button>`:""}
+                    ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
+                      style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#94A3B8">Descartar</button>`:""}
+                  </div>
+                </td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:0.6rem 1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.75rem">
+        ${lista.length} lead${lista.length!==1?"s":""} exibido${lista.length!==1?"s":""}${temFiltro?" (filtrado)":""}
+      </div>
+    </div>
+    `}
+  </div>`;
 }
 
 // ---- VIEW: LISTA DE CLIENTES ----

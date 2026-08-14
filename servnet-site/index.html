@@ -527,6 +527,82 @@ button, input, select { font-family: inherit; font-size: inherit; }
   content: ''; width: 12px; height: 1px; background: var(--text-2); flex-shrink: 0;
 }
 
+/* ===== MODAL LEAD ===== */
+.modal-ov{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(3,15,24,0.88);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:1.25rem;
+  opacity:0;pointer-events:none;transition:opacity 0.22s;
+}
+.modal-ov.open{opacity:1;pointer-events:auto;}
+.modal-box{
+  background:#0A1E2E;border:1px solid rgba(0,196,216,0.22);
+  border-radius:16px;padding:2rem 1.75rem 1.75rem;
+  width:100%;max-width:440px;position:relative;
+  transform:translateY(18px);transition:transform 0.22s;
+  max-height:90vh;overflow-y:auto;
+}
+.modal-ov.open .modal-box{transform:translateY(0);}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  background:transparent;border:none;color:rgba(0,196,216,0.45);
+  font-size:1.15rem;cursor:pointer;padding:0.25rem 0.5rem;
+  border-radius:5px;line-height:1;transition:color 0.15s;font-family:inherit;
+}
+.modal-close:hover{color:#2DDAE8;}
+.modal-tag{
+  display:inline-block;font-size:0.62rem;font-weight:800;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:#030F18;background:#00C4D8;border-radius:100px;
+  padding:0.2rem 0.75rem;margin-bottom:0.9rem;
+}
+.modal-h{
+  font-size:1.45rem;font-weight:800;color:#C5E8F2;
+  letter-spacing:-0.02em;line-height:1.15;margin-bottom:0.4rem;
+}
+.modal-sub{font-size:0.88rem;color:#4A8898;margin-bottom:1.5rem;line-height:1.6;}
+.modal-form{display:flex;flex-direction:column;gap:0.9rem;}
+.modal-form .f-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:#4A8898;}
+.modal-form .f-input,.modal-form .f-select{
+  padding:0.82rem 1rem;background:#091C2A;border:1px solid rgba(0,196,216,0.15);
+  border-radius:7px;color:#CDEAF2;font-size:0.97rem;font-family:inherit;outline:none;
+  transition:border-color 0.15s,box-shadow 0.15s;width:100%;
+}
+.modal-form .f-input:focus,.modal-form .f-select:focus{
+  border-color:#00C4D8;box-shadow:0 0 0 3px rgba(0,196,216,0.12);
+}
+.modal-form .f-input::placeholder{color:#4A8898;opacity:0.7;}
+.modal-err{
+  font-size:0.83rem;color:#FCA5A5;
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);
+  border-radius:6px;padding:0.6rem 0.9rem;display:none;
+}
+.modal-btn{
+  width:100%;padding:0.92rem;margin-top:0.25rem;
+  background:#00C4D8;color:#fff;border:none;border-radius:8px;
+  font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:opacity 0.15s,transform 0.12s;
+  display:flex;align-items:center;justify-content:center;gap:0.55rem;
+}
+.modal-btn:hover:not(:disabled){opacity:0.87;transform:translateY(-1px);}
+.modal-btn:disabled{opacity:0.55;cursor:default;transform:none;}
+.modal-ok{display:none;text-align:center;padding:0.5rem 0 0.25rem;}
+.modal-ok-ico{
+  width:58px;height:58px;border-radius:50%;margin:0 auto 1rem;
+  background:rgba(16,185,129,0.12);border:2px solid rgba(16,185,129,0.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;color:#34D399;
+}
+.modal-ok-txt{font-size:1rem;color:#C5E8F2;line-height:1.65;}
+.modal-ok-sub{font-size:0.84rem;color:#4A8898;margin-top:0.4rem;}
+/* plano badge no card */
+.plan-promo-badge{
+  display:inline-flex;align-items:center;gap:0.35rem;
+  font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:#34D399;border:1px solid rgba(16,185,129,0.3);
+  border-radius:100px;padding:0.18rem 0.6rem;margin-bottom:0.6rem;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 820px) {
   .plans-grid { grid-template-columns: repeat(1, 1fr); }
@@ -563,13 +639,12 @@ button, input, select { font-family: inherit; font-size: inherit; }
   <a href="#inicio" class="nav-logo">SERV<span>NET</span></a>
   <ul class="nav-links">
     <li><a href="#planos">Planos</a></li>
-    <li><a href="#promocoes">Promoções</a></li>
     <li><a href="#quem-somos">Quem somos</a></li>
     <li><a href="#cobertura">Cobertura</a></li>
     <li><a href="#contato">Contato</a></li>
     <li><a href="portal.html">Área do Cliente</a></li>
   </ul>
-  <a href="#planos" class="nav-btn">Assinar agora</a>
+  <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
 </nav>
 
 <!-- HERO -->
@@ -649,7 +724,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
       </ul>
-      <a href="#contato" class="plan-action action-line">Quero esse plano</a>
+      <button class="plan-action action-line" onclick="openModal('100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
@@ -671,7 +746,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Instalação grátis</li>
         <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <a href="#contato" class="plan-action action-fill">Quero esse plano</a>
+      <button class="plan-action action-fill" onclick="openModal('200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
@@ -692,65 +767,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Instalação grátis</li>
         <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <a href="#contato" class="plan-action action-line">Quero esse plano</a>
+      <button class="plan-action action-line" onclick="openModal('300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
-
-  </div>
-</section>
-
-<!-- PROMOÇÕES -->
-<section class="section promos-section" id="promocoes" aria-labelledby="promos-h">
-  <div class="section-head">
-    <div class="eyebrow">Benefícios exclusivos</div>
-    <h2 class="section-title" id="promos-h">Mais vantagens para clientes</h2>
-    <p class="section-sub">Pague em dia e indique amigos — nossa forma de recompensar quem confia na Servnet.</p>
-  </div>
-  <div class="promos-grid">
-
-    <!-- Fidelidade -->
-    <div class="promo-card c-teal">
-      <div class="promo-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-          <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-        </svg>
-      </div>
-      <div>
-        <div class="promo-tag">Programa Fidelidade</div>
-        <div class="promo-title">Pague em dia,<br>ganhe descontos reais</div>
-      </div>
-      <p class="promo-desc">Cada mês no prazo acumula pontos na sua cartela. Chegou na meta? O desconto cai automaticamente na fatura.</p>
-      <ul class="promo-list">
-        <li><strong>6 meses</strong> consecutivos em dia → <strong>50% off</strong> na fatura</li>
-        <li><strong>12 meses</strong> consecutivos em dia → <strong>1 mês grátis</strong></li>
-      </ul>
-      <p class="promo-fine">Válido para pagamentos via boleto bancário · Acompanhe na Área do Cliente</p>
-    </div>
-
-    <!-- Indique e Ganhe -->
-    <div class="promo-card c-gold">
-      <div class="promo-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
-      </div>
-      <div>
-        <div class="promo-tag">Indique e Ganhe</div>
-        <div class="promo-title">Traga um amigo,<br>receba um mês grátis</div>
-      </div>
-      <p class="promo-desc">Indique pelo portal do cliente. Cada amigo que assinar e pagar a primeira mensalidade gera 1 mês de desconto pra você.</p>
-      <ul class="promo-list">
-        <li><strong>Sem limite</strong> de indicações — indique quantos quiser</li>
-        <li>Acompanhe o status de cada indicação em tempo real</li>
-      </ul>
-      <p class="promo-fine">Válido para pagamentos via boleto bancário · Desconto aplicado automaticamente</p>
-    </div>
 
   </div>
 </section>
@@ -930,6 +949,51 @@ button, input, select { font-family: inherit; font-size: inherit; }
   </div>
 </section>
 
+<!-- MODAL LEAD -->
+<div class="modal-ov" id="leadOv" role="dialog" aria-modal="true" aria-labelledby="modalH" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
+    <div class="modal-tag" id="modalTag">Quero assinar</div>
+    <h2 class="modal-h" id="modalH">Vamos te conectar!</h2>
+    <p class="modal-sub">Informe seus dados e nosso time entrará em contato pelo WhatsApp em instantes.</p>
+
+    <form class="modal-form" id="leadForm" onsubmit="submitLead(event)" novalidate>
+      <div class="f-group">
+        <label class="f-label" for="lNome">Nome completo *</label>
+        <input class="f-input" type="text" id="lNome" placeholder="Seu nome" required autocomplete="name">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="lTel">WhatsApp / Telefone *</label>
+        <input class="f-input" type="text" id="lTel" placeholder="(11) 99999-9999" required inputmode="tel" maxlength="15" autocomplete="tel">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="lPlano">Plano de interesse</label>
+        <select class="f-select" id="lPlano">
+          <option value="">Escolha um plano</option>
+          <option value="100 Mbps — R$ 60,00/mês">100 Mbps — R$ 60,00/mês</option>
+          <option value="200 Mbps — R$ 80,00/mês">200 Mbps — R$ 80,00/mês (+ TV)</option>
+          <option value="300 Mbps — R$ 100,00/mês">300 Mbps — R$ 100,00/mês (+ TV)</option>
+        </select>
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="lEnd">Rua / Bairro (opcional)</label>
+        <input class="f-input" type="text" id="lEnd" placeholder="Rua das Flores, 100 — Jd. Moraes Prado" autocomplete="street-address">
+      </div>
+      <div class="modal-err" id="leadErr"></div>
+      <button type="submit" class="modal-btn" id="leadBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Enviar e falar no WhatsApp
+      </button>
+    </form>
+
+    <div class="modal-ok" id="leadOk">
+      <div class="modal-ok-ico">✓</div>
+      <p class="modal-ok-txt">Cadastro recebido! Estamos te redirecionando para o WhatsApp.</p>
+      <p class="modal-ok-sub">Caso não abra automaticamente, fale com a gente pelo (11) 95449-0001.</p>
+    </div>
+  </div>
+</div>
+
 <!-- WHATSAPP FLOAT -->
 <a class="wa-float" href="whatsapp://send?phone=5511954490001" aria-label="Abrir WhatsApp da Servnet">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -1013,5 +1077,109 @@ function handleSubmit(e) {
   const btn = e.target.querySelector('.f-submit');
   btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
   btn.disabled = true;
+}
+
+// ===== MODAL DE CAPTURA DE LEAD =====
+const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+const WA_NUM = '5511954490001';
+
+function openModal(planName) {
+  const ov   = document.getElementById('leadOv');
+  const tag  = document.getElementById('modalTag');
+  const sel  = document.getElementById('lPlano');
+  const form = document.getElementById('leadForm');
+  const ok   = document.getElementById('leadOk');
+  const err  = document.getElementById('leadErr');
+  const btn  = document.getElementById('leadBtn');
+
+  // Reset
+  form.reset();
+  form.style.display = 'flex';
+  ok.style.display   = 'none';
+  err.style.display  = 'none';
+  btn.disabled       = false;
+  btn.innerHTML      = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar e falar no WhatsApp';
+
+  // Pré-seleciona o plano
+  if (planName) {
+    tag.textContent = planName;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === planName) { sel.value = planName; break; }
+    }
+  } else {
+    tag.textContent = 'Quero assinar';
+  }
+
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('lNome').focus(), 200);
+}
+
+function closeModal() {
+  document.getElementById('leadOv').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Máscara de telefone
+document.getElementById('lTel').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 10) v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+  else if (v.length > 6) v = '(' + v.slice(0,2) + ') ' + v.slice(2,6) + '-' + v.slice(6);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  e.target.value = v;
+});
+
+async function submitLead(e) {
+  e.preventDefault();
+  const nome  = document.getElementById('lNome').value.trim();
+  const telRaw = document.getElementById('lTel').value;
+  const tel   = telRaw.replace(/\D/g, '');
+  const plano = document.getElementById('lPlano').value;
+  const end   = document.getElementById('lEnd').value.trim();
+  const errEl = document.getElementById('leadErr');
+  const btn   = document.getElementById('leadBtn');
+
+  errEl.style.display = 'none';
+  if (!nome)       { errEl.textContent = 'Informe seu nome completo.'; errEl.style.display = 'block'; return; }
+  if (tel.length < 10) { errEl.textContent = 'Informe um telefone válido com DDD.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  // Salva no Supabase (fire-and-forget)
+  try {
+    await fetch(`${SB_URL}/rest/v1/rpc/site_lead_cadastrar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`
+      },
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel, p_plano: plano || null, p_endereco: end || null })
+    });
+  } catch(err2) { console.warn('[lead]', err2); }
+
+  // Mostra tela de sucesso
+  document.getElementById('leadForm').style.display = 'none';
+  document.getElementById('leadOk').style.display   = 'block';
+
+  // Monta mensagem para WhatsApp do operador
+  const msg = encodeURIComponent(
+    `🔔 *Novo lead pelo site!*\n\n` +
+    `👤 *Nome:* ${nome}\n` +
+    `📱 *Telefone:* ${telRaw}\n` +
+    (plano ? `📦 *Plano:* ${plano}\n` : '') +
+    (end   ? `📍 *Endereço:* ${end}\n` : '') +
+    `\n_Cadastrado em servnet.net.br_`
+  );
+
+  // Abre WhatsApp após 1s
+  setTimeout(() => window.open(`https://wa.me/${WA_NUM}?text=${msg}`, '_blank'), 900);
+  // Fecha modal após 5s
+  setTimeout(closeModal, 5000);
 }
 </script>
