@@ -1040,6 +1040,10 @@ function lancamentosVisiveis(lista){ return ehMaster() ? lista : lista.filter(l 
 function podeUsarCategoria(nomeCategoria){
   if(ehMaster()) return true;
   if(!nomeCategoria || !state.perfilAtivo) return false;
+  // Se tem acesso de criar no Financeiro → todas as categorias liberadas automaticamente
+  const modFinanceiro = (state.perfilAtivo.modulos || {})["financeiro"];
+  const defaultFin = modulosPadrao()["financeiro"];
+  if((modFinanceiro ? modFinanceiro.criar : defaultFin.criar)) return true;
   return !!(state.perfilAtivo.categoriasPermitidas || {})[nomeCategoria];
 }
 function perfilById(id){ return state.perfis.find(p => p.id === id); }
@@ -1048,12 +1052,16 @@ function perfilById(id){ return state.perfis.find(p => p.id === id); }
 // controle granular de Ver/Criar/Editar/Excluir por perfil, definido na tela de usuário.
 // Fica de fora de propósito: Financeiro continua com a regra própria (mais antiga e mais
 // sensível), por negócio — permissaoNegocio acima — pra não afrouxar nada que já existe.
-const MODULOS_GRANULARES = ["estoque","clientes","rh"];
+const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comprasvendas","cadastro"];
 function modulosPadrao(){
   return {
-    estoque:  { ver:true,  criar:true,  editar:true,  excluir:true  },
-    clientes: { ver:true,  criar:true,  editar:true,  excluir:true  },
-    rh:       { ver:false, criar:false, editar:false, excluir:false },
+    visao:         { ver:true,  criar:false, editar:false, excluir:false },
+    financeiro:    { ver:true,  criar:true,  editar:true,  excluir:true  },
+    estoque:       { ver:true,  criar:true,  editar:true,  excluir:true  },
+    clientes:      { ver:true,  criar:true,  editar:true,  excluir:true  },
+    rh:            { ver:false, criar:false, editar:false, excluir:false },
+    comprasvendas: { ver:true,  criar:true,  editar:true,  excluir:true  },
+    cadastro:      { ver:true,  criar:false, editar:false, excluir:false },
   };
 }
 function permissaoModulo(moduloId, acao){
@@ -2253,25 +2261,29 @@ function sidebarConteudo(){
   const master = ehMaster();
   const grupos = [];
 
-  grupos.push(navGrupo("visao", "🧭", "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
-    navItem("vg_executivo","🎯","Executiva"),
-    navItem("vg_sintetico","🧭","Sintética"),
-    navItem("vg_analitico","📊","Analítica"),
-  ].join("")));
+  if(podeVerModulo("visao")){
+    grupos.push(navGrupo("visao", "🧭", "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
+      navItem("vg_executivo","🎯","Executiva"),
+      navItem("vg_sintetico","🧭","Sintética"),
+      navItem("vg_analitico","📊","Analítica"),
+    ].join("")));
+  }
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
-  grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
-    master ? navItem("dashboard","◆","Dashboard") : "",
-    master ? navItem("contas","▢","Contas") : "",
-    master ? navItem("cartoes","💳","Cartões de Crédito") : "",
-    navItem("lancamentos","≡","Todos os Lançamentos"),
-    navItem("receitas","📥","Contas a Receber"),
-    navItem("despesas","📤","Contas a Pagar"),
-    navItem("transferencias","⇄","Transferências"),
-    master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
-    master ? navItem("rel_dre","📑","DRE") : "",
-    master ? navSubmenuAjustes() : "",
-  ].join("")));
+  if(podeVerModulo("financeiro")){
+    grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
+      master ? navItem("dashboard","◆","Dashboard") : "",
+      master ? navItem("contas","▢","Contas") : "",
+      master ? navItem("cartoes","💳","Cartões de Crédito") : "",
+      navItem("lancamentos","≡","Todos os Lançamentos"),
+      navItem("receitas","📥","Contas a Receber"),
+      navItem("despesas","📤","Contas a Pagar"),
+      navItem("transferencias","⇄","Transferências"),
+      master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
+      master ? navItem("rel_dre","📑","DRE") : "",
+      master ? navSubmenuAjustes() : "",
+    ].join("")));
+  }
 
   const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
   if(negociosVisiveis.length){
@@ -2318,11 +2330,15 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
-  grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios"], [
-    navItem("cadastro_hub","🗂️","Central de Cadastros"),
-    master ? navItem("usuarios","👤","Usuários") : "",
-  ].join("")));
+  if(podeVerModulo("comprasvendas")){
+    grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
+  }
+  if(podeVerModulo("cadastro")){
+    grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios"], [
+      navItem("cadastro_hub","🗂️","Central de Cadastros"),
+      master ? navItem("usuarios","👤","Usuários") : "",
+    ].join("")));
+  }
 
   const construcao = master ? `
     <div class="nav-group-label">Em construção</div>
@@ -5293,74 +5309,118 @@ function modalNegocio(existing){
 }
 
 /* =========================================================================
-   MODAL — USUÁRIO (Tom, Erica...) com permissões por negócio
+   MODAL — USUÁRIO com permissões por módulo (todos os menus) e por negócio
 ========================================================================= */
-const MODULOS_ACESSO_LABEL = { estoque:"📦 Estoque", clientes:"👥 Clientes", rh:"🏢 RH" };
+const MODULOS_GRUPOS = [
+  { id:"visao",         icon:"🧭", label:"Visão",           acoes:["ver"] },
+  { id:"financeiro",    icon:"💰", label:"Financeiro",       acoes:["ver","criar","editar","excluir"],
+    help:"Com 'Criar', ela terá acesso automático a todas as categorias e subcategorias." },
+  { id:"estoque",       icon:"📦", label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
+  { id:"clientes",      icon:"👥", label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
+  { id:"rh",            icon:"🏢", label:"RH",               acoes:["ver","criar","editar","excluir"] },
+  { id:"comprasvendas", icon:"🔄", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
+  { id:"cadastro",      icon:"🗂️", label:"Cadastro",         acoes:["ver"] },
+];
+const ACOES_LABEL = { ver:"Ver", criar:"Criar", editar:"Editar", excluir:"Excluir" };
+
 function modalPerfil(existing){
   const isEdit = !!existing;
   const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
-  const padroesModulo = modulosPadrao();
-  const linhasModulo = MODULOS_GRANULARES.map(m => {
-    const perm = (p.modulos || {})[m] || padroesModulo[m];
-    return `<tr>
-      <td>${MODULOS_ACESSO_LABEL[m]}</td>
-      <td style="text-align:center;"><input type="checkbox" name="mod_ver_${m}" ${perm.ver?"checked":""}></td>
-      <td style="text-align:center;"><input type="checkbox" name="mod_criar_${m}" ${perm.criar?"checked":""}></td>
-      <td style="text-align:center;"><input type="checkbox" name="mod_editar_${m}" ${perm.editar?"checked":""}></td>
-      <td style="text-align:center;"><input type="checkbox" name="mod_excluir_${m}" ${perm.excluir?"checked":""}></td>
+  const pad = modulosPadrao();
+
+  const linhasModulo = MODULOS_GRUPOS.map(g => {
+    const perm = (p.modulos || {})[g.id] || pad[g.id] || {};
+    const checkboxes = ["ver","criar","editar","excluir"].map(a =>
+      g.acoes.includes(a)
+        ? `<td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="mod_${a}_${g.id}" ${perm[a]?"checked":""}></td>`
+        : `<td style="text-align:center;padding:7px 4px;color:var(--ink-4)">—</td>`
+    ).join("");
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px;white-space:nowrap">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</td>
+      ${checkboxes}
     </tr>`;
   }).join("");
+
   const linhasNegocio = state.negocios.map(n => {
-    const perm = p.permissoes[n.nome] || { ver:false, editar:false, excluir:false };
-    return `<tr>
-      <td>${esc(n.nome)}</td>
-      <td style="text-align:center;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
-      <td style="text-align:center;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
-      <td style="text-align:center;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
+    const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px">${esc(n.nome)}</td>
+      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
+      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
+      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
     </tr>`;
   }).join("");
-  const linhasCategoria = state.categorias.map(c => {
-    const permitida = !!(p.categoriasPermitidas || {})[c.nome];
-    return `<label class="checkbox-row" style="padding:5px 0;"><input type="checkbox" name="cat_${c.id}" ${permitida?"checked":""}> ${esc(c.nome)}</label>`;
-  }).join("");
+
+  const thStyle = "padding:6px 4px;font-size:11px;font-weight:600;color:var(--ink-3);text-align:center;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap";
+
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPerfil"><div class="modal-body">
-      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Tom"></div>
-      <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: tom123">
-        <div class="field-help">Salva em texto simples, igual às senhas de "ver saldo" — não peça pra usar uma senha que a pessoa usa em outro lugar.</div>
+
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Erica"></div>
+      <div class="field"><label>Senha de acesso</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: erica123">
+        <div class="field-help">Senha simples, só pra identificar quem está usando — não use uma senha pessoal importante.</div>
       </div>
       <div class="field"><label>Tipo de acesso</label>
         <select name="tipo" id="perfilTipoSelect">
-          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro (acesso restrito por negócio)</option>
-          <option value="master" ${p.tipo==="master"?"selected":""}>Master (acesso completo, igual a você)</option>
+          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro (acesso definido abaixo)</option>
+          <option value="master" ${p.tipo==="master"?"selected":""}>Master (acesso total, igual a você)</option>
         </select>
       </div>
-      <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
-        <div class="field"><label>Acesso por módulo</label>
-          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
-            <table><thead><tr><th>Módulo</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Criar</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
-            <tbody>${linhasModulo}</tbody></table>
-          </div>
-          <div class="field-help">Igual criar um perfil de operador: define exatamente o que esse usuário pode fazer em Estoque, Clientes e RH. Sem "Ver", o módulo inteiro fica invisível pra ele. RH começa fechado por padrão pra quem não é Master.</div>
-        </div>
-        <div class="field"><label>Permissões por negócio</label>
-          <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
-            <table><thead><tr><th>Negócio</th><th style="text-align:center;">Ver</th><th style="text-align:center;">Editar</th><th style="text-align:center;">Excluir</th></tr></thead>
-            <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center; color:var(--ink-4); padding:14px;">Nenhum negócio cadastrado ainda (crie em Ajustes → Negócios).</td></tr>`}</tbody></table>
-          </div>
-          <div class="field-help">Esse usuário só vai ver lançamentos dos negócios marcados com "Ver". Sem isso, o negócio fica totalmente invisível pra ele.</div>
-        </div>
-        <div class="field"><label>Categorias que pode usar</label>
-          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r); padding:6px 12px;">
-            ${linhasCategoria || `<div style="text-align:center; color:var(--ink-4); padding:14px;">Nenhuma categoria cadastrada ainda.</div>`}
-          </div>
-          <div class="field-help">Marcando uma categoria, todas as subcategorias dela ficam liberadas junto — não dá pra liberar só uma subcategoria específica.</div>
-        </div>
+
+      <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"};margin-bottom:10px;">
+        Esse usuário vai ver e editar absolutamente tudo, igual a você — não precisa configurar nada abaixo.
       </div>
-      <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"}; margin-bottom:10px;">Esse usuário vai ver e editar absolutamente tudo, igual a você — não precisa marcar nada abaixo.</div>
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button></div></form>
+
+      <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
+
+        <!-- MÓDULOS -->
+        <div class="field">
+          <label>Acesso por módulo (menu)</label>
+          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead style="background:var(--surface-2)">
+                <tr>
+                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Módulo</th>
+                  <th style="${thStyle}">Ver</th>
+                  <th style="${thStyle}">Criar</th>
+                  <th style="${thStyle}">Editar</th>
+                  <th style="${thStyle}">Excluir</th>
+                </tr>
+              </thead>
+              <tbody>${linhasModulo}</tbody>
+            </table>
+          </div>
+          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão.</div>
+        </div>
+
+        <!-- NEGÓCIOS -->
+        <div class="field">
+          <label>Acesso por negócio (Financeiro)</label>
+          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead style="background:var(--surface-2)">
+                <tr>
+                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Negócio</th>
+                  <th style="${thStyle}">Ver</th>
+                  <th style="${thStyle}">Editar</th>
+                  <th style="${thStyle}">Excluir</th>
+                </tr>
+              </thead>
+              <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</td></tr>`}</tbody>
+            </table>
+          </div>
+          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível.</div>
+        </div>
+
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+      <button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button>
+    </div></form>
   `);
+
   const tipoSelect = document.getElementById("perfilTipoSelect");
   const permissoesWrap = document.getElementById("perfilPermissoesWrap");
   const masterAviso = document.getElementById("perfilMasterAviso");
@@ -5369,6 +5429,7 @@ function modalPerfil(existing){
     permissoesWrap.style.display = ehTipoMaster ? "none" : "block";
     masterAviso.style.display = ehTipoMaster ? "block" : "none";
   });
+
   document.getElementById("formPerfil").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -5376,26 +5437,26 @@ function modalPerfil(existing){
     const senha = fd.get("senha").trim();
     const tipo = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
-    if(state.perfis.some(x => x.nome === nome && x !== existing)){ showToast("Já existe um usuário com esse nome.", "error"); return; }
+    if(state.perfis.some(x => x.nome === nome && (!isEdit || x !== existing))){ showToast("Já existe um usuário com esse nome.", "error"); return; }
     const modulos = {};
-    MODULOS_GRANULARES.forEach(m => {
-      modulos[m] = {
-        ver: fd.get(`mod_ver_${m}`) === "on",
-        criar: fd.get(`mod_criar_${m}`) === "on",
-        editar: fd.get(`mod_editar_${m}`) === "on",
-        excluir: fd.get(`mod_excluir_${m}`) === "on",
+    MODULOS_GRUPOS.forEach(g => {
+      modulos[g.id] = {
+        ver:    fd.get(`mod_ver_${g.id}`) === "on",
+        criar:  fd.get(`mod_criar_${g.id}`) === "on",
+        editar: fd.get(`mod_editar_${g.id}`) === "on",
+        excluir:fd.get(`mod_excluir_${g.id}`) === "on",
       };
     });
     const permissoes = {};
     state.negocios.forEach(n => {
       permissoes[n.nome] = {
-        ver: fd.get(`ver_${n.id}`) === "on",
+        ver:    fd.get(`ver_${n.id}`) === "on",
         editar: fd.get(`editar_${n.id}`) === "on",
-        excluir: fd.get(`excluir_${n.id}`) === "on",
+        excluir:fd.get(`excluir_${n.id}`) === "on",
       };
     });
+    // categoriasPermitidas mantido por compatibilidade, mas agora é derivado do módulo Financeiro
     const categoriasPermitidas = {};
-    state.categorias.forEach(c => { categoriasPermitidas[c.nome] = fd.get(`cat_${c.id}`) === "on"; });
     const data = { nome, senha, tipo, permissoes, categoriasPermitidas, modulos };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.perfis.push({ id: uid("perfil"), ...data }); }
