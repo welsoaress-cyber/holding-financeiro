@@ -434,32 +434,83 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .f-submit:disabled { opacity: 0.65; cursor: default; }
 
 /* ===== FAÍSCA MASCOT FLOAT ===== */
-@keyframes faisca-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-9px); }
+
+/* Movimento 3D: flutua + inclina + gira suavemente */
+@keyframes faisca-3d {
+  0%   {
+    transform: perspective(500px) translateY(0px)   rotateY(-12deg) rotateX(4deg)  scale(1);
+    filter: drop-shadow(-8px 16px 24px rgba(0,196,216,0.40));
+  }
+  25%  {
+    transform: perspective(500px) translateY(-12px) rotateY(-4deg)  rotateX(1deg)  scale(1.04);
+    filter: drop-shadow(-2px 22px 32px rgba(0,196,216,0.65));
+  }
+  50%  {
+    transform: perspective(500px) translateY(-16px) rotateY(12deg)  rotateX(-3deg) scale(1.07);
+    filter: drop-shadow(8px  18px 28px rgba(0,196,216,0.50));
+  }
+  75%  {
+    transform: perspective(500px) translateY(-10px) rotateY(4deg)   rotateX(1deg)  scale(1.04);
+    filter: drop-shadow(2px  22px 32px rgba(0,196,216,0.65));
+  }
+  100% {
+    transform: perspective(500px) translateY(0px)   rotateY(-12deg) rotateX(4deg)  scale(1);
+    filter: drop-shadow(-8px 16px 24px rgba(0,196,216,0.40));
+  }
 }
+
+/* Pulso de brilho ciano no fundo */
+@keyframes faisca-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,196,216,0); }
+  50%       { box-shadow: 0 0 28px 10px rgba(0,196,216,0.20); }
+}
+
+/* Entrada do mascote */
+@keyframes faisca-enter {
+  from { opacity: 0; transform: perspective(500px) translateY(30px) scale(0.7); }
+  to   { opacity: 1; transform: perspective(500px) translateY(0)    scale(1);   }
+}
+
+/* Pulo ao clicar */
+@keyframes faisca-jump {
+  0%   { transform: perspective(500px) translateY(0)    scale(1)    rotateZ(0deg); }
+  30%  { transform: perspective(500px) translateY(-28px) scale(1.15) rotateZ(-8deg); }
+  55%  { transform: perspective(500px) translateY(-20px) scale(1.10) rotateZ(6deg); }
+  80%  { transform: perspective(500px) translateY(-6px)  scale(1.04) rotateZ(-2deg); }
+  100% { transform: perspective(500px) translateY(0)    scale(1)    rotateZ(0deg); }
+}
+
 @keyframes faisca-bubble-in {
   from { opacity: 0; transform: translateY(10px) scale(0.93); }
-  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
+
 .faisca-wrap {
   position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 300;
   display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem;
   pointer-events: none;
 }
-.faisca-img {
-  width: 82px; height: 82px; cursor: pointer;
+
+.faisca-img-wrap {
   pointer-events: all;
-  animation: faisca-float 3.4s ease-in-out infinite;
-  filter: drop-shadow(0 6px 18px rgba(0,196,216,0.50));
-  transition: filter 0.2s, transform 0.18s;
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  animation: faisca-glow 3s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.faisca-img {
+  width: 96px; height: 96px;
   display: block;
+  animation: faisca-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) both,
+             faisca-3d 5s ease-in-out 0.6s infinite;
+  transform-origin: center 85%;
 }
-.faisca-img:hover {
-  filter: drop-shadow(0 6px 26px rgba(0,196,216,0.70));
-  transform: scale(1.07);
-  animation-play-state: paused;
+
+.faisca-img-wrap:hover .faisca-img {
+  animation: faisca-jump 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
 }
+
 .faisca-bubble {
   pointer-events: all;
   background: var(--surface);
@@ -488,10 +539,16 @@ button, input, select { font-family: inherit; font-size: inherit; }
 }
 .faisca-close:hover { color: var(--text); }
 .faisca-bubble[hidden] { display: none !important; }
+
 @media (max-width: 480px) {
   .faisca-wrap { bottom: 1rem; left: 1rem; }
-  .faisca-img  { width: 64px; height: 64px; }
-  .faisca-bubble { max-width: 170px; font-size: 0.78rem; }
+  .faisca-img-wrap { width: 72px; height: 72px; }
+  .faisca-img      { width: 72px; height: 72px; }
+  .faisca-bubble   { max-width: 170px; font-size: 0.78rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faisca-img { animation: none !important; }
+  .faisca-img-wrap { animation: none !important; }
 }
 
 /* ===== WHATSAPP FLOAT ===== */
@@ -1073,8 +1130,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
     <br>
     <span class="faisca-bubble-cta" onclick="openModal();faiscaHide()">Ver planos →</span>
   </div>
-  <img class="faisca-img" src="./faisca.png" alt="Faísca, mascote da Servnet"
-       onclick="faiscaToggle()" title="Oi! Sou a Faísca ⚡">
+  <div class="faisca-img-wrap" onclick="faiscaToggle()" title="Oi! Sou a Faísca ⚡">
+    <img class="faisca-img" src="./faisca.png" alt="Faísca, mascote da Servnet">
+  </div>
 </div>
 
 <!-- WHATSAPP FLOAT -->
