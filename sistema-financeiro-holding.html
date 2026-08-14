@@ -6416,6 +6416,7 @@ document.addEventListener("click", async e => {
   // ---- Leads do Site ----
   else if(action === "leads-filtro-status"){ leadsFiltro.status = el.value; renderView(); }
   else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
+  else if(action === "cliPlanos-filtro-clear"){ cliPlanosFiltro = {negocio:"",texto:""}; renderView(); }
   else if(action === "lead-wa"){
     const t = (el.dataset.tel||"").replace(/\D/g,"");
     const nomeCompleto = el.dataset.nome||"";
@@ -6702,6 +6703,7 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "cli-filtro-status"){ cliFiltro.status = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-plano"){ cliFiltro.plano = e.target.value; renderView(); }
   if(e.target.dataset.action === "leads-filtro-status"){ leadsFiltro.status = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cliPlanos-filtro-negocio"){ cliPlanosFiltro.negocio = e.target.value; renderView(); }
   // RH filters
   if(e.target.dataset.action === "rh-filtro-negocio"){ rhFuncFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "rh-filtro-cargo"){ rhFuncFiltro.cargo = e.target.value; renderView(); }
@@ -6735,6 +6737,7 @@ document.addEventListener("input", e => {
   if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; debounceBusca("cli-filtro-texto", renderView); }
   if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; debounceBusca("rh-filtro-texto", renderView); }
   if(e.target.dataset.action === "leads-filtro-texto"){ leadsFiltro.texto = e.target.value; debounceBusca("leads-filtro-texto", renderView); }
+  if(e.target.dataset.action === "cliPlanos-filtro-texto"){ cliPlanosFiltro.texto = e.target.value; debounceBusca("cliPlanos-filtro-texto", renderView); }
 });
 // =========================================================================
 // MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
@@ -6744,6 +6747,7 @@ document.addEventListener("input", e => {
 let cliViewDetalheId = null;
 let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
 let leadsFiltro = { status:"", texto:"" };
+let cliPlanosFiltro = { negocio:"", texto:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
@@ -7193,49 +7197,40 @@ function viewCliLeads(){
       </div>
     ` : `
     <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
-          <thead>
-            <tr style="border-bottom:1px solid var(--border)">
-              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Nome</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Telefone</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Plano</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Endereço</th>
-              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Status</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Recebido</th>
-              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lista.map((l,i)=>{
-              const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
-              return `<tr style="border-bottom:1px solid var(--border);${i%2===1?"background:rgba(255,255,255,0.02)":""}">
-                <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500;white-space:nowrap">${l.nome||"—"}</td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${fmtTel(l.telefone)}</td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${l.plano||"—"}</td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.endereco||"").replace(/"/g,"&quot;")}">${l.endereco||"—"}</td>
-                <td style="padding:0.7rem 0.75rem;text-align:center">
-                  <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
-                </td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);white-space:nowrap;font-size:0.78rem">${fmtData(l.created_at)}</td>
-                <td style="padding:0.7rem 0.75rem;text-align:center">
-                  <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center">
-                    <button data-action="lead-wa" data-id="${l.id}"
-                      title="Contatar no WhatsApp"
-                      style="width:100%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WhatsApp</button>
-                    ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
-                      style="width:100%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓ Contatado</button>`:""}
-                    ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
-                      style="width:100%;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">⭐ Convertido</button>`:""}
-                    ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
-                      style="width:100%;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#94A3B8;white-space:nowrap">✕ Descartar</button>`:""}
-                  </div>
-                </td>
-              </tr>`;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
+      ${lista.map((l,i)=>{
+        const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
+        return `
+        <div style="padding:0.9rem 1rem;${i>0?"border-top:1px solid var(--border)":""}${i%2===1?";background:rgba(255,255,255,0.015)":""}">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;flex-wrap:wrap">
+            <!-- Info principal -->
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;color:var(--text-primary);font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nome||"—"}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1rem;margin-top:0.3rem;font-size:0.78rem;color:var(--text-muted)">
+                <span>📱 ${fmtTel(l.telefone)}</span>
+                ${l.plano?`<span>📶 ${l.plano}</span>`:""}
+                ${l.endereco?`<span title="${(l.endereco||"").replace(/"/g,"&quot;")}">📍 ${l.endereco.length>35?l.endereco.slice(0,35)+"…":l.endereco}</span>`:""}
+                <span>🕐 ${fmtData(l.created_at)}</span>
+              </div>
+            </div>
+            <!-- Status + Ações -->
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex-shrink:0">
+              <span style="display:inline-block;padding:0.2rem 0.65rem;border-radius:20px;font-size:0.72rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
+              <button data-action="lead-wa" data-id="${l.id}" data-nome="${(l.nome||"").replace(/"/g,"&quot;")}"
+                title="Contatar no WhatsApp"
+                style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WA</button>
+              ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
+                title="Marcar como Contatado"
+                style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓</button>`:""}
+              ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
+                title="Marcar como Convertido"
+                style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">⭐</button>`:""}
+              ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
+                title="Descartar lead"
+                style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#94A3B8;white-space:nowrap">✕</button>`:""}
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
       <div style="padding:0.6rem 1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.75rem">
         ${lista.length} lead${lista.length!==1?"s":""} exibido${lista.length!==1?"s":""}${temFiltro?" (filtrado)":""}
       </div>
@@ -7394,7 +7389,23 @@ function viewCliDetalhe(){
 
 // ---- VIEW: PLANOS ----
 function viewCliPlanos(){
-  const rows = state.cliPlanos.map(p => {
+  // Apply filters
+  let lista = [...state.cliPlanos];
+  if(cliPlanosFiltro.negocio) lista = lista.filter(p => p.negocio === cliPlanosFiltro.negocio);
+  if(cliPlanosFiltro.texto){
+    const t = cliPlanosFiltro.texto.toLowerCase();
+    lista = lista.filter(p =>
+      (p.nome||"").toLowerCase().includes(t) ||
+      (p.descricao||"").toLowerCase().includes(t) ||
+      (p.velocidade||"").toLowerCase().includes(t)
+    );
+  }
+  lista.sort((a,b) => (a.negocio||"").localeCompare(b.negocio||"") || (a.nome||"").localeCompare(b.nome||""));
+
+  const temFiltro = !!(cliPlanosFiltro.negocio || cliPlanosFiltro.texto);
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliPlanosFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+
+  const rows = lista.map(p => {
     const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
     return `<tr>
       ${bulkCheckboxCellHTML("cli_planos", p.id)}
@@ -7411,14 +7422,43 @@ function viewCliPlanos(){
       </div></td>
     </tr>`;
   }).join("");
+
+  // Bulk selection bar (repeated above table for visibility)
+  const selAtual = bulkSet("cli_planos");
+  const bulkBar = selAtual.size > 0 ? `
+    <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:0.5rem 0.9rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+      <span style="font-size:0.83rem;color:var(--text-primary);font-weight:600;">${selAtual.size} plano${selAtual.size!==1?"s":""} selecionado${selAtual.size!==1?"s":""}:</span>
+      <button class="btn btn-ghost" style="color:#EF4444;border-color:rgba(239,68,68,0.4);padding:0.3rem 0.8rem;font-size:0.82rem;" data-action="bulk-excluir" data-contexto="cli_planos">🗑 Excluir selecionados</button>
+      <button class="btn btn-ghost" style="color:var(--text-muted);border-color:var(--border);padding:0.3rem 0.8rem;font-size:0.82rem;" data-action="bulk-toggle-all" data-contexto="cli_planos" data-ids="${Array.from(selAtual).join(",")}">✕ Desmarcar</button>
+    </div>` : "";
+
   return `
     <div class="page-header">
       <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
+      <input type="text"
+        placeholder="🔍 Buscar por nome, descrição, velocidade…"
+        value="${(cliPlanosFiltro.texto||"").replace(/"/g,"&quot;")}"
+        data-action="cliPlanos-filtro-texto"
+        style="flex:1;min-width:180px;max-width:340px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem;outline:none"
+      />
+      <select data-action="cliPlanos-filtro-negocio"
+        style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem">
+        <option value="" ${!cliPlanosFiltro.negocio?"selected":""}>Todos os negócios</option>
+        ${negOpts}
+      </select>
+      ${temFiltro?`<button data-action="cliPlanos-filtro-clear"
+        style="background:rgba(100,116,139,0.12);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.9rem;color:var(--text-muted);font-size:0.82rem;cursor:pointer">✕ Limpar filtros</button>`:""}
+    </div>
+
+    ${bulkBar}
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", lista.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState(temFiltro?"Nenhum plano encontrado com esses filtros.":"Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
