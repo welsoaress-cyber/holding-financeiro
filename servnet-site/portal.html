@@ -109,6 +109,46 @@ a{color:inherit;}
 .sup-info{margin-top:1rem;font-size:0.82rem;color:var(--text-2);}
 .sup-info a{color:var(--pool);text-decoration:none;}
 
+/* ===== FIDELIDADE ===== */
+.stamps-wrap{margin:0.75rem 0 0.5rem;}
+.stamps-section{margin-bottom:0.5rem;}
+.stamps-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);margin-bottom:0.4rem;}
+.stamps-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;}
+.stamp{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--surface);transition:all 0.2s;}
+.stamp.ok{background:rgba(16,185,129,0.13);border-color:#34D399;}
+.stamp.premio-ok{background:rgba(245,158,11,0.15);border-color:#FCD34D;}
+.stamp.premio-empty{border-color:rgba(245,158,11,0.3);border-style:dashed;}
+.fidel-bar-wrap{margin:0.85rem 0 0.5rem;}
+.fidel-bar-labels{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-2);margin-bottom:0.3rem;}
+.fidel-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.fidel-bar-fill{height:100%;background:linear-gradient(90deg,var(--pos),var(--pool));border-radius:4px;transition:width 0.6s ease;}
+.premio-pill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border-radius:8px;font-size:0.86rem;margin-top:0.5rem;}
+.premio-pill.next{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#FCD34D;}
+.premio-pill.earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34D399;}
+
+/* ===== INDICAÇÕES ===== */
+.ref-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;}
+.ref-earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:6px;padding:0.35rem 0.75rem;font-size:0.82rem;color:#34D399;font-weight:700;}
+.ref-code-box{display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.7rem 1rem;margin-bottom:0.9rem;flex-wrap:wrap;}
+.ref-code{font-family:'Courier New',monospace;font-size:1.5rem;font-weight:800;color:var(--pool);letter-spacing:0.12em;flex:1;}
+.copy-btn{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-2);padding:0.3rem 0.7rem;font-size:0.78rem;cursor:pointer;transition:all 0.15s;white-space:nowrap;font-family:inherit;}
+.copy-btn:hover{color:var(--pool);border-color:var(--pool);}
+.ref-share{display:inline-flex;align-items:center;gap:0.45rem;padding:0.55rem 1rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.84rem;font-weight:700;cursor:pointer;transition:opacity 0.15s;font-family:inherit;text-decoration:none;white-space:nowrap;}
+.ref-share:hover{opacity:0.85;}
+.ref-form{display:flex;gap:0.5rem;margin:0.75rem 0;flex-wrap:wrap;}
+.ref-form .f-input{flex:1;min-width:110px;padding:0.65rem 0.85rem;font-size:0.9rem;}
+.ref-submit{padding:0.65rem 1rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity 0.15s;}
+.ref-submit:hover:not(:disabled){opacity:0.85;}
+.ref-submit:disabled{opacity:0.5;cursor:default;}
+.ref-msg{font-size:0.84rem;margin:0.3rem 0 0.6rem;display:none;}
+.ref-list{display:flex;flex-direction:column;gap:0.45rem;margin-top:0.5rem;}
+.ref-item{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.9rem;background:var(--surface);border-radius:7px;border:1px solid var(--border);}
+.ref-name{font-size:0.88rem;font-weight:600;}
+.ref-date{font-size:0.73rem;color:var(--text-2);}
+.ref-bonus{font-size:0.72rem;margin-top:0.2rem;}
+.ref-bonus.earned{color:#34D399;}
+.ref-bonus.pending{color:#FCD34D;}
+
 /* utils */
 .muted{color:var(--text-2);font-size:0.9rem;line-height:1.65;}
 .spin{width:18px;height:18px;border:2px solid rgba(0,196,216,0.3);border-top-color:var(--pool);border-radius:50%;display:inline-block;animation:sp 0.7s linear infinite;}
@@ -170,6 +210,18 @@ a{color:inherit;}
       <div class="card span2" id="histCard">
         <div class="card-lbl">Histórico de Faturas</div>
         <div id="histContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Fidelidade -->
+      <div class="card span2" id="fidelCard">
+        <div class="card-lbl">🏆 Fidelidade</div>
+        <div id="fidelContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Indique e Ganhe -->
+      <div class="card span2" id="refCard">
+        <div class="card-lbl">👥 Indique e Ganhe</div>
+        <div id="refContent" class="loading-center"><span class="spin"></span></div>
       </div>
 
       <!-- Suporte -->
@@ -264,6 +316,8 @@ async function enterDash(data){
   document.getElementById('dashTitle').textContent=`Olá, ${first}! 👋`;
   renderPlano(data);
   await loadFaturas(data);
+  loadFidelidade(data);
+  loadIndicacoes(data);
 }
 
 function badgeClass(s){
@@ -355,6 +409,189 @@ function renderHist(fat){
     </div>`;
   }).join('');
   document.getElementById('histContent').innerHTML=`<div class="hist-list">${items}</div>`;
+}
+
+// ===== FIDELIDADE =====
+async function loadFidelidade(data){
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_fidelidade',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
+    if(error) throw error;
+    renderFidelidade(res?.streak||0);
+  }catch(e){
+    document.getElementById('fidelContent').innerHTML='<div class="muted">Dados de fidelidade indisponíveis.</div>';
+  }
+}
+
+function renderFidelidade(streak){
+  // Primeira fase: 6 meses → 50% off
+  const fase1 = [];
+  for(let i=1;i<=6;i++){
+    const ok=i<=streak;
+    fase1.push(`<div class="stamp ${ok?'ok':''}" title="Mês ${i}">${ok?'✅':'⬜'}</div>`);
+  }
+  // Segunda fase: mais 6 → 1 mês grátis
+  const fase2 = [];
+  for(let i=7;i<=12;i++){
+    const ok=i<=streak;
+    const isPremio=i===12;
+    fase2.push(`<div class="stamp ${ok?(isPremio?'premio-ok':'ok'):'premio-empty'}" title="Mês ${i}">${ok?(isPremio?'🏅':'✅'):'⬜'}</div>`);
+  }
+
+  let pct, faltam, proximoPremio, cicloAtual;
+  if(streak>=12){
+    pct=100; faltam=0; proximoPremio='1 mês grátis 🎉'; cicloAtual=12;
+  } else if(streak>=6){
+    pct=((streak-6)/6)*100; faltam=12-streak; proximoPremio='1 mês grátis'; cicloAtual=streak;
+  } else {
+    pct=(streak/6)*100; faltam=6-streak; proximoPremio='50% de desconto'; cicloAtual=streak;
+  }
+
+  document.getElementById('fidelContent').innerHTML=`
+    <p class="muted" style="margin-bottom:1rem">Pague antes do vencimento e acumule recompensas! Cada ✅ = 1 mês pago em dia.</p>
+    <div class="stamps-wrap">
+      <div class="stamps-section">
+        <div class="stamps-label">Fase 1 — 6 meses → 🎁 50% de desconto</div>
+        <div class="stamps-grid">${fase1.join('')}</div>
+      </div>
+      <div class="stamps-section" style="margin-top:0.75rem">
+        <div class="stamps-label">Fase 2 — mais 6 meses → 🏅 1 mês grátis</div>
+        <div class="stamps-grid">${fase2.join('')}</div>
+      </div>
+    </div>
+    <div class="fidel-bar-wrap">
+      <div class="fidel-bar-labels">
+        <span>${streak} ${streak===1?'mês':'meses'} em dia</span>
+        <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'}`:'🎉 Prêmio disponível!'}</span>
+      </div>
+      <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
+    </div>
+    ${faltam>0
+      ?`<div class="premio-pill next">🎁 Próximo prêmio: <strong>${proximoPremio}</strong> — pague em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
+      :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou: <strong>${proximoPremio}</strong> — Fale com o suporte para resgatar!</div>`
+    }`;
+}
+
+// ===== INDIQUE E GANHE =====
+function gerarCodigo(nome, clienteId){
+  const prefix=(nome||'CLIENTE')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^A-Za-z]/g,'').slice(0,5).toUpperCase();
+  const suffix=(clienteId||'').replace(/-/g,'').slice(0,4).toUpperCase();
+  return prefix+suffix;
+}
+
+async function loadIndicacoes(data){
+  const codigo=gerarCodigo(data.nome,data.cliente_id);
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_indicacoes',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
+    if(error) throw error;
+    renderIndicacoes(res,data,codigo);
+  }catch(e){
+    document.getElementById('refContent').innerHTML='<div class="muted">Dados de indicações indisponíveis.</div>';
+  }
+}
+
+function renderIndicacoes(res,data,codigo){
+  const lista=res?.indicacoes||[];
+  const totalAtivos=res?.total_ativos||0;
+  const waMsg=encodeURIComponent(`Olá! Assine a internet da Servnet e diz que fui eu que te indiquei! Meu código: *${codigo}*. Entre em contato pelo WhatsApp: wa.me/5511954490001`);
+
+  const listHtml=lista.length
+    ?lista.map(i=>`
+      <div class="ref-item">
+        <div>
+          <div class="ref-name">${i.nome}</div>
+          <div class="ref-date">Indicado em ${i.data}</div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge ${i.status==='Ativo'?'b-ativo':'b-pendente'}">${i.status}</span>
+          ${i.status==='Ativo'&&!i.desconto_aplicado
+            ?'<div class="ref-bonus pending">🎁 1 mês grátis — pendente</div>'
+            :i.desconto_aplicado?'<div class="ref-bonus earned">✅ Desconto aplicado</div>':''
+          }
+        </div>
+      </div>`).join('')
+    :'<div class="muted" style="text-align:center;padding:0.75rem 0">Nenhuma indicação ainda — convide seus amigos!</div>';
+
+  document.getElementById('refContent').innerHTML=`
+    <div class="ref-header">
+      <p class="muted">Indique amigos e ganhe <strong style="color:var(--pool)">1 mês grátis</strong> para cada um que assinar!</p>
+      ${totalAtivos>0?`<div class="ref-earned">🎉 ${totalAtivos} mês${totalAtivos>1?'es':''} grátis ganho${totalAtivos>1?'s':''}!</div>`:''}
+    </div>
+    <div class="ref-code-box">
+      <div style="flex:1">
+        <div style="font-size:0.68rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.2rem">Seu código</div>
+        <div class="ref-code">${codigo}</div>
+      </div>
+      <button class="copy-btn" onclick="copiarCodigo('${codigo}',this)">📋 Copiar</button>
+      <a class="ref-share" href="whatsapp://send?text=${waMsg}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Compartilhar
+      </a>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.4rem;font-weight:600">Registrar nova indicação:</div>
+    <div class="ref-form">
+      <input class="f-input" type="text" id="refNome" placeholder="Nome do amigo" maxlength="80">
+      <input class="f-input" type="text" id="refTel" placeholder="(11) 99999-9999" maxlength="15" inputmode="tel">
+      <button class="ref-submit" id="refBtn" onclick="doIndicar()">Indicar</button>
+    </div>
+    <div class="ref-msg" id="refMsg"></div>
+    <div style="font-size:0.78rem;color:var(--text-2);font-weight:600;margin:0.25rem 0 0.4rem">Minhas indicações (${lista.length}):</div>
+    <div class="ref-list">${listHtml}</div>`;
+
+  // máscara telefone
+  document.getElementById('refTel')?.addEventListener('input',e=>{
+    let v=e.target.value.replace(/\D/g,'').slice(0,11);
+    if(v.length>10) v='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);
+    else if(v.length>6) v='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);
+    else if(v.length>2) v='('+v.slice(0,2)+') '+v.slice(2);
+    else if(v.length>0) v='('+v;
+    e.target.value=v;
+  });
+}
+
+function copiarCodigo(codigo,btn){
+  navigator.clipboard.writeText(codigo).then(()=>{
+    const orig=btn.textContent;
+    btn.textContent='✅ Copiado!';
+    setTimeout(()=>btn.textContent=orig,2000);
+  });
+}
+
+async function doIndicar(){
+  const nome=document.getElementById('refNome').value.trim();
+  const tel=document.getElementById('refTel').value.replace(/\D/g,'');
+  const btn=document.getElementById('refBtn');
+  const msg=document.getElementById('refMsg');
+  if(!nome){showRefMsg('Informe o nome do amigo.','err');return;}
+  if(tel.length<10){showRefMsg('Informe um telefone válido.','err');return;}
+  btn.disabled=true;btn.textContent='...';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_indicar',{
+      p_referrer_id:session.cliente_id,
+      p_master_id:session.master_id,
+      p_nome:nome,
+      p_telefone:tel
+    });
+    if(error) throw error;
+    if(!res?.ok){showRefMsg(res?.msg||'Erro ao registrar.','err');return;}
+    showRefMsg('✅ Indicação registrada! Assim que seu amigo assinar você ganha 1 mês grátis.','ok');
+    document.getElementById('refNome').value='';
+    document.getElementById('refTel').value='';
+    setTimeout(()=>loadIndicacoes(session),1500);
+  }catch(e){
+    showRefMsg('Erro de conexão. Tente novamente.','err');
+  }finally{
+    btn.disabled=false;btn.textContent='Indicar';
+  }
+}
+
+function showRefMsg(text,type){
+  const el=document.getElementById('refMsg');
+  el.textContent=text;
+  el.style.color=type==='ok'?'#34D399':'#FCA5A5';
+  el.style.display='block';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
 }
 
 // Restore session
