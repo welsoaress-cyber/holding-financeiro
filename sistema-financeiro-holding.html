@@ -1484,6 +1484,13 @@ async function loadData(){
       }
     }
 
+    // Se não é membro nem técnico, é o próprio Master — vai direto ao sistema,
+    // sem mostrar a tela "Quem está usando?".
+    if(!state.modoMembro){
+      state.perfilAtivo = null;
+      state.perfilEscolhido = true;
+    }
+
     // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
     try{
       const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", "master").maybeSingle();
@@ -2421,12 +2428,6 @@ function renderLogin(){
         <div style="text-align:center; margin-top:16px; font-size:13px; color:var(--ink-3);">
           ${isLogin ? "Não tem conta?" : "Já tem conta?"}
           <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
-        </div>
-        <div style="text-align:center; margin-top:10px; font-size:12.5px; color:var(--ink-4);">
-          É da equipe (usuário cadastrado)? <a data-action="switch-auth-membro" style="color:var(--accent); cursor:pointer; font-weight:600;">Entrar por aqui</a>
-        </div>
-        <div style="text-align:center; margin-top:6px; font-size:12.5px; color:var(--ink-4);">
-          É técnico? <a data-action="switch-auth-tecnico" style="color:var(--accent); cursor:pointer; font-weight:600;">Entrar por aqui</a>
         </div>
       </div>
     </div>
