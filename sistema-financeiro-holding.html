@@ -37,9 +37,9 @@
     --brand:       #0F2045;
     --brand-2:     #162D5C;
     --brand-3:     #1E3A73;
-    --accent:      #0EA5E9;
-    --accent-dark: #0284C7;
-    --accent-glow: rgba(14,165,233,.12);
+    --accent:      #00C4D8;
+    --accent-dark: #0899A8;
+    --accent-glow: rgba(0,196,216,.12);
 
     /* Status */
     --pos:         #059669;
@@ -162,8 +162,8 @@
     transition: all .15s;
     min-width: 140px;
   }
-  .modcard:hover { background: rgba(255,255,255,.1); border-color: rgba(14,165,233,.4); }
-  .modcard.active { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.5); }
+  .modcard:hover { background: rgba(255,255,255,.1); border-color: rgba(0,196,216,.4); }
+  .modcard.active { background: rgba(0,196,216,.12); border-color: rgba(0,196,216,.5); }
   .modcard.soon { opacity: .4; cursor: default; }
   .modcard.soon:hover { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
   .modcard-ico { font-size: 18px; line-height: 1; margin-bottom: 4px; }
@@ -217,7 +217,7 @@
     user-select: none;
   }
   .nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
-  .nav-item.active { background: rgba(14,165,233,.18); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 12px; }
+  .nav-item.active { background: rgba(0,196,216,.18); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 12px; }
   .nav-item.active .nav-ico { color: var(--accent); }
   .nav-item.disabled { color: rgba(255,255,255,.22); cursor: default; }
   .nav-item.disabled:hover { background: transparent; }
@@ -246,7 +246,7 @@
     transition: all .12s;
   }
   .sidebar-lock-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
-  .sidebar-lock-btn.unlocked { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.3); color: var(--accent); }
+  .sidebar-lock-btn.unlocked { background: rgba(0,196,216,.12); border-color: rgba(0,196,216,.3); color: var(--accent); }
   .btn-logout:hover { background: rgba(220,38,38,.15) !important; border-color: rgba(220,38,38,.3) !important; color: #FCA5A5 !important; }
   .footer-detail { font-size: 10.5px; color: rgba(255,255,255,.25); padding: 6px 4px 0; line-height: 1.6; }
 
@@ -884,7 +884,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.4.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
