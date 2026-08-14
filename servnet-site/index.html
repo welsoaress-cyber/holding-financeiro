@@ -494,7 +494,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .faisca-img-wrap {
   pointer-events: all;
   width: 96px; height: 96px;
-  border-radius: 50%;
+  /* sem border-radius — mascote não é círculo */
   animation: faisca-glow 3s ease-in-out infinite;
   cursor: pointer;
 }
@@ -505,7 +505,16 @@ button, input, select { font-family: inherit; font-size: inherit; }
   animation: faisca-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) both,
              faisca-3d 5s ease-in-out 0.6s infinite;
   transform-origin: center 85%;
+  /* remove fundo branco no modo escuro */
+  mix-blend-mode: screen;
 }
+
+/* no modo claro, multiply remove o branco sobre fundo claro */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .faisca-img { mix-blend-mode: multiply; }
+}
+:root[data-theme="light"] .faisca-img { mix-blend-mode: multiply; }
+:root[data-theme="dark"]  .faisca-img { mix-blend-mode: screen; }
 
 .faisca-img-wrap:hover .faisca-img {
   animation: faisca-jump 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
