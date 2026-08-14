@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
 :root{
   --pool:#00C4D8;--pool-hi:#2DDAE8;
   --bg:#030F18;--surface:#061520;--card:#091C2A;
@@ -223,6 +224,22 @@ a{color:inherit;}
 .upgrade-btn{display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.55rem 1.1rem;background:rgba(0,196,216,0.1);border:1px solid rgba(0,196,216,0.35);border-radius:6px;color:var(--pool);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background 0.15s,border-color 0.15s;}
 .upgrade-btn:hover{background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
 
+/* promoções */
+.promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:640px){.promo-grid{grid-template-columns:1fr;}}
+.promo-item{background:rgba(0,196,216,0.04);border:1px solid rgba(0,196,216,0.18);border-radius:10px;padding:1rem 1.1rem;}
+.promo-icon{font-size:1.6rem;margin-bottom:0.4rem;}
+.promo-nome{font-size:0.94rem;font-weight:700;color:var(--text);margin-bottom:0.2rem;}
+.promo-tagline{font-size:0.81rem;color:var(--pool);font-weight:600;margin-bottom:0.75rem;line-height:1.4;}
+.promo-rules{padding-left:1.1rem;display:flex;flex-direction:column;gap:0.3rem;margin:0 0 0.9rem;}
+.promo-rules li{font-size:0.8rem;color:var(--text-2);line-height:1.5;}
+.promo-rules li strong{color:var(--text);}
+.promo-prize{font-weight:700;}
+.promo-prize.gold{color:#FCD34D;}
+.promo-prize.green{color:#34D399;}
+.promo-link{display:inline-block;font-size:0.78rem;color:var(--pool);text-decoration:none;opacity:0.8;transition:opacity 0.15s;}
+.promo-link:hover{opacity:1;text-decoration:underline;}
+
 /* chamado */
 .ticket-form{display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;}
 .ticket-select,.ticket-input,.ticket-textarea{padding:0.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
@@ -292,6 +309,44 @@ a{color:inherit;}
       <div class="card glow" id="invCard">
         <div class="card-lbl">Próxima Fatura</div>
         <div id="invContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Promoções -->
+      <div class="card span2" id="promoCard">
+        <div class="card-lbl">🎁 Promoções &amp; Benefícios</div>
+        <div class="promo-grid">
+
+          <!-- Fidelidade -->
+          <div class="promo-item">
+            <div class="promo-icon">🏆</div>
+            <div class="promo-nome">Programa Fidelidade</div>
+            <div class="promo-tagline">Pague em dia e acumule recompensas!</div>
+            <ul class="promo-rules">
+              <li><strong>6 meses</strong> em dia → <span class="promo-prize gold">50% de desconto</span> na fatura</li>
+              <li><strong>12 meses</strong> em dia → <span class="promo-prize green">1 mês grátis</span> 🎉</li>
+              <li>Cada mês pago até o vencimento = 1 selo ✅</li>
+              <li>Atraso zera o contador — recomece do zero</li>
+              <li>Desconto aplicado automaticamente na próxima fatura</li>
+            </ul>
+            <a class="promo-link" href="#fidelCard">Ver meu progresso ↓</a>
+          </div>
+
+          <!-- Indique e Ganhe -->
+          <div class="promo-item">
+            <div class="promo-icon">👥</div>
+            <div class="promo-nome">Indique e Ganhe</div>
+            <div class="promo-tagline">Cada amigo que assinar vale 1 mês grátis pra você!</div>
+            <ul class="promo-rules">
+              <li>Indique um amigo com nome e telefone no portal</li>
+              <li>Quando ele assinar e pagar o 1º mês → confirmado</li>
+              <li><strong>1 mês grátis</strong> descontado na sua próxima fatura</li>
+              <li>Sem limite de indicações — quanto mais, melhor!</li>
+              <li>Não acumula com outras promoções ativas</li>
+            </ul>
+            <a class="promo-link" href="#refCard">Indicar um amigo ↓</a>
+          </div>
+
+        </div>
       </div>
 
       <!-- Histórico -->
