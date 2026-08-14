@@ -857,7 +857,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.3.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -871,7 +871,7 @@ let state = {
   modoTecnico: false, tecnicoAuthInfo: null,
   modoCliente: false, clienteAuthInfo: null,
   modoMembro: false, membroAuthInfo: null,
-  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
+  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, ajustesMenuFechado: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() },
   executivoOculto: true, // valores da Visão Geral Executivo começam ocultos — precisa clicar no olho pra ver
@@ -2254,14 +2254,6 @@ function renderApp(){
       ${sidebarConteudo()}
 
       <div class="sidebar-footer">
-        ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
-        <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;" title="Importar backup">
-          ⬆<span class="label"> Importar backup</span>
-          <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
-        </label>
-        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Escolha popular Geral (tudo) ou só o módulo em que você está agora">🌱<span class="label"> Popular dados de teste</span></button>
-        <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Escolha remover Geral (tudo) ou só o módulo em que você está agora">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
-        ${!state.modoMembro ? `<button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>` : ""}
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
@@ -2301,8 +2293,6 @@ function renderApp(){
     </div>
     <button class="fab-btn" id="fabBtn" title="Lançar" aria-label="Lançar">+</button>
   </div>`;
-  const importInput = document.getElementById("importarBackupInput");
-  if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
   const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa","logs_auditoria"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
@@ -2367,6 +2357,11 @@ function navItem(view, icon, label){
 // clicar (guardado em sidebarGruposAbertos, só na sessão — não precisa
 // sobreviver a um F5, reabre pela view atual de qualquer jeito).
 let sidebarGruposAbertos = new Set();
+// Grupos que o usuário fechou manualmente — sobrepõe o "abre sozinho por
+// conter a view atual" (sem isso, era impossível recolher o grupo da tela
+// em que você já está: toda vez que tentava fechar, "contém a view atual"
+// forçava aberto de novo, e o clique não tinha efeito nenhum visível).
+let sidebarGruposFechados = new Set();
 // renderApp() sempre desenha o menu lateral já fechado (é uma trava de
 // segurança pra nunca deixar a rolagem travada — ver comentário lá dentro).
 // Isso é ótimo pra navegação de verdade, mas expandir/fechar um grupo do
@@ -2377,9 +2372,9 @@ let sidebarGruposAbertos = new Set();
 let drawerAbertoAntes = false;
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const contemViewAtual = viewsDoGrupo.includes(state.view);
-  const aberto = sidebarGruposAbertos.has(id) || contemViewAtual;
+  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
   return `
-    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" style="cursor:pointer;">
+    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
@@ -2476,19 +2471,15 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  const construcao = master ? `
-    <div class="nav-group-label">Em construção</div>
-    ${navItemSoon("Contas Fixas")}
-    ${navItemSoon("Carteira")}
-    ${navItemSoon("Rateio de Despesas")}
-  ` : "";
-
-  return grupos.join("") + construcao;
+  return grupos.join("");
 }
 const AJUSTES_SUBVIEWS = ["ajustes","categorias","negocios"];
 function navSubmenuAjustes(){
   const dentroDoSubmenu = AJUSTES_SUBVIEWS.includes(state.view);
-  const aberto = state.ajustesMenuAberto || dentroDoSubmenu;
+  // "ajustesMenuFechado" sobrepõe o auto-abre-por-conter-a-view-atual — mesmo
+  // motivo do sidebarGruposFechados no navGrupo() (sem isso, era impossível
+  // recolher esse submenu enquanto você estava numa tela dele).
+  const aberto = state.ajustesMenuFechado ? false : (state.ajustesMenuAberto || dentroDoSubmenu);
   const cabecalhoAtivo = dentroDoSubmenu && !aberto;
   const subItens = [
     navItem("ajustes","∿","Ajustes de Saldo"),
@@ -2496,18 +2487,12 @@ function navSubmenuAjustes(){
     navItem("negocios","🏢","Negócios"),
   ].join("");
   return `
-    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" style="cursor:pointer;">
+    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" data-aberto="${aberto}" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
   `;
-}
-function navItemSoon(label){
-  return `<div class="nav-item disabled">
-    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">○</span><span class="label">${label}</span></span>
-    <span class="soon-badge label">em breve</span>
-  </div>`;
 }
 function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
@@ -4464,478 +4449,6 @@ function modalLogDetalhe(logId){
 }
 
 // ============================================================
-// BACKUP (exportar/importar JSON)
-// ============================================================
-function exportarBackup(){
-  const dados = {
-    versao: "4-supabase", exportadoEm: new Date().toISOString(),
-    contas: state.contas, lancamentos: state.lancamentos, ajustes: state.ajustes,
-    categorias: state.categorias, negocios: state.negocios, cartoes: state.cartoes
-  };
-  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `backup-financeiro-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  showToast("Backup exportado.");
-}
-function handleImportarBackup(e){
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (ev) => {
-    try{
-      const dados = JSON.parse(ev.target.result);
-      if(!dados || !Array.isArray(dados.contas)){ showToast("Arquivo de backup inválido.", "error"); return; }
-      if(!confirm("Importar esse backup vai substituir TODOS os dados atuais. Continuar?")) return;
-      state.contas = dados.contas || [];
-      state.lancamentos = dados.lancamentos || [];
-      state.ajustes = dados.ajustes || [];
-      state.categorias = dados.categorias || seedCategorias();
-      state.negocios = dados.negocios || seedNegocios();
-      state.cartoes = dados.cartoes || [];
-      await saveContas(); await saveLancamentos(); await saveAjustes();
-      await saveCategorias(); await saveNegocios(); await saveCartoes();
-      renderApp();
-      showToast("Backup importado com sucesso.");
-    }catch(err){ showToast("Não consegui ler esse arquivo.", "error"); }
-  };
-  reader.readAsText(file);
-  e.target.value = "";
-}
-
-// ============================================================
-// DADOS DE TESTE — popular/remover ~10 registros por área (só Master)
-// Propositalmente NÃO mexe em Contas/Cartões/Categorias/Negócios/Lançamentos:
-// são o núcleo financeiro real da holding, e misturar dado fake ali contaminaria
-// saldo e relatórios de verdade. Tudo que é criado aqui vem marcado com
-// "_teste: true" (guardado dentro do jsonb "dados", não é coluna nova) e prefixo
-// "[TESTE]" no nome, pra ficar óbvio e fácil de tirar depois.
-// ============================================================
-// ============================================================
-// DADOS DE TESTE — Geral (todas as áreas) ou só a área/módulo selecionado,
-// tanto pra popular quanto pra remover. Cada área é independente (não
-// depende de outra ter rodado antes), mas se a outra já tiver dados
-// (de teste ou reais), aproveita pra enriquecer (ex: Chamados usa
-// produtos/contas que já existirem, senão só pula essa parte opcional).
-// ============================================================
-const AREAS_DADOS_TESTE = [
-  { id:"financeiro", nome:"Financeiro", desc:"contas, cartões e lançamentos" },
-  { id:"estoque",    nome:"Estoque",    desc:"fornecedores, produtos e compras" },
-  { id:"clientes",   nome:"Clientes",   desc:"planos, clientes, técnicos e chamados" },
-  { id:"rh",         nome:"RH",         desc:"cargos, funcionários, folha e férias" },
-];
-function areaDadosTesteDoModulo(moduloId){ return AREAS_DADOS_TESTE.find(a => a.id === moduloId) || null; }
-function testeCpfFake(i){ return `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`; }
-function testeTelFake(base, i){ return `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`; }
-function testeNegAleatorio(){ const nomes = state.negocios.map(n=>n.nome); return nomes.length ? nomes[Math.floor(Math.random()*nomes.length)] : ""; }
-
-function modalDadosTeste(acao){
-  if(!ehMaster()){ showToast(`Apenas o Master pode ${acao==="popular"?"popular":"remover"} dados de teste.`, "error"); return; }
-  const areaAtual = areaDadosTesteDoModulo(state.moduloAtivo);
-  const titulo = acao==="popular" ? "🌱 Popular dados de teste" : "🧹 Remover dados de teste";
-  const verbo = acao==="popular" ? "Cria" : "Remove";
-  openModal(`
-    <div class="modal-head"><div class="modal-title">${titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <div class="modal-body">
-      <div class="field-help" style="margin-bottom:14px;">Escolha o alcance:</div>
-      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; margin-bottom:8px; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="geral">
-        <div><div style="font-weight:700;">🌐 Geral</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} ~10 registros de teste em Financeiro, Estoque, Clientes e RH.</div></div>
-      </button>
-      ${areaAtual ? `
-      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="${areaAtual.id}">
-        <div><div style="font-weight:700;">📍 Somente ${esc(areaAtual.nome)}</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} só ${esc(areaAtual.desc)}.</div></div>
-      </button>` : `<div class="field-help">Você está num módulo sem dados de teste próprios (Cadastro, Visão Geral ou Relatórios) — só "Geral" está disponível aqui. Abra Financeiro, Estoque, Clientes ou RH pra liberar a opção "Somente esse módulo".</div>`}
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
-  `);
-}
-
-async function seedTesteFinanceiro(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Contas Bancárias (tabela "flat" — sem coluna "dados", não aceita o
-  // marcador _teste; a identificação de teste aqui é só pelo prefixo no nome) ----
-  const contaDefs = [
-    ["Nubank PJ","Nubank","Conta Pagamento"], ["Itaú Empresarial","Itaú","Conta Corrente"],
-    ["C6 Bank","C6 Bank","Conta Corrente"], ["Mercado Pago","Mercado Pago","Conta Pagamento"],
-    ["Caixa Poupança","Caixa Econômica","Poupança"], ["Bradesco","Bradesco","Conta Corrente"],
-    ["Inter PJ","Banco Inter","Conta Pagamento"], ["Santander","Santander","Conta Corrente"],
-  ];
-  const novasContas = contaDefs.map(([nome,instituicao,tipo]) => ({
-    id: uid("c"), parentId: null, nome: `[TESTE] ${nome}`, instituicao, tipo,
-    negocio: negAleatorio(), saldoInicial: Math.round((1000+Math.random()*9000)*100)/100, limite: 0, ativa: true,
-  }));
-  state.contas.push(...novasContas);
-  await saveContas();
-
-  // ---- Cartões de Crédito ----
-  const cartaoDefs = [
-    ["Nubank Ultravioleta","Mastercard",5,15,5000], ["Itaú Click","Visa",10,20,3000],
-    ["C6 Carbon","Mastercard",1,10,8000], ["Inter Gold","Visa",7,17,4000],
-    ["Santander Free","Elo",20,5,2500],
-  ];
-  const novosCartoes = cartaoDefs.map(([nome,bandeira,diaFechamento,diaVencimento,limite],i) => ({
-    id: uid("cartao"), nome: `[TESTE] ${nome}`, bandeira, ultimosDigitos: String(1000+i*111).slice(-4),
-    limite, diaFechamento, diaVencimento, contaPagamentoId: novasContas[i % novasContas.length].id,
-    negocio: negAleatorio(), ativo: true, _teste: true,
-  }));
-  state.cartoes.push(...novosCartoes);
-  await saveCartoes();
-
-  // ---- Lançamentos (Receitas/Despesas/Transferências, espalhados em 3 meses) ----
-  const categoriasNomes = state.categorias.map(c => c.nome);
-  const categoriaAleatoria = () => categoriasNomes.length ? categoriasNomes[Math.floor(Math.random()*categoriasNomes.length)] : "";
-  const statusVariados = ["Pago","Provisionado","Agendado"];
-  const novosLancamentos = [];
-  const hoje = new Date();
-  for(let m=-1; m<=1; m++){
-    const anoRef = hoje.getFullYear(), mesRef = hoje.getMonth()+m;
-    for(let i=0;i<4;i++){
-      const data = new Date(anoRef, mesRef, Math.min(3+i*6, 28)).toISOString().slice(0,10);
-      const contaR = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusR = statusVariados[i%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Receita", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaR.id, contaDestino: "", valor: Math.round((300+Math.random()*2000)*100)/100,
-        descricao: "[TESTE] Receita de teste", status: statusR, conciliado: statusR==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-      const contaD = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusD = statusVariados[(i+1)%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Despesa", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaD.id, contaDestino: "", valor: Math.round((100+Math.random()*1200)*100)/100,
-        descricao: "[TESTE] Despesa de teste", status: statusD, conciliado: statusD==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-    }
-    if(novasContas.length >= 2){
-      novosLancamentos.push({
-        id: uid("l"), data: new Date(anoRef, mesRef, 15).toISOString().slice(0,10), tipo: "Transferência",
-        negocio: "", categoria: "", subcategoria: "", contaOrigem: novasContas[0].id, contaDestino: novasContas[1].id,
-        valor: Math.round((200+Math.random()*800)*100)/100, descricao: "[TESTE] Transferência entre contas",
-        status: "Pago", conciliado: true, lancadoPor: "Master", _teste: true,
-      });
-    }
-  }
-  state.lancamentos.push(...novosLancamentos);
-  await saveLancamentos();
-
-  return `${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosLancamentos.length} lançamentos`;
-}
-
-async function seedTesteEstoque(){
-  const telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Fornecedores ----
-  const fornNomes = ["Fibra Sul Distribuidora","Conexão Norte Equipamentos","TechNet Atacado","Rede Forte Suprimentos","Ótica Brasil Cabos","Distribuidora Sinal Rápido","Comercial Torres & Postes","Atacado Provedor Total","Fibra Express Insumos","Central de Redes Ltda"];
-  const contatos = ["Carlos","Ana","Marcos","Fernanda","João","Patrícia","Rafael","Juliana","Eduardo","Camila"];
-  const novosFornecedores = fornNomes.map((nome,i) => ({
-    id: uid("ef"), nome: `[TESTE] ${nome}`,
-    cnpj: `${String(10+i).padStart(2,'0')}.${String(345+i*11).padStart(3,'0')}.${String(678+i*7).padStart(3,'0')}/0001-${String(10+i)}`,
-    contato: contatos[i], telefone: telFake(8000,i), email: `contato@fornecedor${i+1}teste.com.br`,
-    endereco: "", negocio: "", observacoes: "Fornecedor de teste", _teste: true,
-  }));
-  state.estFornecedores.push(...novosFornecedores);
-  await saveEstFornecedores();
-
-  // ---- Produtos ----
-  const prodDefs = [
-    ["ONU GPON AC","ONU/ONT","un",0.35,"Residencial"],
-    ["Roteador Wi-Fi 6 AX1800","Roteador","un",0.42,"Residencial"],
-    ["Switch 8 Portas Gigabit","Switch","un",0.60,"Empresarial"],
-    ["Cabo Drop 2FO (rolo 1000m)","Fibra Óptica","rolo",18,""],
-    ["Conector SC/APC","Conector","un",0.01,""],
-    ["Splitter Óptico 1x8","Fibra Óptica","un",0.05,""],
-    ["Caixa de Emenda Óptica 24FO","Rack/Gabinete","un",1.2,""],
-    ["Cordão Óptico SC/APC 2m","Fibra Óptica","un",0.08,""],
-    ["Rack 12U de Parede","Rack/Gabinete","un",9.5,"Empresarial"],
-    ["Fonte Chaveada 12V 2A","Eletrônico","un",0.15,""],
-  ];
-  const novosProdutos = prodDefs.map(([nome,categoria,unidade,peso,familia],i) => ({
-    id: uid("ep"), nome: `[TESTE] ${nome}`, codigoInterno: `TST-${String(i+1).padStart(3,'0')}`,
-    categoria, modelo: "", fabricante: "", familia, peso, unidade,
-    fornecedorId: novosFornecedores[i % novosFornecedores.length].id,
-    negocio: negAleatorio(), precoUnitario: 0, estoqueMinimo: 5+i, localizacao: "Estoque teste",
-    observacoes: "Produto de teste", _teste: true,
-  }));
-  state.estProdutos.push(...novosProdutos);
-  await saveEstProdutos();
-
-  // ---- Compras (3 notas — já populam movimentações e Custo Médio Real) ----
-  for(let n=0; n<3; n++){
-    const itensCompra = novosProdutos.slice(n*3, n*3+3);
-    if(!itensCompra.length) break;
-    const itens = itensCompra.map(p => ({ produtoId: p.id, quantidade: 20+n*5, valorUnitario: Math.round((5+Math.random()*40)*100)/100 }));
-    const valoresTotais = itens.map(it => it.quantidade*it.valorUnitario);
-    const frete = Math.round((30+n*15)*100)/100;
-    const rateios = ratearProporcional(frete, valoresTotais);
-    const compraId = uid("compra");
-    const numeroNota = `TESTE-${1000+n}`;
-    const itensSalvos = itens.map((it,i) => {
-      const valorTotal = valoresTotais[i];
-      const custoUnitarioFinal = Math.round(((valorTotal+rateios[i])/it.quantidade)*100)/100;
-      return { produtoId: it.produtoId, quantidade: it.quantidade, valorUnitario: it.valorUnitario, valorTotal, rateio: rateios[i], custoUnitarioFinal };
-    });
-    state.estCompras.push({
-      id: compraId, numeroNota, fornecedorId: novosFornecedores[n].id, data: todayISO(), negocio: "",
-      frete, seguro: 0, outrasDespesas: 0, baseRateio: "valor", itens: itensSalvos,
-      observacoes: "Compra de teste", lancadoPor: "Master", _teste: true,
-    });
-    itensSalvos.forEach(it => {
-      state.estMovimentos.push({
-        id: uid("em"), data: todayISO(), tipo: "Entrada", produtoId: it.produtoId, qtd: it.quantidade,
-        custoUnitario: it.custoUnitarioFinal, localOrigem: novosFornecedores[n].nome, localDestino: "",
-        motivo: `Compra NF ${numeroNota}`, responsavel: "Master", notaFiscal: numeroNota,
-        notaFiscalCompraId: compraId, _teste: true,
-      });
-    });
-  }
-  await saveEstCompras();
-  await saveEstMovimentos();
-
-  return `${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras`;
-}
-
-async function seedTesteClientes(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Planos ----
-  const planoDefs = [
-    ["Fibra 100 Mega",89.9,"100 Mbps","GPON"], ["Fibra 200 Mega",109.9,"200 Mbps","GPON"],
-    ["Fibra 300 Mega",129.9,"300 Mbps","GPON"], ["Fibra 500 Mega",159.9,"500 Mbps","GPON"],
-    ["Fibra 700 Mega Duo",189.9,"700 Mbps","GPON"], ["Fibra 1 Giga",219.9,"1000 Mbps","GPON"],
-    ["Combo TV + Internet 200",169.9,"200 Mbps","GPON + IPTV"], ["Plano Empresarial 300",249.9,"300 Mbps dedicado","GPON"],
-    ["Plano Empresarial 1 Giga",499.9,"1000 Mbps dedicado","GPON"], ["Rádio Rural 20 Mega",99.9,"20 Mbps","Rádio"],
-  ];
-  const novosPlanos = planoDefs.map(([nome,valor,velocidade,tecnologia]) => ({
-    id: uid("pl"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), descricao: "", valor, velocidade, tecnologia,
-    observacoes: "Plano de teste", _teste: true,
-  }));
-  state.cliPlanos.push(...novosPlanos);
-  await saveCliPlanos();
-
-  // ---- Clientes ----
-  const clienteNomes = ["Ana Beatriz Souza","Carlos Eduardo Lima","Fernanda Oliveira","João Pedro Alves","Mariana Costa","Ricardo Santos","Juliana Pereira","Bruno Rodrigues","Camila Ferreira","Lucas Martins"];
-  const cidades = ["Campinas","Sorocaba","Ribeirão Preto","Piracicaba","Bauru","São Carlos","Jundiaí","Limeira","Araraquara","Franca"];
-  const novosClientes = clienteNomes.map((nome,i) => {
-    const neg = negAleatorio();
-    const planosDoNeg = novosPlanos.filter(p => p.negocio === neg);
-    const plano = planosDoNeg.length ? planosDoNeg[i % planosDoNeg.length] : null;
-    return {
-      id: uid("cli"), tipoPessoa: "PF", nome: `[TESTE] ${nome}`, razaoSocial: "", nomeFantasia: "",
-      cpfCnpj: cpfFake(i), rg: "", dataNascimento: "", genero: "Não informado",
-      email: `cliente${i+1}teste@email.com`, telefone: telFake(7000,i), whatsapp: "",
-      logradouro: `Rua Teste ${i+1}`, numero: String(100+i*10), complemento: "", bairro: "Centro",
-      cidade: cidades[i], uf: "SP", cep: "13000-000", status: "Ativo", dataCadastro: todayISO(),
-      observacoes: "Cliente de teste", _teste: true,
-      contratos: neg ? [{ id: uid("ct"), negocio: neg, planoId: plano?plano.id:"", status: "Ativo", dataContrato: todayISO() }] : [],
-    };
-  });
-  state.cliClientes.push(...novosClientes);
-  await saveCliClientes();
-
-  // ---- Técnicos ----
-  const tecnicoDefs = [
-    ["Carlos Eduardo","fins de semana e feriados",1000],
-    ["Rafael Souza","segunda a sexta, período da tarde",1800],
-    ["Fernando Lima","plantão 24h",2500],
-    ["André Santos","apenas emergências",800],
-    ["Bruno Costa","fins de semana",900],
-  ];
-  const novosTecnicos = tecnicoDefs.map(([nome,diasAtendimento,valorMensal],i) => ({
-    id: uid("tec"), nome: `[TESTE] ${nome}`, telefone: telFake(9000,i), negocio: negAleatorio(),
-    diasAtendimento, valorMensal, ativo: true, _teste: true,
-  }));
-  state.cliTecnicos.push(...novosTecnicos);
-  await saveCliTecnicos();
-
-  // ---- Chamados (espalhados pelos status, alguns com material baixado e cobrança gerada) ----
-  const chamadoDefs = [
-    ["Instalação","Alta","Aberto",-2], ["Suporte técnico","Urgente","Aberto",0],
-    ["Manutenção","Normal","Agendado",2], ["Instalação","Alta","Agendado",3],
-    ["Suporte técnico","Normal","Em atendimento",-1], ["Manutenção","Baixa","Em atendimento",0],
-    ["Instalação","Alta","Concluído",-5], ["Suporte técnico","Normal","Concluído",-7],
-    ["Mudança de endereço","Normal","Concluído",-10], ["Cancelamento de plano","Baixa","Cancelado",-3],
-  ];
-  const novosChamados = chamadoDefs.map(([tipo,prioridade,status,offsetDias],i) => {
-    const cliente = novosClientes[i % novosClientes.length];
-    const tecnico = novosTecnicos[i % novosTecnicos.length];
-    const d = new Date(); d.setDate(d.getDate()+offsetDias);
-    const dataAgendada = d.toISOString().slice(0,10);
-    const concluido = status === "Concluído";
-    return {
-      id: uid("cham"), numero: `[TESTE] CH-${String(state.cliChamados.length+i+1).padStart(4,"0")}`,
-      clienteId: cliente.id, negocio: cliente.contratos[0]?.negocio || negAleatorio(), tecnicoId: tecnico.id,
-      tipo, prioridade, motivo: `Chamado de teste — ${tipo.toLowerCase()}`, dataAgendada, status,
-      valorCobranca: concluido ? 80 : 0, observacoes: concluido ? "Atendimento concluído sem intercorrências." : "",
-      dataCadastro: todayISO(), dataConclusao: concluido ? dataAgendada : "",
-      lancadoPor: "Master", _teste: true,
-    };
-  });
-  state.cliChamados.push(...novosChamados);
-  await saveCliChamados();
-
-  // material baixado nos chamados concluídos, se já existir produto cadastrado
-  // (de teste ou real — Estoque não precisa ter rodado nesse mesmo escopo)
-  const chamadosConcluidos = novosChamados.filter(c => c.status === "Concluído");
-  if(state.estProdutos.length){
-    chamadosConcluidos.forEach((cham,i) => {
-      const p = state.estProdutos[i % state.estProdutos.length];
-      const custoUnit = estValorUnitarioEstimado(p) || 10;
-      state.estMovimentos.push({
-        id: uid("em"), data: cham.dataConclusao, tipo: "Saída", produtoId: p.id, qtd: 1, custoUnitario: custoUnit,
-        localOrigem: "Estoque", localDestino: novosClientes.find(c=>c.id===cham.clienteId)?.nome||"Cliente",
-        motivo: `Chamado ${cham.numero}`, responsavel: "Master", chamadoId: cham.id, _teste: true,
-      });
-    });
-    await saveEstMovimentos();
-  }
-
-  // cobrança gerada só no 1º chamado concluído (se já existir conta pra receber),
-  // pra mostrar o vínculo com Lançamentos
-  if(chamadosConcluidos.length && state.contas.length){
-    let catVendas = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
-    if(!catVendas){ catVendas = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(catVendas); await saveCategorias(); }
-    const chamCobranca = chamadosConcluidos[0];
-    const contaCobranca = state.contas.find(c=>c.ativa!==false) || state.contas[0];
-    const lancId = uid("l");
-    state.lancamentos.push({
-      id: lancId, data: chamCobranca.dataConclusao, tipo: "Receita", negocio: chamCobranca.negocio||"",
-      categoria: catVendas.nome, subcategoria: "", contaOrigem: contaCobranca?contaCobranca.id:"", contaDestino: "",
-      valor: chamCobranca.valorCobranca, descricao: `[TESTE] ${chamCobranca.numero} — cobrança de visita`,
-      status: "Provisionado", conciliado: false, lancadoPor: "Master", chamadoId: chamCobranca.id, _teste: true,
-    });
-    chamCobranca.lancamentoId = lancId;
-    await saveLancamentos();
-    await saveCliChamados();
-  }
-
-  return `${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosTecnicos.length} técnicos, ${novosChamados.length} chamados`;
-}
-
-async function seedTesteRh(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Cargos ----
-  const cargoDefs = [
-    ["Técnico de Instalação","44h/semana",2200], ["Técnico de Suporte N1","44h/semana",1900],
-    ["Técnico de Suporte N2","44h/semana",2600], ["Atendente SAC","36h/semana",1700],
-    ["Vendedor Externo","44h/semana",1800], ["Analista Financeiro","40h/semana",3200],
-    ["Auxiliar Administrativo","40h/semana",1700], ["Coordenador Comercial","44h/semana",4200],
-    ["Motorista","44h/semana",2100], ["Gerente de Operações","44h/semana",6500],
-  ];
-  const novosCargos = cargoDefs.map(([nome,carga,salario]) => ({
-    id: uid("cargo"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), salarioBase: salario, cargaHoraria: carga,
-    descricao: "", _teste: true,
-  }));
-  state.rhCargos.push(...novosCargos);
-  await saveRhCargos();
-
-  // ---- Funcionários ----
-  const funcNomes = ["Pedro Henrique Silva","Larissa Gomes","Thiago Almeida","Beatriz Cardoso","Gustavo Ribeiro","Amanda Barbosa","Felipe Nascimento","Vanessa Teixeira","Diego Moraes","Priscila Araújo"];
-  const novosFuncionarios = funcNomes.map((nome,i) => {
-    const cargo = novosCargos[i % novosCargos.length];
-    const d = new Date(); d.setMonth(d.getMonth() - (3 + i*4));
-    return {
-      id: uid("func"), nome: `[TESTE] ${nome}`, cpf: cpfFake(i+20), rg: "", dataNascimento: "",
-      genero: "Não informado", email: `func${i+1}teste@empresa.com`, telefone: telFake(6000,i),
-      negocio: cargo.negocio, cargoId: cargo.id, dataAdmissao: d.toISOString().slice(0,10), tipoContrato: "CLT",
-      salario: cargo.salarioBase, status: "Ativo", pix: "",
-      logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "SP", cep: "",
-      dataDemissao: "", tipoDesligamento: "", motivoDesligamento: "", observacoes: "Funcionário de teste", _teste: true,
-    };
-  });
-  state.rhFuncionarios.push(...novosFuncionarios);
-  await saveRhFuncionarios();
-
-  // ---- Folha de Pagamento (2 competências por funcionário) ----
-  const competenciaAnterior = (() => { const d = new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; })();
-  const novaFolha = [];
-  novosFuncionarios.forEach((f,i) => {
-    [[competenciaAnterior,"Pago"], [competenciaAtual(), i%2===0?"Pago":"Pendente"]].forEach(([competencia,status]) => {
-      novaFolha.push({
-        id: uid("folha"), funcionarioId: f.id, competencia, salarioBase: f.salario, bonus: 0, descontos: 0,
-        valorLiquido: f.salario, dataPagamento: status==="Pago"?todayISO():"", status,
-        observacoes: "Folha de teste", _teste: true,
-      });
-    });
-  });
-  state.rhFolha.push(...novaFolha);
-  await saveRhFolha();
-
-  // ---- Férias (1 registro por funcionário) ----
-  const novasFerias = novosFuncionarios.map((f,i) => {
-    const venc = rhProximoVencimentoFerias(f.id);
-    const fim = venc ? venc.vencimento : f.dataAdmissao;
-    const inicio = (() => { const d = new Date(fim+"T00:00:00"); d.setFullYear(d.getFullYear()-1); return d.toISOString().slice(0,10); })();
-    const concluida = i % 3 === 0;
-    return {
-      id: uid("ferias"), funcionarioId: f.id, periodoAquisitivoInicio: inicio, periodoAquisitivoFim: fim,
-      dataInicioGozo: concluida ? inicio : "", dataFimGozo: concluida ? fim : "",
-      diasDireito: 30, diasGozados: concluida ? 30 : 0,
-      status: concluida ? "Concluída" : "Programada", observacoes: "Férias de teste", _teste: true,
-    };
-  });
-  state.rhFerias.push(...novasFerias);
-  await saveRhFerias();
-
-  return `${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias`;
-}
-
-async function popularDadosTeste(escopo){
-  if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
-  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
-  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
-  if(!confirm(`Isso cria ~10 registros de teste em ${areas.map(a=>nomesArea[a]).join(", ")}, tudo marcado com [TESTE]. Continuar?`)) return;
-  showToast("Gerando dados de teste...");
-  const resumo = [];
-  if(areas.includes("financeiro")) resumo.push(await seedTesteFinanceiro());
-  if(areas.includes("estoque")) resumo.push(await seedTesteEstoque());
-  if(areas.includes("clientes")) resumo.push(await seedTesteClientes());
-  if(areas.includes("rh")) resumo.push(await seedTesteRh());
-  renderApp();
-  showToast(`Dados de teste criados: ${resumo.join(" · ")}.`);
-}
-
-async function removerDadosTeste(escopo){
-  if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
-  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
-  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
-  if(!confirm(`Remover os registros marcados como [TESTE] de ${areas.map(a=>nomesArea[a]).join(", ")}? Não afeta seus dados reais.`)) return;
-  const removerDoArray = async (arrName, tabela) => {
-    const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
-    state[arrName] = state[arrName].filter(x => !x._teste);
-    if(idsTeste.length) await deleteRows(tabela, idsTeste);
-  };
-  if(areas.includes("financeiro")){
-    // "contas" é tabela flat (sem coluna dados) — não tem campo _teste, identifica pelo nome
-    const idsContasTeste = state.contas.filter(c => (c.nome||"").startsWith("[TESTE]")).map(c => c.id);
-    state.contas = state.contas.filter(c => !(c.nome||"").startsWith("[TESTE]"));
-    if(idsContasTeste.length) await deleteRows("contas", idsContasTeste);
-    await removerDoArray("cartoes", "cartoes");
-    await removerDoArray("lancamentos", "lancamentos");
-  }
-  if(areas.includes("estoque")){
-    await removerDoArray("estMovimentos", "est_movimentos");
-    await removerDoArray("estCompras", "est_compras");
-    await removerDoArray("estProdutos", "est_produtos");
-    await removerDoArray("estFornecedores", "est_fornecedores");
-  }
-  if(areas.includes("clientes")){
-    await removerDoArray("cliClientes", "cli_clientes");
-    await removerDoArray("cliPlanos", "cli_planos");
-    await removerDoArray("cliChamados", "cli_chamados");
-    await removerDoArray("cliTecnicos", "cli_tecnicos");
-  }
-  if(areas.includes("rh")){
-    await removerDoArray("rhFuncionarios", "rh_funcionarios");
-    await removerDoArray("rhCargos", "rh_cargos");
-    await removerDoArray("rhFolha", "rh_folha");
-    await removerDoArray("rhFerias", "rh_ferias");
-  }
-  renderApp();
-  showToast("Dados de teste removidos.");
-}
-
-// ============================================================
 // MODAIS — base
 // ============================================================
 function openModal(html){
@@ -6330,10 +5843,21 @@ document.addEventListener("click", async e => {
     state.view = "lancamentos";
     renderApp();
   }
-  else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
+  else if(action === "toggle-ajustes-menu"){
+    const estavaAberto = el.dataset.aberto === "true";
+    state.ajustesMenuAberto = !estavaAberto;
+    state.ajustesMenuFechado = estavaAberto;
+    renderApp();
+  }
   else if(action === "toggle-nav-grupo"){
     const grupoId = el.dataset.id;
-    if(sidebarGruposAbertos.has(grupoId)) sidebarGruposAbertos.delete(grupoId); else sidebarGruposAbertos.add(grupoId);
+    // Lê o estado real (o "data-aberto" que navGrupo() acabou de desenhar),
+    // não só sidebarGruposAbertos — senão o grupo que já estava aberto por
+    // conter a view atual nunca conseguia ser fechado (ver comentário perto
+    // de sidebarGruposFechados).
+    const estavaAberto = el.dataset.aberto === "true";
+    if(estavaAberto){ sidebarGruposAbertos.delete(grupoId); sidebarGruposFechados.add(grupoId); }
+    else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
     renderApp();
   }
@@ -6345,10 +5869,6 @@ document.addEventListener("click", async e => {
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
-  else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
-  else if(action === "exportar-backup") exportarBackup();
-  else if(action === "popular-dados-teste") modalDadosTeste("popular");
-  else if(action === "remover-dados-teste") modalDadosTeste("remover");
   else if(action === "dados-teste-executar"){
     const acaoTeste = el.dataset.acao, escopo = el.dataset.escopo;
     closeModal();
@@ -6798,6 +6318,8 @@ document.addEventListener("click", async e => {
     await saveMensagensModelo(); renderView(); showToast("Modelo excluído.");
   }
   else if(action === "envio-iniciar") iniciarFilaEnvioMassa();
+  else if(action === "envio-iniciar-auto") await enviarMassaAutomatico();
+  else if(action === "envio-auto-fechar"){ envioMassaAutoStatus = null; closeModal(); renderView(); }
   else if(action === "envio-fila-proximo"){
     const fila = envioMassaFila; if(!fila) return;
     const atual = fila.itens[fila.indice];
@@ -7082,6 +6604,66 @@ let envioMassaNegocioFiltro = "";
 let envioMassaModeloId = "";
 let envioMassaFila = null; // {itens:[{clienteId,nome,link}], indice, enviados:Set, pulados:Set} quando a fila está em andamento
 let envioMassaOcultarEnviados = false;
+// Envio automático de verdade (via Z-API, ver função Edge "enviar-whatsapp")
+// — sem precisar abrir o WhatsApp e clicar "Enviar" um por um.
+let envioMassaAutoStatus = null; // {total, feito, sucesso:[], falha:[], emAndamento}
+async function chamarWhatsAppAuto(telefoneDigits, mensagem){
+  try{
+    const { data, error } = await supabaseClient.functions.invoke("enviar-whatsapp", { body: { telefone: telefoneDigits, mensagem } });
+    if(error) throw error;
+    if(data && data.error) throw new Error(data.error);
+    return { ok:true };
+  }catch(e){
+    return { ok:false, msg: e.message || String(e) };
+  }
+}
+async function enviarMassaAutomatico(){
+  const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId);
+  if(!modeloAtual){ showToast("Escolha um modelo de mensagem.", "error"); return; }
+  const sel = bulkSet("envio_massa");
+  const clientes = clientesParaEnvio(envioMassaNegocioFiltro).filter(c => sel.has(c.id) && waDigits(c.whatsapp||c.telefone));
+  if(!clientes.length){ showToast("Selecione ao menos um contato com WhatsApp/telefone cadastrado.", "error"); return; }
+  if(!confirm(`Enviar automaticamente pro WhatsApp de ${clientes.length} contato(s) agora, sem precisar abrir/clicar em nada? Isso usa sua conta do WhatsApp conectada.`)) return;
+
+  envioMassaAutoStatus = { total: clientes.length, feito: 0, sucesso: [], falha: [], emAndamento: true };
+  renderAutoEnvioModal();
+  for(const c of clientes){
+    const nome = cliNome(c);
+    const fone = waDigits(c.whatsapp||c.telefone);
+    const resultado = await chamarWhatsAppAuto(fone, modeloAtual.texto);
+    if(resultado.ok){
+      envioMassaAutoStatus.sucesso.push(nome);
+      state.cliMensagensEnviadas.push({ id: uid("msgenv"), clienteId: c.id, modeloId: modeloAtual.id, modeloNome: modeloAtual.nome, data: todayISO() });
+      await saveCliMensagensEnviadas();
+    }else{
+      envioMassaAutoStatus.falha.push(`${nome}: ${resultado.msg}`);
+    }
+    envioMassaAutoStatus.feito++;
+    renderAutoEnvioModal();
+    // Pequena pausa entre envios — não sobrecarrega e evita risco de bloqueio
+    // por disparo em rajada.
+    await new Promise(r => setTimeout(r, 1200));
+  }
+  envioMassaAutoStatus.emAndamento = false;
+  renderAutoEnvioModal();
+}
+function renderAutoEnvioModal(){
+  const st = envioMassaAutoStatus;
+  if(!st) return;
+  closeModal(); // openModal() empilha — sem isso, cada atualização de progresso abriria um modal novo por cima
+  const pct = st.total ? Math.round((Math.min(st.feito,st.total)/st.total)*100) : 0;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">⚡ Envio automático</div>${!st.emAndamento ? `<button class="modal-close" data-action="envio-auto-fechar">✕</button>` : ""}</div>
+    <div class="modal-body">
+      <div style="font-size:14px; margin-bottom:10px;">${st.emAndamento ? `Enviando ${Math.min(st.feito+1,st.total)} de ${st.total}...` : `Concluído: ${st.sucesso.length} enviado(s), ${st.falha.length} falharam, de ${st.total}.`}</div>
+      <div style="height:6px; background:var(--muted-bg); border-radius:4px; overflow:hidden; margin-bottom:12px;">
+        <div style="height:100%; width:${pct}%; background:var(--accent); transition:width .3s;"></div>
+      </div>
+      ${st.falha.length ? `<div class="field-help" style="color:var(--neg);">Falharam: ${st.falha.map(esc).join("; ")}</div>` : ""}
+    </div>
+    ${!st.emAndamento ? `<div class="modal-foot"><button type="button" class="btn btn-primary" data-action="envio-auto-fechar">Fechar</button></div>` : ""}
+  `);
+}
 // Mapa clienteId -> lançamentos em aberto (Receita, não Pago) — cobrança de
 // contrato já vem com clienteId; a gerada a partir de chamado só tem
 // chamadoId, então resolve o cliente por esse caminho também (mesma lógica
@@ -7186,7 +6768,7 @@ function viewCliEnvioMassa(){
   }).join("");
   const qtdSelecionados = Array.from(sel).length;
   return `
-    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois é só ir enviando pelo WhatsApp, um por um.</div></div></div>
+    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-body">
       <div class="field-row">
         <div class="field"><label>Negócio</label><select id="envioNegocioSelect"><option value="">Todos os negócios</option>${negOptions}</select></div>
@@ -7201,7 +6783,8 @@ function viewCliEnvioMassa(){
         <div class="panel-title">Contatos (${lista.length}) — ${qtdSelecionados} selecionado(s)</div>
         <div style="display:flex; gap:8px;">
           ${idsVencidos.length ? `<button class="btn btn-ghost btn-sm" data-action="envio-selecionar-vencidos" title="Marca só quem está com pagamento vencido">🔴 Selecionar vencidos (${idsVencidos.length})</button>` : ""}
-          <button class="btn btn-primary btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"}>📤 Iniciar envio</button>
+          <button class="btn btn-ghost btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Abre o WhatsApp um contato de cada vez — você clica em Enviar lá dentro">📤 Enviar manual</button>
+          <button class="btn btn-primary btn-sm" data-action="envio-iniciar-auto" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Envia sozinho pra todos os selecionados, sem precisar abrir o WhatsApp (precisa do WhatsApp automático configurado)">⚡ Enviar automático</button>
         </div>
       </div>
       <div class="panel-body">
