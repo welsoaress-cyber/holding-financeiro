@@ -795,7 +795,7 @@ function restaurarNavegacaoSalva(){
     const mod = MODULOS_CATALOGO.find(m => m.id === salvo.moduloAtivo);
     if(!mod || !mod.ativo) return; // módulo não existe mais ou ainda não foi liberado
     const view = VIEWS_FALLBACK_RESTAURACAO[salvo.view] || salvo.view;
-    if(!VIEWS_VALIDAS.has(view)) return;
+    if(!VIEWS_VALIDAS.has(view) && !view.startsWith("negocio_")) return; // "negocio_<id>" é dinâmico, não dá pra listar fixo
     state.moduloAtivo = mod.id;
     state.view = view;
   }catch(e){ /* localStorage corrompido/indisponível — ignora e mantém o padrão */ }
@@ -1913,93 +1913,35 @@ function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-function setView(v){ state.view = v; renderApp(); }
+// Descobre a que módulo uma view pertence — necessário agora que o menu
+// lateral mostra TUDO junto (sem mais aquele seletor de "Módulos" no
+// topo pra trocar). state.moduloAtivo continua existindo por baixo dos
+// panos porque várias coisas dependem dele (backup/dados de teste por
+// módulo, mensagens de permissão) — só que agora é inferido pela view
+// clicada, em vez de escolhido manualmente antes de navegar.
+function moduloDaView(view){
+  if(view.startsWith("vg_")) return "visaogeral";
+  if(view === "cadastro_hub") return "cadastro";
+  if(view.startsWith("est_")) return "estoque";
+  if(view.startsWith("cli_")) return "clientes";
+  if(view.startsWith("rh_")) return "rh";
+  if(view.startsWith("cv_")) return "comprasvendas";
+  return "financeiro";
+}
+function setView(v){ state.view = v; state.moduloAtivo = moduloDaView(v); renderApp(); }
 
 /* =========================================================================
    BARRA DE MÓDULOS
 ========================================================================= */
+// Antes tinha um botão "Módulos" aqui que trocava o conteúdo inteiro da
+// barra lateral — removido: agora a barra lateral (sidebarConteudo) mostra
+// todos os módulos de uma vez, em grupos que abrem/fecham, então esse
+// seletor virou redundante. Só sobrou a faixa de marca no desktop (no
+// celular quem já cobre isso é o .mob-topbar).
 function renderModbar(){
   const wrap = document.getElementById("modbarWrap");
   if(!wrap || !state.user) return;
-  const moduloAtual = MODULOS_CATALOGO.find(m => m.id === state.moduloAtivo) || MODULOS_CATALOGO[0];
-  const moduloCards = MODULOS_CATALOGO.map(m => {
-    const semAcesso = MODULOS_GRANULARES.includes(m.id) && !podeVerModulo(m.id);
-    const bloqueado = !m.ativo || semAcesso;
-    const rotulo = !m.ativo ? "em breve" : semAcesso ? "sem acesso" : "";
-    return `
-    <div class="modcard ${m.id === state.moduloAtivo ? 'active' : ''} ${bloqueado ? 'soon' : ''}" data-action="abrir-modulo" data-id="${m.id}" title="${!m.ativo ? 'Em breve' : semAcesso ? 'Esse usuário não tem acesso a esse módulo' : ''}">
-      <div class="modcard-ico">${m.ico}</div>
-      <div class="modcard-nome">${m.nome}${rotulo ? ` <span style="font-size:9px; color:rgba(255,255,255,.3); font-weight:400;">${rotulo}</span>` : ''}</div>
-      <div class="modcard-desc">${m.desc}</div>
-    </div>`;
-  }).join("");
-  wrap.innerHTML = `
-    <div class="modbar">
-      <div class="modbar-logo"><span class="dot"></span>Holding</div>
-      <button class="modbar-btn ${state.modpanelAberto ? 'active' : ''}" id="btnModulos">⊞ Módulos</button>
-      <span style="font-size:12px; color:rgba(255,255,255,.4); margin-left:4px;">${moduloAtual.ico} ${moduloAtual.nome}</span>
-      <div class="modpanel ${state.modpanelAberto ? 'open' : ''}" id="modPanel">
-        <div class="modpanel-title">Selecione o módulo</div>
-        <div class="modpanel-grid">${moduloCards}</div>
-      </div>
-    </div>
-  `;
-  // Mobile panel (under mob-topbar): inject a floating layer below the topbar
-  const mobPanel = document.getElementById("mobModulosPanel");
-  if(mobPanel) mobPanel.remove();
-  if(state.modpanelAberto){
-    const mobilePanel = document.createElement("div");
-    mobilePanel.id = "mobModulosPanel";
-    mobilePanel.style.cssText = "position:fixed; top:48px; left:0; right:0; z-index:160; background:var(--brand-2); border-bottom:1px solid rgba(255,255,255,.08); padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.4);";
-    mobilePanel.innerHTML = `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);font-weight:600;margin-bottom:10px;">Selecione o módulo</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${moduloCards}</div>`;
-    document.body.appendChild(mobilePanel);
-    // Wire card clicks on mobile panel
-    mobilePanel.querySelectorAll(".modcard").forEach(card => card.addEventListener("click", () => {
-      const modId = card.dataset.id; if(!modId) return;
-      const mod = MODULOS_CATALOGO.find(m=>m.id===modId);
-      if(!mod||!mod.ativo){ showToast("Módulo em construção.","error"); return; }
-      if(MODULOS_GRANULARES.includes(modId) && !podeVerModulo(modId)){ showToast("Esse usuário não tem acesso a esse módulo.","error"); return; }
-      state.modpanelAberto = false; mobilePanel.remove();
-      state.moduloAtivo = modId;
-      if(modId==="visaogeral") state.view="vg_executivo";
-      else if(modId==="cadastro") state.view="cadastro_hub";
-      else if(modId==="financeiro") state.view="dashboard";
-      else if(modId==="estoque") state.view="est_dashboard";
-      else if(modId==="clientes") state.view="cli_dashboard";
-      else if(modId==="rh") state.view="rh_dashboard";
-      else if(modId==="comprasvendas") state.view="cv_lista";
-      renderApp();
-    }));
-    // Close on tap outside
-    setTimeout(() => {
-      document.addEventListener("click", function fecharMob(ev){
-        const btn = document.getElementById("mobModulosBtn");
-        if(!mobilePanel.contains(ev.target) && btn && !btn.contains(ev.target)){
-          state.modpanelAberto = false;
-          mobilePanel.remove();
-          document.removeEventListener("click", fecharMob);
-        }
-      });
-    }, 50);
-  }
-  document.getElementById("btnModulos")?.addEventListener("click", e => {
-    e.stopPropagation();
-    state.modpanelAberto = !state.modpanelAberto;
-    renderModbar();
-  });
-  if(state.modpanelAberto){
-    setTimeout(() => {
-      document.addEventListener("click", function fechar(ev){
-        const panel = document.getElementById("modPanel");
-        const btn = document.getElementById("btnModulos");
-        if(panel && !panel.contains(ev.target) && btn && !btn.contains(ev.target)){
-          state.modpanelAberto = false;
-          renderModbar();
-          document.removeEventListener("click", fechar);
-        }
-      });
-    }, 50);
-  }
+  wrap.innerHTML = `<div class="modbar"><div class="modbar-logo"><span class="dot"></span>Holding</div></div>`;
 }
 
 function renderApp(){
@@ -2025,83 +1967,13 @@ function renderApp(){
         <span></span><span></span><span></span>
       </button>
       <div class="mob-logo"><span class="dot"></span>Holding</div>
-      <div style="margin-left:auto; font-size:10px; color:rgba(255,255,255,.35); font-family:var(--font-mono);">${state.moduloAtivo==="cadastro"?"🗂️":state.moduloAtivo==="estoque"?"📦":state.moduloAtivo==="clientes"?"👥":state.moduloAtivo==="rh"?"🏢":"💰"}</div>
-      <button id="mobModulosBtn" style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:6px; color:rgba(255,255,255,.7); font-size:11px; padding:4px 10px; cursor:pointer; font-family:var(--font-ui);">⊞</button>
     </div>
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="mainSidebar">
-      <div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">${master ? (state.moduloAtivo === "visaogeral" ? "🧭 visão geral" : state.moduloAtivo === "cadastro" ? "🗂️ cadastro" : state.moduloAtivo === "estoque" ? "📦 estoque" : state.moduloAtivo === "clientes" ? "👥 clientes" : state.moduloAtivo === "rh" ? "🏢 rh" : state.moduloAtivo === "comprasvendas" ? "🔄 compra e venda" : "💰 financeiro") : `perfil: ${esc(state.perfilAtivo.nome)}`}</div>
+      ${!master ? `<div class="brand-sub" style="padding:0 10px 10px; font-size:10px; color:rgba(255,255,255,.3); font-family:var(--font-mono);">perfil: ${esc(state.perfilAtivo.nome)}</div>` : ""}
 
-      ${state.moduloAtivo === "visaogeral" ? `
-        <div class="nav-group-label">Visão Geral</div>
-        ${navItem("vg_executivo","🎯","Executivo")}
-        ${navItem("vg_sintetico","🧭","Sintético")}
-        ${navItem("vg_analitico","📊","Analítico")}
-      ` : state.moduloAtivo === "cadastro" ? `
-        <div class="nav-group-label">Cadastro</div>
-        ${navItem("cadastro_hub","🗂️","Central de Cadastros")}
-      ` : state.moduloAtivo === "estoque" ? `
-        <div class="nav-group-label">Estoque</div>
-        ${navItem("est_dashboard","◆","Dashboard")}
-        ${navItem("est_produtos","📦","Produtos")}
-        ${navItem("est_compras","📄","Compras (NF)")}
-        ${navItem("est_movimentos","↕","Movimentações")}
-        ${navItem("est_fornecedores","🏭","Fornecedores")}
-        ${navItem("est_alertas","🔔","Alertas de Estoque")}
-      ` : state.moduloAtivo === "clientes" ? `
-        <div class="nav-group-label">Clientes</div>
-        ${navItem("cli_dashboard","◆","Dashboard")}
-        ${navItem("cli_lista","👥","Todos os Clientes")}
-        ${navItem("cli_planos","📋","Planos")}
-        ${navItem("cli_orcamentos","📝","Orçamentos")}
-        ${navItem("cli_os_lista","🔧","Ordens de Serviço")}
-        <div class="nav-group-label">Atendimento técnico</div>
-        ${navItem("cli_chamados","📞","Chamados")}
-        ${navItem("cli_tecnicos","🧰","Técnicos")}
-        <div class="nav-group-label">Comunicação</div>
-        ${navItem("cli_envio_massa","📤","Enviar mensagens")}
-        ${navItem("cli_mensagens","💬","Modelos de mensagem")}
-      ` : state.moduloAtivo === "rh" ? `
-        <div class="nav-group-label">RH</div>
-        ${navItem("rh_dashboard","◆","Dashboard")}
-        ${navItem("rh_funcionarios","🧑‍💼","Funcionários")}
-        ${navItem("rh_cargos","🏷️","Cargos")}
-        ${navItem("rh_folha","💵","Folha de Pagamento")}
-        ${navItem("rh_ferias","🏖️","Férias")}
-        ${navItem("rh_alertas","🔔","Alertas")}
-      ` : state.moduloAtivo === "comprasvendas" ? `
-        <div class="nav-group-label">Compra e Venda</div>
-        ${navItem("cv_lista","🔄","Itens")}
-      ` : `
-      ${master ? `
-      <div class="nav-group-label">Visão geral</div>
-      ${navItem("dashboard","◆","Dashboard")}
-      ` : ""}
-
-      <div class="nav-group-label">Contas Bancárias</div>
-      ${master ? navItem("contas","▢","Contas") : ""}
-      ${master ? navItem("cartoes","💳","Cartões de Crédito") : ""}
-      ${navItem("lancamentos","≡","Todos os Lançamentos")}
-      ${navItem("receitas","📥","Contas a Receber")}
-      ${navItem("despesas","📤","Contas a Pagar")}
-      ${navItem("transferencias","⇄","Transferências")}
-      ${master ? navSubmenuAjustes() : ""}
-      ${master ? navItem("usuarios","👤","Usuários") : ""}
-
-      ${master ? `
-      <div class="nav-group-label">Relatórios</div>
-      ${navItem("rel_fluxo","💵","Fluxo de Caixa")}
-      ${navItem("rel_dre","📑","DRE")}
-      ` : ""}
-
-      ${master ? `
-      <div class="nav-group-label">Em construção</div>
-      ${navItemSoon("Contas Fixas")}
-      ${navItemSoon("Carteira")}
-      ${navItemSoon("Rateio de Despesas")}
-      ` : ""}
-      `}
+      ${sidebarConteudo()}
 
       <div class="sidebar-footer">
         ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
@@ -2170,16 +2042,19 @@ function renderApp(){
   const sidebarOverlay = document.getElementById("sidebarOverlay");
   function openDrawer(){ mainSidebar?.classList.add("open"); sidebarOverlay?.classList.add("open"); document.body.style.overflow = "hidden"; }
   function closeDrawer(){ mainSidebar?.classList.remove("open"); sidebarOverlay?.classList.remove("open"); document.body.style.overflow = ""; }
+  // Expandir/fechar um grupo do menu (toggle-nav-grupo) passou por aqui: o
+  // drawer estava aberto antes desse re-render e deve continuar aberto.
+  if(drawerAbertoAntes){ drawerAbertoAntes = false; openDrawer(); }
   mobMenuBtn?.addEventListener("click", () => mainSidebar?.classList.contains("open") ? closeDrawer() : openDrawer());
   document.getElementById("mobMenuBtn2")?.addEventListener("click", () => mainSidebar?.classList.contains("open") ? closeDrawer() : openDrawer());
   sidebarOverlay?.addEventListener("click", closeDrawer);
-  // Close drawer on nav-item tap (mobile UX)
-  mainSidebar?.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => { if(window.innerWidth < 900) closeDrawer(); }));
-  // Mobile modules button — reuses the modbar panel logic
-  document.getElementById("mobModulosBtn")?.addEventListener("click", () => {
-    state.modpanelAberto = !state.modpanelAberto;
-    renderModbar();
-  });
+  // Close drawer on nav-item tap (mobile UX) — mas não quando é só abrir/
+  // fechar um grupo (senão expandir "Financeiro" no celular fechava o
+  // menu inteiro em vez de mostrar os itens de dentro).
+  mainSidebar?.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => {
+    if(el.dataset.action === "toggle-nav-grupo" || el.dataset.action === "toggle-ajustes-menu") return;
+    if(window.innerWidth < 900) closeDrawer();
+  }));
   // ---- Botão flutuante "+" ----
   const fabBtn = document.getElementById("fabBtn");
   const fabMenu = document.getElementById("fabMenu");
@@ -2205,6 +2080,120 @@ function navItem(view, icon, label){
   return `<div class="nav-item ${active}" data-action="nav" data-view="${view}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
+}
+// Menu de primeiro nível, colapsável — o menu lateral inteiro agora é uma
+// lista desses (Visão / Financeiro / Projetos / Estoque / Clientes / RH /
+// Compra e Venda / Cadastro), sempre todos visíveis, em vez do seletor de
+// "Módulos" que trocava o conteúdo inteiro da barra lateral. O grupo que
+// contém a view atual abre sozinho; os outros ficam fechados até o usuário
+// clicar (guardado em sidebarGruposAbertos, só na sessão — não precisa
+// sobreviver a um F5, reabre pela view atual de qualquer jeito).
+let sidebarGruposAbertos = new Set();
+// renderApp() sempre desenha o menu lateral já fechado (é uma trava de
+// segurança pra nunca deixar a rolagem travada — ver comentário lá dentro).
+// Isso é ótimo pra navegação de verdade, mas expandir/fechar um grupo do
+// menu (ex: tocar em "Financeiro" pra ver os submenus) também passa por um
+// renderApp() completo, e sem isso o menu fecharia sozinho no celular só
+// por abrir um grupo. Essa flag deixa o toggle avisar "eu já estava aberto,
+// continua aberto" antes de chamar renderApp().
+let drawerAbertoAntes = false;
+function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
+  const contemViewAtual = viewsDoGrupo.includes(state.view);
+  const aberto = sidebarGruposAbertos.has(id) || contemViewAtual;
+  return `
+    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" style="cursor:pointer;">
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
+      <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
+    </div>
+    ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${itensHTML}</div>` : ""}
+  `;
+}
+// Menu lateral inteiro, todos os módulos juntos (Visão / Financeiro /
+// Projetos / Estoque / Clientes / RH / Compra e Venda / Cadastro), cada um
+// como um grupo que abre/fecha — substitui o antigo seletor de "Módulos"
+// que trocava o conteúdo inteiro da barra lateral por um só módulo de
+// cada vez. Cada grupo aqui replica exatamente os itens/permissões que já
+// existiam na versão antiga daquele módulo, só reorganizados.
+function sidebarConteudo(){
+  const master = ehMaster();
+  const grupos = [];
+
+  grupos.push(navGrupo("visao", "🧭", "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
+    navItem("vg_executivo","🎯","Executiva"),
+    navItem("vg_sintetico","🧭","Sintética"),
+    navItem("vg_analitico","📊","Analítica"),
+  ].join("")));
+
+  const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre"];
+  grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
+    master ? navItem("dashboard","◆","Dashboard") : "",
+    master ? navItem("contas","▢","Contas") : "",
+    master ? navItem("cartoes","💳","Cartões de Crédito") : "",
+    navItem("lancamentos","≡","Todos os Lançamentos"),
+    navItem("receitas","📥","Contas a Receber"),
+    navItem("despesas","📤","Contas a Pagar"),
+    navItem("transferencias","⇄","Transferências"),
+    master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
+    master ? navItem("rel_dre","📑","DRE") : "",
+    master ? navSubmenuAjustes() : "",
+    master ? navItem("usuarios","👤","Usuários") : "",
+  ].join("")));
+
+  const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
+  if(negociosVisiveis.length){
+    grupos.push(navGrupo("projetos", "📋", "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
+      <div class="nav-item ${state.view==="negocio_"+n.id?"active":""}" data-action="nav" data-view="negocio_${n.id}">
+        <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
+      </div>`).join("")));
+  }
+
+  if(podeVerModulo("estoque")){
+    grupos.push(navGrupo("estoque", "📦", "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
+      navItem("est_dashboard","◆","Dashboard"),
+      navItem("est_produtos","📦","Produtos"),
+      navItem("est_compras","📄","Compras (NF)"),
+      navItem("est_movimentos","↕","Movimentações"),
+      navItem("est_fornecedores","🏭","Fornecedores"),
+      navItem("est_alertas","🔔","Alertas de Estoque"),
+    ].join("")));
+  }
+
+  if(podeVerModulo("clientes")){
+    grupos.push(navGrupo("clientes", "👥", "Clientes", ["cli_dashboard","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
+      navItem("cli_dashboard","◆","Dashboard"),
+      navItem("cli_lista","👥","Todos os Clientes"),
+      navItem("cli_planos","📋","Planos"),
+      navItem("cli_orcamentos","📝","Orçamentos"),
+      navItem("cli_os_lista","🔧","Ordens de Serviço"),
+      navItem("cli_chamados","📞","Chamados"),
+      navItem("cli_tecnicos","🧰","Técnicos"),
+      navItem("cli_envio_massa","📤","Enviar mensagens"),
+      navItem("cli_mensagens","💬","Modelos de mensagem"),
+    ].join("")));
+  }
+
+  if(podeVerModulo("rh")){
+    grupos.push(navGrupo("rh", "🏢", "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
+      navItem("rh_dashboard","◆","Dashboard"),
+      navItem("rh_funcionarios","🧑‍💼","Funcionários"),
+      navItem("rh_cargos","🏷️","Cargos"),
+      navItem("rh_folha","💵","Folha de Pagamento"),
+      navItem("rh_ferias","🏖️","Férias"),
+      navItem("rh_alertas","🔔","Alertas"),
+    ].join("")));
+  }
+
+  grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
+  grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub"], navItem("cadastro_hub","🗂️","Central de Cadastros")));
+
+  const construcao = master ? `
+    <div class="nav-group-label">Em construção</div>
+    ${navItemSoon("Contas Fixas")}
+    ${navItemSoon("Carteira")}
+    ${navItemSoon("Rateio de Despesas")}
+  ` : "";
+
+  return grupos.join("") + construcao;
 }
 const AJUSTES_SUBVIEWS = ["ajustes","categorias","negocios"];
 function navSubmenuAjustes(){
@@ -2235,6 +2224,7 @@ function renderView(){
   const main = document.getElementById("mainArea");
   if(!main) return;
   if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
+  else if(state.view.startsWith("negocio_")) main.innerHTML = viewNegocioTudo(state.view.slice(8));
   else if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
   else if(state.view === "cadastro_hub") main.innerHTML = viewCadastroHub();
@@ -2508,6 +2498,19 @@ function vgBlocoNegocio(n, inicioMesISO, fimMesISO){
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));">${cards.join("")}</div>
   </div>`;
+}
+// ---- Página "Projetos" — um negócio só, tudo relacionado a ele (mesmo
+// bloco que aparece na Visão Sintética, só que sozinho e com destaque). ----
+function viewNegocioTudo(negocioId){
+  const n = state.negocios.find(x => x.id === negocioId);
+  if(!n || !(ehMaster() || podeVerNegocio(n.nome))) return `<div class="page-header"><div><div class="page-title">Negócio não encontrado</div></div></div>${emptyState("Esse negócio não existe mais ou você não tem acesso a ele.")}`;
+  const hoje = new Date();
+  const inicioMesISO = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  const fimMesISO = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+  return `
+    <div class="page-header"><div><div class="page-title"><span class="tag-dot" style="background:${negocioCor(n.nome)}; display:inline-block; margin-right:8px;"></span>${esc(n.nome)}</div><div class="page-sub">Tudo relacionado a esse negócio, num só lugar — clique nos números pra ver a lista completa.</div></div></div>
+    ${vgBlocoNegocio(n, inicioMesISO, fimMesISO)}
+  `;
 }
 // ============================================================
 // VISÃO GERAL — EXECUTIVO: painel único pra decisão rápida (não pra
@@ -5815,6 +5818,12 @@ document.addEventListener("click", async e => {
     renderApp();
   }
   else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
+  else if(action === "toggle-nav-grupo"){
+    const grupoId = el.dataset.id;
+    if(sidebarGruposAbertos.has(grupoId)) sidebarGruposAbertos.delete(grupoId); else sidebarGruposAbertos.add(grupoId);
+    drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
+    renderApp();
+  }
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "switch-auth-tecnico"){ authMode = "tecnico"; renderApp(); }
