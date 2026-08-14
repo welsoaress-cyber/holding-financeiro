@@ -7154,17 +7154,17 @@ function viewCliLeads(){
                   <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
                 </td>
                 <td style="padding:0.7rem 0.75rem;color:var(--text-muted);white-space:nowrap;font-size:0.78rem">${fmtData(l.created_at)}</td>
-                <td style="padding:0.7rem 0.75rem;text-align:center;white-space:nowrap">
-                  <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap">
+                <td style="padding:0.7rem 0.75rem;text-align:center">
+                  <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center">
                     <button data-action="lead-wa" data-id="${l.id}"
                       title="Contatar no WhatsApp"
-                      style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.78rem;color:#4ADE80">📱 WA</button>
+                      style="width:100%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WhatsApp</button>
                     ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
-                      style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#FCD34D">Contatado</button>`:""}
+                      style="width:100%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓ Contatado</button>`:""}
                     ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
-                      style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#4ADE80">Convertido</button>`:""}
+                      style="width:100%;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">⭐ Convertido</button>`:""}
                     ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
-                      style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.3rem 0.55rem;cursor:pointer;font-size:0.75rem;color:#94A3B8">Descartar</button>`:""}
+                      style="width:100%;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#94A3B8;white-space:nowrap">✕ Descartar</button>`:""}
                   </div>
                 </td>
               </tr>`;
