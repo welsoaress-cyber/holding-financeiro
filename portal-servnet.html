@@ -34,7 +34,7 @@ a{color:inherit;}
 .f-input{padding:0.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
 .f-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
 .f-input::placeholder{color:var(--text-2);opacity:0.6;}
-.f-input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+/* date text input — sem calendário nativo */
 .login-btn{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:0.4rem;font-family:inherit;}
 .login-btn:hover:not(:disabled){opacity:0.88;transform:translateY(-1px);}
 .login-btn:disabled{opacity:0.55;cursor:default;}
@@ -132,7 +132,7 @@ a{color:inherit;}
     </div>
     <div class="f-group">
       <label class="f-label" for="nasc">Data de nascimento</label>
-      <input class="f-input" type="date" id="nasc">
+      <input class="f-input" type="text" id="nasc" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric" autocomplete="bday">
     </div>
     <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="loginErr"></div>
@@ -205,18 +205,28 @@ document.getElementById('cpf').addEventListener('input', e => {
   e.target.value=v;
 });
 
+// Data de nascimento mask — DD/MM/AAAA
+document.getElementById('nasc').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g,'').slice(0,8);
+  if(v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  e.target.value=v;
+});
+
 document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
 });
 
 async function doLogin(){
   const cpf = document.getElementById('cpf').value.replace(/\D/g,'');
-  const nasc = document.getElementById('nasc').value;
+  const nascRaw = document.getElementById('nasc').value.replace(/\D/g,'');
   const btn = document.getElementById('loginBtn');
   const err = document.getElementById('loginErr');
   err.classList.remove('show');
   if(cpf.length!==11){ showErr('Informe um CPF válido.'); return; }
-  if(!nasc){ showErr('Informe sua data de nascimento.'); return; }
+  if(nascRaw.length!==8){ showErr('Informe uma data de nascimento válida (DD/MM/AAAA).'); return; }
+  // converte DD/MM/AAAA → AAAA-MM-DD para o Supabase
+  const nasc = `${nascRaw.slice(4,8)}-${nascRaw.slice(2,4)}-${nascRaw.slice(0,2)}`;
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
   try{
     const {data,error} = await sb.rpc('portal_servnet_login',{p_cpf:cpf,p_nascimento:nasc});
