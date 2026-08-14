@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Holding — Painel Financeiro</title>
+<title>GrupoTom — Painel Financeiro</title>
 <!-- PWA: instalável na tela inicial, ícone e tela cheia sem barra do navegador -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F2045">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Holding">
+<meta name="apple-mobile-web-app-title" content="GrupoTom">
 <meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
@@ -2076,7 +2076,7 @@ function setView(v){ state.view = v; state.moduloAtivo = moduloDaView(v); render
 function renderModbar(){
   const wrap = document.getElementById("modbarWrap");
   if(!wrap || !state.user) return;
-  wrap.innerHTML = `<div class="modbar"><div class="modbar-logo"><span class="dot"></span>Holding <span style="opacity:.35; font-weight:400; font-size:11px;">v${APP_VERSION}</span></div></div>`;
+  wrap.innerHTML = `<div class="modbar"><div class="modbar-logo"><span class="dot"></span>GrupoTom <span style="opacity:.35; font-weight:400; font-size:11px;">v${APP_VERSION}</span></div></div>`;
 }
 
 function renderApp(){
@@ -2101,7 +2101,7 @@ function renderApp(){
       <button class="mob-menu-btn" id="mobMenuBtn" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>
-      <div class="mob-logo"><span class="dot"></span>Holding <span style="opacity:.4; font-weight:400; font-size:10px;">v${APP_VERSION}</span></div>
+      <div class="mob-logo"><span class="dot"></span>GrupoTom <span style="opacity:.4; font-weight:400; font-size:10px;">v${APP_VERSION}</span></div>
     </div>
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
