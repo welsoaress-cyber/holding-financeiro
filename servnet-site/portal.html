@@ -110,18 +110,76 @@ a{color:inherit;}
 .sup-info a{color:var(--pool);text-decoration:none;}
 
 /* ===== FIDELIDADE ===== */
-.stamps-wrap{margin:0.75rem 0 0.5rem;}
-.stamps-section{margin-bottom:0.5rem;}
-.stamps-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);margin-bottom:0.4rem;}
-.stamps-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;}
-.stamp{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--surface);transition:all 0.2s;}
-.stamp.ok{background:rgba(16,185,129,0.13);border-color:#34D399;}
-.stamp.premio-ok{background:rgba(245,158,11,0.15);border-color:#FCD34D;}
-.stamp.premio-empty{border-color:rgba(245,158,11,0.3);border-style:dashed;}
-.fidel-bar-wrap{margin:0.85rem 0 0.5rem;}
+.fidel-card{background:linear-gradient(135deg,rgba(0,196,216,0.04) 0%,transparent 60%);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1rem;margin:0.5rem 0 0.75rem;}
+.fidel-phase-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.65rem;}
+.fidel-phase-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:800;flex-shrink:0;}
+.fidel-phase-num.p1{background:rgba(0,196,216,0.2);color:var(--pool);}
+.fidel-phase-num.p2{background:rgba(245,158,11,0.2);color:#FCD34D;}
+.fidel-phase-title{font-size:0.78rem;font-weight:700;color:var(--text);}
+.fidel-phase-prize{margin-left:auto;font-size:0.72rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;white-space:nowrap;}
+.fidel-phase-prize.p1{background:rgba(0,196,216,0.1);color:var(--pool);border:1px solid rgba(0,196,216,0.25);}
+.fidel-phase-prize.p2{background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
+/* Grade de selos */
+.stamps-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-bottom:0.4rem;}
+.stamp{
+  aspect-ratio:1;border-radius:10px;border:2px solid;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;transition:all 0.25s;cursor:default;
+  overflow:hidden;
+}
+/* estado vazio */
+.stamp.empty{
+  border-color:rgba(0,196,216,0.15);border-style:dashed;
+  background:rgba(0,196,216,0.02);
+}
+.stamp.empty .s-num{color:rgba(0,196,216,0.2);font-size:0.9rem;font-weight:800;}
+/* pago em dia */
+.stamp.ok{
+  border-color:#10B981;border-style:solid;
+  background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(16,185,129,0.08) 100%);
+  box-shadow:0 0 10px rgba(16,185,129,0.2),inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.stamp.ok .s-check{color:#34D399;font-size:1.1rem;line-height:1;}
+.stamp.ok .s-num{color:rgba(52,211,153,0.5);font-size:0.55rem;font-weight:700;margin-top:1px;}
+/* marco 6 — vazio */
+.stamp.m6-empty{
+  border-color:rgba(0,196,216,0.3);border-style:dashed;
+  background:rgba(0,196,216,0.04);
+}
+.stamp.m6-empty .s-icon{font-size:1rem;opacity:0.4;}
+.stamp.m6-empty .s-num{color:rgba(0,196,216,0.3);font-size:0.55rem;font-weight:700;}
+/* marco 6 — conquistado */
+.stamp.m6-ok{
+  border-color:var(--pool);border-style:solid;
+  background:linear-gradient(135deg,rgba(0,196,216,0.22) 0%,rgba(0,196,216,0.08) 100%);
+  box-shadow:0 0 14px rgba(0,196,216,0.35),inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.stamp.m6-ok .s-icon{font-size:1.1rem;}
+.stamp.m6-ok .s-num{color:rgba(0,196,216,0.5);font-size:0.55rem;font-weight:700;}
+/* marco 12 — vazio */
+.stamp.m12-empty{
+  border-color:rgba(245,158,11,0.3);border-style:dashed;
+  background:rgba(245,158,11,0.03);
+}
+.stamp.m12-empty .s-icon{font-size:1rem;opacity:0.4;}
+.stamp.m12-empty .s-num{color:rgba(245,158,11,0.3);font-size:0.55rem;font-weight:700;}
+/* marco 12 — conquistado */
+.stamp.m12-ok{
+  border-color:#F59E0B;border-style:solid;
+  background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(245,158,11,0.08) 100%);
+  box-shadow:0 0 16px rgba(245,158,11,0.4),inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.stamp.m12-ok .s-icon{font-size:1.1rem;}
+.stamp.m12-ok .s-num{color:rgba(245,158,11,0.5);font-size:0.55rem;font-weight:700;}
+/* separador entre fases */
+.fidel-separator{display:flex;align-items:center;gap:0.5rem;margin:0.65rem 0;font-size:0.72rem;color:var(--text-2);}
+.fidel-separator::before,.fidel-separator::after{content:'';flex:1;height:1px;background:var(--border);}
+/* barra de progresso */
+.fidel-bar-wrap{margin:0.75rem 0 0.5rem;}
 .fidel-bar-labels{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-2);margin-bottom:0.3rem;}
 .fidel-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
 .fidel-bar-fill{height:100%;background:linear-gradient(90deg,var(--pos),var(--pool));border-radius:4px;transition:width 0.6s ease;}
+/* pill de prêmio */
 .premio-pill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border-radius:8px;font-size:0.86rem;margin-top:0.5rem;}
 .premio-pill.next{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#FCD34D;}
 .premio-pill.earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34D399;}
@@ -160,6 +218,10 @@ a{color:inherit;}
 .rules-box li{font-size:0.82rem;color:var(--text-2);line-height:1.55;}
 .rules-box li strong{color:var(--text);}
 .rules-box .rules-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--pool);margin-bottom:0.5rem;font-weight:700;}
+
+/* aviso boleto */
+.boleto-notice{display:flex;align-items:center;gap:0.55rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.22);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1.1rem;font-size:0.8rem;color:#FCD34D;}
+.boleto-notice svg{flex-shrink:0;opacity:0.85;}
 
 /* utils */
 .muted{color:var(--text-2);font-size:0.9rem;line-height:1.65;}
