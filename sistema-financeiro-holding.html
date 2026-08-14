@@ -749,12 +749,115 @@ const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","carto
 const TABELAS_FLAT = new Set(["contas","categorias","negocios"]);
 const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuários — mude assim que possível
 
+/* =========================================================================
+   LOG DE AUDITORIA — registra sozinho tudo que passa por saveRows/deleteRow
+   (ou seja, quase todo o sistema: lançamentos, cadastros de estoque/clientes/
+   RH, usuários, etc.), sem precisar mexer em cada tela uma por uma.
+
+   Como funciona: guardamos em "shadowTabelas" uma cópia do último estado
+   que sabemos que está gravado no Supabase, por tabela. Toda vez que uma
+   tela chama saveRows()/deleteRow(), comparamos o que está sendo salvo
+   agora contra essa cópia ANTES de gravar — a diferença vira o log
+   ("criar" se o id é novo, "editar" se mudou algo, "excluir" se sumiu) —
+   e só depois de gravar com sucesso é que atualizamos a cópia e escrevemos
+   o log. Registro do log nunca trava a ação real do usuário: se falhar
+   (ex: tabela do log ainda não existe), só avisa no console.
+========================================================================= */
+let shadowTabelas = {};
+// Mesmo par [tabela do Supabase, chave em state] usado por loadData() —
+// repetido aqui (em vez de extraído pra uma constante única) porque nasceu
+// de blocos diferentes de loadData() que já existiam antes desse recurso;
+// o que importa é que os dois fiquem em sincronia manualmente quando uma
+// tabela nova entrar no sistema.
+const TABELAS_LOG_CHAVES = [
+  ["contas","contas"],["lancamentos","lancamentos"],["ajustes","ajustes"],["categorias","categorias"],["negocios","negocios"],["cartoes","cartoes"],
+  ["perfis","perfis"],
+  ["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],
+  ["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],
+  ["compras_vendas","comprasVendas"],
+  ["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"],
+];
+const LOG_TABELA_LABEL = {
+  contas:"Conta", lancamentos:"Lançamento", ajustes:"Ajuste de saldo", categorias:"Categoria",
+  negocios:"Negócio", cartoes:"Cartão", perfis:"Usuário",
+  est_produtos:"Produto", est_movimentos:"Movimentação de estoque", est_fornecedores:"Fornecedor", est_compras:"Compra (NF)",
+  cli_clientes:"Cliente", cli_planos:"Plano", cli_orcamentos:"Orçamento", cli_os:"Ordem de serviço",
+  cli_tecnicos:"Técnico", cli_chamados:"Chamado", cli_mensagens_enviadas:"Mensagem enviada",
+  compras_vendas:"Compra/Venda", rh_funcionarios:"Funcionário", rh_cargos:"Cargo", rh_folha:"Folha de pagamento", rh_ferias:"Férias",
+};
+// Comparação estável (chaves em ordem fixa) — evita "falso positivo" de
+// diferença só por causa da ordem em que as propriedades foram inseridas.
+function jsonEstavel(valor){
+  if(Array.isArray(valor)) return "[" + valor.map(jsonEstavel).join(",") + "]";
+  if(valor && typeof valor === "object") return "{" + Object.keys(valor).sort().map(k => JSON.stringify(k)+":"+jsonEstavel(valor[k])).join(",") + "}";
+  return JSON.stringify(valor);
+}
+function atualizarShadow(tabela, items){
+  shadowTabelas[tabela] = (items||[]).map(x => JSON.parse(JSON.stringify(x)));
+}
+function snapshotShadowInicial(){
+  shadowTabelas = {};
+  TABELAS_LOG_CHAVES.forEach(([tabela, chave]) => atualizarShadow(tabela, state[chave]));
+}
+function calcularLogsSave(tabela, itemsDepois){
+  const mapAntes = new Map((shadowTabelas[tabela]||[]).map(x => [x.id, x]));
+  const entradas = [];
+  for(const item of itemsDepois){
+    const prev = mapAntes.get(item.id);
+    // Clona "item" AGORA — registrarLogs() só é escrito de fato depois
+    // (é fire-and-forget), e "item" é o objeto vivo dentro de state.X.
+    // Sem clonar, uma edição seguinte no mesmo registro (antes desse log
+    // terminar de gravar) contaminaria retroativamente o "depois" aqui.
+    if(!prev) entradas.push({ tabela, acao:"criar", registroId:item.id, antes:null, depois:JSON.parse(JSON.stringify(item)) });
+    else if(jsonEstavel(prev) !== jsonEstavel(item)) entradas.push({ tabela, acao:"editar", registroId:item.id, antes:prev, depois:JSON.parse(JSON.stringify(item)) });
+  }
+  return entradas;
+}
+function calcularLogsDelete(tabela, ids){
+  const mapAntes = new Map((shadowTabelas[tabela]||[]).map(x => [x.id, x]));
+  return ids.map(id => mapAntes.get(id)).filter(Boolean).map(prev => ({ tabela, acao:"excluir", registroId:prev.id, antes:prev, depois:null }));
+}
+// Quem fez a ação — cobre Master (com ou sem perfil secundário de mesmo
+// tipo "master" escolhido na tela compartilhada), Membro (login individual
+// ou compartilhado, dá no mesmo pro log) e Técnico.
+function autorAtual(){
+  if(state.modoTecnico && state.tecnicoAuthInfo) return { nome: state.tecnicoAuthInfo.nome || "Técnico", tipo: "tecnico" };
+  if(state.modoCliente && state.clienteAuthInfo) return { nome: state.clienteAuthInfo.nome || "Cliente", tipo: "cliente" };
+  if(state.perfilAtivo) return { nome: state.perfilAtivo.nome, tipo: state.perfilAtivo.tipo === "master" ? "master" : "membro" };
+  return { nome: "Master", tipo: "master" };
+}
+function descricaoRegistro(dados){
+  if(!dados) return "";
+  return dados.nome || dados.descricao || dados.titulo || dados.email || "";
+}
+async function registrarLogs(entradas){
+  if(!entradas || !entradas.length || !state.user) return;
+  try{
+    const autor = autorAtual();
+    const dono = donoAtual();
+    const rows = entradas.map(en => ({
+      id: uid("log"), user_id: dono,
+      autor_nome: autor.nome, autor_tipo: autor.tipo,
+      tabela: en.tabela, acao: en.acao, registro_id: en.registroId,
+      descricao: descricaoRegistro(en.depois || en.antes),
+      antes: en.antes, depois: en.depois,
+      criado_em: new Date().toISOString(),
+    }));
+    const { error } = await supabaseClient.from("logs_auditoria").insert(rows);
+    if(error) throw error;
+  }catch(e){
+    // "Melhor esforço": nunca trava a ação real do usuário por causa do log
+    // (ex: tabela de log ainda não criada no Supabase).
+    console.warn("[registrarLogs]", e.message||e);
+  }
+}
+
 // Versão do app — aparece do lado do logo "Holding" (topo do menu, desktop
 // e mobile). Serve pra você conferir rapidinho se o celular/navegador já
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.0.4";
+const APP_VERSION = "1.1.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -763,6 +866,7 @@ let state = {
   siteLeads: [],
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
+  logsAuditoria: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   modoTecnico: false, tecnicoAuthInfo: null,
   modoCliente: false, clienteAuthInfo: null,
@@ -781,7 +885,7 @@ const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
 const VIEWS_VALIDAS = new Set([
   "vg_sintetico","vg_analitico","vg_executivo",
   "cadastro_hub",
-  "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
+  "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios","logs_auditoria",
   "rel_fluxo","rel_dre",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
   "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe","cli_mensagens","cli_envio_massa",
@@ -1003,6 +1107,7 @@ function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","
 function fmtBRL(n){ n = Number(n)||0; return n.toLocaleString("pt-BR", {style:"currency", currency:"BRL"}); }
 function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ ••••••"; }
 function fmtDateBR(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
+function fmtDataHora(isoComHora){ if(!isoComHora) return "—"; return new Date(isoComHora).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function contaById(id){ return state.contas.find(c => c.id === id); }
 function cartaoById(id){ return state.cartoes.find(c => c.id === id); }
@@ -1310,10 +1415,13 @@ async function saveRows(table, items){
         ? { id, user_id: dono, ...rest, updated_at: new Date().toISOString() }
         : { id, user_id: dono, dados: rest, updated_at: new Date().toISOString() };
     });
+    const logs = calcularLogsSave(table, items);
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
     state.storageOK = true;
     state.ultimoSalvamento = new Date();
+    atualizarShadow(table, items);
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     state.storageOK = false;
     console.error(`[saveRows:${table}]`, e);
@@ -1325,8 +1433,11 @@ async function saveRows(table, items){
 async function deleteRow(table, id){
   if(!state.user || !id) return;
   try{
+    const logs = calcularLogsDelete(table, [id]);
     const { error } = await supabaseClient.from(table).delete().eq("id", id).eq("user_id", donoAtual());
     if(error) throw error;
+    shadowTabelas[table] = (shadowTabelas[table]||[]).filter(x => x.id !== id);
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     console.error(`[deleteRow:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
@@ -1337,8 +1448,11 @@ async function deleteRow(table, id){
 async function deleteRows(table, ids){
   if(!state.user || !ids || !ids.length) return;
   try{
+    const logs = calcularLogsDelete(table, ids);
     const { error } = await supabaseClient.from(table).delete().in("id", ids).eq("user_id", donoAtual());
     if(error) throw error;
+    shadowTabelas[table] = (shadowTabelas[table]||[]).filter(x => !ids.includes(x.id));
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     console.error(`[deleteRows:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
@@ -1549,6 +1663,23 @@ async function loadData(){
       state.siteLeads = [];
     }
 
+    // Logs de auditoria — só os mais recentes (a tabela só cresce, não faz
+    // sentido carregar tudo desde sempre a cada login).
+    try{
+      const { data, error } = await supabaseClient.from("logs_auditoria").select("*")
+        .eq("user_id", dono).order("criado_em", { ascending:false }).limit(500);
+      if(error) throw error;
+      state.logsAuditoria = data || [];
+    }catch(e){
+      console.warn("[loadData:logs_auditoria] tabela ainda não existe — rode o SQL de criação.", e.message||e);
+      state.logsAuditoria = [];
+    }
+
+    // A partir daqui, qualquer save/delete já compara contra o estado atual
+    // (snapshot) pra gerar o log — inclusive o próprio seed/auto-baixa logo
+    // abaixo, que também são mudanças reais e valem ser registradas.
+    snapshotShadowInicial();
+
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
     if(state.categorias.length === 0 && state.negocios.length === 0){
       state.categorias = seedCategorias();
@@ -1616,6 +1747,10 @@ async function loadDataTecnico(){
     }
     state.estMovimentos = [];
     state.storageOK = true;
+    // Snapshot pro log de auditoria — só as tabelas que o técnico de fato
+    // grava (fechar chamado, registrar material usado).
+    atualizarShadow("cli_chamados", state.cliChamados);
+    atualizarShadow("est_movimentos", state.estMovimentos);
   }catch(e){
     state.storageOK = false;
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
@@ -2064,7 +2199,7 @@ function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 // clicada, em vez de escolhido manualmente antes de navegar.
 function moduloDaView(view){
   if(view.startsWith("vg_")) return "visaogeral";
-  if(view === "cadastro_hub" || view === "usuarios") return "cadastro";
+  if(view === "cadastro_hub" || view === "usuarios" || view === "logs_auditoria") return "cadastro";
   if(view.startsWith("est_")) return "estoque";
   if(view.startsWith("cli_")) return "clientes";
   if(view.startsWith("rh_")) return "rh";
@@ -2169,7 +2304,7 @@ function renderApp(){
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa"];
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa","logs_auditoria"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
     state.view = "lancamentos";
   }
@@ -2334,9 +2469,10 @@ function sidebarConteudo(){
     grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
   }
   if(podeVerModulo("cadastro")){
-    grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios"], [
+    grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
       navItem("cadastro_hub","🗂️","Central de Cadastros"),
       master ? navItem("usuarios","👤","Usuários") : "",
+      master ? navItem("logs_auditoria","🕘","Logs de Auditoria") : "",
     ].join("")));
   }
 
@@ -2392,6 +2528,7 @@ function renderView(){
   else if(state.view === "categorias") main.innerHTML = viewCategorias();
   else if(state.view === "negocios") main.innerHTML = viewNegocios();
   else if(state.view === "usuarios") main.innerHTML = viewUsuarios();
+  else if(state.view === "logs_auditoria") main.innerHTML = viewLogsAuditoria();
   // ---- Módulo Estoque ----
   else if(state.view === "est_dashboard") main.innerHTML = viewEstDashboard();
   else if(state.view === "est_produtos") main.innerHTML = viewEstProdutos();
@@ -4236,6 +4373,94 @@ function viewUsuarios(){
       <tbody>${rows || `<tr><td colspan="3">${emptyState("Nenhum usuário criado ainda — só o Master existe.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
+}
+
+// ============================================================
+// LOGS DE AUDITORIA — "quem fez o quê, quando, como estava e como ficou".
+// Alimentado sozinho pelo saveRows()/deleteRow() (ver bloco lá em cima,
+// perto de donoAtual()) — essa parte aqui é só a tela de consulta.
+// ============================================================
+function badgeAcaoLog(acao){
+  if(acao === "criar") return `<span class="status-pill status-pago">+ Criado</span>`;
+  if(acao === "excluir") return `<span class="status-pill" style="background:var(--neg-bg); color:var(--neg);">🗑 Excluído</span>`;
+  return `<span class="status-pill status-agendado">✎ Editado</span>`;
+}
+function badgeAutorLog(tipo){
+  const label = tipo === "master" ? "👑 Master" : tipo === "tecnico" ? "🧰 Técnico" : tipo === "cliente" ? "👤 Cliente" : "🙋 Membro";
+  return `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3);">${label}</span>`;
+}
+function valorLegivel(v){
+  if(v === undefined || v === null || v === "") return "—";
+  if(typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function camposAlterados(antes, depois){
+  const chaves = new Set([...Object.keys(antes||{}), ...Object.keys(depois||{})]);
+  const linhas = [];
+  chaves.forEach(k => {
+    const a = antes ? antes[k] : undefined;
+    const d = depois ? depois[k] : undefined;
+    if(jsonEstavel(a) !== jsonEstavel(d)) linhas.push({ campo:k, antes:a, depois:d });
+  });
+  return linhas;
+}
+function viewLogsAuditoria(){
+  const logs = state.logsAuditoria || [];
+  const tabelasPresentes = [...new Set(logs.map(l=>l.tabela))].sort();
+  const autoresPresentes = [...new Set(logs.map(l=>l.autor_nome))].sort();
+  let lista = logs;
+  if(logsFiltro.tabela) lista = lista.filter(l => l.tabela === logsFiltro.tabela);
+  if(logsFiltro.acao) lista = lista.filter(l => l.acao === logsFiltro.acao);
+  if(logsFiltro.autor) lista = lista.filter(l => l.autor_nome === logsFiltro.autor);
+  const temFiltro = logsFiltro.tabela || logsFiltro.acao || logsFiltro.autor;
+
+  const rows = lista.map(l => `<tr>
+    <td style="white-space:nowrap; color:var(--ink-3); font-size:12.5px;">${fmtDataHora(l.criado_em)}</td>
+    <td>${badgeAutorLog(l.autor_tipo)} ${esc(l.autor_nome||"—")}</td>
+    <td>${badgeAcaoLog(l.acao)}</td>
+    <td>${esc(LOG_TABELA_LABEL[l.tabela]||l.tabela)}</td>
+    <td>${esc(l.descricao||"—")}</td>
+    <td><button class="icon-btn" data-action="ver-log-detalhe" data-id="${l.id}" title="Ver detalhes">👁</button></td>
+  </tr>`).join("");
+
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Logs de Auditoria</div><div class="page-sub">Tudo que foi criado, editado ou excluído no sistema — quem fez, quando, e como estava antes/depois. Mostrando os ${logs.length} registros mais recentes.</div></div>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <select data-action="logs-filtro-tabela"><option value="">Todas as áreas</option>${tabelasPresentes.map(t=>`<option value="${esc(t)}" ${logsFiltro.tabela===t?"selected":""}>${esc(LOG_TABELA_LABEL[t]||t)}</option>`).join("")}</select>
+        <select data-action="logs-filtro-acao"><option value="">Todas as ações</option><option value="criar" ${logsFiltro.acao==="criar"?"selected":""}>Criado</option><option value="editar" ${logsFiltro.acao==="editar"?"selected":""}>Editado</option><option value="excluir" ${logsFiltro.acao==="excluir"?"selected":""}>Excluído</option></select>
+        <select data-action="logs-filtro-autor"><option value="">Todos os autores</option>${autoresPresentes.map(a=>`<option value="${esc(a)}" ${logsFiltro.autor===a?"selected":""}>${esc(a)}</option>`).join("")}</select>
+        ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="logs-filtro-limpar">Limpar</button>` : ""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Área</th><th>Registro</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="6">${emptyState(temFiltro ? "Nenhum log com esse filtro." : "Nenhuma ação registrada ainda.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+function modalLogDetalhe(logId){
+  const log = (state.logsAuditoria||[]).find(l => l.id === logId);
+  if(!log) return;
+  let corpo;
+  if(log.acao === "editar"){
+    const linhas = camposAlterados(log.antes, log.depois);
+    corpo = linhas.length
+      ? `<table><thead><tr><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead><tbody>${linhas.map(l=>`<tr><td>${esc(l.campo)}</td><td style="color:var(--ink-3);">${esc(valorLegivel(l.antes))}</td><td>${esc(valorLegivel(l.depois))}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="field-help">Nenhum campo com diferença — provavelmente uma gravação repetida do mesmo valor.</div>`;
+  }else{
+    const dados = log.depois || log.antes;
+    corpo = `<pre style="white-space:pre-wrap; word-break:break-all; font-size:12px; background:var(--muted-bg); padding:12px; border-radius:var(--r);">${esc(JSON.stringify(dados, null, 2))}</pre>`;
+  }
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${badgeAcaoLog(log.acao)} ${esc(LOG_TABELA_LABEL[log.tabela]||log.tabela)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px;">${badgeAutorLog(log.autor_tipo)} ${esc(log.autor_nome)} — ${fmtDataHora(log.criado_em)}</div>
+      ${corpo}
+    </div><div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Fechar</button></div>
+  `);
 }
 
 // ============================================================
@@ -6524,6 +6749,8 @@ document.addEventListener("click", async e => {
   else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
   else if(action === "tec-app-codigo"){ const t = cliTecnicoById(id); if(t) modalCodigoTecnico(t); }
   else if(action === "perfil-app-codigo"){ const p = perfilById(id); if(p) modalCodigoPerfil(p); }
+  else if(action === "ver-log-detalhe") modalLogDetalhe(id);
+  else if(action === "logs-filtro-limpar"){ logsFiltro = {tabela:"",acao:"",autor:""}; renderView(); }
   else if(action === "tec-gerar-pagamento"){
     const t = cliTecnicoById(id);
     if(!t) return;
@@ -6718,6 +6945,9 @@ document.addEventListener("change", e => {
   if(e.target.id === "relDreNegocioSelect"){ relDreNegocio = e.target.value; renderView(); }
   if(e.target.id === "envioNegocioSelect"){ envioMassaNegocioFiltro = e.target.value; renderView(); }
   if(e.target.id === "envioModeloSelect"){ envioMassaModeloId = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-tabela"){ logsFiltro.tabela = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-acao"){ logsFiltro.acao = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-autor"){ logsFiltro.autor = e.target.value; renderView(); }
 });
 // Busca por texto: espera uma pausa de digitação antes de atualizar o
 // resultado (em vez de re-renderizar a cada tecla) — evita que a lista
@@ -6742,6 +6972,7 @@ document.addEventListener("input", e => {
 let cliViewDetalheId = null;
 let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
 let leadsFiltro = { status:"", texto:"" };
+let logsFiltro = { tabela:"", acao:"", autor:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
