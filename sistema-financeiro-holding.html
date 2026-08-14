@@ -758,6 +758,7 @@ let state = {
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   modoTecnico: false, tecnicoAuthInfo: null,
   modoCliente: false, clienteAuthInfo: null,
+  modoMembro: false, membroAuthInfo: null,
   senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() },
@@ -1270,6 +1271,7 @@ function attachCalculadora(inputId){
 function donoAtual(){
   if(state.modoTecnico && state.tecnicoAuthInfo) return state.tecnicoAuthInfo.masterUserId;
   if(state.modoCliente && state.clienteAuthInfo) return state.clienteAuthInfo.masterUserId;
+  if(state.modoMembro && state.membroAuthInfo) return state.membroAuthInfo.masterUserId;
   return state.user ? state.user.id : null;
 }
 
@@ -1356,8 +1358,9 @@ const saveRhFerias = () => saveRows("rh_ferias", state.rhFerias);
 async function saveMensagensModelo(){
   if(!state.user) return;
   try{
+    const dono = donoAtual();
     const { error } = await supabaseClient.from("config").upsert({
-      id: `msgmodelo_${state.user.id}`, user_id: state.user.id, dados: { lista: state.cliMensagensModelo }, updated_at: new Date().toISOString(),
+      id: `msgmodelo_${dono}`, user_id: dono, dados: { lista: state.cliMensagensModelo }, updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     if(error) throw error;
   }catch(e){
@@ -1412,6 +1415,7 @@ async function tratarErroDeSessao(e){
   state.perfilAtivo = null; state.perfilEscolhido = false;
   state.modoTecnico = false; state.tecnicoAuthInfo = null;
   state.modoCliente = false; state.clienteAuthInfo = null;
+  state.modoMembro = false; state.membroAuthInfo = null;
   authMode = "login";
   renderApp();
 }
@@ -1421,10 +1425,11 @@ async function loadData(){
   try{
     // "contas"/"categorias"/"negocios" têm colunas soltas no banco (ver TABELAS_FLAT) —
     // precisam de select("*") e não têm coluna "dados" pra desempacotar.
+    const dono = donoAtual();
     const results = await Promise.all(TABELAS_CORE.map(t =>
       TABELAS_FLAT.has(t)
-        ? supabaseClient.from(t).select("*").eq("user_id", state.user.id)
-        : supabaseClient.from(t).select("id,dados").eq("user_id", state.user.id)
+        ? supabaseClient.from(t).select("*").eq("user_id", dono)
+        : supabaseClient.from(t).select("id,dados").eq("user_id", dono)
     ));
     results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
     const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = TABELAS_CORE.map((t, i) => {
@@ -1446,7 +1451,7 @@ async function loadData(){
     // não trava o resto do app — só fica sem perfis (só o Master existe) até você
     // rodar o SQL de criação da tabela no Supabase.
     try{
-      const { data, error } = await supabaseClient.from("perfis").select("id,dados").eq("user_id", state.user.id);
+      const { data, error } = await supabaseClient.from("perfis").select("id,dados").eq("user_id", dono);
       if(error) throw error;
       state.perfis = (data || []).map(row => ({ id: row.id, ...row.dados }));
     }catch(e){
@@ -1454,9 +1459,26 @@ async function loadData(){
       state.perfis = [];
     }
 
+    // Login individual da equipe (Modo Membro): a pessoa já entrou com o
+    // e-mail/senha PRÓPRIOS dela (não escolhe o perfil numa lista) — acha o
+    // perfil correspondente aqui e já libera o acesso direto.
+    if(state.modoMembro && state.membroAuthInfo){
+      const perfilLigado = state.perfis.find(p => p.id === state.membroAuthInfo.perfilId);
+      if(perfilLigado){
+        state.perfilAtivo = perfilLigado;
+        state.perfilEscolhido = true;
+      }else{
+        // código de acesso vinculado a um perfil que não existe mais (ex: usuário excluído em Usuários)
+        await supabaseClient.auth.signOut();
+        state.user = null; state.modoMembro = false; state.membroAuthInfo = null;
+        showToast("Seu acesso não está mais vinculado a nenhum usuário — fale com quem administra o sistema.", "error");
+        return;
+      }
+    }
+
     // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
     try{
-      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", state.user.id).eq("id", "master").maybeSingle();
+      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", "master").maybeSingle();
       if(error) throw error;
       state.senhaMaster = (data && data.dados && data.dados.senhaMaster) || SENHA_MASTER_PADRAO;
     }catch(e){
@@ -1465,10 +1487,11 @@ async function loadData(){
     }
 
     // Modelos de mensagem (WhatsApp) — mesma tabela "config", linha própria
-    // (id prefixado com o user_id pra não colidir com a de outro Master
-    // nessa mesma tabela compartilhada).
+    // (id prefixado com o user_id do DONO — Master — pra não colidir com a
+    // de outro Master nessa mesma tabela compartilhada, e pra quem entra
+    // como Membro ler/usar os mesmos modelos do Master, não uma lista vazia).
     try{
-      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", state.user.id).eq("id", `msgmodelo_${state.user.id}`).maybeSingle();
+      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `msgmodelo_${dono}`).maybeSingle();
       if(error) throw error;
       state.cliMensagensModelo = (data && data.dados && data.dados.lista) || [];
     }catch(e){
@@ -1483,7 +1506,7 @@ async function loadData(){
     // Tabelas de estoque/clientes/RH — opcionais/novas
     for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
-        const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", state.user.id);
+        const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", dono);
         if(error) throw error;
         state[key] = (data || []).map(row => ({ id: row.id, ...row.dados }));
       }catch(e){
@@ -1532,6 +1555,7 @@ async function carregarSessao(){
   if(state.modoTecnico){ await loadDataTecnico(); return; }
   await detectarModoCliente();
   if(state.modoCliente){ await loadDataCliente(); return; }
+  await detectarModoMembro();
   await loadData();
 }
 async function loadDataTecnico(){
@@ -1634,6 +1658,41 @@ async function vincularClienteApp(cpf, codigo){
     return { ok:false, msg: "Não consegui validar — tente de novo. (" + (e.message||e) + ")" };
   }
 }
+// =========================================================================
+// MODO MEMBRO — cada pessoa da equipe (perfil "Membro" em Usuários) entra
+// com e-mail e senha PRÓPRIOS (não mais o login compartilhado do Master +
+// "Quem está usando?"), igual ao Técnico já faz. "perfis_auth" é a
+// tabela-ponte: liga o auth.uid() dessa pessoa ao user_id do Master + ao
+// id dela em "perfis" — a partir daí, o app inteiro roda igual sempre
+// rodou (mesmas telas, mesmas permissões por negócio/módulo já definidas
+// em Usuários), só que sem precisar escolher o nome numa lista. Perfis
+// que nunca geraram um código de acesso continuam funcionando do jeito
+// antigo (login do Master + escolher o nome + senha simples).
+// =========================================================================
+async function detectarModoMembro(){
+  try{
+    const { data, error } = await supabaseClient.from("perfis_auth")
+      .select("master_user_id,perfil_id").eq("auth_user_id", state.user.id).maybeSingle();
+    if(error) throw error;
+    if(data){ state.modoMembro = true; state.membroAuthInfo = { masterUserId: data.master_user_id, perfilId: data.perfil_id }; }
+    else{ state.modoMembro = false; state.membroAuthInfo = null; }
+  }catch(e){
+    console.warn("[detectarModoMembro]", e.message || e);
+    state.modoMembro = false; state.membroAuthInfo = null;
+  }
+}
+async function vincularPerfil(codPerfil, codHolding){
+  if(!codPerfil || !codHolding) return { ok:false, msg:"Preencha os dois códigos." };
+  try{
+    const { error } = await supabaseClient.from("perfis_auth").upsert({
+      auth_user_id: state.user.id, master_user_id: codHolding.trim(), perfil_id: codPerfil.trim(),
+    }, { onConflict: "auth_user_id" });
+    if(error) throw error;
+    return { ok:true };
+  }catch(e){
+    return { ok:false, msg: "Não consegui vincular — confira os códigos. (" + (e.message||e) + ")" };
+  }
+}
 function seedCategorias(){
   return ["Servidores/Hospedagem","Aluguel","Assinaturas/Softwares","Marketing","Salários/Pró-labore","Impostos/Taxas","Outros"]
     .map(nome => ({ id: uid("cat"), nome, subcategorias: [] }));
@@ -1710,6 +1769,37 @@ async function doAuthTecnico(email, password, codTecnico, codHolding){
     return true;
   }catch(e){ showToast("Erro ao entrar como técnico.", "error"); return false; }
 }
+async function doAuthMembro(email, password, codPerfil, codHolding){
+  try{
+    let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      // ainda não tem conta — tenta criar (mesma senha que acabou de digitar)
+      const signup = await supabaseClient.auth.signUp({ email, password });
+      if(signup.error){ showToast(signup.error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : signup.error.message, "error"); return false; }
+      if(!signup.data.session){
+        showToast("Conta criada! Confirme seu e-mail (verifique a caixa de entrada) e volte aqui pra concluir.");
+        return true;
+      }
+      data = signup.data;
+    }
+    // Mesma trava de segurança do App do Técnico: "código da holding" é
+    // sempre o user.id do próprio Master — se bater com quem acabou de
+    // logar aqui, é a conta do Master tentando entrar como se fosse um
+    // membro dela mesma, o que corromperia o login normal do Master pra
+    // sempre. Bloqueia e desfaz o login antes de gravar qualquer vínculo.
+    if(data.user.id === codHolding.trim()){
+      await supabaseClient.auth.signOut();
+      state.user = null;
+      showToast("Essa conta é a do Master, não de um membro da equipe — use um e-mail/senha exclusivos dessa pessoa nessa tela.", "error");
+      return false;
+    }
+    state.user = data.user;
+    const link = await vincularPerfil(codPerfil, codHolding);
+    if(!link.ok){ showToast(link.msg, "error"); return false; }
+    await carregarSessao();
+    return true;
+  }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
+}
 async function doAuthCliente(cpf, codigo){
   const cpfDigits = apenasDigitos(cpf);
   const codigoNorm = (codigo||"").trim().toUpperCase();
@@ -1749,6 +1839,7 @@ async function doLogout(){
   state.perfilAtivo = null; state.perfilEscolhido = false;
   state.modoTecnico = false; state.tecnicoAuthInfo = null;
   state.modoCliente = false; state.clienteAuthInfo = null;
+  state.modoMembro = false; state.membroAuthInfo = null;
   renderApp();
 }
 
@@ -1983,7 +2074,7 @@ function renderApp(){
         </label>
         <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Escolha popular Geral (tudo) ou só o módulo em que você está agora">🌱<span class="label"> Popular dados de teste</span></button>
         <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Escolha remover Geral (tudo) ou só o módulo em que você está agora">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
-        <button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>
+        ${!state.modoMembro ? `<button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>` : ""}
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
@@ -2274,6 +2365,7 @@ function renderView(){
 // ============================================================
 function renderLogin(){
   if(authMode === "tecnico") return renderLoginTecnico();
+  if(authMode === "membro") return renderLoginMembro();
   const isLogin = authMode === "login";
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
@@ -2290,7 +2382,30 @@ function renderLogin(){
           <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
         </div>
         <div style="text-align:center; margin-top:10px; font-size:12.5px; color:var(--ink-4);">
+          É da equipe (usuário cadastrado)? <a data-action="switch-auth-membro" style="color:var(--accent); cursor:pointer; font-weight:600;">Entrar por aqui</a>
+        </div>
+        <div style="text-align:center; margin-top:6px; font-size:12.5px; color:var(--ink-4);">
           É técnico? <a data-action="switch-auth-tecnico" style="color:var(--accent); cursor:pointer; font-weight:600;">Entrar por aqui</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderLoginMembro(){
+  return `
+    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
+      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">👤 Acesso da Equipe</h2>
+        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou.</div>
+        <form id="authMembroForm">
+          <div class="field"><label>Seu e-mail</label><input type="email" id="membroEmail" placeholder="seu@email.com" required></div>
+          <div class="field"><label>Sua senha</label><input type="password" id="membroPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          <div class="field"><label>Código do usuário</label><input type="text" id="membroCodPerfil" placeholder="Código que o Master te passou" required></div>
+          <div class="field"><label>Código da holding</label><input type="text" id="membroCodHolding" placeholder="Código que o Master te passou" required></div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
+        </form>
+        <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
+          <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou da equipe</a>
         </div>
       </div>
     </div>
@@ -2341,6 +2456,21 @@ function wireAuthForm(){
       if(!email || !password || !codTecnico || !codHolding){ showToast("Preencha todos os campos.", "error"); return; }
       authBusy = true; renderApp();
       await doAuthTecnico(email, password, codTecnico, codHolding);
+      authBusy = false;
+      renderApp();
+    });
+  }
+  const formMembro = document.getElementById("authMembroForm");
+  if(formMembro){
+    formMembro.addEventListener("submit", async e => {
+      e.preventDefault();
+      const email = document.getElementById("membroEmail").value.trim();
+      const password = document.getElementById("membroPassword").value;
+      const codPerfil = document.getElementById("membroCodPerfil").value.trim();
+      const codHolding = document.getElementById("membroCodHolding").value.trim();
+      if(!email || !password || !codPerfil || !codHolding){ showToast("Preencha todos os campos.", "error"); return; }
+      authBusy = true; renderApp();
+      await doAuthMembro(email, password, codPerfil, codHolding);
       authBusy = false;
       renderApp();
     });
@@ -4016,12 +4146,15 @@ function viewUsuarios(){
     return `<tr>
       <td><strong>${esc(p.nome)}</strong></td>
       <td>${resumo}</td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions">
+        ${p.tipo !== "master" ? `<button class="icon-btn" data-action="perfil-app-codigo" data-id="${p.id}" title="Código de acesso próprio (e-mail e senha individuais)" style="color:var(--accent);">🔗</button>` : ""}
+        <button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">🗑</button>
+      </div></td>
     </tr>`;
   }).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo.</div></div>
+      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo. Clique em 🔗 pra gerar um acesso com e-mail e senha próprios pra essa pessoa (em vez de dividir seu login).</div></div>
       <button class="btn btn-primary" data-action="new-perfil">+ Novo usuário</button>
     </div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;">
@@ -5213,6 +5346,35 @@ function modalPerfil(existing){
 }
 
 // ============================================================
+// MODAL — CÓDIGO DE ACESSO PRÓPRIO (login individual do usuário)
+// ============================================================
+function modalCodigoPerfil(perfil){
+  const campoCopiavel = (label, valor, campoId) => `
+    <div class="field"><label>${esc(label)}</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="${campoId}" value="${esc(valor)}" readonly style="font-family:var(--font-mono); font-size:12.5px;">
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">📋 Copiar</button>
+      </div>
+    </div>`;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">🔗 Acesso próprio — ${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-help" style="margin-bottom:14px;">Passe esses 2 códigos pra essa pessoa (WhatsApp, por exemplo). Na tela de login, ela clica em <strong>"É da equipe? Entrar por aqui"</strong>, escolhe um e-mail e senha PRÓPRIOS (não os seus) e cola os códigos abaixo — a conta dela é criada na hora, já com as permissões que você definiu aqui em Usuários. Ela não vai mais precisar da tela "Quem está usando?".</div>
+      ${campoCopiavel("Código do usuário", perfil.id, "codPerfilUsuario")}
+      ${campoCopiavel("Código da holding", state.user?.id||"", "codPerfilHolding")}
+      <div class="field-help">O código da holding é sempre o mesmo, pra qualquer pessoa que você cadastrar.</div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Fechar</button></div>
+  `);
+  document.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.copy);
+      input.select();
+      navigator.clipboard?.writeText(input.value).then(() => showToast("Copiado.")).catch(() => document.execCommand("copy"));
+    });
+  });
+}
+
+// ============================================================
 // MODAL — CARTÃO DE CRÉDITO
 // ============================================================
 function modalCartao(existing){
@@ -5827,6 +5989,7 @@ document.addEventListener("click", async e => {
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "switch-auth-tecnico"){ authMode = "tecnico"; renderApp(); }
+  else if(action === "switch-auth-membro"){ authMode = "membro"; renderApp(); }
   else if(action === "switch-auth-master"){ authMode = "login"; renderApp(); }
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
@@ -6204,6 +6367,7 @@ document.addEventListener("click", async e => {
   else if(action === "tec-novo") modalCliTecnico(null);
   else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
   else if(action === "tec-app-codigo"){ const t = cliTecnicoById(id); if(t) modalCodigoTecnico(t); }
+  else if(action === "perfil-app-codigo"){ const p = perfilById(id); if(p) modalCodigoPerfil(p); }
   else if(action === "tec-gerar-pagamento"){
     const t = cliTecnicoById(id);
     if(!t) return;
