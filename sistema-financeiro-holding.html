@@ -900,7 +900,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.5.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -6731,7 +6731,21 @@ let envioMassaAutoStatus = null; // {total, feito, sucesso:[], falha:[], emAndam
 async function chamarWhatsAppAuto(telefoneDigits, mensagem){
   try{
     const { data, error } = await supabaseClient.functions.invoke("enviar-whatsapp", { body: { telefone: telefoneDigits, mensagem } });
-    if(error) throw error;
+    if(error){
+      // Quando a função responde com erro (ex: status 500/502), o supabase-js
+      // só bota um texto genérico em error.message ("Edge Function returned
+      // a non-2xx status code") — o motivo real fica dentro de error.context,
+      // que é a resposta de verdade da função. Sem isso, a gente nunca via
+      // a mensagem específica (ex: erro que a Z-API devolveu).
+      let mensagemReal = null;
+      if(error.context && typeof error.context.json === "function"){
+        try{
+          const corpo = await error.context.clone().json();
+          mensagemReal = corpo.error || corpo.message || null;
+        }catch(parseErr){ /* resposta não era JSON — segue com a mensagem genérica */ }
+      }
+      throw new Error(mensagemReal || error.message);
+    }
     if(data && data.error) throw new Error(data.error);
     return { ok:true };
   }catch(e){
