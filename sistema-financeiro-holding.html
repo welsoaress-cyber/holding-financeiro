@@ -752,7 +752,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
-  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [],
+  cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [], cliMensagensModelo: [],
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
@@ -775,7 +775,7 @@ const VIEWS_VALIDAS = new Set([
   "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
   "rel_fluxo","rel_dre",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
-  "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe",
+  "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe","cli_mensagens","cli_envio_massa",
   "rh_dashboard","rh_funcionarios","rh_funcionario_detalhe","rh_cargos","rh_folha","rh_ferias","rh_alertas",
   "cv_lista",
 ]);
@@ -1350,6 +1350,23 @@ const saveRhFuncionarios = () => saveRows("rh_funcionarios", state.rhFuncionario
 const saveRhCargos = () => saveRows("rh_cargos", state.rhCargos);
 const saveRhFolha = () => saveRows("rh_folha", state.rhFolha);
 const saveRhFerias = () => saveRows("rh_ferias", state.rhFerias);
+// Modelos de mensagem não são uma "tabela de linhas" como as outras — é uma
+// listinha só, guardada inteira numa linha da tabela "config" (mesmo lugar
+// da senha do Master, id diferente pra não colidir).
+async function saveMensagensModelo(){
+  if(!state.user) return;
+  try{
+    const { error } = await supabaseClient.from("config").upsert({
+      id: `msgmodelo_${state.user.id}`, user_id: state.user.id, dados: { lista: state.cliMensagensModelo }, updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if(error) throw error;
+  }catch(e){
+    console.error("[saveMensagensModelo]", e);
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
+    showToast("Não salvou os modelos de mensagem: " + (e.message||e), "error");
+    throw e;
+  }
+}
 
 function ehErroDeSessao(e){
   const msg = (e && e.message ? e.message : String(e || "")).toLowerCase();
@@ -1441,6 +1458,22 @@ async function loadData(){
     }catch(e){
       console.warn("[loadData:config] tabela 'config' ainda não existe no Supabase — usando senha padrão do Master.", e.message || e);
       state.senhaMaster = SENHA_MASTER_PADRAO;
+    }
+
+    // Modelos de mensagem (WhatsApp) — mesma tabela "config", linha própria
+    // (id prefixado com o user_id pra não colidir com a de outro Master
+    // nessa mesma tabela compartilhada).
+    try{
+      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", state.user.id).eq("id", `msgmodelo_${state.user.id}`).maybeSingle();
+      if(error) throw error;
+      state.cliMensagensModelo = (data && data.dados && data.dados.lista) || [];
+    }catch(e){
+      console.warn("[loadData:config-mensagens] ainda não existe — começando sem modelos salvos.", e.message || e);
+      state.cliMensagensModelo = [];
+    }
+    if(state.cliMensagensModelo.length === 0){
+      state.cliMensagensModelo = [{ id: uid("msg"), nome: "Lembrete de vencimento", texto: MENSAGEM_COBRANCA_PADRAO }];
+      await saveMensagensModelo();
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
@@ -2022,6 +2055,9 @@ function renderApp(){
         <div class="nav-group-label">Atendimento técnico</div>
         ${navItem("cli_chamados","📞","Chamados")}
         ${navItem("cli_tecnicos","🧰","Técnicos")}
+        <div class="nav-group-label">Comunicação</div>
+        ${navItem("cli_envio_massa","📤","Enviar mensagens")}
+        ${navItem("cli_mensagens","💬","Modelos de mensagem")}
       ` : state.moduloAtivo === "rh" ? `
         <div class="nav-group-label">RH</div>
         ${navItem("rh_dashboard","◆","Dashboard")}
@@ -2114,7 +2150,7 @@ function renderApp(){
   const importInput = document.getElementById("importarBackupInput");
   if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre"];
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
     state.view = "lancamentos";
   }
@@ -2225,6 +2261,8 @@ function renderView(){
   else if(state.view === "cli_os_detalhe") main.innerHTML = viewCliOSDetalhe();
   else if(state.view === "cli_tecnicos") main.innerHTML = viewCliTecnicos();
   else if(state.view === "cli_chamados") main.innerHTML = viewCliChamados();
+  else if(state.view === "cli_mensagens") main.innerHTML = viewCliMensagens();
+  else if(state.view === "cli_envio_massa") main.innerHTML = viewCliEnvioMassa();
   else if(state.view === "cli_chamado_detalhe") main.innerHTML = viewCliChamadoDetalhe();
   // ---- Módulo RH ----
   else if(state.view === "rh_dashboard") main.innerHTML = viewRhDashboard();
@@ -6191,6 +6229,28 @@ document.addEventListener("click", async e => {
   else if(action === "cham-prorrogar") modalChamadoProrrogar(id);
   else if(action === "cham-cancelar") chamadoCancelar(id);
   else if(action === "cham-gerar-cobranca") chamadoGerarCobranca(id);
+  // ---- Modelos de mensagem / Envio em massa ----
+  else if(action === "msg-modelo-novo") modalMensagemModelo(null);
+  else if(action === "msg-modelo-editar"){ const m = state.cliMensagensModelo.find(x=>x.id===id); if(m) modalMensagemModelo(m); }
+  else if(action === "msg-modelo-excluir"){
+    if(!confirm("Excluir este modelo de mensagem?")) return;
+    state.cliMensagensModelo = state.cliMensagensModelo.filter(x=>x.id!==id);
+    await saveMensagensModelo(); renderView(); showToast("Modelo excluído.");
+  }
+  else if(action === "envio-iniciar") iniciarFilaEnvioMassa();
+  else if(action === "envio-fila-proximo"){
+    const fila = envioMassaFila; if(!fila) return;
+    fila.enviados.add(fila.itens[fila.indice].clienteId);
+    fila.indice++;
+    renderFilaEnvioMassa();
+  }
+  else if(action === "envio-fila-pular"){
+    const fila = envioMassaFila; if(!fila) return;
+    fila.pulados.add(fila.itens[fila.indice].clienteId);
+    fila.indice++;
+    renderFilaEnvioMassa();
+  }
+  else if(action === "envio-fila-fechar"){ envioMassaFila = null; closeModal(); renderView(); }
   else if(action === "cham-del"){
     const c = cliChamadoById(id);
     if(!c) return;
@@ -6310,6 +6370,8 @@ document.addEventListener("change", e => {
   }
   if(e.target.id === "relFluxoPeriodoSelect"){ relFluxoPeriodo = parseInt(e.target.value)||6; renderView(); }
   if(e.target.id === "relDreNegocioSelect"){ relDreNegocio = e.target.value; renderView(); }
+  if(e.target.id === "envioNegocioSelect"){ envioMassaNegocioFiltro = e.target.value; renderView(); }
+  if(e.target.id === "envioModeloSelect"){ envioMassaModeloId = e.target.value; renderView(); }
 });
 // Busca por texto: espera uma pausa de digitação antes de atualizar o
 // resultado (em vez de re-renderizar a cada tecla) — evita que a lista
@@ -6359,6 +6421,18 @@ let MENSAGEM_COBRANCA_PADRAO = "Olá,\n\nSeu vencimento está próximo. Recomend
 // QUEM é o cliente do lançamento — hoje isso só é gravado nas cobranças
 // automáticas de contrato (clienteId) e nas geradas a partir de um chamado
 // (via chamadoId); um lançamento digitado à mão não tem esse vínculo.
+// Telefone -> só dígitos, com o 55 (Brasil) na frente se não tiver nenhum
+// código de país já digitado. Retorna "" se não sobrar nada usável.
+function waDigits(telefone){
+  const fone = (telefone||"").replace(/\D/g,"");
+  if(!fone) return "";
+  return fone.length <= 11 ? "55"+fone : fone;
+}
+function waLinkTexto(telefone, texto){
+  const digits = waDigits(telefone);
+  if(!digits) return null;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`;
+}
 function waLinkCobranca(l){
   if(l.tipo !== "Receita" || l.status === "Pago") return null;
   let cliente = l.clienteId ? cliClienteById(l.clienteId) : null;
@@ -6367,13 +6441,159 @@ function waLinkCobranca(l){
     if(cham) cliente = cliClienteById(cham.clienteId);
   }
   if(!cliente) return null;
-  const fone = (cliente.whatsapp || cliente.telefone || "").replace(/\D/g,"");
-  if(!fone) return null;
-  const digits = fone.length <= 11 ? "55"+fone : fone; // assume Brasil se não tiver código de país
   // Texto exato pedido pelo usuário — igual pra todo mundo, de propósito
   // (ele quer reaproveitar esse mesmo texto num envio em massa depois, não
   // dá pra ficar diferente por cliente).
-  return `https://wa.me/${digits}?text=${encodeURIComponent(MENSAGEM_COBRANCA_PADRAO)}`;
+  return waLinkTexto(cliente.whatsapp || cliente.telefone, MENSAGEM_COBRANCA_PADRAO);
+}
+
+// ============================================================
+// MODELOS DE MENSAGEM (WhatsApp) — textos reaproveitáveis pro envio em
+// massa. Cada modelo é só {id, nome, texto}; nada de variável/placeholder
+// automático (${nome}, ${valor}...) de propósito — o usuário pediu texto
+// fixo, igual pra todo cliente, então mantemos simples.
+// ============================================================
+function modalMensagemModelo(existing){
+  const isEdit = !!existing;
+  const m = existing || { nome:"", texto:"" };
+  openModal(`
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar":"Novo"} modelo de mensagem</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formMsgModelo"><div class="modal-body">
+      <div class="field"><label>Nome do modelo</label><input required type="text" name="nome" value="${esc(m.nome)}" placeholder="Ex: Lembrete de vencimento, Aviso de manutenção..."></div>
+      <div class="field"><label>Texto da mensagem</label><textarea required name="texto" rows="8" style="resize:vertical;" placeholder="Digite a mensagem exatamente como quer que apareça no WhatsApp">${esc(m.texto)}</textarea>
+        <div class="field-help">Vai igual pra todo mundo selecionado no envio em massa — sem nome/valor automático.</div>
+      </div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar alterações":"Criar modelo"}</button></div></form>
+  `);
+  document.getElementById("formMsgModelo").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const nome = fd.get("nome").trim(), texto = fd.get("texto").trim();
+    if(!nome || !texto){ showToast("Preencha nome e texto.", "error"); return; }
+    if(isEdit){ m.nome = nome; m.texto = texto; }
+    else{ state.cliMensagensModelo.push({ id: uid("msg"), nome, texto }); }
+    await saveMensagensModelo(); closeModal(); renderApp();
+    showToast(isEdit ? "Modelo atualizado." : "Modelo criado.");
+  });
+}
+function viewCliMensagens(){
+  const rows = state.cliMensagensModelo.map(m => `
+    <div class="panel" style="margin-bottom:12px;"><div class="panel-body">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <strong style="font-size:13.5px;">${esc(m.nome)}</strong>
+        <div class="row-actions"><button class="icon-btn" data-action="msg-modelo-editar" data-id="${m.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="msg-modelo-excluir" data-id="${m.id}" title="Excluir">🗑</button></div>
+      </div>
+      <div style="font-size:12.5px; color:var(--ink-3); white-space:pre-line; margin-top:6px; line-height:1.6;">${esc(m.texto)}</div>
+    </div></div>`).join("");
+  return `
+    <div class="page-header"><div><div class="page-title">💬 Modelos de mensagem</div><div class="page-sub">Textos prontos pra usar no envio em massa pelo WhatsApp.</div></div><button class="btn btn-primary" data-action="msg-modelo-novo">+ Novo modelo</button></div>
+    ${rows || emptyState("Nenhum modelo cadastrado ainda.")}
+  `;
+}
+
+// ============================================================
+// ENVIO EM MASSA (WhatsApp) — filtra clientes por negócio, escolhe um
+// modelo de mensagem, e vai abrindo o WhatsApp de cada um em sequência (a
+// "fila"). Não existe blast de um clique só pra todo mundo sem a API paga
+// do WhatsApp Business — isso aqui é o caminho sem custo: você confere e
+// aperta "Enviar" no WhatsApp de cada contato, só que sem precisar caçar
+// cliente por cliente feito antes.
+// ============================================================
+let envioMassaNegocioFiltro = "";
+let envioMassaModeloId = "";
+let envioMassaFila = null; // {itens:[{clienteId,nome,link}], indice, enviados:Set, pulados:Set} quando a fila está em andamento
+function clientesParaEnvio(negocioFiltro){
+  return state.cliClientes.filter(c => {
+    if(c.status && c.status !== "Ativo") return false;
+    if(!negocioFiltro) return true;
+    return (c.contratos||[]).some(ct => ct.negocio === negocioFiltro);
+  });
+}
+function viewCliEnvioMassa(){
+  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${envioMassaNegocioFiltro===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const modeloOptions = state.cliMensagensModelo.map(m=>`<option value="${m.id}" ${envioMassaModeloId===m.id?"selected":""}>${esc(m.nome)}</option>`).join("");
+  const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId) || state.cliMensagensModelo[0];
+  if(!envioMassaModeloId && modeloAtual) envioMassaModeloId = modeloAtual.id;
+  const clientes = clientesParaEnvio(envioMassaNegocioFiltro);
+  const sel = bulkSet("envio_massa");
+  // limpa da seleção qualquer id que não está mais na lista filtrada atual
+  Array.from(sel).forEach(id => { if(!clientes.some(c=>c.id===id)) sel.delete(id); });
+  const idsVisiveis = clientes.map(c=>c.id);
+  const linhas = clientes.map(c => {
+    const fone = c.whatsapp || c.telefone || "";
+    const temFone = !!waDigits(fone);
+    return `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border);">
+      <input type="checkbox" data-action="bulk-toggle" data-contexto="envio_massa" data-id="${c.id}" ${sel.has(c.id)?"checked":""} ${temFone?"":"disabled"}>
+      <div style="min-width:0; flex:1;">
+        <div style="font-size:13px; font-weight:600;">${esc(cliNome(c))}</div>
+        <div style="font-size:11px; color:${temFone?'var(--ink-4)':'var(--neg)'};">${temFone ? esc(fone) : "sem WhatsApp/telefone cadastrado"}</div>
+      </div>
+    </div>`;
+  }).join("");
+  const qtdSelecionados = Array.from(sel).length;
+  return `
+    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois é só ir enviando pelo WhatsApp, um por um.</div></div></div>
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-body">
+      <div class="field-row">
+        <div class="field"><label>Negócio</label><select id="envioNegocioSelect"><option value="">Todos os negócios</option>${negOptions}</select></div>
+        <div class="field"><label>Modelo de mensagem</label>
+          ${state.cliMensagensModelo.length ? `<select id="envioModeloSelect">${modeloOptions}</select>` : `<div class="field-help">Nenhum modelo cadastrado — <button type="button" class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_mensagens">crie um primeiro</button></div>`}
+        </div>
+      </div>
+      ${modeloAtual ? `<div class="field-help" style="white-space:pre-line; border:1px solid var(--border); border-radius:var(--r); padding:8px 10px; margin-top:4px;">${esc(modeloAtual.texto)}</div>` : ""}
+    </div></div>
+    <div class="panel">
+      <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="panel-title">Contatos (${clientes.length}) — ${qtdSelecionados} selecionado(s)</div>
+        <button class="btn btn-primary btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"}>📤 Iniciar envio</button>
+      </div>
+      <div class="panel-body">
+        <label class="checkbox-row" style="margin-bottom:4px;"><input type="checkbox" data-action="bulk-toggle-all" data-contexto="envio_massa" data-ids="${idsVisiveis.join(",")}" ${idsVisiveis.length>0 && idsVisiveis.every(id=>sel.has(id))?"checked":""}> Selecionar todos os visíveis</label>
+        ${linhas || emptyState("Nenhum cliente encontrado com esse filtro.")}
+      </div>
+    </div>
+  `;
+}
+function iniciarFilaEnvioMassa(){
+  const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId);
+  if(!modeloAtual){ showToast("Escolha um modelo de mensagem.", "error"); return; }
+  const sel = bulkSet("envio_massa");
+  const clientes = clientesParaEnvio(envioMassaNegocioFiltro).filter(c => sel.has(c.id) && waDigits(c.whatsapp||c.telefone));
+  if(!clientes.length){ showToast("Selecione ao menos um contato com WhatsApp/telefone cadastrado.", "error"); return; }
+  envioMassaFila = {
+    itens: clientes.map(c => ({ clienteId: c.id, nome: cliNome(c), link: waLinkTexto(c.whatsapp||c.telefone, modeloAtual.texto) })),
+    indice: 0, enviados: new Set(), pulados: new Set(),
+  };
+  renderFilaEnvioMassa();
+}
+function renderFilaEnvioMassa(){
+  const fila = envioMassaFila;
+  if(!fila) return;
+  closeModal(); // openModal() empilha (não substitui) — sem isso, cada "próximo" abria um modal novo por cima do anterior
+  const total = fila.itens.length;
+  if(fila.indice >= total){
+    openModal(`
+      <div class="modal-head"><div class="modal-title">📤 Envio concluído</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
+      <div class="modal-body">
+        <div style="font-size:14px;">✔ Enviado(s): <strong>${fila.enviados.size}</strong> · Pulado(s): <strong>${fila.pulados.size}</strong> · Total: ${total}</div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn btn-primary" data-action="envio-fila-fechar">Concluir</button></div>
+    `);
+    return;
+  }
+  const atual = fila.itens[fila.indice];
+  openModal(`
+    <div class="modal-head"><div class="modal-title">📤 Enviando ${fila.indice+1} de ${total}</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:15px; font-weight:700;">${esc(atual.nome)}</div>
+      <div class="field-help" style="margin-top:6px;">Clique em "Abrir WhatsApp", confira a mensagem e mande por lá (o WhatsApp abre com o texto pronto — quem envia de verdade é você, com um clique em "Enviar" lá dentro). Depois volte aqui e avance pro próximo.</div>
+      <a href="${atual.link}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;">📱 Abrir WhatsApp de ${esc(atual.nome)}</a>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="envio-fila-pular">Pular este</button>
+      <button type="button" class="btn btn-primary" data-action="envio-fila-proximo">✔ Enviado — próximo</button>
+    </div>
+  `);
 }
 function cliContratosByNegocio(clienteId, negocio){
   const c = cliClienteById(clienteId);
