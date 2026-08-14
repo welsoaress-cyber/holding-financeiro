@@ -754,7 +754,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.0.3";
+const APP_VERSION = "1.0.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1724,9 +1724,10 @@ function seedNegocios(){
 // ============================================================
 // AUTENTICAÇÃO
 // ============================================================
-// Se a pessoa abriu um link de convite (gerado pelo 🔗 em Usuários, com os
-// códigos já embutidos no ?perfil=...&holding=...), pula direto pra tela de
-// login da equipe — sem precisar clicar em "É da equipe? Entrar por aqui".
+// Se a pessoa abriu um link de convite (gerado pelo 🔗 em Usuários ou em
+// Técnicos, com os códigos já embutidos na URL), pula direto pra tela de
+// login certa — sem precisar clicar em "É da equipe?"/"É técnico?" e sem
+// precisar digitar/colar nenhum código.
 function codigosConviteDaURL(){
   try{
     const params = new URLSearchParams(location.search);
@@ -1734,7 +1735,14 @@ function codigosConviteDaURL(){
     return (perfil && holding) ? { perfil, holding } : null;
   }catch(e){ return null; }
 }
-let authMode = codigosConviteDaURL() ? "membro" : "login";
+function codigosConviteTecnicoDaURL(){
+  try{
+    const params = new URLSearchParams(location.search);
+    const tec = params.get("tec"), holding = params.get("holding");
+    return (tec && holding) ? { tec, holding } : null;
+  }catch(e){ return null; }
+}
+let authMode = codigosConviteDaURL() ? "membro" : (codigosConviteTecnicoDaURL() ? "tecnico" : "login");
 let authBusy = false;
 async function doLogin(email, password){
   try{
@@ -2450,16 +2458,21 @@ function renderLoginMembro(){
   `;
 }
 function renderLoginTecnico(){
+  // Se veio de um link de convite (🔗 em Técnicos, com os códigos já
+  // embutidos no ?tec=...&holding=...), não precisa mostrar/pedir de novo.
+  const convite = codigosConviteTecnicoDaURL();
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
       <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <h2 style="font-family:var(--font-ui); margin-bottom:4px;">🧰 Acesso do Técnico</h2>
-        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou.</div>
+        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">${convite ? "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora." : "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou."}</div>
         <form id="authTecnicoForm">
           <div class="field"><label>Seu e-mail</label><input type="email" id="tecEmail" placeholder="seu@email.com" required></div>
           <div class="field"><label>Sua senha</label><input type="password" id="tecPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          ${!convite ? `
           <div class="field"><label>Código do técnico</label><input type="text" id="tecCodTecnico" placeholder="Código que o Master te passou" required></div>
           <div class="field"><label>Código da holding</label><input type="text" id="tecCodHolding" placeholder="Código que o Master te passou" required></div>
+          ` : ""}
           <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
         </form>
         <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
@@ -2489,8 +2502,11 @@ function wireAuthForm(){
       e.preventDefault();
       const email = document.getElementById("tecEmail").value.trim();
       const password = document.getElementById("tecPassword").value;
-      const codTecnico = document.getElementById("tecCodTecnico").value.trim();
-      const codHolding = document.getElementById("tecCodHolding").value.trim();
+      // Se veio de um link de convite, os campos de código nem existem na
+      // tela — os valores já estão na URL.
+      const convite = codigosConviteTecnicoDaURL();
+      const codTecnico = (document.getElementById("tecCodTecnico")?.value || convite?.tec || "").trim();
+      const codHolding = (document.getElementById("tecCodHolding")?.value || convite?.holding || "").trim();
       if(!email || !password || !codTecnico || !codHolding){ showToast("Preencha todos os campos.", "error"); return; }
       authBusy = true; renderApp();
       await doAuthTecnico(email, password, codTecnico, codHolding);
@@ -8151,13 +8167,20 @@ function modalCodigoTecnico(tecnico){
         <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">📋 Copiar</button>
       </div>
     </div>`;
+  const link = `${location.origin}${location.pathname}?tec=${encodeURIComponent(tecnico.id)}&holding=${encodeURIComponent(state.user?.id||"")}`;
   openModal(`
     <div class="modal-head"><div class="modal-title">🔗 App do Técnico — ${esc(tecnico.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
-      <div class="field-help" style="margin-bottom:14px;">Passe esses 2 códigos pro técnico (WhatsApp, por exemplo). Na tela de login do app, ele clica em <strong>"É técnico? Entrar por aqui"</strong>, escolhe um e-mail e senha PRÓPRIOS (não os seus) e cola os códigos abaixo — a conta dele é criada na hora, já vinculada só aos chamados que você atribuir a ele.</div>
-      ${campoCopiavel("Código do técnico", tecnico.id, "codTecTecnico")}
-      ${campoCopiavel("Código da holding", state.user?.id||"", "codTecHolding")}
-      <div class="field-help">O código da holding é sempre o mesmo, pra qualquer técnico que você cadastrar.</div>
+      <div class="field-help" style="margin-bottom:14px;">Passe esse link pro técnico (WhatsApp, por exemplo). Ele abre, escolhe um e-mail e senha PRÓPRIOS (não os seus) e pronto — a conta dele é criada na hora, já vinculada só aos chamados que você atribuir a ele.</div>
+      ${campoCopiavel("Link de acesso", link, "linkTecConvite")}
+      <details style="margin-top:14px;">
+        <summary style="cursor:pointer; color:var(--ink-3); font-size:12.5px;">Prefere passar 2 códigos separados em vez do link?</summary>
+        <div style="margin-top:12px;">
+          ${campoCopiavel("Código do técnico", tecnico.id, "codTecTecnico")}
+          ${campoCopiavel("Código da holding", state.user?.id||"", "codTecHolding")}
+          <div class="field-help">Nesse caso, na tela de login ele clica em "É técnico? Entrar por aqui" e cola os 2 códigos manualmente.</div>
+        </div>
+      </details>
     </div><div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Fechar</button></div>
   `);
   document.querySelectorAll("[data-copy]").forEach(btn => {
