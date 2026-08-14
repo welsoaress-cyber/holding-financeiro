@@ -754,7 +754,7 @@ const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuári
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2031,7 +2031,7 @@ function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 // clicada, em vez de escolhido manualmente antes de navegar.
 function moduloDaView(view){
   if(view.startsWith("vg_")) return "visaogeral";
-  if(view === "cadastro_hub") return "cadastro";
+  if(view === "cadastro_hub" || view === "usuarios") return "cadastro";
   if(view.startsWith("est_")) return "estoque";
   if(view.startsWith("cli_")) return "clientes";
   if(view.startsWith("rh_")) return "rh";
@@ -2234,7 +2234,7 @@ function sidebarConteudo(){
     navItem("vg_analitico","📊","Analítica"),
   ].join("")));
 
-  const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre"];
+  const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
     master ? navItem("dashboard","◆","Dashboard") : "",
     master ? navItem("contas","▢","Contas") : "",
@@ -2246,7 +2246,6 @@ function sidebarConteudo(){
     master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
     master ? navItem("rel_dre","📑","DRE") : "",
     master ? navSubmenuAjustes() : "",
-    master ? navItem("usuarios","👤","Usuários") : "",
   ].join("")));
 
   const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
@@ -2295,7 +2294,10 @@ function sidebarConteudo(){
   }
 
   grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
-  grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub"], navItem("cadastro_hub","🗂️","Central de Cadastros")));
+  grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios"], [
+    navItem("cadastro_hub","🗂️","Central de Cadastros"),
+    master ? navItem("usuarios","👤","Usuários") : "",
+  ].join("")));
 
   const construcao = master ? `
     <div class="nav-group-label">Em construção</div>
