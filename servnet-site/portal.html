@@ -149,6 +149,18 @@ a{color:inherit;}
 .ref-bonus.earned{color:#34D399;}
 .ref-bonus.pending{color:#FCD34D;}
 
+/* ===== REGRAS (accordion) ===== */
+.rules-toggle{display:flex;align-items:center;gap:0.4rem;background:transparent;border:none;color:var(--text-2);font-size:0.78rem;cursor:pointer;padding:0;font-family:inherit;margin-top:1rem;transition:color 0.15s;}
+.rules-toggle:hover{color:var(--pool);}
+.rules-toggle .arrow{display:inline-block;transition:transform 0.2s;font-style:normal;}
+.rules-toggle.open .arrow{transform:rotate(90deg);}
+.rules-box{display:none;margin-top:0.6rem;background:rgba(0,196,216,0.04);border:1px solid var(--border);border-radius:8px;padding:1rem 1.1rem;}
+.rules-box.show{display:block;}
+.rules-box ol,.rules-box ul{padding-left:1.2rem;display:flex;flex-direction:column;gap:0.35rem;}
+.rules-box li{font-size:0.82rem;color:var(--text-2);line-height:1.55;}
+.rules-box li strong{color:var(--text);}
+.rules-box .rules-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--pool);margin-bottom:0.5rem;font-weight:700;}
+
 /* utils */
 .muted{color:var(--text-2);font-size:0.9rem;line-height:1.65;}
 .spin{width:18px;height:18px;border:2px solid rgba(0,196,216,0.3);border-top-color:var(--pool);border-radius:50%;display:inline-block;animation:sp 0.7s linear infinite;}
@@ -468,7 +480,22 @@ function renderFidelidade(streak){
     ${faltam>0
       ?`<div class="premio-pill next">🎁 Próximo prêmio: <strong>${proximoPremio}</strong> — pague em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
       :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou: <strong>${proximoPremio}</strong> — Fale com o suporte para resgatar!</div>`
-    }`;
+    }
+    <button class="rules-toggle" onclick="toggleRules('fidelRules',this)">
+      <em class="arrow">▶</em> Ver regras do programa
+    </button>
+    <div class="rules-box" id="fidelRules">
+      <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
+      <ol>
+        <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 mês em dia.</li>
+        <li>Acumule <strong>6 meses consecutivos</strong> em dia e ganhe <strong>50% de desconto</strong> na próxima fatura.</li>
+        <li>Continue por mais <strong>6 meses</strong> (12 no total) e ganhe <strong>1 mês inteiramente grátis</strong>.</li>
+        <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
+        <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
+        <li>Os prêmios são descontados automaticamente na <strong>próxima fatura</strong> após atingir a meta.</li>
+        <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
+      </ol>
+    </div>`;
 }
 
 // ===== INDIQUE E GANHE =====
@@ -537,7 +564,22 @@ function renderIndicacoes(res,data,codigo){
     </div>
     <div class="ref-msg" id="refMsg"></div>
     <div style="font-size:0.78rem;color:var(--text-2);font-weight:600;margin:0.25rem 0 0.4rem">Minhas indicações (${lista.length}):</div>
-    <div class="ref-list">${listHtml}</div>`;
+    <div class="ref-list">${listHtml}</div>
+    <button class="rules-toggle" onclick="toggleRules('refRules',this)" style="margin-top:0.75rem">
+      <em class="arrow">▶</em> Ver regras do programa
+    </button>
+    <div class="rules-box" id="refRules">
+      <div class="rules-title">📋 Regras — Indique e Ganhe</div>
+      <ul>
+        <li>Indique um amigo preenchendo o formulário acima com o <strong>nome e telefone</strong> dele.</li>
+        <li>Assim que o amigo indicado <strong>assinar um plano e efetuar o primeiro pagamento</strong>, a indicação é confirmada.</li>
+        <li>A cada indicação confirmada, você ganha <strong>1 mês grátis</strong> descontado automaticamente na sua próxima fatura.</li>
+        <li><strong>Não há limite</strong> de indicações — quanto mais amigos você trouxer, mais meses grátis você ganha.</li>
+        <li>Você pode acompanhar o status de cada indicação aqui no portal: <strong>Pendente</strong> (aguardando assinatura) ou <strong>Ativo</strong> (confirmado).</li>
+        <li>O desconto é aplicado após a confirmação da indicação — não é cumulativo com outras promoções ativas.</li>
+        <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
+      </ul>
+    </div>`;
 
   // máscara telefone
   document.getElementById('refTel')?.addEventListener('input',e=>{
@@ -584,6 +626,12 @@ async function doIndicar(){
   }finally{
     btn.disabled=false;btn.textContent='Indicar';
   }
+}
+
+function toggleRules(id,btn){
+  const box=document.getElementById(id);
+  const open=box.classList.toggle('show');
+  btn.classList.toggle('open',open);
 }
 
 function showRefMsg(text,type){
