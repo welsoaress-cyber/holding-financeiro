@@ -72,11 +72,21 @@ button, input, select { font-family: inherit; font-size: inherit; }
   color: var(--text-2); transition: color 0.15s;
 }
 .nav-links a:hover { color: var(--pool); }
+.nav-actions { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.nav-portal-btn {
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--pool); border-radius: 5px;
+  color: var(--pool); font-weight: 600; font-size: 0.85rem;
+  text-decoration: none; transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-portal-btn:hover { background: rgba(0,196,216,0.1); }
 .nav-btn {
   padding: 0.5rem 1.25rem;
   background: var(--pool); color: #fff;
   border-radius: 5px; font-weight: 700; font-size: 0.9rem;
   text-decoration: none; transition: opacity 0.15s;
+  white-space: nowrap;
 }
 .nav-btn:hover { opacity: 0.84; }
 
@@ -623,6 +633,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
 @media (max-width: 480px) {
   .nav { padding: 0 1rem; }
   .nav-logo { font-size: 1.1rem; }
+  .nav-portal-btn { display: none; } /* só "Assinar agora" no mobile */
   .nav-btn { font-size: 0.75rem; padding: 0.38rem 0.85rem; }
   .hero { padding: 78px 1.25rem 44px; }
   .hero h1 { font-size: clamp(1.9rem, 9vw, 2.5rem); }
@@ -643,9 +654,11 @@ button, input, select { font-family: inherit; font-size: inherit; }
     <li><a href="#quem-somos">Quem somos</a></li>
     <li><a href="#cobertura">Cobertura</a></li>
     <li><a href="#contato">Contato</a></li>
-    <li><a href="portal.html">Área do Cliente</a></li>
   </ul>
-  <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+  <div class="nav-actions">
+    <a href="portal.html" class="nav-portal-btn">Área do Cliente</a>
+    <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+  </div>
 </nav>
 
 <!-- HERO -->
