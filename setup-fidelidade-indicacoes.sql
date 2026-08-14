@@ -136,13 +136,25 @@ BEGIN
       AND user_id    = p_master_id
     ORDER BY dados->>'vencimento' DESC
   LOOP
+    -- Fatura pendente com vencimento futuro = mês atual ainda no prazo
+    -- Não conta, mas também NÃO quebra o streak
+    IF lower(v_rec.status) IN ('pendente')
+       AND v_rec.vencimento >= to_char(current_date, 'YYYY-MM-DD')
+    THEN
+      CONTINUE;
+    END IF;
+
+    -- Pago em dia = conta no streak
     IF lower(v_rec.status) = 'pago'
        AND v_rec.data_pagamento IS NOT NULL
        AND v_rec.data_pagamento <= v_rec.vencimento
     THEN
       v_streak := v_streak + 1;
+
+    -- Qualquer outro caso (pago em atraso, vencido, pendente vencido) = zera tudo
     ELSE
-      EXIT; -- sequência quebrada
+      v_streak := 0;
+      EXIT;
     END IF;
   END LOOP;
 
