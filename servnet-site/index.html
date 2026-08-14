@@ -1167,14 +1167,13 @@ async function submitLead(e) {
   document.getElementById('leadForm').style.display = 'none';
   document.getElementById('leadOk').style.display   = 'block';
 
-  // Monta mensagem para WhatsApp do operador
+  // Monta mensagem para WhatsApp — voz do próprio cliente
   const msg = encodeURIComponent(
-    `🔔 *Novo lead pelo site!*\n\n` +
-    `👤 *Nome:* ${nome}\n` +
-    `📱 *Telefone:* ${telRaw}\n` +
-    (plano ? `📦 *Plano:* ${plano}\n` : '') +
-    (end   ? `📍 *Endereço:* ${end}\n` : '') +
-    `\n_Cadastrado em servnet.net.br_`
+    `Olá! Vi os planos de vocês no site e tenho interesse em contratar.` +
+    `\n\nMeu nome é *${nome}*` +
+    (plano ? `, tenho interesse no plano de *${plano}*` : '') +
+    (end   ? `. Meu endereço é ${end}` : '') +
+    `.\n\nPode me passar mais informações? 😊`
   );
 
   // Abre WhatsApp após 1s
