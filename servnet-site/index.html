@@ -1,0 +1,891 @@
+<title>Servnet</title>
+<style>
+/* ===== TOKENS ===== */
+:root {
+  --pool:      #00C4D8;
+  --pool-hi:   #2DDAE8;
+  --pool-dim:  rgba(0,196,216,0.1);
+  --bg:        #F1FAFB;
+  --surface:   #FFFFFF;
+  --card:      #E8F7FA;
+  --text:      #071A1F;
+  --text-2:    #3D7585;
+  --border:    rgba(0,196,216,0.2);
+  --nav-bg:    rgba(241,250,251,0.92);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:      #030F18;
+    --surface: #061520;
+    --card:    #091C2A;
+    --text:    #CDEAF2;
+    --text-2:  #4A8898;
+    --border:  rgba(0,196,216,0.13);
+    --nav-bg:  rgba(3,15,24,0.92);
+  }
+}
+:root[data-theme="dark"] {
+  --bg:      #030F18;
+  --surface: #061520;
+  --card:    #091C2A;
+  --text:    #CDEAF2;
+  --text-2:  #4A8898;
+  --border:  rgba(0,196,216,0.13);
+  --nav-bg:  rgba(3,15,24,0.92);
+}
+
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.6; overflow-x: hidden;
+}
+a { color: inherit; }
+button, input, select { font-family: inherit; font-size: inherit; }
+:focus-visible { outline: 2px solid var(--pool); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ===== NAV ===== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 62px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 max(5vw, 1.5rem);
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-size: 1.4rem; font-weight: 900; letter-spacing: 0.09em;
+  text-decoration: none; color: var(--pool);
+  text-shadow: 0 0 14px rgba(0,196,216,0.35);
+}
+.nav-logo span { color: var(--text); font-weight: 700; opacity: 0.75; }
+.nav-links { display: flex; gap: 2.25rem; list-style: none; }
+.nav-links a {
+  text-decoration: none; font-size: 0.95rem; font-weight: 500;
+  color: var(--text-2); transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--pool); }
+.nav-btn {
+  padding: 0.5rem 1.25rem;
+  background: var(--pool); color: #fff;
+  border-radius: 5px; font-weight: 700; font-size: 0.9rem;
+  text-decoration: none; transition: opacity 0.15s;
+}
+.nav-btn:hover { opacity: 0.84; }
+
+/* ===== HERO — always dark ===== */
+.hero {
+  position: relative;
+  display: grid; grid-template-columns: 1fr 1fr;
+  align-items: center; gap: 2rem;
+  padding: 90px max(5vw, 1.5rem) 64px;
+  background: radial-gradient(ellipse 65% 65% at 20% 55%, rgba(0,196,216,0.07) 0%, transparent 70%), #030F18;
+  overflow: hidden;
+}
+#hero-canvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero-inner { position: relative; z-index: 1; }
+.hero-visual {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.orb-svg { width: min(380px, 95%); height: auto; }
+.ring-fwd  { transform-origin: 200px 200px; animation: spin-fwd 28s linear infinite; }
+.ring-rev  { transform-origin: 200px 200px; animation: spin-fwd 18s linear infinite reverse; }
+.dot-a     { transform-origin: 200px 200px; animation: spin-fwd  7s linear infinite; }
+.dot-b     { transform-origin: 200px 200px; animation: spin-fwd 11s linear infinite reverse; }
+.dot-c     { transform-origin: 200px 200px; animation: spin-fwd 16s linear infinite; }
+@keyframes spin-fwd { to { transform: rotate(360deg); } }
+
+@media (max-width: 820px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-visual { display: none; }
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--pool-hi);
+  border: 1px solid rgba(0,196,216,0.32);
+  border-radius: 100px; padding: 0.28rem 0.88rem;
+  margin-bottom: 1.8rem;
+}
+.hero-tag-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--pool); flex-shrink: 0;
+  animation: blink 2.2s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.6rem);
+  font-weight: 900; line-height: 1.04; letter-spacing: -0.04em;
+  color: #C5E8F2; text-wrap: balance; margin-bottom: 1.4rem;
+}
+.hero h1 em { font-style: normal; color: var(--pool); text-shadow: 0 0 38px rgba(0,196,216,0.4); }
+.hero-lead {
+  font-size: 1.1rem; line-height: 1.8; color: #4A8898;
+  max-width: 460px; margin-bottom: 2.5rem;
+}
+.hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.btn {
+  display: inline-block; text-decoration: none;
+  padding: 0.82rem 2rem; border-radius: 5px;
+  font-weight: 700; font-size: 0.9rem; border: none;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  cursor: pointer;
+}
+.btn-fill {
+  background: var(--pool); color: #fff;
+  box-shadow: 0 0 28px rgba(0,196,216,0.35);
+}
+.btn-fill:hover { transform: translateY(-2px); box-shadow: 0 0 44px rgba(0,196,216,0.55); }
+.btn-line {
+  background: transparent; color: #C5E8F2;
+  border: 1.5px solid rgba(0,196,216,0.38);
+}
+.btn-line:hover { border-color: var(--pool); color: var(--pool-hi); }
+
+/* ===== SECTION BASE ===== */
+.section { padding: 5.5rem max(5vw, 1.5rem); }
+.section-head { max-width: 680px; margin-bottom: 3.25rem; }
+.eyebrow {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--pool);
+  display: flex; align-items: center; gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+.eyebrow::before {
+  content: ''; display: block; width: 22px; height: 1.5px; background: var(--pool);
+}
+.section-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem); font-weight: 800;
+  line-height: 1.12; letter-spacing: -0.025em; text-wrap: balance;
+  margin-bottom: 0.8rem;
+}
+.section-sub { font-size: 1.05rem; color: var(--text-2); line-height: 1.8; }
+
+/* ===== PLANS ===== */
+.plans-section { background: var(--bg); }
+.plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.plan-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.75rem 1.5rem 1.5rem;
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.plan-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 10%, var(--pool) 50%, transparent 90%);
+  opacity: 0.35;
+}
+.plan-card.hot {
+  border-color: rgba(0,196,216,0.65);
+  background: linear-gradient(170deg, rgba(0,196,216,0.13) 0%, var(--card) 48%);
+  box-shadow:
+    0 0 0 1px rgba(0,196,216,0.5),
+    0 0 48px rgba(0,196,216,0.28),
+    0 0 110px rgba(0,196,216,0.1);
+  transform: translateY(-12px); z-index: 2; padding-top: 2.25rem;
+}
+.plan-card.hot::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 230px;
+  background: radial-gradient(ellipse 85% 100% at 50% 0%,
+    rgba(0,196,216,0.22) 0%, rgba(0,196,216,0.06) 50%, transparent 100%);
+  pointer-events: none;
+}
+.plan-card.hot::after {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent 5%, var(--pool) 50%, transparent 95%);
+  box-shadow: 0 0 22px rgba(0,196,216,0.85), 0 0 6px #fff;
+}
+.plan-card.hot .plan-mbps {
+  font-size: clamp(2.9rem, 4vw, 3.8rem);
+  text-shadow: 0 0 40px rgba(0,196,216,0.65), 0 0 12px rgba(0,196,216,0.4);
+}
+.plan-card.hot .plan-val { text-shadow: 0 0 28px rgba(0,196,216,0.28); }
+.plan-card:hover { transform: translateY(-5px); box-shadow: 0 14px 48px rgba(0,196,216,0.13); }
+.plan-card.hot:hover { transform: translateY(-17px); }
+@media (max-width: 560px) {
+  .plan-card.hot { transform: none; }
+  .plan-card.hot:hover { transform: translateY(-5px); }
+}
+.plan-badge {
+  position: absolute; top: 0.9rem; right: 0.9rem;
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #030F18;
+  background: var(--pool); border-radius: 100px;
+  padding: 0.22rem 0.65rem;
+  box-shadow: 0 0 12px rgba(0,196,216,0.55); white-space: nowrap;
+}
+.plan-mbps {
+  font-family: 'Courier New', 'SF Mono', monospace;
+  font-size: clamp(2.3rem, 3.2vw, 3rem);
+  font-weight: 700; line-height: 1; color: var(--pool); letter-spacing: -0.02em;
+}
+.plan-unit { font-size: 0.88rem; font-weight: 400; color: var(--text-2); margin-left: 0.1em; }
+.plan-fiber {
+  font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-2); margin-top: 0.3rem; margin-bottom: 1.4rem;
+}
+.plan-por-apenas { font-size: 0.88rem; color: var(--text-2); margin-bottom: 0.2rem; }
+.plan-pricing { display: flex; align-items: baseline; gap: 0.2rem; }
+.plan-r { font-size: 0.9rem; color: var(--text-2); margin-top: 3px; }
+.plan-val {
+  font-size: clamp(1.9rem, 2.8vw, 2.5rem); font-weight: 900;
+  letter-spacing: -0.04em; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.plan-mo { font-size: 0.88rem; color: var(--text-2); }
+.plan-sep { height: 1px; background: var(--border); margin: 1.4rem 0; }
+.plan-features {
+  list-style: none; display: flex; flex-direction: column; gap: 0.55rem;
+  flex: 1; margin-bottom: 1.6rem;
+}
+.plan-features li {
+  font-size: 0.92rem; color: var(--text-2);
+  display: flex; align-items: center; gap: 0.55rem;
+}
+.feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pool); flex-shrink: 0; }
+.plan-action {
+  width: 100%; padding: 0.8rem 1rem;
+  border-radius: 5px; font-weight: 700; font-size: 1rem;
+  cursor: pointer; text-align: center; text-decoration: none;
+  display: block; transition: all 0.15s;
+}
+.action-line { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+.action-line:hover { border-color: var(--pool); color: var(--pool); }
+.action-fill {
+  background: var(--pool); color: #fff; border: none;
+  box-shadow: 0 0 20px rgba(0,196,216,0.3);
+}
+.action-fill:hover { opacity: 0.88; box-shadow: 0 0 32px rgba(0,196,216,0.48); }
+.plan-fine {
+  font-size: 0.78rem; color: var(--text-2);
+  text-align: center; margin-top: 0.7rem; line-height: 1.5; opacity: 0.8;
+}
+
+/* ===== DIFERENCIAIS ===== */
+.diffs-section { background: var(--surface); }
+.diff-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem;
+}
+.diff-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.5rem 1rem 1.25rem;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 0.85rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.diff-card:hover { border-color: rgba(0,196,216,0.42); transform: translateY(-3px); }
+.diff-ico { width: 40px; height: 40px; color: var(--pool); }
+.diff-ico svg { width: 100%; height: 100%; }
+.diff-label { font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.35; }
+
+@media (max-width: 900px) { .diff-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px) { .diff-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== CTA BANNER ===== */
+.cta-banner {
+  position: relative; overflow: hidden;
+  padding: 5rem max(5vw, 1.5rem);
+  background: linear-gradient(135deg, #004D5C 0%, #007A90 45%, #00A8BC 100%);
+  text-align: center;
+}
+.cta-banner::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    -55deg, transparent, transparent 38px,
+    rgba(255,255,255,0.04) 38px, rgba(255,255,255,0.04) 39px);
+  pointer-events: none;
+}
+.cta-banner::after {
+  content: ''; position: absolute;
+  top: -60px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-banner-inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 1.25rem;
+  max-width: 680px; margin: 0 auto;
+}
+.cta-banner-tag {
+  display: inline-block;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 100px; padding: 0.28rem 0.9rem;
+}
+.cta-banner h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 900; line-height: 1.1; letter-spacing: -0.03em;
+  color: #fff; text-wrap: balance;
+}
+.cta-banner p { font-size: 1.05rem; color: rgba(255,255,255,0.82); line-height: 1.75; max-width: 500px; }
+.cta-banner-actions {
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem;
+}
+.btn-wa {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.9rem 2rem; background: #fff; color: #007A90;
+  border-radius: 6px; font-weight: 800; font-size: 1rem;
+  text-decoration: none;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-wa:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.24); }
+.btn-wa svg { flex-shrink: 0; }
+.btn-planos {
+  display: inline-flex; align-items: center;
+  padding: 0.9rem 2rem; background: transparent; color: #fff;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 6px; font-weight: 700; font-size: 1rem;
+  text-decoration: none; transition: border-color 0.15s, background 0.15s;
+}
+.btn-planos:hover { border-color: #fff; background: rgba(255,255,255,0.08); }
+
+/* ===== ABOUT / MVV ===== */
+.about-section { background: var(--surface); }
+.about-intro {
+  font-size: 1.05rem; color: var(--text-2); line-height: 1.8;
+  max-width: 640px; margin-bottom: 3rem;
+  border-left: 2px solid var(--pool); padding-left: 1.25rem;
+}
+.mvv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; max-width: 980px; }
+.mvv-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 2rem 1.75rem;
+  position: relative; overflow: hidden;
+}
+.mvv-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 10%, var(--pool) 50%, transparent 90%);
+  opacity: 0.35;
+}
+.mvv-ico {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: var(--pool-dim); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; margin-bottom: 1.25rem;
+}
+.mvv-label {
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--pool); margin-bottom: 0.6rem;
+}
+.mvv-text { font-size: 0.97rem; color: var(--text-2); line-height: 1.75; }
+.mvv-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.mvv-list li {
+  font-size: 0.97rem; color: var(--text-2); display: flex; align-items: center; gap: 0.6rem;
+}
+.mvv-list li::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--pool); flex-shrink: 0;
+}
+@media (max-width: 720px) { .mvv-grid { grid-template-columns: 1fr; } }
+
+/* ===== COVERAGE ===== */
+.coverage-section { background: var(--surface); }
+.city-list { display: flex; flex-wrap: wrap; gap: 0.6rem; max-width: 820px; }
+.city-tag {
+  padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 5px;
+  font-size: 0.92rem; color: var(--text-2); background: var(--card);
+  display: flex; align-items: center; gap: 0.44rem;
+}
+.city-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pool); flex-shrink: 0; }
+.coverage-note { margin-top: 2rem; font-size: 0.92rem; color: var(--text-2); max-width: 500px; line-height: 1.65; }
+
+/* ===== CONTACT ===== */
+.contact-section { background: var(--bg); }
+.contact-layout { display: grid; grid-template-columns: 1fr 1.6fr; gap: 5rem; max-width: 900px; }
+.contact-channels { display: flex; flex-direction: column; gap: 1.75rem; }
+.channel { display: flex; align-items: flex-start; gap: 1rem; }
+.ch-ico {
+  width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--card); display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.ch-key { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--pool); margin-bottom: 0.18rem; }
+.ch-val { font-size: 1rem; color: var(--text); font-weight: 500; }
+.c-form { display: flex; flex-direction: column; gap: 1rem; }
+.f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.f-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.f-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-2); }
+.f-input, .f-select {
+  padding: 0.8rem 1rem; font-size: 1rem;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--card); color: var(--text);
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.f-input:focus, .f-select:focus { border-color: var(--pool); box-shadow: 0 0 0 3px rgba(0,196,216,0.12); }
+.f-submit {
+  align-self: flex-start; padding: 0.9rem 2.5rem; font-size: 1rem;
+  background: var(--pool); color: #fff;
+  border: none; border-radius: 5px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s; margin-top: 0.4rem;
+}
+.f-submit:hover { opacity: 0.85; }
+.f-submit:disabled { opacity: 0.65; cursor: default; }
+
+/* ===== WHATSAPP FLOAT ===== */
+.wa-float {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
+  display: flex; align-items: center; gap: 0.6rem;
+  background: #25D366; color: #fff;
+  padding: 0.65rem 1.1rem 0.65rem 0.9rem; border-radius: 100px;
+  font-weight: 700; font-size: 0.82rem; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(37,211,102,0.45); transition: transform 0.15s, box-shadow 0.15s;
+}
+.wa-float:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(37,211,102,0.55); }
+.wa-float svg { flex-shrink: 0; }
+
+/* ===== FOOTER ===== */
+.footer {
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 2rem max(5vw, 1.5rem);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+}
+.footer-logo { font-size: 1.15rem; font-weight: 900; letter-spacing: 0.08em; color: var(--pool); }
+.footer-links { list-style: none; display: flex; gap: 2rem; }
+.footer-links a { font-size: 0.9rem; color: var(--text-2); text-decoration: none; transition: color 0.15s; }
+.footer-links a:hover { color: var(--pool); }
+.footer-copy { font-size: 0.82rem; color: var(--text-2); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 820px) {
+  .plans-grid { grid-template-columns: repeat(1, 1fr); }
+  .contact-layout { grid-template-columns: 1fr; gap: 2.5rem; }
+}
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+  .section { padding: 4rem 1.25rem; }
+}
+@media (max-width: 560px) {
+  .plans-grid { grid-template-columns: 1fr; }
+  .f-row { grid-template-columns: 1fr; }
+  .f-submit { width: 100%; align-self: stretch; text-align: center; }
+  .footer { flex-direction: column; align-items: flex-start; }
+  .footer-links { display: none; }
+}
+@media (max-width: 480px) {
+  .nav { padding: 0 1rem; }
+  .nav-logo { font-size: 1.1rem; }
+  .nav-btn { font-size: 0.75rem; padding: 0.38rem 0.85rem; }
+  .hero { padding: 78px 1.25rem 44px; }
+  .hero h1 { font-size: clamp(1.9rem, 9vw, 2.5rem); }
+  .hero-lead { font-size: 0.95rem; margin-bottom: 2rem; }
+  .btn { padding: 0.75rem 1.4rem; font-size: 0.85rem; }
+  .hero-cta { flex-direction: column; align-items: stretch; }
+  .hero-cta .btn { text-align: center; }
+  .section { padding: 3.25rem 1.25rem; }
+  .section-head { margin-bottom: 2rem; }
+}
+</style>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#inicio" class="nav-logo">SERV<span>NET</span></a>
+  <ul class="nav-links">
+    <li><a href="#planos">Planos</a></li>
+    <li><a href="#quem-somos">Quem somos</a></li>
+    <li><a href="#cobertura">Cobertura</a></li>
+    <li><a href="#contato">Contato</a></li>
+    <li><a href="portal.html">Área do Cliente</a></li>
+  </ul>
+  <a href="#planos" class="nav-btn">Assinar agora</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="inicio" aria-label="Banner principal">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="hero-tag">
+      <span class="hero-tag-dot"></span>
+      Internet 100% Fibra Óptica
+    </div>
+    <h1>A internet<br><em>do seu bairro.</em></h1>
+    <p class="hero-lead">Fibra óptica 100% no Jardim Moraes Prado. Sem franquia, sem travamento, sem enrolação — velocidade real para quem mora aqui.</p>
+    <div class="hero-cta">
+      <a href="#planos" class="btn btn-fill">Ver nossos planos</a>
+      <a href="#contato" class="btn btn-line">Falar com a gente</a>
+    </div>
+  </div>
+  <div class="hero-visual" aria-hidden="true">
+    <svg class="orb-svg" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow2" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="14" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="200" cy="200" r="175" stroke="rgba(0,196,216,0.05)" stroke-width="1"/>
+      <circle class="ring-fwd" cx="200" cy="200" r="148" stroke="rgba(0,196,216,0.1)" stroke-width="1" stroke-dasharray="6 12"/>
+      <circle class="ring-rev" cx="200" cy="200" r="118" stroke="rgba(0,196,216,0.16)" stroke-width="1.5" stroke-dasharray="3 8"/>
+      <circle cx="200" cy="200" r="88" stroke="rgba(0,196,216,0.22)" stroke-width="1.5"/>
+      <circle cx="200" cy="200" r="62" fill="rgba(0,196,216,0.05)" stroke="rgba(0,196,216,0.3)" stroke-width="1.5" filter="url(#glow2)"/>
+      <circle cx="200" cy="200" r="40" fill="rgba(0,196,216,0.12)" stroke="rgba(0,196,216,0.55)" stroke-width="1.5" filter="url(#glow)"/>
+      <circle cx="200" cy="200" r="20" fill="rgba(0,196,216,0.3)" stroke="#00C4D8" stroke-width="1.5" filter="url(#glow)"/>
+      <circle cx="200" cy="200" r="8" fill="#00C4D8" filter="url(#glow)"/>
+      <text x="200" y="193" text-anchor="middle" font-family="'Courier New',monospace" font-size="12" fill="rgba(45,218,232,0.9)" font-weight="700" filter="url(#glow)">300</text>
+      <text x="200" y="208" text-anchor="middle" font-family="system-ui,sans-serif" font-size="6.5" fill="rgba(0,196,216,0.55)" letter-spacing="2.5">Mbps</text>
+      <line x1="219" y1="181" x2="292" y2="108" stroke="rgba(0,196,216,0.18)" stroke-width="1" stroke-dasharray="3 6"/>
+      <circle cx="292" cy="108" r="4" fill="rgba(0,196,216,0.55)" filter="url(#glow)"/>
+      <line x1="181" y1="181" x2="104" y2="104" stroke="rgba(0,196,216,0.13)" stroke-width="1" stroke-dasharray="3 6"/>
+      <circle cx="104" cy="104" r="3" fill="rgba(0,196,216,0.4)"/>
+      <line x1="219" y1="219" x2="298" y2="298" stroke="rgba(0,196,216,0.11)" stroke-width="1" stroke-dasharray="3 6"/>
+      <circle cx="298" cy="298" r="3" fill="rgba(0,196,216,0.35)"/>
+      <line x1="181" y1="219" x2="102" y2="295" stroke="rgba(0,196,216,0.1)" stroke-width="1" stroke-dasharray="3 6"/>
+      <circle cx="102" cy="295" r="2.5" fill="rgba(0,196,216,0.3)"/>
+      <circle class="dot-a" cx="200" cy="52" r="5.5" fill="#00C4D8" filter="url(#glow)"/>
+      <circle class="dot-b" cx="318" cy="200" r="4" fill="rgba(45,218,232,0.8)" filter="url(#glow)"/>
+      <circle class="dot-c" cx="95" cy="282" r="3.5" fill="rgba(0,196,216,0.7)"/>
+    </svg>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section class="section plans-section" id="planos" aria-labelledby="plans-h">
+  <div class="section-head">
+    <div class="eyebrow">Planos residenciais</div>
+    <h2 class="section-title" id="plans-h">Escolha a sua velocidade</h2>
+    <p class="section-sub">Todos os planos incluem fibra óptica 100%, roteador Wi-Fi, instalação e suporte técnico — sem cobranças extras.</p>
+  </div>
+  <div class="plans-grid">
+
+    <article class="plan-card" aria-label="Plano 100 Mbps">
+      <div class="plan-mbps">100<span class="plan-unit">Mbps</span></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">60,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+      </ul>
+      <a href="#contato" class="plan-action action-line">Quero esse plano</a>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
+    <article class="plan-card hot" aria-label="Plano 200 Mbps, mais popular">
+      <div class="plan-badge">Mais popular</div>
+      <div class="plan-mbps">200<span class="plan-unit">Mbps</span></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">80,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
+      </ul>
+      <a href="#contato" class="plan-action action-fill">Quero esse plano</a>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
+    <article class="plan-card" aria-label="Plano 300 Mbps">
+      <div class="plan-mbps">300<span class="plan-unit">Mbps</span></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">100,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
+      </ul>
+      <a href="#contato" class="plan-action action-line">Quero esse plano</a>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- DIFERENCIAIS -->
+<section class="section diffs-section" aria-label="Nossos diferenciais">
+  <div class="section-head">
+    <div class="eyebrow">Por que a Servnet?</div>
+    <h2 class="section-title">O que nos diferencia</h2>
+  </div>
+  <div class="diff-grid">
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div class="diff-label">Fibra Óptica 100%</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="diff-label">Wi-Fi Premium</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </div>
+      <div class="diff-label">Suporte Exclusivo</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="diff-label">Instalação Rápida</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13" stroke-width="2.5"/><line x1="18" y1="11" x2="18.01" y2="11" stroke-width="2.5"/><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+      </div>
+      <div class="diff-label">Otimizada para Jogos</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      </div>
+      <div class="diff-label">Custo-Benefício</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<section class="cta-banner" aria-label="Chamada para ação">
+  <div class="cta-banner-inner">
+    <span class="cta-banner-tag">Jardim Moraes Prado</span>
+    <h2>Sua fibra está<br>esperando por você</h2>
+    <p>Instalação rápida, sem burocracia e sem fidelidade. Ligue agora e comece a usar ainda esta semana.</p>
+    <div class="cta-banner-actions">
+      <a href="whatsapp://send?phone=5511954490001" class="btn-wa">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Falar no WhatsApp
+      </a>
+      <a href="#planos" class="btn-planos">Ver planos</a>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="section about-section" id="quem-somos" aria-labelledby="about-h">
+  <div class="section-head">
+    <div class="eyebrow">Quem somos</div>
+    <h2 class="section-title" id="about-h">Nascemos aqui, crescemos com você</h2>
+  </div>
+  <p class="about-intro">A Servnet é um provedor de internet local focado em oferecer conexão de qualidade com o atendimento humano que as grandes operadoras não conseguem dar. Somos do Jardim Moraes Prado — e isso faz toda a diferença.</p>
+  <div class="mvv-grid">
+    <div class="mvv-card">
+      <div class="mvv-ico" aria-hidden="true">🎯</div>
+      <div class="mvv-label">Missão</div>
+      <p class="mvv-text">Conectar pessoas e negócios no Jardim Moraes Prado com internet rápida, estável e acessível — transformando a experiência digital de quem mora aqui.</p>
+    </div>
+    <div class="mvv-card">
+      <div class="mvv-ico" aria-hidden="true">🔭</div>
+      <div class="mvv-label">Visão</div>
+      <p class="mvv-text">Ser o provedor de internet mais confiável e querido da nossa região, levando fibra óptica a cada vez mais lares com responsabilidade e cuidado.</p>
+    </div>
+    <div class="mvv-card">
+      <div class="mvv-ico" aria-hidden="true">💡</div>
+      <div class="mvv-label">Valores</div>
+      <ul class="mvv-list">
+        <li>Qualidade sem compromisso</li>
+        <li>Atendimento humano e ágil</li>
+        <li>Transparência em tudo</li>
+        <li>Compromisso com a comunidade</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- COVERAGE -->
+<section class="section coverage-section" id="cobertura" aria-labelledby="cov-h">
+  <div class="section-head">
+    <div class="eyebrow">Área de cobertura</div>
+    <h2 class="section-title" id="cov-h">Onde a Servnet chega</h2>
+    <p class="section-sub">Nossa rede de fibra óptica atende o Jardim Moraes Prado e está sempre crescendo.</p>
+  </div>
+  <div class="city-list" role="list">
+    <div class="city-tag" role="listitem"><span class="city-dot"></span>Jardim Moraes Prado</div>
+  </div>
+  <p class="coverage-note">Não encontrou seu bairro? Fale com a gente — verificamos a disponibilidade no seu endereço e estamos expandindo a rede constantemente.</p>
+</section>
+
+<!-- CONTACT -->
+<section class="section contact-section" id="contato" aria-labelledby="contact-h">
+  <div class="section-head">
+    <div class="eyebrow">Contato e suporte</div>
+    <h2 class="section-title" id="contact-h">Pronto para se conectar?</h2>
+    <p class="section-sub">Fale com nosso time — respondemos rápido por WhatsApp ou pelo formulário abaixo.</p>
+  </div>
+  <div class="contact-layout">
+    <div class="contact-channels">
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">📞</div>
+        <div>
+          <div class="ch-key">Telefone</div>
+          <div class="ch-val"><a href="tel:+5511954490001" style="color:inherit;text-decoration:none;">(11) 95449-0001</a></div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">💬</div>
+        <div>
+          <div class="ch-key">WhatsApp</div>
+          <div class="ch-val"><a href="whatsapp://send?phone=5511954490001" style="color:inherit;text-decoration:none;">(11) 95449-0001 ↗</a></div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">✉️</div>
+        <div>
+          <div class="ch-key">E-mail</div>
+          <div class="ch-val">contato@servnet.com.br</div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">📍</div>
+        <div>
+          <div class="ch-key">Atendimento</div>
+          <div class="ch-val">Jardim Moraes Prado e região</div>
+        </div>
+      </div>
+    </div>
+    <form class="c-form" aria-label="Formulário de contato" onsubmit="handleSubmit(event)">
+      <div class="f-row">
+        <div class="f-group">
+          <label class="f-label" for="f-nome">Nome completo</label>
+          <input class="f-input" type="text" id="f-nome" name="nome" autocomplete="name" placeholder="Seu nome" required>
+        </div>
+        <div class="f-group">
+          <label class="f-label" for="f-tel">Telefone</label>
+          <input class="f-input" type="tel" id="f-tel" name="tel" autocomplete="tel" placeholder="(XX) 9XXXX-XXXX">
+        </div>
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="f-end">Endereço (rua, bairro)</label>
+        <input class="f-input" type="text" id="f-end" name="end" placeholder="Rua Exemplo, 100 — Bairro">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="f-plano">Plano de interesse</label>
+        <select class="f-select" id="f-plano" name="plano">
+          <option value="">Selecione um plano</option>
+          <option value="100">100 Mbps — R$ 60,00/mês</option>
+          <option value="200">200 Mbps — R$ 80,00/mês (+ TV via app)</option>
+          <option value="300">300 Mbps — R$ 100,00/mês (+ TV via app)</option>
+        </select>
+      </div>
+      <button type="submit" class="f-submit">Solicitar contato</button>
+    </form>
+  </div>
+</section>
+
+<!-- WHATSAPP FLOAT -->
+<a class="wa-float" href="whatsapp://send?phone=5511954490001" aria-label="Abrir WhatsApp da Servnet">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+  WhatsApp
+</a>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">SERVNET</div>
+  <ul class="footer-links">
+    <li><a href="#planos">Planos</a></li>
+    <li><a href="#cobertura">Cobertura</a></li>
+    <li><a href="#contato">Contato</a></li>
+  </ul>
+  <div class="footer-copy">© 2025 Servnet. Todos os direitos reservados.</div>
+</footer>
+
+<script>
+(function () {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const N = 60, DIST = 130;
+  let W, H, nodes, raf;
+
+  function mkNode() {
+    return {
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.34,
+      vy: (Math.random() - 0.5) * 0.34,
+      r: Math.random() * 1.4 + 0.7
+    };
+  }
+
+  function init() {
+    const r = canvas.parentElement.getBoundingClientRect();
+    W = canvas.width = r.width;
+    H = canvas.height = r.height;
+    nodes = Array.from({ length: N }, mkNode);
+  }
+
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < DIST) {
+          const t = (1 - d / DIST);
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(0,196,216,${(t * 0.2).toFixed(3)})`;
+          ctx.lineWidth = t * 0.9;
+          ctx.stroke();
+        }
+      }
+    }
+    for (const n of nodes) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,196,216,0.65)';
+      ctx.fill();
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < -20) n.x = W + 20; else if (n.x > W + 20) n.x = -20;
+      if (n.y < -20) n.y = H + 20; else if (n.y > H + 20) n.y = -20;
+    }
+    if (!mq.matches) raf = requestAnimationFrame(tick);
+  }
+
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); init(); tick(); });
+  init(); tick();
+  ro.observe(canvas.parentElement);
+})();
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('.f-submit');
+  btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
+  btn.disabled = true;
+}
+</script>

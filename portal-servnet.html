@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Área do Cliente — Servnet</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --pool:#00C4D8;--pool-hi:#2DDAE8;
+  --bg:#030F18;--surface:#061520;--card:#091C2A;
+  --text:#CDEAF2;--text-2:#4A8898;
+  --border:rgba(0,196,216,0.15);
+  --pos:#10B981;--neg:#EF4444;--warn:#F59E0B;
+}
+body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
+a{color:inherit;}
+
+/* ===== LOGIN ===== */
+.login-screen{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:2rem 1rem;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,196,216,0.08) 0%,transparent 70%);
+}
+.login-logo{font-size:1.8rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 20px rgba(0,196,216,0.4);margin-bottom:0.3rem;}
+.login-logo span{color:var(--text);opacity:0.7;font-weight:700;}
+.login-sub{font-size:0.82rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.18em;margin-bottom:2.5rem;}
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2.5rem 2rem;}
+.login-card h2{font-size:1.1rem;font-weight:700;margin-bottom:0.4rem;}
+.login-card p{font-size:0.88rem;color:var(--text-2);margin-bottom:1.75rem;}
+.f-group{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1.2rem;}
+.f-label{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);}
+.f-input{padding:0.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.f-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
+.f-input::placeholder{color:var(--text-2);opacity:0.6;}
+.f-input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+.login-btn{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:0.4rem;font-family:inherit;}
+.login-btn:hover:not(:disabled){opacity:0.88;transform:translateY(-1px);}
+.login-btn:disabled{opacity:0.55;cursor:default;}
+.login-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:0.75rem 1rem;color:#FCA5A5;font-size:0.88rem;margin-top:1rem;display:none;}
+.login-err.show{display:block;}
+.login-help{text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--text-2);}
+.login-help a{color:var(--pool);text-decoration:none;}
+.login-back{display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-2);text-decoration:none;margin-bottom:1.5rem;transition:color 0.15s;}
+.login-back:hover{color:var(--pool);}
+
+/* ===== DASHBOARD ===== */
+.dash-screen{display:none;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(3,15,24,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 max(5vw,1.5rem);height:58px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-size:1.2rem;font-weight:900;letter-spacing:0.09em;color:var(--pool);text-decoration:none;}
+.topbar-logo span{color:var(--text);opacity:0.7;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:1rem;}
+.topbar-user{font-size:0.88rem;color:var(--text-2);}
+.topbar-user strong{color:var(--text);}
+.logout-btn{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);padding:0.35rem 0.8rem;font-size:0.82rem;cursor:pointer;transition:color 0.15s,border-color 0.15s;font-family:inherit;}
+.logout-btn:hover{color:var(--text);border-color:rgba(0,196,216,0.4);}
+.dash-body{max-width:960px;margin:0 auto;padding:2.5rem max(5vw,1.5rem);}
+.dash-greet{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--text-2);margin-bottom:0.25rem;}
+.dash-title{font-size:1.6rem;font-weight:800;margin-bottom:2rem;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem;}
+@media(max-width:640px){.cards{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 10%,var(--pool) 50%,transparent 90%);opacity:0.3;}
+.card.glow::before{opacity:1;box-shadow:0 0 10px rgba(0,196,216,0.5);}
+.card-lbl{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.18em;color:var(--pool);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;}
+.card-lbl::before{content:'';display:block;width:14px;height:1.5px;background:var(--pool);}
+.span2{grid-column:span 2;}
+@media(max-width:640px){.span2{grid-column:span 1;}}
+
+/* plan card */
+.plan-speed{font-family:'Courier New',monospace;font-size:2.5rem;font-weight:700;color:var(--pool);line-height:1;}
+.plan-speed span{font-size:1rem;color:var(--text-2);font-weight:400;}
+.plan-name{font-size:1rem;font-weight:600;margin-top:0.3rem;margin-bottom:0.6rem;}
+.plan-detail{font-size:0.86rem;color:var(--text-2);margin-bottom:0.3rem;display:flex;align-items:center;gap:0.4rem;}
+.plan-price{font-size:1.3rem;font-weight:800;margin-top:0.75rem;}
+.plan-price span{font-size:0.82rem;color:var(--text-2);font-weight:400;}
+
+/* badges */
+.badge{display:inline-block;padding:0.2rem 0.65rem;border-radius:100px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;}
+.b-ativo{background:rgba(16,185,129,0.15);color:#34D399;border:1px solid rgba(16,185,129,0.25);}
+.b-suspenso{background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
+.b-cancelado{background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25);}
+.b-pago{background:rgba(16,185,129,0.15);color:#34D399;border:1px solid rgba(16,185,129,0.25);}
+.b-pendente{background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
+.b-vencido{background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25);}
+
+/* invoice card */
+.inv-month{font-size:1rem;font-weight:700;margin-bottom:0.2rem;}
+.inv-due{font-size:0.84rem;color:var(--text-2);margin-bottom:0.75rem;}
+.inv-val{font-size:2.2rem;font-weight:900;line-height:1;margin-bottom:0.75rem;}
+.boleto-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.25rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;margin-top:0.75rem;font-family:inherit;}
+.boleto-btn:hover{opacity:0.85;}
+
+/* history */
+.hist-list{display:flex;flex-direction:column;gap:0.65rem;}
+.hist-item{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border-radius:7px;border:1px solid var(--border);}
+.hist-month{font-size:0.9rem;font-weight:600;}
+.hist-due{font-size:0.76rem;color:var(--text-2);}
+.hist-right{text-align:right;}
+.hist-val{font-size:0.9rem;font-weight:700;}
+.hist-link{font-size:0.75rem;color:var(--pool);text-decoration:none;}
+.hist-link:hover{text-decoration:underline;}
+
+/* support card */
+.sup-desc{font-size:0.9rem;color:var(--text-2);margin-bottom:1.25rem;line-height:1.7;}
+.wa-btn{display:inline-flex;align-items:center;gap:0.6rem;padding:0.8rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;}
+.wa-btn:hover{opacity:0.88;}
+.sup-info{margin-top:1rem;font-size:0.82rem;color:var(--text-2);}
+.sup-info a{color:var(--pool);text-decoration:none;}
+
+/* utils */
+.muted{color:var(--text-2);font-size:0.9rem;line-height:1.65;}
+.spin{width:18px;height:18px;border:2px solid rgba(0,196,216,0.3);border-top-color:var(--pool);border-radius:50%;display:inline-block;animation:sp 0.7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.loading-center{text-align:center;padding:2rem;color:var(--text-2);}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div class="login-screen" id="loginScreen">
+  <a href="index.html" class="login-back">← Voltar ao site</a>
+  <div class="login-logo">SERV<span>NET</span></div>
+  <div class="login-sub">Área do Cliente</div>
+  <div class="login-card">
+    <h2>Acesso ao portal</h2>
+    <p>Informe seu CPF e data de nascimento para entrar.</p>
+    <div class="f-group">
+      <label class="f-label" for="cpf">CPF</label>
+      <input class="f-input" type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" autocomplete="off" inputmode="numeric">
+    </div>
+    <div class="f-group">
+      <label class="f-label" for="nasc">Data de nascimento</label>
+      <input class="f-input" type="date" id="nasc">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=5511954490001">Fale pelo WhatsApp</a></div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dash-screen" id="dashScreen">
+  <nav class="topbar">
+    <a href="index.html" class="topbar-logo">SERV<span>NET</span></a>
+    <div class="topbar-right">
+      <div class="topbar-user">Olá, <strong id="dashNome">—</strong></div>
+      <button class="logout-btn" onclick="doLogout()">Sair</button>
+    </div>
+  </nav>
+  <div class="dash-body">
+    <div class="dash-greet">Área do Cliente</div>
+    <div class="dash-title" id="dashTitle">Bem-vindo!</div>
+    <div class="cards">
+
+      <!-- Plano -->
+      <div class="card" id="planCard">
+        <div class="card-lbl">Meu Plano</div>
+        <div id="planContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Próxima Fatura -->
+      <div class="card glow" id="invCard">
+        <div class="card-lbl">Próxima Fatura</div>
+        <div id="invContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Histórico -->
+      <div class="card span2" id="histCard">
+        <div class="card-lbl">Histórico de Faturas</div>
+        <div id="histContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Suporte -->
+      <div class="card span2">
+        <div class="card-lbl">Suporte</div>
+        <p class="sup-desc">Nossa equipe está disponível de segunda a sábado, das 8h às 20h. Resposta rápida via WhatsApp.</p>
+        <a class="wa-btn" href="whatsapp://send?phone=5511954490001">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Falar com Suporte
+        </a>
+        <div class="sup-info">Ou ligue: <a href="tel:+5511954490001">(11) 95449-0001</a></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let session = null;
+
+// CPF mask
+document.getElementById('cpf').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+  else if(v.length>6) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+  else if(v.length>3) v=v.slice(0,3)+'.'+v.slice(3);
+  e.target.value=v;
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
+});
+
+async function doLogin(){
+  const cpf = document.getElementById('cpf').value.replace(/\D/g,'');
+  const nasc = document.getElementById('nasc').value;
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if(cpf.length!==11){ showErr('Informe um CPF válido.'); return; }
+  if(!nasc){ showErr('Informe sua data de nascimento.'); return; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_login',{p_cpf:cpf,p_nascimento:nasc});
+    if(error) throw error;
+    if(!data||!data.ok){ showErr(data?.msg||'CPF ou data de nascimento incorretos.'); return; }
+    session=data;
+    sessionStorage.setItem('sn_sess',JSON.stringify(data));
+    enterDash(data);
+  }catch(e){
+    showErr('Erro de conexão — tente novamente em instantes.');
+    console.error(e);
+  }finally{
+    btn.disabled=false; btn.innerHTML='Entrar';
+  }
+}
+
+function showErr(msg){
+  const el=document.getElementById('loginErr');
+  el.textContent=msg; el.classList.add('show');
+}
+
+function doLogout(){
+  sessionStorage.removeItem('sn_sess');
+  session=null;
+  document.getElementById('dashScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+
+async function enterDash(data){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashScreen').style.display='block';
+  const nome=data.nome||'Cliente';
+  const first=nome.split(' ')[0];
+  document.getElementById('dashNome').textContent=first;
+  document.getElementById('dashTitle').textContent=`Olá, ${first}! 👋`;
+  renderPlano(data);
+  await loadFaturas(data);
+}
+
+function badgeClass(s){
+  const m={ativo:'b-ativo',suspenso:'b-suspenso',cancelado:'b-cancelado',pago:'b-pago',pendente:'b-pendente',vencido:'b-vencido'};
+  return m[(s||'').toLowerCase()]||'b-pendente';
+}
+
+function fmtDate(d){
+  if(!d) return '—';
+  try{ const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }catch{ return d; }
+}
+function fmtVal(v){
+  return 'R$ '+Number(v||0).toFixed(2).replace('.',',');
+}
+
+function renderPlano(data){
+  const p=data.plano;
+  const st=data.status||'Ativo';
+  const dv=data.diaVencimento;
+  let html='';
+  if(p){
+    const vel=p.velocidade||p.nome||'';
+    const spd=vel.match(/\d+/)?.[0]||'';
+    const unit=vel.toLowerCase().includes('gbps')?'Gbps':'Mbps';
+    html=`
+      <div class="plan-speed">${spd}<span> ${unit}</span></div>
+      <div class="plan-name">${p.nome||'Fibra Óptica'}</div>
+      <div class="plan-detail">📡 ${p.tecnologia||'Fibra Óptica'}</div>
+      ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${dv}</div>`:''}
+      <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${st}</span></div>
+      ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}`;
+  }else{
+    html=`
+      ${dv?`<div class="plan-detail" style="margin-bottom:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
+      <span class="badge ${badgeClass(st)}">${st}</span>
+      <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>`;
+  }
+  document.getElementById('planContent').innerHTML=html;
+}
+
+async function loadFaturas(data){
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_faturas',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
+    if(error) throw error;
+    const fat=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
+    renderNextFatura(fat);
+    renderHist(fat);
+  }catch(e){
+    document.getElementById('invContent').innerHTML=`<div class="muted">Erro ao carregar fatura. Fale com o suporte.</div>`;
+    document.getElementById('histContent').innerHTML=`<div class="muted">Erro ao carregar histórico.</div>`;
+    console.error(e);
+  }
+}
+
+function renderNextFatura(fat){
+  const pending=fat.filter(f=>(f.status||'').toLowerCase()!=='pago');
+  const f=pending[0]||fat[0];
+  if(!f){
+    document.getElementById('invContent').innerHTML=`<div class="muted">Nenhuma cobrança registrada ainda.<br>Seu primeiro boleto chegará em breve.</div>`;
+    return;
+  }
+  const st=f.status||'Pendente';
+  document.getElementById('invContent').innerHTML=`
+    <div class="inv-month">${f.mes_referencia||'Fatura atual'}</div>
+    <div class="inv-due">Vencimento: ${fmtDate(f.vencimento)}</div>
+    <div class="inv-val">${fmtVal(f.valor)}</div>
+    <span class="badge ${badgeClass(st)}">${st}</span>
+    ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${f.link_boleto}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
+  `;
+}
+
+function renderHist(fat){
+  if(!fat.length){
+    document.getElementById('histContent').innerHTML=`<div class="muted" style="text-align:center;padding:1.5rem 0;">Nenhuma fatura encontrada ainda.</div>`;
+    return;
+  }
+  const items=fat.map(f=>{
+    const st=f.status||'Pendente';
+    return `<div class="hist-item">
+      <div>
+        <div class="hist-month">${f.mes_referencia||'Fatura'}</div>
+        <div class="hist-due">Vencimento: ${fmtDate(f.vencimento)}</div>
+      </div>
+      <div class="hist-right">
+        <div class="hist-val">${fmtVal(f.valor)}</div>
+        <span class="badge ${badgeClass(st)}" style="display:inline-block;margin-top:0.3rem">${st}</span>
+        ${f.link_boleto?`<br><a class="hist-link" href="${f.link_boleto}" target="_blank">Ver boleto</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('histContent').innerHTML=`<div class="hist-list">${items}</div>`;
+}
+
+// Restore session
+window.addEventListener('DOMContentLoaded',()=>{
+  const s=sessionStorage.getItem('sn_sess');
+  if(s){ try{ session=JSON.parse(s); enterDash(session); }catch{ sessionStorage.removeItem('sn_sess'); } }
+});
+</script>
+</body>
+</html>
