@@ -6418,8 +6418,9 @@ document.addEventListener("click", async e => {
   else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
   else if(action === "lead-wa"){
     const t = (el.dataset.tel||"").replace(/\D/g,"");
-    const n = el.dataset.nome||"Lead";
-    const msg = encodeURIComponent(`Olá, ${n}! Tudo bem? Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
+    const nomeCompleto = el.dataset.nome||"";
+    const n = nomeCompleto.split(" ")[0] || "tudo bem";
+    const msg = encodeURIComponent(`Olá, ${n}! Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
     window.open(`https://wa.me/55${t}?text=${msg}`,"_blank");
   }
   else if(action === "lead-status"){
@@ -6700,6 +6701,7 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "cli-filtro-negocio"){ cliFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-status"){ cliFiltro.status = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-plano"){ cliFiltro.plano = e.target.value; renderView(); }
+  if(e.target.dataset.action === "leads-filtro-status"){ leadsFiltro.status = e.target.value; renderView(); }
   // RH filters
   if(e.target.dataset.action === "rh-filtro-negocio"){ rhFuncFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "rh-filtro-cargo"){ rhFuncFiltro.cargo = e.target.value; renderView(); }
