@@ -1948,7 +1948,10 @@ async function loadDataTecnico(){
     if(chamRes.error) throw chamRes.error;
     if(prodRes.error) throw prodRes.error;
     state.tecnicoAuthInfo.nome = tecRes.data ? (tecRes.data.dados.nome || "Técnico") : "Técnico";
-    state.cliChamados = (chamRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    // Técnico não visualiza chamados administrativos (ex: solicitações via portal)
+    state.cliChamados = (chamRes.data || [])
+      .map(r => ({ id: r.id, ...r.dados }))
+      .filter(c => !c.administrativo);
     state.estProdutos = (prodRes.data || []).map(r => ({ id: r.id, ...r.dados }));
     const clienteIds = [...new Set(state.cliChamados.map(c => c.clienteId).filter(Boolean))];
     if(clienteIds.length){
