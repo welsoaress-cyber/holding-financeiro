@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.6";
+const APP_VERSION = "1.6.7";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2533,8 +2533,14 @@ function renderApp(){
             : [])
       );
       if(!acessiveis.has(state.view)){
-        const primeira = [...acessiveis][0];
-        if(primeira){ state.view = primeira; state.moduloAtivo = moduloDaView(primeira) || ""; }
+        // Views de detalhe (cli_detalhe, cli_chamado_detalhe…) são filhas de views acessíveis
+        // → não redirecionar se a view-pai estiver liberada
+        const paiView = VIEWS_FALLBACK_RESTAURACAO[state.view];
+        const paiAcessivel = paiView && acessiveis.has(paiView);
+        if(!paiAcessivel){
+          const primeira = [...acessiveis][0];
+          if(primeira){ state.view = primeira; state.moduloAtivo = moduloDaView(primeira) || ""; }
+        }
       }
       // Trava o filtro de negócio para a view atual (impede ver dados de outros negócios)
       const negDaView = negocioDaViewSubmenu(state.view);
@@ -4996,10 +5002,22 @@ function modalLancamento(existing, tipoPreset, prefill){
   const contaOpts = contaOptionsComCriacao(l.contaOrigem);
   const contaDestOpts = contaOptionsComCriacao(l.contaDestino);
 
+  // Travar o tipo quando o contexto já é conhecido (view específica ou tipoPreset)
+  const viewTipoMap = { receitas:"Receita", despesas:"Despesa", transferencias:"Transferência" };
+  const tipoLocked = !!tipoPreset || (isEdit && !!viewTipoMap[state.view]);
+  const labelData = (l.tipo === "Receita" || l.tipo === "Despesa") ? "Vencimento" : "Data";
+  const tipoFieldHTML = tipoLocked
+    ? `<input type="hidden" name="tipo" value="${esc(l.tipo)}">
+       <span style="display:inline-flex;align-items:center;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--ink-2);background:var(--surface);opacity:.8;">${esc(l.tipo)}</span>`
+    : `<select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select>`;
+
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar lançamento" : "Novo lançamento"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formLanc"><div class="modal-body">
-      <div class="field-row"><div class="field"><label>Data</label><input required type="date" name="data" value="${l.data}"></div><div class="field"><label>Tipo</label><select name="tipo" id="lancTipo">${TIPOS_LANC.map(t=>`<option ${l.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
+      <div class="field-row">
+        <div class="field"><label id="lancDataLabel">${labelData}</label><input required type="date" name="data" value="${l.data}"></div>
+        <div class="field"><label>Tipo</label>${tipoFieldHTML}</div>
+      </div>
       <div id="lancNegocioWrap" class="field" style="display:${l.tipo==='Transferência'?'none':'block'}">
         <label>Negócio</label>
         <select name="negocio" id="lancNegocioSelect">${negOptionsHTML(l.negocio)}</select>
@@ -5079,11 +5097,14 @@ function modalLancamento(existing, tipoPreset, prefill){
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar lançamento"}</button></div></form>
   `);
 
-  document.getElementById("lancTipo").addEventListener("change", e => {
+  document.getElementById("lancTipo")?.addEventListener("change", e => {
     const isTransf = e.target.value === "Transferência";
     document.getElementById("lancDestinoWrap").style.display = isTransf ? "block" : "none";
     document.getElementById("lancNegocioWrap").style.display = isTransf ? "none" : "block";
     document.getElementById("lancCategoriaWrap").style.display = isTransf ? "none" : "block";
+    // Atualiza label do campo de data conforme o tipo selecionado
+    const lbl = document.getElementById("lancDataLabel");
+    if(lbl) lbl.textContent = isTransf ? "Data" : "Vencimento";
   });
 
   // ---- Categoria inline ----
