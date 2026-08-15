@@ -42,8 +42,10 @@
 .fc-title-col{text-align:right;}
 .fc-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.2em;color:rgba(0,196,216,0.6);margin-bottom:0.1rem;}
 .fc-subtitle{font-size:0.78rem;font-weight:700;color:rgba(205,234,242,0.9);}
-/* grade de selos — 7 colunas: 6 pagamentos + 1 slot de prêmio por ciclo */
-.fc-stamps{display:grid;grid-template-columns:repeat(7,1fr);gap:0.38rem;margin-bottom:0.5rem;position:relative;z-index:1;}
+/* grade de selos — 12 posições limpas, 6 por linha.
+   Os prêmios NÃO ficam na grade: eles não ocupam um mês, são o que o
+   cartão completo desbloqueia. Vão na faixa .fc-premios logo abaixo. */
+.fc-stamps{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;margin-bottom:0.5rem;position:relative;z-index:1;}
 .fcs{
   aspect-ratio:1;border-radius:9px;border:2px solid;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -54,7 +56,7 @@
   border-color:rgba(0,196,216,0.15);border-style:dashed;
   background:rgba(0,196,216,0.02);
 }
-.fcs.empty .fcs-n{color:rgba(0,196,216,0.2);font-size:0.66rem;font-weight:700;}
+.fcs.empty .fcs-n{color:rgba(0,196,216,0.2);font-size:0.72rem;font-weight:700;}
 /* conquistado */
 .fcs.ok{
   border-color:rgba(0,196,216,0.7);border-style:solid;
@@ -63,36 +65,33 @@
 }
 .fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
 .fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
-/* marco 6 — vazio */
-.fcs.m6e{
-  border-color:rgba(0,196,216,0.35);border-style:dashed;
-  background:rgba(0,196,216,0.04);
-}
-.fcs.m6e .fcs-icon{font-size:0.85rem;opacity:0.35;}
-.fcs.m6e .fcs-n{color:rgba(0,196,216,0.35);font-size:0.44rem;font-weight:700;text-align:center;line-height:1.15;white-space:pre-line;}
-/* marco 6 — conquistado */
-.fcs.m6ok{
-  border-color:var(--pool);border-style:solid;
-  background:linear-gradient(135deg,rgba(0,196,216,0.28) 0%,rgba(0,196,216,0.1) 100%);
-  box-shadow:0 0 14px rgba(0,196,216,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
-}
-.fcs.m6ok .fcs-icon{font-size:1rem;}
-.fcs.m6ok .fcs-n{color:rgba(0,196,216,0.6);font-size:0.44rem;font-weight:700;text-align:center;line-height:1.15;white-space:pre-line;}
-/* marco 12 — vazio */
-.fcs.m12e{
-  border-color:rgba(245,158,11,0.35);border-style:dashed;
-  background:rgba(245,158,11,0.03);
-}
-.fcs.m12e .fcs-icon{font-size:0.85rem;opacity:0.35;}
-.fcs.m12e .fcs-n{color:rgba(245,158,11,0.4);font-size:0.44rem;font-weight:700;text-align:center;line-height:1.15;white-space:pre-line;}
-/* marco 12 — conquistado */
-.fcs.m12ok{
-  border-color:#F59E0B;border-style:solid;
-  background:linear-gradient(135deg,rgba(245,158,11,0.28) 0%,rgba(245,158,11,0.08) 100%);
-  box-shadow:0 0 16px rgba(245,158,11,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
-}
-.fcs.m12ok .fcs-icon{font-size:1rem;}
-.fcs.m12ok .fcs-n{color:rgba(245,158,11,0.6);font-size:0.44rem;font-weight:700;text-align:center;line-height:1.15;white-space:pre-line;}
+/* faixa de prêmios — separada dos selos */
+.fc-premios{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.75rem;position:relative;z-index:1;}
+.fp{display:flex;align-items:center;gap:0.5rem;border-radius:10px;border:1.5px solid;
+  padding:0.5rem 0.6rem;transition:all 0.3s;min-width:0;}
+.fp-ico{font-size:1.1rem;line-height:1;flex-shrink:0;}
+.fp-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.fp-val{font-size:0.78rem;font-weight:800;letter-spacing:0.01em;white-space:nowrap;}
+.fp-onde{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.7;white-space:nowrap;}
+.fp-st{margin-left:auto;padding-left:0.3rem;font-size:0.55rem;text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:700;text-align:right;flex-shrink:0;white-space:nowrap;}
+/* prêmio 1 — 50% OFF */
+.fp.p1e{border-color:rgba(0,196,216,0.2);border-style:dashed;background:rgba(0,196,216,0.03);}
+.fp.p1e .fp-ico{opacity:0.35;}
+.fp.p1e .fp-val,.fp.p1e .fp-onde,.fp.p1e .fp-st{color:rgba(0,196,216,0.4);}
+.fp.p1ok{border-color:var(--pool);background:linear-gradient(135deg,rgba(0,196,216,0.22) 0%,rgba(0,196,216,0.07) 100%);
+  box-shadow:0 0 14px rgba(0,196,216,0.35);}
+.fp.p1ok .fp-val{color:var(--pool);} .fp.p1ok .fp-onde{color:rgba(0,196,216,0.75);}
+.fp.p1ok .fp-st{color:var(--pool);}
+/* prêmio 2 — mês grátis */
+.fp.p2e{border-color:rgba(245,158,11,0.2);border-style:dashed;background:rgba(245,158,11,0.03);}
+.fp.p2e .fp-ico{opacity:0.35;}
+.fp.p2e .fp-val,.fp.p2e .fp-onde,.fp.p2e .fp-st{color:rgba(245,158,11,0.45);}
+.fp.p2ok{border-color:#F59E0B;background:linear-gradient(135deg,rgba(245,158,11,0.24) 0%,rgba(245,158,11,0.07) 100%);
+  box-shadow:0 0 14px rgba(245,158,11,0.35);}
+.fp.p2ok .fp-val{color:#FCD34D;} .fp.p2ok .fp-onde{color:rgba(245,158,11,0.8);}
+.fp.p2ok .fp-st{color:#FCD34D;}
+@media(max-width:420px){.fc-premios{grid-template-columns:1fr;}}
 /* rodapé do cartão */
 .fc-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:0.9rem;position:relative;z-index:1;}
 .fc-cliente{font-size:0.7rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.12em;}
@@ -494,39 +493,39 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const streak = Math.min(streakReal, 12);
 
 
-  // Grade de 14 slots = 12 faturas pagas + 2 slots de prêmio.
-  // Os prêmios NÃO consomem selo: são as faturas 7ª e 13ª.
-  //   meses 1..6 em dia  → 7ª fatura com 50% OFF
-  //   meses 7..12 em dia → 13ª fatura 100% grátis
+  // 12 selos — um por fatura paga em dia. Os prêmios ficam FORA da grade,
+  // na faixa logo abaixo: eles não ocupam um mês, são o que o cartão paga.
   const selos = [];
-
-  const selo = i => {
+  for(let i=1;i<=12;i++){
     const conquistado = i <= streak;
-    return conquistado
+    selos.push(conquistado
       ? `<div class="fcs ok" title="Mês ${i} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${i}</span></div>`
-      : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`;
-  };
+      : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`);
+  }
 
-  // Ciclo 1 — faturas 1 a 6
-  for(let i=1;i<=6;i++) selos.push(selo(i));
-
-  // Prêmio 1 — 7ª fatura com 50% OFF. Só o ciclo atual: um atraso zera o
-  // cartão e a contagem recomeça do mês 1.
+  // Prêmios do ciclo atual. Um atraso reinicia o cartão, então valem só
+  // os selos da sequência corrente.
   const premio1 = streak >= 6;
-  selos.push(`<div class="fcs ${premio1?'m6ok':'m6e'}" title="${premio1?'7ª fatura com 50% OFF conquistada! 🎁':'Pague as 6 primeiras faturas em dia → 7ª fatura com 50% OFF'}">
-    <span class="fcs-icon">🎁</span>
-    <span class="fcs-n">7ª\n50% OFF</span>
-  </div>`);
-
-  // Ciclo 2 — faturas 7 a 12
-  for(let i=7;i<=12;i++) selos.push(selo(i));
-
-  // Prêmio 2 — 13ª fatura grátis
   const premio2 = streak >= 12;
-  selos.push(`<div class="fcs ${premio2?'m12ok':'m12e'}" title="${premio2?'13ª fatura 100% GRÁTIS conquistada! 🎉':'Pague 12 faturas em dia → 13ª fatura 100% grátis'}">
-    <span class="fcs-icon">🏅</span>
-    <span class="fcs-n">13ª\nGRÁTIS</span>
-  </div>`);
+  const premios = `
+    <div class="fc-premios">
+      <div class="fp ${premio1?'p1ok':'p1e'}" title="${premio1?'Conquistado: 50% OFF na 7ª fatura':'Pague 6 faturas em dia para liberar'}">
+        <span class="fp-ico">🎁</span>
+        <span class="fp-txt">
+          <span class="fp-val">50% OFF</span>
+          <span class="fp-onde">na 7ª fatura</span>
+        </span>
+        <span class="fp-st">${premio1?'✓ liberado':`faltam ${6-streak}`}</span>
+      </div>
+      <div class="fp ${premio2?'p2ok':'p2e'}" title="${premio2?'Conquistado: 13ª fatura 100% grátis':'Pague 12 faturas em dia para liberar'}">
+        <span class="fp-ico">🏅</span>
+        <span class="fp-txt">
+          <span class="fp-val">100% grátis</span>
+          <span class="fp-onde">na 13ª fatura</span>
+        </span>
+        <span class="fp-st">${premio2?'✓ liberado':`faltam ${12-streak}`}</span>
+      </div>
+    </div>`;
 
   // Progresso e próximo prêmio.
   // A barra mede o cartão inteiro (0→12), não a fase atual: medindo por fase
@@ -558,8 +557,9 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
           </div>
         </div>
 
-        <!-- Grade: 12 selos de fatura + 2 slots de prêmio (7ª e 13ª) -->
+        <!-- 12 selos; prêmios logo abaixo, fora da grade -->
         <div class="fc-stamps">${selos.join('')}</div>
+        ${premios}
 
         <div class="fc-footer">
           <div class="fc-cliente">
@@ -582,14 +582,6 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
         <div class="fc-leg-item">
           <div class="fc-leg-dot" style="background:rgba(0,196,216,0.15);border:1.5px dashed rgba(0,196,216,0.35)"></div>
           Aguardando
-        </div>
-        <div class="fc-leg-item">
-          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.2);border:1.5px solid var(--pool)">🎁</div>
-          6 em dia → 7ª com 50% OFF
-        </div>
-        <div class="fc-leg-item">
-          <div class="fc-leg-dot" style="background:rgba(245,158,11,0.2);border:1.5px solid #F59E0B">🏅</div>
-          12 em dia → 13ª grátis
         </div>
       </div>
 
