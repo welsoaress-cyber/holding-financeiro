@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.9";
+const APP_VERSION = "1.7.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7758,12 +7758,11 @@ function viewCliDetalhe(){
       </div>
     </div>
 
-    ${podeVerValores() ? `
-    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
-      <div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?3:2},1fr);margin-bottom:20px;">
+      ${podeVerValores() ? `<div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>` : ""}
       <div class="kpi-card"><div class="kpi-label">Contratos ativos</div><div class="kpi-value">${(c.contratos||[]).filter(ct=>ct.status==="Ativo").length} / ${(c.contratos||[]).length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Dia de vencimento</div><div class="kpi-value" style="font-size:16px;">${(c.contratos||[]).find(ct=>ct.diaVencimento)?.diaVencimento || "—"}</div></div>
-    </div>` : ""}
+    </div>
 
     <div class="panel">
       <div class="panel-head">
