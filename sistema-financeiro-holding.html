@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.8";
+const APP_VERSION = "1.8.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1878,6 +1878,7 @@ async function loadData(){
       if(perfilLigado){
         state.perfilAtivo = perfilLigado;
         state.perfilEscolhido = true;
+        state.view = "welcome";
       }else{
         // código de acesso vinculado a um perfil que não existe mais (ex: usuário excluído em Usuários)
         await supabaseClient.auth.signOut();
@@ -1892,6 +1893,7 @@ async function loadData(){
     if(!state.modoMembro){
       state.perfilAtivo = null;
       state.perfilEscolhido = true;
+      state.view = "welcome";
     }
 
     // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
@@ -2935,7 +2937,8 @@ function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
+  if(state.view === "welcome") main.innerHTML = viewBoasVindas();
+  else if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
   else if(state.view.startsWith("negocio_")) main.innerHTML = viewNegocioTudo(state.view.slice(8));
   else if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
@@ -3155,7 +3158,8 @@ function modalSenhaPerfil(perfil){
     if(fd.get("senha") === perfil.senha){
       state.perfilAtivo = perfil;
       state.perfilEscolhido = true;
-      closeModal(); renderApp(); showToast(`Bem-vindo(a), ${perfil.nome}.`);
+      state.view = "welcome";
+      closeModal(); renderApp();
     }else{
       showToast("Senha incorreta.", "error");
       const inp = document.querySelector('#formSenhaPerfil input[name="senha"]');
@@ -3178,7 +3182,8 @@ function modalSenhaMaster(){
     if(fd.get("senha") === state.senhaMaster){
       state.perfilAtivo = null;
       state.perfilEscolhido = true;
-      closeModal(); renderApp(); showToast("Bem-vindo(a), Master.");
+      state.view = "welcome";
+      closeModal(); renderApp();
     }else{
       showToast("Senha incorreta.", "error");
       const inp = document.querySelector('#formSenhaMaster input[name="senha"]');
@@ -3424,6 +3429,135 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
     <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; width:100%;">${cols}</div>
   `;
 }
+// =========================================================================
+// TELA DE BOAS-VINDAS
+// =========================================================================
+const VERSICULOS_BOAS_VINDAS = [
+  { ref:"Provérbios 16:3",    texto:"Consagra ao SENHOR tudo o que fazes, e os teus planos serão estabelecidos." },
+  { ref:"Jeremias 29:11",     texto:"Porque eu bem sei os planos que tenho para vocês, diz o SENHOR — planos de fazê-los prosperar e não de causar dano, planos de dar a vocês esperança e um futuro." },
+  { ref:"Filipenses 4:13",    texto:"Tudo posso naquele que me fortalece." },
+  { ref:"Josué 1:9",          texto:"Seja forte e corajoso. Não se apavore nem desanime, pois o SENHOR, o seu Deus, estará com você por onde você andar." },
+  { ref:"Salmos 37:5",        texto:"Entrega o teu caminho ao SENHOR; confia nele, e ele agirá." },
+  { ref:"Isaías 40:31",       texto:"Os que esperam no SENHOR renovarão as suas forças. Voarão alto como águias; correrão e não ficarão exaustos, andarão e não se cansarão." },
+  { ref:"Mateus 6:33",        texto:"Buscai primeiro o reino de Deus e a sua justiça, e todas essas coisas vos serão acrescentadas." },
+  { ref:"Romanos 8:28",       texto:"Sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus, dos que são chamados segundo o seu propósito." },
+  { ref:"Provérbios 3:5-6",   texto:"Confie no SENHOR de todo o seu coração e não se apoie em seu próprio entendimento; reconheça-o em todos os seus caminhos, e ele endireitará as suas veredas." },
+  { ref:"Filipenses 4:6-7",   texto:"Não andem ansiosos por coisa alguma, mas em tudo, pela oração e súplicas, e com ação de graças, apresentem seus pedidos a Deus. E a paz de Deus, que excede todo o entendimento, guardará os seus corações e as suas mentes em Cristo Jesus." },
+  { ref:"1 Coríntios 10:31",  texto:"Quer comam, quer bebam, quer façam qualquer outra coisa, façam tudo para a glória de Deus." },
+  { ref:"Salmos 23:1",        texto:"O SENHOR é o meu pastor; nada me faltará." },
+  { ref:"Provérbios 22:29",   texto:"Você vê algum homem habilidoso em seu trabalho? Ele servirá diante de reis, não diante de gente obscura." },
+  { ref:"Eclesiastes 9:10",   texto:"Tudo o que as tuas mãos encontrarem para fazer, faze-o com toda a tua força." },
+  { ref:"Deuteronômio 8:18",  texto:"Lembre-se do SENHOR, o seu Deus, pois é ele que lhe dá a capacidade de produzir riqueza." },
+  { ref:"Isaías 41:10",       texto:"Não tema, pois estou com você; não se apavore, pois sou o seu Deus. Eu o fortalecerei e o ajudarei; eu o sustentarei com minha justa destra." },
+  { ref:"Salmos 90:17",       texto:"Que a bondade do Senhor nosso Deus repouse sobre nós; confirmai a obra das nossas mãos — sim, confirmais a obra das nossas mãos." },
+  { ref:"Tiago 1:5",          texto:"Se algum de vocês tem falta de sabedoria, peça-a a Deus, que a todos dá livremente, de boa vontade; e lhe será concedida." },
+  { ref:"Salmos 46:1",        texto:"Deus é o nosso refúgio e a nossa força, socorro bem-presente na angústia." },
+  { ref:"Gálatas 6:9",        texto:"Não nos cansemos de fazer o bem, pois, se não desanimarmos, a seu tempo colheremos." },
+  { ref:"Neemias 8:10",       texto:"A alegria do SENHOR é a nossa força." },
+  { ref:"Lamentações 3:22-23",texto:"As misericórdias do SENHOR não têm fim; as suas compaixões nunca se esgotam. Renovam-se cada manhã — grande é a tua fidelidade!" },
+  { ref:"Salmos 118:24",      texto:"Este é o dia que o SENHOR fez; regozijemo-nos e alegremo-nos nele." },
+  { ref:"Efésios 2:10",       texto:"Somos criação de Deus, criados em Cristo Jesus para fazer boas obras, as quais Deus preparou de antemão para que as praticássemos." },
+  { ref:"2 Timóteo 1:7",      texto:"Deus não nos deu espírito de covardia, mas de poder, de amor e de equilíbrio." },
+  { ref:"Colossenses 3:23-24",texto:"Tudo o que fizerem, façam de todo o coração, como para o Senhor, e não para os homens, sabendo que receberão do Senhor a recompensa da herança." },
+  { ref:"Salmos 27:1",        texto:"O SENHOR é a minha luz e a minha salvação; a quem temerei? O SENHOR é a força da minha vida; a quem me recearei?" },
+  { ref:"Mateus 5:16",        texto:"Assim brilhe a luz de vocês diante dos homens, para que vejam as suas boas obras e glorifiquem o Pai de vocês que está nos céus." },
+  { ref:"Provérbios 10:4",    texto:"Mão preguiçosa empobrece, mas mão diligente enriquece." },
+  { ref:"Provérbios 11:14",   texto:"Na falta de orientação, a nação cai; mas na multidão de conselheiros há vitória." },
+  { ref:"Provérbios 13:11",   texto:"A riqueza obtida às pressas diminui, mas quem a acumula, trabalhando devagar, a aumenta." },
+  { ref:"Isaías 26:3",        texto:"Tu guardas em perfeita paz aquele cujo propósito é firme, porque em ti confia." },
+  { ref:"Salmos 121:1-2",     texto:"Elevo meus olhos para os montes — donde me vem o socorro? O meu socorro vem do SENHOR, que fez os céus e a terra." },
+  { ref:"João 15:5",          texto:"Eu sou a videira; vocês são os ramos. Se alguém permanecer em mim e eu nele, esse dará muito fruto; mas sem mim vocês não podem fazer coisa alguma." },
+  { ref:"Isaías 43:2",        texto:"Quando você atravessar as águas, eu estarei com você; quando atravessar os rios, eles não o submergirão." },
+  { ref:"Salmos 1:3",         texto:"É como uma árvore plantada à beira de águas correntes, que dá o seu fruto no tempo certo e cuja folha não murcha. E tudo o que ele faz prospera." },
+  { ref:"Provérbios 31:25",   texto:"É revestida de força e de dignidade, e ri confiante diante do futuro." },
+  { ref:"Romanos 12:11",      texto:"Não sejam negligentes no zelo; antes, sejam fervorosos no espírito, servindo ao Senhor." },
+  { ref:"Salmos 112:5",       texto:"É feliz o homem que trata com generosidade e empresta, e conduz os seus negócios com justiça." },
+  { ref:"1 Crônicas 29:14",   texto:"Quem sou eu, e quem é o meu povo, para que pudéssemos dar tão generosamente? Tudo vem de ti, e do que é teu nós te demos." },
+  { ref:"2 Coríntios 9:8",    texto:"Deus é poderoso para fazer abundar toda a graça em vocês, para que, tendo sempre tudo o que precisam em tudo, possam abundar em toda boa obra." },
+  { ref:"Zacarias 4:10",      texto:"Não desprezem as pequenas coisas, pois o SENHOR se alegra quando vê o trabalho começar." },
+  { ref:"1 Tessalonicenses 5:18", texto:"Em tudo dai graças, porque esta é a vontade de Deus em Cristo Jesus para com vocês." },
+  { ref:"Provérbios 24:3-4",  texto:"Com sabedoria se constrói uma casa e com entendimento ela se estabelece; com conhecimento os seus quartos se enchem de riquezas raras e belas." },
+  { ref:"Josué 1:8",          texto:"Este livro da lei não se apartará da tua boca; pelo contrário, medita nele de dia e de noite, para que guardes todos os seus preceitos; pois então farás prosperar o teu caminho e então serás bem-sucedido." },
+  { ref:"Salmos 19:14",       texto:"Que as palavras da minha boca e a meditação do meu coração sejam agradáveis à tua presença, ó SENHOR, rocha minha e meu redentor." },
+  { ref:"Miquéias 6:8",       texto:"Ele já te disse, ó homem, o que é bom e o que o SENHOR exige de ti: que pratiques a justiça, ames a bondade e andes humildemente com o teu Deus." },
+  { ref:"Habacuque 2:3",      texto:"Pois a visão espera pelo tempo determinado; fala do fim e não falhará. Ainda que tarde, espera por ela; pois certamente virá, não tardará." },
+  { ref:"Salmos 34:8",        texto:"Provai e vede que o SENHOR é bom; bem-aventurado o homem que nele se refugia." },
+  { ref:"Romanos 5:3-4",      texto:"Gloriamo-nos também nas tribulações, porque sabemos que a tribulação produz perseverança; a perseverança, um caráter aprovado; e o caráter aprovado, esperança." },
+  { ref:"João 14:27",         texto:"Deixo-lhes a paz; a minha paz lhes dou. Não a dou como o mundo a dá. Não se turbe o coração de vocês, nem tenham medo." },
+  { ref:"Efésios 3:20",       texto:"Ora, àquele que é poderoso para fazer infinitamente mais do que tudo o que pedimos ou pensamos, conforme o seu poder que opera em nós." },
+];
+
+function viewBoasVindas(){
+  const hoje = new Date();
+  const hora = hoje.getHours();
+  const nomePerfil = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+  const emoji    = hora < 12 ? "🌅" : hora < 18 ? "☀️" : "🌙";
+
+  // Versículo do dia — muda a cada dia com base na data
+  const diaAno = Math.floor((hoje - new Date(hoje.getFullYear(),0,0)) / 86400000);
+  const v = VERSICULOS_BOAS_VINDAS[(hoje.getFullYear() * 366 + diaAno) % VERSICULOS_BOAS_VINDAS.length];
+
+  const diasSemana = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+  const meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const dataFormatada = `${diasSemana[hoje.getDay()]}, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+
+  // Quick links — apenas módulos que o usuário pode ver
+  const links = [
+    { view:"vg_executivo", label:"Visão Geral",       icon:"📊", modulo:null },
+    { view:"dashboard",    label:"Financeiro",         icon:"💰", modulo:"financeiro" },
+    { view:"cli_lista",    label:"Clientes",            icon:"👥", modulo:"clientes" },
+    { view:"receitas",     label:"Contas a Receber",   icon:"📥", modulo:"financeiro" },
+    { view:"despesas",     label:"Contas a Pagar",     icon:"📤", modulo:"financeiro" },
+    { view:"est_produtos", label:"Estoque",             icon:"📦", modulo:"estoque" },
+    { view:"rh_dashboard", label:"RH",                  icon:"🧑‍💼", modulo:"rh" },
+  ].filter(l => !l.modulo || ehMaster() || podeVerModulo(l.modulo));
+
+  const btnLinks = links.map(l =>
+    `<button class="btn btn-ghost" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--r-lg);min-width:90px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;" data-action="nav" data-view="${l.view}">
+      <span style="font-size:22px;">${l.icon}</span>${esc(l.label)}
+    </button>`
+  ).join("");
+
+  return `
+    <div style="min-height:80vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;">
+      <div style="max-width:560px;width:100%;">
+
+        <!-- Data e saudação -->
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="font-size:13px;color:var(--ink-3);margin-bottom:8px;">${dataFormatada}</div>
+          <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.2;">
+            ${saudacao}, ${esc(nomePerfil)}! ${emoji}
+          </h1>
+        </div>
+
+        <!-- Versículo do dia -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;">
+          <!-- Aspas decorativas -->
+          <div style="position:absolute;top:-10px;left:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
+          <div style="position:absolute;bottom:-30px;right:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
+
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:14px;opacity:.7;">Versículo do dia</div>
+
+          <p style="font-size:15.5px;line-height:1.75;color:var(--ink);font-style:italic;margin:0 0 20px;position:relative;z-index:1;">${esc(v.texto)}</p>
+
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="display:inline-block;width:24px;height:2px;background:var(--accent);border-radius:999px;"></span>
+            <span style="font-size:13px;font-weight:700;color:var(--accent);">${esc(v.ref)}</span>
+          </div>
+        </div>
+
+        <!-- Acesso rápido -->
+        <div style="text-align:center;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:14px;">Acesso rápido</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">${btnLinks}</div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
 function viewVgExecutivo(){
   garantirTooltipGrafico();
   const master = ehMaster();
