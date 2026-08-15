@@ -225,20 +225,25 @@ function renderReadout(streak, ganhos){
   const desconto = p.valor / 2;
   // Prêmio conquistado é evento: conta mesmo que um atraso posterior tenha
   // zerado os selos. O painel tem que dizer o mesmo que o cartão.
-  const meia   = ganhos.some(g => g.tipo === 'meia');
-  const gratis = ganhos.some(g => g.tipo === 'gratis');
-  const economia = (meia ? desconto : 0) + (gratis ? p.valor : 0);
-
+  // Ciclo atual: um atraso reinicia o cartão, então o prêmio "liberado"
+  // olha só o streak. O que já foi recebido antes vai no tile ao lado.
   let premio, nota, cls;
-  if(gratis){
-    premio = fmtVal(p.valor); cls = 'green'; nota = '13ª fatura zerada';
-  } else if(meia){
-    premio = fmtVal(desconto); cls = 'gold';
-    nota = streak >= 6 ? '50% OFF liberado na 7ª fatura' : '50% OFF já aplicado antes do atraso';
+  if(streak >= 12){
+    premio = fmtVal(p.valor); cls = 'green'; nota = 'a 13ª fatura sai zerada';
+  } else if(streak >= 6){
+    premio = fmtVal(desconto); cls = 'gold'; nota = '50% OFF liberado na 7ª fatura';
   } else {
     premio = '—'; cls = 'dim';
     nota = `faltam ${6-streak} ${6-streak===1?'fatura':'faturas'} em dia`;
   }
+
+  // Histórico: tudo que o cliente já recebeu, em todos os cartões.
+  const recebido = ganhos.reduce((t,g)=> t + (g.tipo==='meia' ? desconto : p.valor), 0);
+  const qtdMeia   = ganhos.filter(g=>g.tipo==='meia').length;
+  const qtdGratis = ganhos.filter(g=>g.tipo==='gratis').length;
+  const detalhe = ganhos.length
+    ? [qtdMeia?`${qtdMeia}× 50% OFF`:null, qtdGratis?`${qtdGratis}× grátis`:null].filter(Boolean).join(' + ')
+    : 'nenhum prêmio ainda';
 
   document.getElementById('readout').innerHTML = `
     <div class="ro">
@@ -252,9 +257,9 @@ function renderReadout(streak, ganhos){
       <div class="ro-n">${nota}</div>
     </div>
     <div class="ro">
-      <div class="ro-k">Economia no ciclo</div>
-      <div class="ro-v ${economia?'green':'dim'}">${economia?fmtVal(economia):'—'}</div>
-      <div class="ro-n">${economia?'já conquistado':'nada conquistado ainda'}</div>
+      <div class="ro-k">Já recebido no total</div>
+      <div class="ro-v ${recebido?'green':'dim'}">${recebido?fmtVal(recebido):'—'}</div>
+      <div class="ro-n">${detalhe}</div>
     </div>
     <div class="ro">
       <div class="ro-k">Ciclo completo vale</div>

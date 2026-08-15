@@ -238,6 +238,10 @@ a{color:inherit;}
 .fh-pill.atraso  {background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FCD34D;}
 .fh-pill.vencido {background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#F87171;}
 .fh-pill.aberto  {background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);color:#94A3B8;}
+.fh-badge-premio{display:inline-block;margin-left:0.4rem;font-size:0.62rem;font-weight:700;
+  border-radius:4px;padding:0.08rem 0.35rem;vertical-align:middle;white-space:nowrap;}
+.fh-badge-premio.meia{background:rgba(0,196,216,0.14);border:1px solid rgba(0,196,216,0.35);color:var(--pool);}
+.fh-badge-premio.gratis{background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.4);color:#FCD34D;}
 .fh-badge-streak{display:inline-block;margin-left:0.3rem;font-size:0.65rem;background:rgba(0,196,216,0.12);border:1px solid rgba(0,196,216,0.25);color:var(--pool);border-radius:4px;padding:0.05rem 0.35rem;vertical-align:middle;}
 .fh-empty{text-align:center;padding:1.5rem 0;color:var(--text-2);font-size:0.84rem;}
 
@@ -863,6 +867,13 @@ function renderHistoricoFidelidade(fatContrato){
     }
   }
 
+  // Faturas que receberam prêmio. O cartão reinicia a cada atraso, então é
+  // aqui — no histórico — que o desconto já concedido fica registrado.
+  const premiadas = new Map();
+  for(const g of premiosGanhos(fonte)){
+    if(g.mes) premiadas.set(g.mes, g.tipo);
+  }
+
   const rows = lista.map((f,i)=>{
     const st = (f.status||'').toLowerCase();
     const pago   = st === 'pago';
@@ -887,29 +898,33 @@ function renderHistoricoFidelidade(fatContrato){
       pill = `<span class="fh-pill aberto">Em aberto</span>`;
     }
 
+    const premio = premiadas.get(f.mes_referencia);
+    const selo = premio === 'meia'
+      ? '<span class="fh-badge-premio meia">🎁 50% OFF</span>'
+      : premio === 'gratis'
+        ? '<span class="fh-badge-premio gratis">🏅 grátis</span>'
+        : '';
+
     return `<tr class="${rowClass}">
-      <td class="fh-mes">${esc(fmtMesRef(f.mes_referencia)||'—')}</td>
+      <td class="fh-mes">${esc(fmtMesRef(f.mes_referencia)||'—')}${selo}</td>
       <td class="fh-data">${fmtDate(f.vencimento)}</td>
       <td class="fh-data">${f.data_pagamento ? fmtDate(f.data_pagamento) : '—'}</td>
       <td class="fh-status">${pill}</td>
     </tr>`;
   }).join('');
 
-  // Aviso de atraso. Um atraso antigo NÃO zera os selos atuais — ele apenas
-  // interrompe a contagem naquele ponto, e os selos válidos são os posteriores.
-  // Dizer "zerou o contador" para quem já reconquistou 8 selos é mentira.
+  // Aviso de atraso: o cartão reinicia do mês 1 a cada atraso.
   const atrasos = lista.filter(f=>{
     const st=(f.status||'').toLowerCase();
     return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
   });
   const ultimoAtraso = atrasos[atrasos.length-1];       // lista está em ordem cronológica
-  const contandoDeNovo = streakSet.size > 0;
   let avisoAtraso = '';
   if(ultimoAtraso){
     const mes = fmtMesRef(ultimoAtraso.mes_referencia) || fmtDate(ultimoAtraso.vencimento);
-    avisoAtraso = contandoDeNovo
-      ? `O atraso em <strong>${esc(mes)}</strong> interrompeu a contagem. Seus selos atuais são os pagamentos em dia <strong>depois</strong> dessa data — siga em dia que o prêmio vem.`
-      : `O atraso em <strong>${esc(mes)}</strong> zerou o contador. Pague em dia a partir da próxima fatura para começar a acumular selos de novo.`;
+    avisoAtraso = streakSet.size > 0
+      ? `O atraso em <strong>${esc(mes)}</strong> reiniciou o cartão. Sua contagem atual começou na fatura seguinte — siga em dia até completar 6 e a próxima sai com 50% OFF.`
+      : `O atraso em <strong>${esc(mes)}</strong> reiniciou o cartão do mês 1. Pague em dia a partir da próxima fatura para começar a acumular selos de novo.`;
   }
 
   return `<div class="fh-wrap">
@@ -942,11 +957,6 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   // regra do prêmio, mas a tela não mostra "17/12".
   const streak = Math.min(streakReal, 12);
 
-  // Prêmios já conquistados no passado. Ficam acesos mesmo depois de um
-  // atraso: o desconto foi aplicado de verdade naquela fatura.
-  const ganhos = premiosGanhos(fatContrato || []);
-  const ganhouMeia   = ganhos.some(g => g.tipo === 'meia');
-  const ganhouGratis = ganhos.some(g => g.tipo === 'gratis');
 
   // Grade de 14 slots = 12 faturas pagas + 2 slots de prêmio.
   // Os prêmios NÃO consomem selo: são as faturas 7ª e 13ª.
@@ -964,9 +974,9 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   // Ciclo 1 — faturas 1 a 6
   for(let i=1;i<=6;i++) selos.push(selo(i));
 
-  // Prêmio 1 — 7ª fatura com 50% OFF. Aceso pelo ciclo atual OU por já ter
-  // sido conquistado antes.
-  const premio1 = streak >= 6 || ganhouMeia;
+  // Prêmio 1 — 7ª fatura com 50% OFF. Só o ciclo atual: um atraso zera o
+  // cartão e a contagem recomeça do mês 1.
+  const premio1 = streak >= 6;
   selos.push(`<div class="fcs ${premio1?'m6ok':'m6e'}" title="${premio1?'7ª fatura com 50% OFF conquistada! 🎁':'Pague as 6 primeiras faturas em dia → 7ª fatura com 50% OFF'}">
     <span class="fcs-icon">🎁</span>
     <span class="fcs-n">7ª\n50% OFF</span>
@@ -976,7 +986,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   for(let i=7;i<=12;i++) selos.push(selo(i));
 
   // Prêmio 2 — 13ª fatura grátis
-  const premio2 = streak >= 12 || ganhouGratis;
+  const premio2 = streak >= 12;
   selos.push(`<div class="fcs ${premio2?'m12ok':'m12e'}" title="${premio2?'13ª fatura 100% GRÁTIS conquistada! 🎉':'Pague 12 faturas em dia → 13ª fatura 100% grátis'}">
     <span class="fcs-icon">🏅</span>
     <span class="fcs-n">13ª\nGRÁTIS</span>
@@ -1056,18 +1066,12 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
       </div>
 
-      <!-- Prêmios já conquistados. Ficam listados mesmo depois de um atraso:
-           o desconto foi aplicado naquela fatura e não se desfaz. -->
-      ${ganhos.length
-        ?`<div class="premio-pill earned">
-            🏆 <strong>${ganhos.length===1?'Prêmio conquistado':'Prêmios conquistados'}:</strong>
-            ${ganhos.map(g=>{
-              const rotulo = g.tipo==='meia' ? '🎁 50% de desconto' : '🏅 fatura 100% grátis';
-              const onde = g.mes ? ` na fatura de <strong>${esc(fmtMesRef(g.mes))}</strong>` : '';
-              return rotulo + onde;
-            }).join(' &nbsp;·&nbsp; ')}
-          </div>`
-        :''
+      <!-- Prêmio do ciclo atual -->
+      ${premio2
+        ?`<div class="premio-pill earned">🏅 Parabéns! Suas 12 faturas foram pagas em dia — a <strong>13ª fatura é 100% grátis</strong>, aplicada automaticamente.</div>`
+        :premio1
+          ?`<div class="premio-pill earned">🎁 Parabéns! Você pagou 6 faturas em dia — a <strong>7ª fatura sai com 50% OFF</strong>, aplicado automaticamente.</div>`
+          :''
       }
 
       <!-- Próximo prêmio -->
@@ -1092,7 +1096,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
         <li>Os prêmios <strong>não consomem selo</strong>: os meses 7 e 13 continuam contando normalmente no cartão.</li>
         <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
         <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
-        <li>Zerar o contador <strong>não tira prêmio já conquistado</strong>. Se você completou 6 faturas em dia, o desconto da 7ª foi aplicado e continua valendo — o contador zerado vale para o próximo prêmio.</li>
+        <li>Um atraso <strong>reinicia o cartão do mês 1</strong>: os selos voltam a zero e o próximo prêmio passa a ser de novo o 50% na 7ª fatura. Os descontos que você já recebeu ficam marcados no histórico abaixo.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
         <li>Os prêmios são aplicados <strong>automaticamente</strong> na fatura correspondente (7ª ou 13ª).</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
