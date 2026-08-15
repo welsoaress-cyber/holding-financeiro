@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.9";
+const APP_VERSION = "2.0.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4975,7 +4975,7 @@ function viewLancamentos(){
       <td>${contaTxt}</td>
       <td>${esc(l.descricao)}${cartaoBadge}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
-      <td><span class="status-pill ${statusClass}">${l.status}</span></td>
+      <td><span class="status-pill ${statusClass}">${l.status}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
       <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
@@ -6394,10 +6394,13 @@ function modalBaixa(l){
           ${l.recorrenciaId ? `<span style="font-size:11px;color:var(--ink-4);">Parcela ${l.recorrenciaIndex||""}/${l.recorrenciaTotal||""}</span>` : ""}
         </div>
       </div>
+      <div class="field-help" style="margin:-4px 0 10px; font-size:12px; color:var(--ink-4);">
+        Vencimento: <strong>${fmtDateBR(l.data)}</strong> — o lançamento permanece no mês original após a baixa.
+      </div>
       <div class="field-row">
         <div class="field">
-          <label>Data da baixa</label>
-          <input required type="date" name="data" value="${todayISO()}">
+          <label>Data de recebimento</label>
+          <input required type="date" name="dataPagamento" value="${todayISO()}">
         </div>
         <div class="field">
           <label>Conta</label>
@@ -6417,7 +6420,9 @@ function modalBaixa(l){
     e.preventDefault();
     const fd = new FormData(e.target);
     l.status = "Pago";
-    l.data = fd.get("data");
+    // Mantém l.data (vencimento) intacto — só guarda quando foi pago em dataPagamento.
+    // Assim o lançamento permanece no mês original e não some da view atual.
+    l.dataPagamento = fd.get("dataPagamento");
     l.contaOrigem = fd.get("contaOrigem");
     l.conciliado = fd.get("conciliado") === "on";
     await saveLancamentos(); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
