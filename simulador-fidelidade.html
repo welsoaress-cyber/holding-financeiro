@@ -67,7 +67,22 @@
 }
 .fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
 .fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
-/* aviso do mês que quebrou a contagem */
+/* mês pago em atraso — não vale selo, mas fica à vista */
+.fcs.atrasado{
+  border-color:rgba(245,158,11,0.75);border-style:solid;
+  background:linear-gradient(135deg,rgba(245,158,11,0.2) 0%,rgba(245,158,11,0.06) 100%);
+  box-shadow:0 0 8px rgba(245,158,11,0.28),inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.fcs.atrasado .fcs-check{color:#FCD34D;font-size:0.9rem;line-height:1;}
+.fcs.atrasado .fcs-n{color:rgba(245,158,11,0.65);font-size:0.5rem;font-weight:700;}
+/* fatura do mês vencida e em aberto */
+.fcs.vencido{
+  border-color:rgba(239,68,68,0.6);border-style:solid;
+  background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,rgba(239,68,68,0.04) 100%);
+}
+.fcs.vencido .fcs-check{color:#F87171;font-size:0.85rem;line-height:1;}
+.fcs.vencido .fcs-n{color:rgba(239,68,68,0.6);font-size:0.5rem;font-weight:700;}
+/* aviso dos meses em atraso */
 .fc-tropeco{margin-top:0.6rem;font-size:0.66rem;line-height:1.35;color:#FCD34D;
   background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.22);
   border-radius:8px;padding:0.4rem 0.6rem;position:relative;z-index:1;}
@@ -336,6 +351,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 /* ===== copiado sem alteração do portal ===== */
 const MESES_ABREV=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
+const mesEmIndice = ym => { const [y,m]=ym.split('-').map(Number); return y*12 + (m-1); };
+
+const indiceEmMes = k => `${Math.floor(k/12)}-${String(k%12 + 1).padStart(2,'0')}`;
+
+const somaMeses   = (ym,n) => indiceEmMes(mesEmIndice(ym) + n);
+
 function esc(s){
   return String(s??'').replace(/[&<>"']/g, c => (
     {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
@@ -368,53 +389,48 @@ function fmtMesRef(m){
   return nome.charAt(0).toUpperCase()+nome.slice(1)+'/'+y;
 }
 
-function calcStreak(fat){
-  const hoje=new Date().toISOString().slice(0,10);
-  const desc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?1:-1);
-  let streak=0;
-  for(const f of desc){
-    const st=(f.status||'').toLowerCase();
-    // ainda no prazo: não vale selo, mas também não quebra a sequência
-    if(st!=='pago' && f.vencimento>=hoje) continue;
-    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento) streak++;
-    else break;  // atraso ou vencida: zera
-  }
-  return streak;
-}
-
 function periodoCartao(ct){
   const adesao = ct && ct.dataContrato;
   if(!adesao) return null;
   const [ay, am] = String(adesao).slice(0,7).split('-').map(Number);
   if(!ay || !am) return null;
 
-  const emMeses = (y, m) => y*12 + (m-1);            // índice absoluto de mês
-  const paraYM  = k => `${Math.floor(k/12)}-${String(k%12 + 1).padStart(2,'0')}`;
-
   const hoje = new Date();
-  const hojeK = emMeses(hoje.getFullYear(), hoje.getMonth()+1);
+  const hojeK = hoje.getFullYear()*12 + hoje.getMonth();
 
-  let iniK = emMeses(ay, am) + 1;                    // 1ª fatura: mês seguinte
+  const cadastroK = ay*12 + (am-1);
+  let iniK = cadastroK + 1;                          // 1ª fatura: mês seguinte
   while(iniK + 12 <= hojeK) iniK += 12;              // avança até o cartão atual
-  const fimK = iniK + 11;
 
   return {
-    ini:   paraYM(iniK),
-    fim:   paraYM(fimK),
-    ciclo: Math.floor((iniK - (emMeses(ay, am) + 1)) / 12) + 1
+    ini:   indiceEmMes(iniK),
+    fim:   indiceEmMes(iniK + 11),
+    ciclo: Math.floor((iniK - cadastroK - 1) / 12) + 1
   };
 }
 
-function ultimoTropeco(fat){
-  const hoje=new Date().toISOString().slice(0,10);
-  const desc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?1:-1);
-  for(const f of desc){
-    const st=(f.status||'').toLowerCase();
-    if(st!=='pago' && f.vencimento>=hoje) continue;                    // ainda no prazo
-    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento) continue;  // em dia
-    return {fatura:f, tipo: st==='pago' ? 'atraso' : 'vencida'};
+function slotsDoCartao(periodo, fat){
+  const hoje = new Date().toISOString().slice(0,10);
+  const porMes = new Map();
+  for(const f of (fat||[])) porMes.set(f.mes_referencia, f);
+
+  const base = periodo ? periodo.ini : null;
+  const slots = [];
+  for(let i=0;i<12;i++){
+    const mes = base ? somaMeses(base, i) : null;
+    const f   = mes ? porMes.get(mes) : (fat||[])[i];
+    let estado = 'vazio';
+    if(f){
+      const st = (f.status||'').toLowerCase();
+      if(st === 'pago'){
+        estado = (f.data_pagamento && f.data_pagamento <= f.vencimento) ? 'ok' : 'atraso';
+      }else{
+        estado = f.vencimento < hoje ? 'vencida' : 'aberto';
+      }
+    }
+    slots.push({ n:i+1, mes, fatura:f, estado });
   }
-  return null;
+  return slots;
 }
 
 function premiosGanhos(fat){
@@ -426,14 +442,13 @@ function premiosGanhos(fat){
     const f=asc[i];
     const st=(f.status||'').toLowerCase();
     if(st!=='pago' && f.vencimento>=hoje) continue;   // ainda no prazo
+    // Mês em atraso simplesmente não vale selo. NÃO zera os anteriores:
+    // o cartão é um período fixo de 12 meses, não uma sequência.
     if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento){
       n++;
-      // o prêmio cai na fatura seguinte: 6 em dia → 7ª, 12 em dia → 13ª
-      const premiada=asc[i+1];
+      const premiada=asc[i+1];                        // prêmio cai na fatura seguinte
       if(n===6)  ganhos.push({tipo:'meia',   mes:premiada?premiada.mes_referencia:null});
       if(n===12) ganhos.push({tipo:'gratis', mes:premiada?premiada.mes_referencia:null});
-    }else{
-      n=0;  // atraso encerra a sequência e começa outra
     }
   }
   return ganhos;
@@ -522,19 +537,15 @@ function renderHistoricoFidelidade(fatContrato){
     </tr>`;
   }).join('');
 
-  // Aviso de atraso: o cartão reinicia do mês 1 a cada atraso.
+  // Cada mês em atraso custa o selo daquele mês — só isso. Não há reinício:
+  // o cartão é um período fixo de 12 meses.
   const atrasos = lista.filter(f=>{
     const st=(f.status||'').toLowerCase();
     return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
   });
-  const ultimoAtraso = atrasos[atrasos.length-1];       // lista está em ordem cronológica
-  let avisoAtraso = '';
-  if(ultimoAtraso){
-    const mes = fmtMesRef(ultimoAtraso.mes_referencia) || fmtDate(ultimoAtraso.vencimento);
-    avisoAtraso = streakSet.size > 0
-      ? `O atraso em <strong>${esc(mes)}</strong> reiniciou o cartão. Sua contagem atual começou na fatura seguinte — siga em dia até completar 6 e a próxima sai com 50% OFF.`
-      : `O atraso em <strong>${esc(mes)}</strong> reiniciou o cartão do mês 1. Pague em dia a partir da próxima fatura para começar a acumular selos de novo.`;
-  }
+  const avisoAtraso = atrasos.length
+    ? `${atrasos.length===1?'A fatura de':'As faturas de'} <strong>${atrasos.map(f=>esc(fmtMesRef(f.mes_referencia)||fmtDate(f.vencimento))).join(', ')}</strong> ${atrasos.length===1?'foi paga':'foram pagas'} em atraso e ${atrasos.length===1?'não valeu selo':'não valeram selo'}. Os outros meses do cartão seguem contando normalmente.`
+    : '';
 
   return `<div class="fh-wrap">
     <div class="fh-title">Histórico de Pagamentos</div>
@@ -556,7 +567,7 @@ function renderHistoricoFidelidade(fatContrato){
   </div>`;
 }
 
-function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
+function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   const key = ctKey(ct||{}, idx||0);
   const alvo = document.getElementById('fidel-'+key) || document.getElementById('fidelContent');
   if(!alvo) return;
@@ -568,8 +579,13 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const doPeriodo = periodo
     ? (fatContrato||[]).filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
     : (fatContrato||[]);
-  if(periodo) streakReal = calcStreak(doPeriodo);
   fatContrato = doPeriodo;
+
+  // Cada slot é um mês fixo do cartão. Os selos são a contagem de meses
+  // pagos em dia — um atraso custa aquele selo e nada mais.
+  const slots = slotsDoCartao(periodo, doPeriodo);
+  const atrasados = slots.filter(s => s.estado === 'atraso');
+  const streakReal = slots.filter(s => s.estado === 'ok').length;
 
   // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
   // dia) fica com o cartão cheio — o streak real segue guardado para a
@@ -577,15 +593,18 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const streak = Math.min(streakReal, 12);
 
 
-  // 12 selos — um por fatura paga em dia. Os prêmios ficam FORA da grade,
-  // na faixa logo abaixo: eles não ocupam um mês, são o que o cartão paga.
-  const selos = [];
-  for(let i=1;i<=12;i++){
-    const conquistado = i <= streak;
-    selos.push(conquistado
-      ? `<div class="fcs ok" title="Mês ${i} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${i}</span></div>`
-      : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`);
-  }
+  // 12 selos, um por mês do cartão. Os prêmios ficam FORA da grade, na
+  // faixa logo abaixo: eles não ocupam um mês, são o que o cartão paga.
+  const selos = slots.map(sl => {
+    const quando = sl.mes ? esc(fmtMesRef(sl.mes)) : `Mês ${sl.n}`;
+    if(sl.estado === 'ok')
+      return `<div class="fcs ok" title="${quando} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${sl.n}</span></div>`;
+    if(sl.estado === 'atraso')
+      return `<div class="fcs atrasado" title="${quando} — pago com atraso, não valeu selo"><span class="fcs-check">⚠</span><span class="fcs-n">${sl.n}</span></div>`;
+    if(sl.estado === 'vencida')
+      return `<div class="fcs vencido" title="${quando} — fatura vencida em aberto"><span class="fcs-check">✕</span><span class="fcs-n">${sl.n}</span></div>`;
+    return `<div class="fcs empty" title="${quando} — aguardando"><span class="fcs-n">${sl.n}</span></div>`;
+  });
 
   // Prêmios. Os SELOS medem o ciclo atual (um atraso reinicia o cartão),
   // mas o chip do prêmio precisa dizer também o que já foi conquistado
@@ -594,7 +613,6 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const premio1 = streak >= 6;
   const premio2 = streak >= 12;
   const ganhos  = premiosGanhos(fatContrato || []);
-  const tropeco = ultimoTropeco(fatContrato || []);
   const antes1  = ganhos.find(g => g.tipo === 'meia');
   const antes2  = ganhos.find(g => g.tipo === 'gratis');
 
@@ -659,7 +677,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
 
         <!-- 12 selos; prêmios logo abaixo, fora da grade -->
         <div class="fc-stamps">${selos.join('')}</div>
-        ${tropeco?`<div class="fc-tropeco">⚠ ${tropeco.tipo==='atraso'?'Atraso':'Fatura vencida'} em <strong>${esc(fmtMesRef(tropeco.fatura.mes_referencia))}</strong> — a contagem recomeçou na fatura seguinte</div>`:''}
+        ${atrasados.length?`<div class="fc-tropeco">⚠ ${atrasados.length===1?'Atraso em':'Atrasos em'} <strong>${atrasados.map(a=>esc(fmtMesRef(a.mes)||('mês '+a.n))).join(', ')}</strong> — ${atrasados.length===1?'esse mês não valeu selo':'esses meses não valeram selo'}. Os demais continuam contando.</div>`:''}
         ${premios}
 
         <div class="fc-footer">
@@ -720,12 +738,14 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
       <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
       <ol>
         <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 selo ✅.</li>
+        <li>O cartão é seu e tem validade própria: começa no mês seguinte ao seu cadastro e vale por 12 meses. A validade aparece no topo do cartão.</li>
         <li>Manteve <strong>6 meses de pagamento em dia</strong>? Você ganha <strong>50% de desconto</strong> na fatura seguinte.</li>
         <li>Manteve <strong>12 meses de pagamento em dia</strong>? A fatura seguinte sai com <strong>100% de desconto</strong> — ou seja, de graça.</li>
         <li>O mês em que você recebe o desconto <strong>continua valendo selo</strong> normalmente.</li>
         <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
-        <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
-        <li>Um atraso <strong>reinicia o cartão do mês 1</strong>: os selos voltam a zero e o próximo prêmio volta a ser o de 50%. Os descontos que você já recebeu ficam marcados no histórico abaixo.</li>
+
+        <li>Cada mês do cartão vale <strong>um selo</strong>, e o cartão dura <strong>12 meses</strong> a partir da sua primeira fatura.</li>
+        <li>Mês pago <strong>em atraso não vale selo</strong> — mas <strong>não zera</strong> os outros. Os demais meses do cartão continuam contando.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
         <li>Os descontos são aplicados <strong>automaticamente</strong> na fatura seguinte — você não precisa pedir.</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
@@ -887,10 +907,11 @@ function atualizar(){
   const doPeriodo = periodo
     ? faturasList.filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
     : faturasList;
-  const streak = calcStreak(doPeriodo);
+  // mesma contagem do cartão: selos = meses pagos em dia dentro do período
+  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => s.estado === 'ok').length;
   renderLedger(periodo);
   renderReadout(streak, premiosGanhos(doPeriodo), periodo);
-  renderFidelidade(streak, session.nome, contratos[0], 0, faturasList);
+  renderFidelidade(session.nome, contratos[0], 0, faturasList);
 }
 
 function ciclar(i){

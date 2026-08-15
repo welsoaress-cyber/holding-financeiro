@@ -41,13 +41,14 @@ CSS_CARTAO = '\n'.join([
 FUNCOES = [
     'function esc(s)', 'function ctKey(ct, i)', 'function ctNome(ct, i)',
     'function fmtDate(d)', 'function fmtVal(v)', 'function fmtMesRef(m)',
-    'function calcStreak(fat)', 'function periodoCartao(ct)',
-    'function ultimoTropeco(fat)', 'function premiosGanhos(fat)',
+    'function periodoCartao(ct)',
+    'function slotsDoCartao(periodo, fat)', 'function premiosGanhos(fat)',
     'function renderHistoricoFidelidade(fatContrato)',
     'function renderFidelidade(', 'function toggleRules(id,btn)',
 ]
 JS_CARTAO = '\n\n'.join(
-    [next(l for l in linhas if l.startswith('const MESES_ABREV'))] +
+    [next(l for l in linhas if l.startswith(n)) for n in
+     ('const MESES_ABREV','const mesEmIndice','const indiceEmMes','const somaMeses')] +
     [funcao(n) for n in FUNCOES]
 )
 
@@ -332,10 +333,11 @@ function atualizar(){
   const doPeriodo = periodo
     ? faturasList.filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
     : faturasList;
-  const streak = calcStreak(doPeriodo);
+  // mesma contagem do cartão: selos = meses pagos em dia dentro do período
+  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => s.estado === 'ok').length;
   renderLedger(periodo);
   renderReadout(streak, premiosGanhos(doPeriodo), periodo);
-  renderFidelidade(streak, session.nome, contratos[0], 0, faturasList);
+  renderFidelidade(session.nome, contratos[0], 0, faturasList);
 }
 
 function ciclar(i){
