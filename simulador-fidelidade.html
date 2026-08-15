@@ -42,6 +42,8 @@
 .fc-title-col{text-align:right;}
 .fc-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.2em;color:rgba(0,196,216,0.6);margin-bottom:0.1rem;}
 .fc-subtitle{font-size:0.78rem;font-weight:700;color:rgba(205,234,242,0.9);}
+.fc-validade{font-size:0.6rem;color:rgba(0,196,216,0.55);margin-top:0.2rem;letter-spacing:0.02em;}
+.fc-validade strong{color:rgba(0,196,216,0.85);font-weight:700;}
 /* grade de selos — 12 posições limpas, 6 por linha.
    Os prêmios NÃO ficam na grade: eles não ocupam um mês, são o que o
    cartão completo desbloqueia. Vão na faixa .fc-premios logo abaixo. */
@@ -65,6 +67,11 @@
 }
 .fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
 .fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
+/* aviso do mês que quebrou a contagem */
+.fc-tropeco{margin-top:0.6rem;font-size:0.66rem;line-height:1.35;color:#FCD34D;
+  background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.22);
+  border-radius:8px;padding:0.4rem 0.6rem;position:relative;z-index:1;}
+.fc-tropeco strong{color:#FDE68A;font-weight:700;}
 /* faixa de prêmios — separada dos selos */
 .fc-premios{display:flex;flex-direction:column;gap:0.4rem;margin-top:0.75rem;position:relative;z-index:1;}
 .fp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
@@ -247,6 +254,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .fx.atraso{border-color:rgba(248,113,113,0.55);background:rgba(239,68,68,0.10);}
 .fx.atraso .fx-s{color:#F87171;}
 .fx.aberto .fx-s{color:var(--text-2);}
+.fx.fora{opacity:0.34;}
+.fx.fora::after{content:'fora do cartão';position:absolute;inset:auto 0 -0.1rem 0;
+  font-size:0.5rem;letter-spacing:0.04em;color:var(--text-2);}
+.fx{position:relative;}
 .fx.futura{opacity:0.5;border-style:dashed;cursor:not-allowed;}
 .fx.futura:hover{transform:none;border-color:var(--hair);}
 
@@ -295,7 +306,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
       <label>Primeira fatura <input type="month" id="mesIni" onchange="moverJanela('ini',this.value)"></label>
       <span class="janela-sep">→</span>
       <label>Última fatura <input type="month" id="mesFim" onchange="moverJanela('fim',this.value)"></label>
-      <span class="janela-nota">a janela mantém sempre 20 faturas — mexer numa ponta arrasta a outra</span>
+      <span class="janela-nota">sempre 20 faturas — mexer numa ponta arrasta a outra. O cadastro é o mês anterior à 1ª fatura; o cartão vale 12 meses a partir daí, e as faturas fora dele ficam esmaecidas.</span>
     </div>
     <div class="ledger" id="ledger"></div>
     <div class="toolbar">
@@ -366,6 +377,41 @@ function calcStreak(fat){
     else break;  // atraso ou vencida: zera
   }
   return streak;
+}
+
+function periodoCartao(ct){
+  const adesao = ct && ct.dataContrato;
+  if(!adesao) return null;
+  const [ay, am] = String(adesao).slice(0,7).split('-').map(Number);
+  if(!ay || !am) return null;
+
+  const emMeses = (y, m) => y*12 + (m-1);            // índice absoluto de mês
+  const paraYM  = k => `${Math.floor(k/12)}-${String(k%12 + 1).padStart(2,'0')}`;
+
+  const hoje = new Date();
+  const hojeK = emMeses(hoje.getFullYear(), hoje.getMonth()+1);
+
+  let iniK = emMeses(ay, am) + 1;                    // 1ª fatura: mês seguinte
+  while(iniK + 12 <= hojeK) iniK += 12;              // avança até o cartão atual
+  const fimK = iniK + 11;
+
+  return {
+    ini:   paraYM(iniK),
+    fim:   paraYM(fimK),
+    ciclo: Math.floor((iniK - (emMeses(ay, am) + 1)) / 12) + 1
+  };
+}
+
+function ultimoTropeco(fat){
+  const hoje=new Date().toISOString().slice(0,10);
+  const desc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?1:-1);
+  for(const f of desc){
+    const st=(f.status||'').toLowerCase();
+    if(st!=='pago' && f.vencimento>=hoje) continue;                    // ainda no prazo
+    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento) continue;  // em dia
+    return {fatura:f, tipo: st==='pago' ? 'atraso' : 'vencida'};
+  }
+  return null;
 }
 
 function premiosGanhos(fat){
@@ -512,6 +558,16 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const alvo = document.getElementById('fidel-'+key) || document.getElementById('fidelContent');
   if(!alvo) return;
 
+  // O cartão é amarrado a 12 faturas a partir do mês seguinte ao cadastro.
+  // Selos, prêmios e histórico olham só esse período — fora dele é outro
+  // cartão. Sem data de cadastro, cai no comportamento antigo (tudo).
+  const periodo = periodoCartao(ct);
+  const doPeriodo = periodo
+    ? (fatContrato||[]).filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
+    : (fatContrato||[]);
+  if(periodo) streakReal = calcStreak(doPeriodo);
+  fatContrato = doPeriodo;
+
   // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
   // dia) fica com o cartão cheio — o streak real segue guardado para a
   // regra do prêmio, mas a tela não mostra "17/12".
@@ -535,6 +591,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const premio1 = streak >= 6;
   const premio2 = streak >= 12;
   const ganhos  = premiosGanhos(fatContrato || []);
+  const tropeco = ultimoTropeco(fatContrato || []);
   const antes1  = ganhos.find(g => g.tipo === 'meia');
   const antes2  = ganhos.find(g => g.tipo === 'gratis');
 
@@ -593,11 +650,13 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
           <div class="fc-title-col">
             <div class="fc-title">Programa</div>
             <div class="fc-subtitle">${contratos.length>1 ? esc(ctNome(ct||{}, idx||0)) : 'Cartão Fidelidade'}</div>
+            ${periodo?`<div class="fc-validade">Válido de <strong>${esc(fmtMesRef(periodo.ini))}</strong> a <strong>${esc(fmtMesRef(periodo.fim))}</strong></div>`:''}
           </div>
         </div>
 
         <!-- 12 selos; prêmios logo abaixo, fora da grade -->
         <div class="fc-stamps">${selos.join('')}</div>
+        ${tropeco?`<div class="fc-tropeco">⚠ ${tropeco.tipo==='atraso'?'Atraso':'Fatura vencida'} em <strong>${esc(fmtMesRef(tropeco.fatura.mes_referencia))}</strong> — a contagem recomeçou na fatura seguinte</div>`:''}
         ${premios}
 
         <div class="fc-footer">
@@ -628,7 +687,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
       <div class="fidel-bar-wrap">
         <div class="fidel-bar-labels">
           <span>Progresso total</span>
-          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'fatura':'faturas'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
+          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
         </div>
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
       </div>
@@ -743,23 +802,28 @@ function montarFaturas(){
   });
 }
 
-function renderLedger(){
+function renderLedger(periodo){
   document.getElementById('ledger').innerHTML = estados.map((st,i)=>{
     const venc = vencimentoDe(i);
     const futura = venc > hojeISO();
+    const mes = venc.slice(0,7);
+    // O cartão só conta as faturas do seu período de validade. Marcar as de
+    // fora evita a dúvida de "por que mexi nessa e o cartão não mudou?".
+    const fora = periodo && (mes < periodo.ini || mes > periodo.fim);
     const rotulo = futura ? 'a vencer'
                  : st === 'emdia'  ? 'em dia'
                  : st === 'atraso' ? 'atraso' : 'em aberto';
-    return `<button class="fx ${futura?'futura aberto':st}" ${futura?'disabled':''}
-              onclick="ciclar(${i})" title="Fatura ${i+1} — vence ${fmtDate(venc)}">
+    return `<button class="fx ${futura?'futura aberto':st}${fora?' fora':''}" ${futura?'disabled':''}
+              onclick="ciclar(${i})"
+              title="Fatura ${i+1} — vence ${fmtDate(venc)}${fora?' · fora do cartão vigente':''}">
       <span class="fx-n">FATURA ${i+1}</span>
-      <span class="fx-d">${fmtMesRef(venc.slice(0,7))}</span>
+      <span class="fx-d">${fmtMesRef(mes)}</span>
       <span class="fx-s">${rotulo}</span>
     </button>`;
   }).join('');
 }
 
-function renderReadout(streak, ganhos){
+function renderReadout(streak, ganhos, periodo){
   const p = PLANOS[planoAtual];
   const desconto = p.valor / 2;
   // Prêmio conquistado é evento: conta mesmo que um atraso posterior tenha
@@ -801,22 +865,31 @@ function renderReadout(streak, ganhos){
       <div class="ro-n">${detalhe}</div>
     </div>
     <div class="ro">
-      <div class="ro-k">Ciclo completo vale</div>
-      <div class="ro-v dim">${fmtVal(desconto + p.valor)}</div>
-      <div class="ro-n">${fmtVal(desconto)} aos 6 meses + ${fmtVal(p.valor)} aos 12</div>
+      <div class="ro-k">Cartão vigente</div>
+      <div class="ro-v dim">${periodo?`${fmtMesRef(periodo.ini)} → ${fmtMesRef(periodo.fim)}`:'—'}</div>
+      <div class="ro-n">${periodo?`cartão nº ${periodo.ciclo} · vale ${fmtVal(desconto + p.valor)}`:'sem data de cadastro'}</div>
     </div>`;
 }
 
 function atualizar(){
   const p = PLANOS[planoAtual];
+  // O cliente só paga a partir do mês seguinte ao cadastro, então a 1ª
+  // fatura da janela corresponde a um cadastro no mês anterior. É daí que
+  // o cartão tira o seu período de validade.
   contratos = [{
-    contrato_id:'sim', status:'Ativo', diaVencimento:String(p.dia), dataContrato:null,
+    contrato_id:'sim', status:'Ativo', diaVencimento:String(p.dia),
+    dataContrato: addMeses(mesInicio, -1) + '-15',
     plano:{nome:p.nome, valor:String(p.valor), velocidade:p.velocidade, tecnologia:'Fibra Óptica'}
   }];
   faturasList = montarFaturas();
-  const streak = calcStreak(faturasList);
-  renderLedger();
-  renderReadout(streak, premiosGanhos(faturasList));
+  const periodo = periodoCartao(contratos[0]);
+  // o painel espelha o cartão: só as faturas do período vigente
+  const doPeriodo = periodo
+    ? faturasList.filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
+    : faturasList;
+  const streak = calcStreak(doPeriodo);
+  renderLedger(periodo);
+  renderReadout(streak, premiosGanhos(doPeriodo), periodo);
   renderFidelidade(streak, session.nome, contratos[0], 0, faturasList);
 }
 
@@ -847,7 +920,9 @@ function setPlano(q){
 }
 
 estados = Array.from({length:N}, () => 'emdia');
-mesInicio = addMeses(mesAtual(), -(N-2));   // última fatura cai no mês que vem
+// Janela padrão: as 12 faturas do cartão vigente já venceram (dá para
+// preencher o cartão inteiro), e as 8 seguintes são o próximo cartão.
+mesInicio = addMeses(mesAtual(), -11);
 planoAtual = 'prata';
 document.getElementById('btnPrata').classList.add('on');
 setJanela(mesInicio);
