@@ -73,8 +73,9 @@
 .fp-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
 .fp-val{font-size:0.78rem;font-weight:800;letter-spacing:0.01em;white-space:nowrap;}
 .fp-onde{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.7;white-space:nowrap;}
-.fp-st{margin-left:auto;padding-left:0.3rem;font-size:0.55rem;text-transform:uppercase;
-  letter-spacing:0.05em;font-weight:700;text-align:right;flex-shrink:0;white-space:nowrap;}
+.fp-st{margin-left:auto;padding-left:0.4rem;font-size:0.55rem;text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:700;text-align:right;white-space:nowrap;
+  flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;}
 /* prêmio 1 — 50% OFF */
 .fp.p1e{border-color:rgba(0,196,216,0.2);border-style:dashed;background:rgba(0,196,216,0.03);}
 .fp.p1e .fp-ico{opacity:0.35;}
@@ -91,6 +92,8 @@
   box-shadow:0 0 14px rgba(245,158,11,0.35);}
 .fp.p2ok .fp-val{color:#FCD34D;} .fp.p2ok .fp-onde{color:rgba(245,158,11,0.8);}
 .fp.p2ok .fp-st{color:#FCD34D;}
+/* conquistado num cartão anterior: continua aceso, sem o brilho de recém-ganho */
+.fp.passado{box-shadow:none;opacity:0.82;}
 @media(max-width:420px){.fc-premios{grid-template-columns:1fr;}}
 /* rodapé do cartão */
 .fc-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:0.9rem;position:relative;z-index:1;}
@@ -503,27 +506,45 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
       : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`);
   }
 
-  // Prêmios do ciclo atual. Um atraso reinicia o cartão, então valem só
-  // os selos da sequência corrente.
+  // Prêmios. Os SELOS medem o ciclo atual (um atraso reinicia o cartão),
+  // mas o chip do prêmio precisa dizer também o que já foi conquistado
+  // antes — o desconto foi aplicado de verdade naquela fatura, e sumir
+  // com ele faz o cliente achar que perdeu o que já recebeu.
   const premio1 = streak >= 6;
   const premio2 = streak >= 12;
+  const ganhos  = premiosGanhos(fatContrato || []);
+  const antes1  = ganhos.find(g => g.tipo === 'meia');
+  const antes2  = ganhos.find(g => g.tipo === 'gratis');
+
+  // liberado agora → "✓ liberado"; conquistado num cartão anterior →
+  // "✓ recebido em Fev/2026"; nada ainda → quantas faltam
+  const chip = (aceso, antes, faltam) =>
+    aceso  ? '✓ liberado'
+    : antes ? `✓ ${antes.mes ? esc(fmtMesRef(antes.mes)) : 'recebido'}`
+    : `faltam ${faltam}`;
+
+  const aceso1 = premio1 || !!antes1;
+  const aceso2 = premio2 || !!antes2;
+
   const premios = `
     <div class="fc-premios">
-      <div class="fp ${premio1?'p1ok':'p1e'}" title="${premio1?'Conquistado: 50% OFF na 7ª fatura':'Pague 6 faturas em dia para liberar'}">
+      <div class="fp ${aceso1?'p1ok':'p1e'}${!premio1&&antes1?' passado':''}"
+           title="${aceso1?'50% OFF na 7ª fatura — conquistado':'Pague 6 faturas em dia para liberar'}">
         <span class="fp-ico">🎁</span>
         <span class="fp-txt">
           <span class="fp-val">50% OFF</span>
           <span class="fp-onde">na 7ª fatura</span>
         </span>
-        <span class="fp-st">${premio1?'✓ liberado':`faltam ${6-streak}`}</span>
+        <span class="fp-st">${chip(premio1, antes1, 6-streak)}</span>
       </div>
-      <div class="fp ${premio2?'p2ok':'p2e'}" title="${premio2?'Conquistado: 13ª fatura 100% grátis':'Pague 12 faturas em dia para liberar'}">
+      <div class="fp ${aceso2?'p2ok':'p2e'}${!premio2&&antes2?' passado':''}"
+           title="${aceso2?'13ª fatura 100% grátis — conquistado':'Pague 12 faturas em dia para liberar'}">
         <span class="fp-ico">🏅</span>
         <span class="fp-txt">
           <span class="fp-val">100% grátis</span>
           <span class="fp-onde">na 13ª fatura</span>
         </span>
-        <span class="fp-st">${premio2?'✓ liberado':`faltam ${12-streak}`}</span>
+        <span class="fp-st">${chip(premio2, antes2, 12-streak)}</span>
       </div>
     </div>`;
 
