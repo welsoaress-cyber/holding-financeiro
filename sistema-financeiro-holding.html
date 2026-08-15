@@ -1039,7 +1039,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.9";
+const APP_VERSION = "1.9.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3625,15 +3625,17 @@ function avancarDoSplash(){
   renderApp();
 }
 
-// Splash full-screen: 1 frase — versículo + referência numa linha só.
-// Clique em qualquer lugar → avança para o app.
+// Splash full-screen: saudação com nome + versículo aleatório.
+// Clique EM QUALQUER LUGAR da tela → entra no app imediatamente.
 function viewBoasVindasSplash(){
-  const v = VERSICULOS_BOAS_VINDAS[Math.floor(Math.random() * VERSICULOS_BOAS_VINDAS.length)];
-  const nome = nomeExibicao(state.perfilAtivo ? state.perfilAtivo.nome : "");
+  const v    = VERSICULOS_BOAS_VINDAS[Math.floor(Math.random() * VERSICULOS_BOAS_VINDAS.length)];
+  const hora = new Date().getHours();
+  const saud = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+  const nome = nomeExibicao(state.perfilAtivo ? state.perfilAtivo.nome : (state.user ? state.user.email : ""));
   return `
   <style>
-    @keyframes splashIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    .splash-wrap {
+    @keyframes splashIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    #splashWrap {
       position:fixed; inset:0; z-index:9998; cursor:pointer;
       background:
         radial-gradient(ellipse 80% 70% at 18% 60%, rgba(0,196,216,.10) 0%, transparent 60%),
@@ -3642,16 +3644,24 @@ function viewBoasVindasSplash(){
       display:flex; align-items:center; justify-content:center;
       padding:40px 28px; text-align:center; color:#fff; user-select:none;
     }
-    .splash-inner { max-width:560px; width:100%; animation:splashIn .65s cubic-bezier(.22,1,.36,1) forwards; }
-    .splash-frase {
-      font-size:20px; line-height:1.75; font-style:italic; font-weight:300;
-      color:#C5E8F2; letter-spacing:.01em; margin:0;
+    .splash-inner { max-width:560px; width:100%; animation:splashIn .6s cubic-bezier(.22,1,.36,1) both; }
+    .splash-nome {
+      font-size:32px; font-weight:800; color:#C5E8F2;
+      margin:0 0 6px; line-height:1.2;
     }
-    .splash-frase strong { font-style:normal; font-weight:600; color:#00C4D8; }
+    .splash-nome em { font-style:normal; color:#00C4D8; }
+    .splash-saud { font-size:14px; color:rgba(255,255,255,.35); margin:0 0 36px; font-weight:400; }
+    .splash-verso {
+      font-size:16px; line-height:1.75; font-style:italic; font-weight:300;
+      color:rgba(197,232,242,.75); margin:0;
+    }
+    .splash-verso strong { font-style:normal; font-weight:600; color:#00C4D8; font-size:13px; }
   </style>
-  <div class="splash-wrap" id="splashWrap">
+  <div id="splashWrap">
     <div class="splash-inner">
-      <p class="splash-frase">"${esc(v.texto)}" — <strong>${esc(v.ref)}</strong></p>
+      <p class="splash-nome">${saud}, <em>${esc(nome)}</em>.</p>
+      <p class="splash-saud">Clique em qualquer lugar para continuar</p>
+      <p class="splash-verso">"${esc(v.texto)}"<br><strong>— ${esc(v.ref)}</strong></p>
     </div>
   </div>`;
 }
