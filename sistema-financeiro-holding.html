@@ -1048,7 +1048,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.7";
+const APP_VERSION = "1.9.8";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -6561,28 +6561,37 @@ function modalDetalheFatura(cartaoId, dataVencimento){
 }
 
 // ============================================================
-// MODAL — EXCLUIR LANÇAMENTO (com opções quando faz parte de uma série)
+// MODAL — EXCLUIR LANÇAMENTO (sempre com modal; 3 opções se série)
 // ============================================================
 function modalExcluirLancamento(l){
-  if(!l.recorrenciaId){
-    if(!confirm("Excluir este lançamento?")) return;
-    state.lancamentos = state.lancamentos.filter(x => x.id !== l.id);
-    deleteRow("lancamentos", l.id);
-    renderApp(); showToast("Lançamento removido.");
-    return;
-  }
-  const serieTxt = l.recorrenciaTipo === "parcelado" ? "parcelada" : "recorrente";
-  const totalTxt = l.recorrenciaTipo === "parcelado" ? "parcelas" : "ocorrências";
-  const futuros = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data).length;
-  const todos = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId).length;
+  const serie = !!l.recorrenciaId;
+  const serieTxt   = l.recorrenciaTipo === "parcelado" ? "parcelada" : "recorrente";
+  const totalTxt   = l.recorrenciaTipo === "parcelado" ? "parcelas"  : "ocorrências";
+  const qtdFuturos = serie ? state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data).length : 0;
+  const qtdTodos   = serie ? state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId).length : 0;
+
   openModal(`
     <div class="modal-head"><div class="modal-title">Excluir lançamento</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
-      <div class="field-help" style="margin-bottom:14px; font-size:13px;"><strong>${esc(l.descricao)}</strong> (${fmtDateBR(l.data)}) faz parte de uma série ${serieTxt} — ${l.recorrenciaIndex}ª de ${l.recorrenciaTotal} ${totalTxt}. O que você quer excluir?</div>
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-um" data-id="${l.id}">Excluir apenas este lançamento</button>
-        <button class="btn btn-ghost" style="justify-content:flex-start;" data-action="del-lanc-futuros" data-id="${l.id}">Excluir este e os próximos <span style="color:var(--ink-4); margin-left:4px;">(${futuros} lançamento${futuros===1?'':'s'} a partir de ${fmtDateBR(l.data)})</span></button>
-        <button class="btn btn-ghost" style="justify-content:flex-start; color:var(--neg);" data-action="del-lanc-todos" data-id="${l.id}">Excluir todos da série <span style="color:var(--ink-4); margin-left:4px;">(${todos} lançamento${todos===1?'':'s'} no total)</span></button>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:14px;color:var(--ink);">${esc(l.descricao)}</div>
+        <div style="font-size:12px;color:var(--ink-3);margin-top:3px;">${fmtDateBR(l.data)} · ${l.tipo} · ${maskBRL(l.valor,true)}${serie ? ` · Série ${serieTxt} (${l.recorrenciaIndex}ª de ${l.recorrenciaTotal} ${totalTxt})` : ""}</div>
+      </div>
+      <div style="font-size:13px;color:var(--ink-2);margin-bottom:12px;">O que você quer excluir?</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;" data-action="del-lanc-um" data-id="${l.id}">
+          <span style="font-size:15px;margin-right:8px;">✕</span>
+          <span><strong>Apenas este lançamento</strong><span style="display:block;font-size:11px;color:var(--ink-4);">${fmtDateBR(l.data)} — ${maskBRL(l.valor,true)}</span></span>
+        </button>
+        ${serie ? `
+        <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;" data-action="del-lanc-futuros" data-id="${l.id}">
+          <span style="font-size:15px;margin-right:8px;">✕✕</span>
+          <span><strong>Este e os próximos</strong><span style="display:block;font-size:11px;color:var(--ink-4);">${qtdFuturos} lançamento${qtdFuturos===1?"":"s"} a partir de ${fmtDateBR(l.data)}</span></span>
+        </button>
+        <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;color:var(--neg);" data-action="del-lanc-todos" data-id="${l.id}">
+          <span style="font-size:15px;margin-right:8px;">✕✕✕</span>
+          <span><strong>Todos da série</strong><span style="display:block;font-size:11px;color:var(--ink-4);">${qtdTodos} lançamento${qtdTodos===1?"":"s"} no total</span></span>
+        </button>` : ""}
       </div>
     </div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
@@ -6866,29 +6875,28 @@ document.addEventListener("click", async e => {
   else if(action === "del-lanc-um"){
     const l = state.lancamentos.find(x => x.id === id);
     if(l){
-      const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
-      l.inativo = true; l.inativadoPor = quem; l.inativadoEm = new Date().toISOString();
-      await saveLancamentos();
-      closeModal(); renderApp(); showToast("Lançamento inativado (aparece tachado).");
+      state.lancamentos = state.lancamentos.filter(x => x.id !== l.id);
+      await deleteRow("lancamentos", l.id);
+      closeModal(); renderApp(); showToast("Lançamento excluído.");
     }
   }
   else if(action === "del-lanc-futuros"){
     const l = state.lancamentos.find(x => x.id === id);
     if(!l) return;
     const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId && x.data >= l.data);
-    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
-    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
-    await saveLancamentos();
-    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
+    const ids = afetados.map(x => x.id);
+    state.lancamentos = state.lancamentos.filter(x => !ids.includes(x.id));
+    await deleteRows("lancamentos", ids);
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) excluído(s).`);
   }
   else if(action === "del-lanc-todos"){
     const l = state.lancamentos.find(x => x.id === id);
     if(!l) return;
     const afetados = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId);
-    const quem = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
-    afetados.forEach(x => { x.inativo = true; x.inativadoPor = quem; x.inativadoEm = new Date().toISOString(); });
-    await saveLancamentos();
-    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) inativado(s).`);
+    const ids = afetados.map(x => x.id);
+    state.lancamentos = state.lancamentos.filter(x => !ids.includes(x.id));
+    await deleteRows("lancamentos", ids);
+    closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) excluído(s).`);
   }
   else if(action === "reativar-lanc"){
     const l = state.lancamentos.find(x => x.id === id);
