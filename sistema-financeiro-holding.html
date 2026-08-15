@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.7";
+const APP_VERSION = "1.7.8";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1321,7 +1321,7 @@ function podeVerSubmenuNeg(negNome, view){
   if(!state.perfilAtivo) return false;
   const perm = (state.perfilAtivo.permissoes || {})[negNome];
   if(!perm || !perm.ver) return false;
-  const subs = NEGOCIOS_SUBMENUS[negNome];
+  const subs = NEGOCIOS_SUBMENUS[negNome] || NEGOCIOS_SUBMENUS_PADRAO;
   if(!subs) return true;
   if(!perm.submenus) return true;  // nunca configurado → libera tudo
   const s = perm.submenus[view];
@@ -1379,18 +1379,21 @@ function perfilById(id){ return state.perfis.find(p => p.id === id); }
 // sensível), por negócio — permissaoNegocio acima — pra não afrouxar nada que já existe.
 const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comprasvendas","cadastro"];
 
+// Sub-menus padrão usados por TODOS os negócios (modal de permissões + sidebar)
+const NEGOCIOS_SUBMENUS_PADRAO = [
+  { view:"cli_lista",      label:"Clientes" },
+  { view:"lancamentos",    label:"Lançamentos" },
+  { view:"receitas",       label:"Contas a Receber" },
+  { view:"despesas",       label:"Contas a Pagar" },
+  { view:"transferencias", label:"Transferências" },
+  { view:"cli_chamados",   label:"Chamados" },
+  { view:"cli_planos",     label:"Planos" },
+  { view:"cli_tecnicos",   label:"Técnicos" },
+];
 // Sub-menus por negócio (exibidos na modal de permissões)
+// Negócios não listados aqui recebem NEGOCIOS_SUBMENUS_PADRAO automaticamente
 const NEGOCIOS_SUBMENUS = {
-  "Provedor": [
-    { view:"cli_lista",      label:"Clientes" },
-    { view:"lancamentos",    label:"Lançamentos" },
-    { view:"receitas",       label:"Contas a Receber" },
-    { view:"despesas",       label:"Contas a Pagar" },
-    { view:"transferencias", label:"Transferências" },
-    { view:"cli_chamados",   label:"Chamados" },
-    { view:"cli_planos",     label:"Planos" },
-    { view:"cli_tecnicos",   label:"Técnicos" },
-  ]
+  "Provedor": NEGOCIOS_SUBMENUS_PADRAO,
 };
 function modulosPadrao(){
   return {
@@ -2607,7 +2610,7 @@ function renderApp(){
       const acessiveis = new Set(
         Object.entries(state.perfilAtivo.permissoes || {})
           .flatMap(([neg, perm]) => perm.ver
-            ? (NEGOCIOS_SUBMENUS[neg] || []).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
+            ? (NEGOCIOS_SUBMENUS[neg] || NEGOCIOS_SUBMENUS_PADRAO).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
             : [])
       );
       if(!acessiveis.has(state.view)){
@@ -2737,7 +2740,7 @@ function navItem(view, icon, label){
 // destino já entra travado nesse negócio, e o seletor de negócio some de
 // lá (ver filtroNegocioTravado).
 function navItemNegocio(view, icon, label, negocio){
-  const active = state.view === view && filtroNegocioTravado ? "active" : "";
+  const active = state.view === view && filtroNegocioTravado && cliFiltro.negocio === negocio ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav-negocio" data-view="${view}" data-negocio="${esc(negocio)}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
@@ -2764,7 +2767,14 @@ let sidebarGruposFechados = new Set();
 // continua aberto" antes de chamar renderApp().
 let drawerAbertoAntes = false;
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
-  const contemViewAtual = viewsDoGrupo.includes(state.view);
+  // Para grupos de negócio (neg_*), só marca como "contendo a view atual" se
+  // o filtro de negócio também estiver travado nesse negócio — evita que dois
+  // grupos diferentes com as mesmas views (ex: Lançamentos em Provedor e Porto)
+  // fiquem ambos destacados ao mesmo tempo.
+  const eGrupoNegocio = id.startsWith("neg_");
+  const contemViewAtual = eGrupoNegocio
+    ? (viewsDoGrupo.includes(state.view) && filtroNegocioTravado && cliFiltro.negocio === nome)
+    : viewsDoGrupo.includes(state.view);
   const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
   return `
     <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
@@ -2796,6 +2806,8 @@ function sidebarConteudo(){
   // no menu, com os dados DELE filtrados. O mesmo padrão de sub-itens vale
   // para qualquer negócio (Provedor, Porto Odonto, etc.) — sem precisar
   // hardcodar um bloco por negócio.
+  // Usa NEGOCIOS_SUBMENUS_PADRAO (módulo global) como fonte de verdade para
+  // manter sidebar e modal de permissões sempre em sincronia.
   const SUBITENS_NEG_PADRAO = [
     ["cli_lista",      "clientes",       "Clientes"],
     ["lancamentos",    "lancamentos",    "Lançamentos"],
@@ -5610,7 +5622,7 @@ function modalPerfil(existing){
     const perm = getPermNeg(n);
     const negId = `neg_${n.id}`;
     const subId = `negsub_${n.id}`;
-    const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
+    const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
     const savedSubs = (perm.submenus) || {};
     // "nunca configurado" → padrão: tela visível, sem ações
     const neverSaved = Object.keys(savedSubs).length === 0;
@@ -5768,7 +5780,7 @@ function modalPerfil(existing){
     // Salva permissoes[nome] = {ver, criar, editar, excluir, [submenus]}
     const permissoes = {};
     state.negocios.forEach(n => {
-      const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
+      const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
       const ver = fd.get(`pver_${n.id}`) === "on";
       if(subs.length){
         // Negócio COM sub-menus: salva ações por tela
@@ -7138,190 +7150,6 @@ const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
-// Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
-// Não altera o cadastro, apenas o que é exibido.
-function clienteStatusEfetivo(c){
-  if(!c) return "—";
-  if(c.status === "Cancelado") return "Cancelado";
-  const hoje = todayISO();
-  const emAtraso = state.lancamentos.some(l =>
-    l.clienteId === c.id && l.tipo === "Receita" &&
-    l.status !== "Pago" && !l.inativo && l.data < hoje
-  );
-  return emAtraso ? "Inadimplente" : (c.status || "Ativo");
-}
-function statusClassCli(st){ return st==="Ativo"?"status-pago":st==="Inadimplente"||st==="Cancelado"?"status-pendente":"status-agendado"; }
-
-// ============================================================
-// CENTRAL DE PENDÊNCIAS — calcula itens que precisam de ação
-// ============================================================
-function calcularPendencias(){
-  if(!state.user) return [];
-  const hoje = todayISO();
-  const pends = [];
-  const subDias = (isoDate, days) => {
-    const d = new Date(isoDate + "T00:00:00");
-    d.setDate(d.getDate() - days);
-    return d.toISOString().slice(0, 10);
-  };
-
-  // 1. Clientes inadimplentes e se já foram cobrados
-  if(podeVerModulo("clientes")){
-    state.cliClientes.forEach(c => {
-      if(clienteStatusEfetivo(c) !== "Inadimplente") return;
-      const mensagens = state.cliMensagensEnviadas.filter(m => m.clienteId === c.id);
-      const ultima = mensagens.sort((a,b) => (b.data||"").localeCompare(a.data||""))[0];
-      const cobrado = ultima && ultima.data >= subDias(hoje, 7);
-      pends.push({
-        urgencia: cobrado ? "media" : "alta",
-        tipo: "inadimplente",
-        titulo: `${cliLabel(c)} — inadimplente`,
-        desc: cobrado ? `Cobrado via WhatsApp em ${fmtDateBR(ultima.data)}` : "Ainda não cobrado via WhatsApp",
-        clienteId: c.id,
-        action: "notif-ir-cliente"
-      });
-    });
-
-    // 2. Contratos ativos sem plano definido
-    state.cliClientes.forEach(c => {
-      (c.contratos||[]).filter(ct => ct.status==="Ativo" && (!ct.planoId || !cliPlanoById(ct.planoId))).forEach(ct => {
-        pends.push({
-          urgencia: "media",
-          tipo: "sem-plano",
-          titulo: `${cliLabel(c)} — sem plano`,
-          desc: `Contrato ${esc(ct.negocio||"ativo")} sem plano definido`,
-          clienteId: c.id,
-          action: "notif-ir-cliente"
-        });
-      });
-    });
-
-    // 3. Chamados/OS em aberto há 3+ dias
-    state.cliChamados.filter(ch => !["Concluído","Cancelado"].includes(ch.status)).forEach(ch => {
-      const aberto = ch.dataCadastro || "";
-      if(!aberto) return;
-      const dias = Math.floor((new Date(hoje+"T00:00:00") - new Date(aberto+"T00:00:00")) / 86400000);
-      if(dias >= 3){
-        const cli = cliClienteById(ch.clienteId);
-        pends.push({
-          urgencia: dias >= 7 ? "alta" : "media",
-          tipo: "chamado",
-          titulo: `OS ${ch.numero||"#"+ch.id.slice(0,6)} — aberta há ${dias} dia(s)`,
-          desc: cli ? `Cliente: ${cliLabel(cli)}` : (ch.motivo ? String(ch.motivo).slice(0,60) : "Sem descrição"),
-          chamadoId: ch.id,
-          action: "notif-ir-chamados"
-        });
-      }
-    });
-  }
-
-  // 4. Receitas em atraso (requer permissão financeiro)
-  if(podeVerValores()){
-    const atrasadas = state.lancamentos.filter(l => l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data < hoje);
-    if(atrasadas.length){
-      const total = atrasadas.reduce((s,l)=>s+Number(l.valor||0),0);
-      pends.push({
-        urgencia: "alta",
-        tipo: "receita-atrasada",
-        titulo: `${atrasadas.length} receita(s) vencida(s) sem baixa`,
-        desc: `Total em aberto: ${fmtBRL(total)}`,
-        action: "notif-ir-receitas"
-      });
-    }
-
-    // 5. Receitas vencendo hoje (aviso)
-    const venceHoje = state.lancamentos.filter(l => l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data===hoje);
-    if(venceHoje.length){
-      const total = venceHoje.reduce((s,l)=>s+Number(l.valor||0),0);
-      pends.push({
-        urgencia: "baixa",
-        tipo: "vence-hoje",
-        titulo: `${venceHoje.length} receita(s) vencem hoje`,
-        desc: `Total: ${fmtBRL(total)}`,
-        action: "notif-ir-receitas"
-      });
-    }
-  }
-
-  return pends;
-}
-
-function modalNotificacoes(){
-  const pends = calcularPendencias();
-  const grupos = {
-    alta:  pends.filter(p => p.urgencia === "alta"),
-    media: pends.filter(p => p.urgencia === "media"),
-    baixa: pends.filter(p => p.urgencia === "baixa")
-  };
-
-  const renderItem = p => {
-    const extras = p.clienteId ? `data-cliente-id="${p.clienteId}"` : (p.chamadoId ? `data-chamado-id="${p.chamadoId}"` : "");
-    return `<div class="notif-item" data-notif-action="${p.action}" ${extras}>
-      <span class="notif-dot ${p.urgencia}"></span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.35;">${p.titulo}</div>
-        ${p.desc ? `<div style="font-size:11.5px;color:var(--ink-3);margin-top:2px;line-height:1.3;">${p.desc}</div>` : ""}
-      </div>
-      <span style="color:var(--ink-4);font-size:17px;flex-shrink:0;">›</span>
-    </div>`;
-  };
-
-  const renderGrupo = (label, items) => items.length ? `
-    <div class="notif-group-head">${label}</div>
-    ${items.map(renderItem).join("")}` : "";
-
-  const body = pends.length === 0
-    ? `<div style="text-align:center;padding:52px 24px 40px;color:var(--ink-3);">
-        <div style="font-size:36px;margin-bottom:14px;">✅</div>
-        <div style="font-size:14px;font-weight:700;color:var(--ink-2);">Tudo em dia!</div>
-        <div style="font-size:12.5px;margin-top:6px;">Nenhuma pendência encontrada.</div>
-       </div>`
-    : renderGrupo("🔴 Urgente", grupos.alta) +
-      renderGrupo("🟡 Atenção", grupos.media) +
-      renderGrupo("⚪ Informativo", grupos.baixa);
-
-  const countBadge = pends.length
-    ? `<span style="background:var(--neg);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;">${pends.length}</span>`
-    : "";
-
-  const overlay = document.createElement("div");
-  overlay.className = "notif-panel-overlay";
-  overlay.id = "notifPanelOverlay";
-  overlay.innerHTML = `
-    <div class="notif-panel" id="notifPanel">
-      <div class="notif-panel-head">
-        <span class="notif-panel-title">🔔 Pendências ${countBadge}</span>
-        <button class="modal-close" id="notifClose" style="font-size:18px;">✕</button>
-      </div>
-      <div>${body}</div>
-    </div>`;
-  document.body.appendChild(overlay);
-
-  const fechar = () => overlay.remove();
-  overlay.addEventListener("click", e => { if(e.target === overlay) fechar(); });
-  document.getElementById("notifClose")?.addEventListener("click", fechar);
-
-  // Navegação ao clicar num item
-  overlay.querySelectorAll("[data-notif-action]").forEach(el => {
-    el.addEventListener("click", () => {
-      fechar();
-      const notifAction = el.dataset.notifAction;
-      const clienteId   = el.dataset.clienteId;
-      const chamadoId   = el.dataset.chamadoId;
-      if(notifAction === "notif-ir-cliente" && clienteId){
-        state.cliClienteAtualId = clienteId;
-        state.view = "cli_detalhe"; state.moduloAtivo = "clientes"; renderApp();
-      } else if(notifAction === "notif-ir-chamados"){
-        state.view = "cli_chamados"; state.moduloAtivo = "clientes"; renderApp();
-      } else if(notifAction === "notif-ir-receitas"){
-        lancFilter.clienteId = "";
-        lancMesNav = { ano: new Date().getFullYear(), mes: new Date().getMonth() };
-        state.view = "receitas"; state.moduloAtivo = "financeiro"; renderApp();
-      }
-    });
-  });
-}
-
 // Gera o próximo código de cliente: CLI-0001, CLI-0042, etc.
 function gerarCodigoCli(){
   const numeros = state.cliClientes
@@ -7960,28 +7788,21 @@ function viewCliDetalhe(){
     const plano = cliPlanoById(ct.planoId);
     const negCor = negocioByNome(ct.negocio)?.cor || "var(--border)";
     const ctStatusClass = ct.status==="Ativo"?"status-pago":ct.status==="Cancelado"?"status-pendente":"status-agendado";
-    const metaChips = [
-      ct.dataContrato   ? `<span>Cliente desde <strong>${fmtDateBR(ct.dataContrato)}</strong></span>` : "",
-      ct.cobrancaAutomatica ? `<span style="color:var(--pos);">● cobrança automática</span>` : "",
-    ].filter(Boolean).join(`<span style="color:var(--border);margin:0 4px;">·</span>`);
-    return `<div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;">
-      <div style="width:4px;flex-shrink:0;background:${negCor};"></div>
-      <div style="flex:1;padding:14px 16px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-          <div style="flex:1;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-              <span style="font-weight:700;font-size:15px;">${esc(ct.negocio)}</span>
-              <span class="status-pill ${ctStatusClass}">${ct.status}</span>
-              ${ct.diaVencimento ? `<span style="font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);">Vence dia ${ct.diaVencimento}</span>` : ""}
-            </div>
-            <div style="font-size:13px;margin-bottom:4px;">
+    return `<div class="panel" style="margin:0 0 10px; border-left:3px solid ${negocioByNome(ct.negocio)?.cor||'var(--border)'};">
+      <div class="panel-body" style="padding:12px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+          <div>
+            <div style="font-weight:700; font-size:14px;">${esc(ct.negocio)}</div>
+            <div style="font-size:12px; color:var(--ink-3); margin-top:2px;">
               ${plano
-                ? `<strong>${esc(plano.nome)}${plano.velocidade?` — ${esc(plano.velocidade)}`:""}</strong>${podeVerValores()?` <span style="color:var(--pos);font-weight:600;">· ${fmtBRL(plano.valor)}/mês</span>`:""}`
-                : `<span style="color:var(--neg);font-weight:600;">⚠ Pendente escolha do plano</span>`}
+                ? `Plano: <strong>${esc(plano.nome)}${plano.velocidade?` — ${esc(plano.velocidade)}`:""}${podeVerValores()?` — ${fmtBRL(plano.valor)}/mês`:""}</strong>`
+                : `<strong style="color:var(--neg);">⚠ Pendente escolha do plano</strong>`}
+              ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
+              ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
+              ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">cobrança automática</span>`:""}
             </div>
-            ${metaChips ? `<div style="font-size:12px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${metaChips}</div>` : ""}
-            ${ct.enderecoInstalacao ? `<div style="font-size:12px;color:var(--ink-4);margin-top:5px;">📍 Instalação: ${esc(ct.enderecoInstalacao)}</div>` : ""}
-            ${ct.observacoes ? `<div style="font-size:12px;color:var(--ink-4);margin-top:4px;font-style:italic;">${esc(ct.observacoes)}</div>` : ""}
+            ${ct.observacoes?`<div style="font-size:11.5px;color:var(--ink-4);margin-top:3px;">${esc(ct.observacoes)}</div>`:""}
+            ${ct.enderecoInstalacao?`<div style="font-size:11.5px;color:var(--ink-4);">Instalação: ${esc(ct.enderecoInstalacao)}</div>`:""}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             <button class="icon-btn" data-action="cli-edit-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Editar contrato">✎</button>
@@ -7992,48 +7813,79 @@ function viewCliDetalhe(){
     </div>`;
   }).join("");
 
-  // ── chips de info pessoal (exibidos no cabeçalho) ──────────────────────
-  const infoChip = (icon, val) => val ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--ink-2);">${icon}<span>${esc(val)}</span></span>` : "";
-  const chips1 = [ // linha 1: documento + nascimento + gênero
-    c.cpfCnpj        ? infoChip("CPF/CNPJ", c.cpfCnpj) : "",
-    c.rg             ? infoChip("RG", c.rg) : "",
-    c.dataNascimento ? infoChip("🎂", fmtDateBR(c.dataNascimento)) : "",
-    c.genero && c.genero !== "Não informado" ? infoChip("", c.genero) : "",
-    c.tipoPessoa     ? infoChip("", c.tipoPessoa === "PJ" ? "Pessoa Jurídica" : "Pessoa Física") : "",
+  // Linha de contato rápido
+  const contatos = [
+    c.telefone   ? `📞 ${esc(c.telefone)}`   : "",
+    c.whatsapp && c.whatsapp !== c.telefone ? `💬 ${esc(c.whatsapp)}` : "",
+    c.email      ? `✉ ${esc(c.email)}`       : "",
+    c.cidade     ? `📍 ${esc(c.cidade)}${c.uf?`/${c.uf}`:""}` : "",
   ].filter(Boolean);
-  const chips2 = [ // linha 2: contatos
-    c.telefone  ? infoChip("📞", c.telefone) : "",
-    c.whatsapp && c.whatsapp !== c.telefone ? infoChip("💬", c.whatsapp) : "",
-    c.email     ? infoChip("✉", c.email) : "",
-  ].filter(Boolean);
-  const enderecoStr = [
-    c.logradouro ? `${c.logradouro}${c.numero?`, ${c.numero}`:""}${c.complemento?` ${c.complemento}`:""}` : "",
-    c.bairro || "",
-    c.cidade ? `${c.cidade}${c.uf?`/${c.uf}`:""}` : "",
-    c.cep ? `CEP ${c.cep}` : "",
-  ].filter(Boolean).join(" · ");
-  const chips3 = enderecoStr ? [ infoChip("📍", enderecoStr) ] : [];
-
-  const sep = `<span style="color:var(--border);margin:0 4px;">·</span>`;
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
       <div>
-        <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" data-action="nav" data-view="cli_lista">← Voltar</button>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+        <button class="btn btn-ghost btn-sm" style="margin-bottom:8px;" data-action="nav" data-view="cli_lista">← Voltar</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           ${c.codigo ? `<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);letter-spacing:.04em;">${esc(c.codigo)}</span>` : ""}
-          <h2 style="margin:0;font-size:22px;font-weight:700;line-height:1.2;">${esc(cliNome(c))}</h2>
-          <span class="status-pill ${statusClass}">${stEfetivo}</span>
+          <div class="page-title" style="margin:0;">${esc(cliNome(c))}</div>
+          <span class="status-pill ${statusClass}">${c.status||"—"}</span>
         </div>
-        <div style="font-size:12px;color:var(--ink-4);margin-bottom:6px;">Cadastrado em ${fmtDateBR(c.dataCadastro)}</div>
-        ${chips1.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:5px;">${chips1.join(sep)}</div>` : ""}
-        ${chips2.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:5px;">${chips2.join(sep)}</div>` : ""}
-        ${chips3.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;">${chips3.join("")}</div>` : ""}
+        <div style="margin-top:6px;font-size:12.5px;color:var(--ink-3);">
+          Cadastrado em ${fmtDateBR(c.dataCadastro)}
+          ${contatos.length ? ` · ${contatos.join(" · ")}` : ""}
+        </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;">
-        ${podeVerModulo("financeiro") ? `<button class="btn btn-ghost" data-action="cli-ver-receitas" data-id="${c.id}"> Contas a receber</button>` : ""}
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${podeVerModulo("financeiro") ? `<button class="btn btn-ghost" data-action="cli-ver-receitas" data-id="${c.id}" title="Ver Contas a Receber filtrado por este cliente"> Contas a receber</button>` : ""}
         ${seModulo("clientes","criar",`<button class="btn btn-ghost" data-action="cli-add-contrato" data-id="${c.id}">+ Vincular negócio</button>`)}
         ${seModulo("clientes","editar",`<button class="btn btn-primary" data-action="cli-edit" data-id="${c.id}">✎ Editar cadastro</button>`)}
+      </div>
+    </div>
+
+    ${podeVerValores() ? `
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Contratos ativos</div><div class="kpi-value">${(c.contratos||[]).filter(ct=>ct.status==="Ativo").length} / ${(c.contratos||[]).length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Tipo</div><div class="kpi-value" style="font-size:14px;">${c.tipoPessoa==="PJ"?"Pessoa Jurídica":"Pessoa Física"}</div></div>
+    </div>` : ""}
+
+    <div class="two-col">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Dados cadastrais</div></div>
+          <div class="panel-body" style="padding-top:10px;">
+            <div style="display:grid; gap:8px; font-size:13px;">
+              ${[
+                ["CPF/CNPJ","cpfCnpj"],["RG","rg"],["Data nascimento","dataNascimento"],
+                ["E-mail","email"],["Telefone","telefone"],["WhatsApp","whatsapp"],["Gênero","genero"],
+              ].map(([label, field]) => c[field] ? `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;"><span style="color:var(--ink-3);min-width:120px;flex-shrink:0;">${label}:</span><strong>${field==="dataNascimento"?fmtDateBR(c[field]):esc(c[field])}</strong></div>` : "").filter(Boolean).join("")}
+            </div>
+          </div>
+        </div>
+
+        ${c.logradouro || c.cidade ? `
+        <div class="panel" style="margin-top:12px;">
+          <div class="panel-head"><div class="panel-title">Endereço</div></div>
+          <div class="panel-body" style="padding-top:10px; font-size:13px; line-height:1.7;">
+            ${c.logradouro ? `<div>${esc(c.logradouro)}, ${esc(c.numero||"S/N")}${c.complemento?` — ${esc(c.complemento)}`:""}</div>` : ""}
+            ${c.bairro ? `<div style="color:var(--ink-3);">${esc(c.bairro)}</div>` : ""}
+            ${c.cidade ? `<div>${esc(c.cidade)}${c.uf?` — ${esc(c.uf)}`:""}</div>` : ""}
+            ${c.cep ? `<div style="color:var(--ink-3);font-size:12px;">CEP ${esc(c.cep)}</div>` : ""}
+          </div>
+        </div>` : ""}
+
+        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">Observações</div></div><div class="panel-body" style="font-size:13px;padding-top:10px;line-height:1.6;">${esc(c.observacoes)}</div></div>` : ""}
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Negócios & Contratos</div>
+            ${seModulo("clientes","criar",`<button class="btn btn-ghost btn-sm" data-action="cli-add-contrato" data-id="${c.id}">+ Vincular</button>`)}
+          </div>
+          <div class="panel-body" style="padding:0;">
+            ${contratosHTML || `<div style="padding:16px;">${emptyState("Nenhum negócio vinculado ainda.")}</div>`}
+          </div>
+        </div>
       </div>
     </div>
 
