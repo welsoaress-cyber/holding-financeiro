@@ -1039,7 +1039,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.1";
+const APP_VERSION = "1.9.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3620,12 +3620,15 @@ const VERSICULOS_BOAS_VINDAS = [
 // Avança do splash para o app real (restaurando última navegação ou dashboard)
 function avancarDoSplash(){
   if(state.view !== "welcome") return;
-  if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
-  else { state.view = "dashboard"; }
+  state.view = "dashboard";          // sai do splash ANTES de qualquer outra coisa
+  if(!navegacaoRestaurada){
+    navegacaoRestaurada = true;
+    restaurarNavegacaoSalva();       // pode sobrescrever state.view com a view salva
+  }
   renderApp();
 }
 
-// Splash full-screen: versículo aleatório. Clique em qualquer lugar → entra no app.
+// Splash full-screen: saudação em destaque + versículo único. 1 clique → entra no app.
 function viewBoasVindasSplash(){
   const v    = VERSICULOS_BOAS_VINDAS[Math.floor(Math.random() * VERSICULOS_BOAS_VINDAS.length)];
   const hora = new Date().getHours();
@@ -3633,7 +3636,7 @@ function viewBoasVindasSplash(){
   const nome = nomeExibicao(state.perfilAtivo ? state.perfilAtivo.nome : (state.user ? state.user.email : ""));
   return `
   <style>
-    @keyframes splashIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes splashIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     #splashWrap {
       position:fixed; inset:0; z-index:9998; cursor:pointer;
       background:
@@ -3643,18 +3646,22 @@ function viewBoasVindasSplash(){
       display:flex; align-items:center; justify-content:center;
       padding:40px 28px; text-align:center; color:#fff; user-select:none;
     }
-    .splash-inner { max-width:560px; width:100%; animation:splashIn .6s cubic-bezier(.22,1,.36,1) both; }
-    .splash-verso {
-      font-size:18px; line-height:1.8; font-style:italic; font-weight:300;
-      color:rgba(197,232,242,.85); margin:0 0 28px;
+    .splash-inner { max-width:520px; width:100%; animation:splashIn .7s cubic-bezier(.22,1,.36,1) both; }
+    .splash-nome {
+      font-size:36px; font-weight:800; color:#fff;
+      margin:0 0 32px; line-height:1.15; letter-spacing:-.01em;
     }
-    .splash-verso strong { font-style:normal; font-weight:600; color:#00C4D8; font-size:14px; }
-    .splash-saud { font-size:13px; color:rgba(255,255,255,.25); margin:0; font-weight:400; letter-spacing:.03em; }
+    .splash-nome em { font-style:normal; color:#00C4D8; }
+    .splash-verso {
+      font-size:15px; line-height:1.85; font-style:italic; font-weight:300;
+      color:rgba(197,232,242,.55); margin:0;
+    }
+    .splash-verso strong { font-style:normal; font-weight:600; color:rgba(0,196,216,.7); font-size:12px; }
   </style>
   <div id="splashWrap">
     <div class="splash-inner">
+      <p class="splash-nome">${saud}, <em>${esc(nome)}</em>.</p>
       <p class="splash-verso">"${esc(v.texto)}" <strong>— ${esc(v.ref)}</strong></p>
-      <p class="splash-saud">${saud}, ${esc(nome)}.</p>
     </div>
   </div>`;
 }
