@@ -437,6 +437,16 @@
   .icon-btn:hover { background: var(--surface-2); color: var(--ink-2); }
   .icon-btn.danger:hover { background: var(--neg-bg); color: var(--neg); }
 
+  /* Botão de baixa rápida na lista de lançamentos */
+  .btn-baixar {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid color-mix(in srgb, var(--pos) 35%, transparent);
+    background: color-mix(in srgb, var(--pos) 10%, transparent);
+    color: var(--pos); font-size: 11.5px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; transition: background .15s, border-color .15s;
+  }
+  .btn-baixar:hover { background: color-mix(in srgb, var(--pos) 22%, transparent); border-color: color-mix(in srgb, var(--pos) 55%, transparent); }
+
   /* ---- Filter bar ---- */
   .filter-bar {
     display: flex; gap: 8px; flex-wrap: wrap;
@@ -1048,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.8";
+const APP_VERSION = "1.9.9";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4508,7 +4518,7 @@ function viewDashboard(){
         ${tipo==='receber' && waLinkCobranca(l) ? `<a class="icon-btn" href="${waLinkCobranca(l)}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366; font-size:14px;">WA</a>` : ""}
         ${l.cartaoId
           ? (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos); font-size:14px;">CC</button>` : "")
-          : (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;"></button>` : "")}
+          : (podeEditarNegocio(l.negocio) ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : "")}
       </div>
     </div>`;
 
@@ -4967,7 +4977,7 @@ function viewLancamentos(){
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);"></button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
+      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -6369,17 +6379,39 @@ function modalCompraCartao(cartaoIdPreset){
 // MODAL — BAIXAR TÍTULO
 // ============================================================
 function modalBaixa(l){
-  const contaAtual = contaById(l.contaOrigem);
   const unlockedValor = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
+  const corValor = l.tipo === "Receita" ? "var(--pos)" : "var(--neg)";
+  const sinalValor = l.tipo === "Receita" ? "+" : "−";
   openModal(`
-    <div class="modal-head"><div class="modal-title"> Dar baixa no título</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">✓ Dar baixa</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixa"><div class="modal-body">
-      <div class="field-help" style="margin-bottom:12px; font-size:13px;"><strong>${esc(l.descricao)}</strong><br>${l.tipo} de ${maskBRL(l.valor, unlockedValor)} — hoje em ${contaLabel(contaAtual)}</div>
-      <div class="field-row"><div class="field"><label>Data da baixa</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
-      <div class="field-help" style="margin-bottom:12px;">Pode escolher qualquer conta — não precisa ser a que estava no lançamento original.</div>
-      <div class="field"><label class="checkbox-row"><input type="checkbox" name="conciliado" checked> Já conciliado com o extrato</label></div>
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar baixa</button></div></form>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;font-size:14px;color:var(--ink);margin-bottom:6px;line-height:1.3;">${esc(l.descricao)}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:${corValor};">${sinalValor} ${maskBRL(l.valor, unlockedValor)}</span>
+          <span class="status-pill status-pendente">${l.status}</span>
+          ${l.recorrenciaId ? `<span style="font-size:11px;color:var(--ink-4);">Parcela ${l.recorrenciaIndex||""}/${l.recorrenciaTotal||""}</span>` : ""}
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Data da baixa</label>
+          <input required type="date" name="data" value="${todayISO()}">
+        </div>
+        <div class="field">
+          <label>Conta</label>
+          <select name="contaOrigem">${contaOpts}</select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:4px;">
+        <label class="checkbox-row"><input type="checkbox" name="conciliado" checked> Já conciliado com o extrato</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+      <button type="submit" class="btn btn-primary" style="background:var(--pos);border-color:var(--pos);">✓ Confirmar baixa</button>
+    </div></form>
   `);
   document.getElementById("formBaixa").addEventListener("submit", async e => {
     e.preventDefault();
@@ -6388,7 +6420,7 @@ function modalBaixa(l){
     l.data = fd.get("data");
     l.contaOrigem = fd.get("contaOrigem");
     l.conciliado = fd.get("conciliado") === "on";
-    await saveLancamentos(); closeModal(); renderApp(); showToast("Título baixado.");
+    await saveLancamentos(); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
   });
 }
 
