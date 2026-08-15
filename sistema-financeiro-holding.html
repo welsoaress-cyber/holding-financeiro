@@ -1026,7 +1026,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.1";
+const APP_VERSION = "1.8.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4728,7 +4728,9 @@ function viewLancamentos(){
   const catNomeOptions = state.categorias.map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
   const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s.nome)}" ${lancFilter.subcatNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
   const clienteOptions = state.cliClientes.map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
-  const temFiltro = lancFilter.negocio||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId;
+  // Negócio só conta como "filtro manual" quando o usuário escolheu um diferente do contexto travado
+  const negFiltroManual = filtroNegocioTravado ? (lancFilter.negocio && lancFilter.negocio !== cliFiltro.negocio) : !!lancFilter.negocio;
+  const temFiltro = negFiltroManual||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId;
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   // Navegação de mês — todos os sub-módulos financeiros
   const mesNavAtivo = true;
@@ -4764,7 +4766,7 @@ function viewLancamentos(){
     <div class="panel"><div class="filter-bar">
       <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
-      ${!filtroNegocioTravado ? `<select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>` : ""}
+      <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       ${state.cliClientes.length ? `<select data-action="filter-clienteid"><option value="">Todos os clientes</option>${clienteOptions}</select>` : ""}
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
