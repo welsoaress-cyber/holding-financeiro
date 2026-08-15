@@ -9,6 +9,9 @@
 --      (tabela `lancamentos`), em vez da tabela `servnet_faturas`, que
 --      nunca é populada por ninguém.
 --   3. portal_servnet_fidelidade → streak por contrato.
+--   4. faturas/fidelidade passam a receber os IDs como text. Os IDs do
+--      admin são text (cli_xxx / ct_xxx) e a assinatura uuid antiga
+--      falhava na conversão — daí o "Erro ao carregar fatura".
 --
 -- Sobre o vencimento das faturas pagas:
 --   Ao dar baixa, o admin sobrescreve `dados->>'data'` com a data do
@@ -120,9 +123,15 @@ GRANT EXECUTE ON FUNCTION public.portal_servnet_login(text, text) TO anon;
 -- 2. FATURAS — lê as receitas reais do admin (tabela `lancamentos`)
 --    e reconstrói o vencimento das que já foram pagas
 -- ----------------------------------------------------------------
+-- Remove a versão antiga com assinatura uuid. Os IDs do admin são text
+-- (cli_xxx / ct_xxx), então a versão uuid quebrava na conversão — é o mesmo
+-- motivo pelo qual portal_servnet_solicitar já tinha sido migrada para text.
+-- Sem o DROP as duas assinaturas coexistem e o PostgREST pode chamar a errada.
+DROP FUNCTION IF EXISTS public.portal_servnet_faturas(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION public.portal_servnet_faturas(
-  p_cliente_id uuid,
-  p_master_id  uuid
+  p_cliente_id text,
+  p_master_id  text
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -139,8 +148,8 @@ BEGIN
       NULLIF(c->>'diaVencimento','')::int AS dia_venc
     FROM cli_clientes cl,
          jsonb_array_elements(COALESCE(cl.dados->'contratos','[]'::jsonb)) c
-    WHERE cl.id      = p_cliente_id
-      AND cl.user_id = p_master_id
+    WHERE cl.id::text      = p_cliente_id
+      AND cl.user_id::text = p_master_id
       AND c->>'status' = 'Ativo'
       AND lower(c->>'negocio') = 'provedor'
   ),
@@ -156,8 +165,8 @@ BEGIN
       l.dados->>'data'                              AS data_lanc,
       COALESCE(l.dados->>'status','Provisionado')   AS status
     FROM lancamentos l
-    WHERE l.user_id = p_master_id
-      AND l.dados->>'clienteId' = p_cliente_id::text
+    WHERE l.user_id::text = p_master_id
+      AND l.dados->>'clienteId' = p_cliente_id
       AND l.dados->>'tipo'      = 'Receita'
       AND COALESCE((l.dados->>'inativo')::boolean, false) = false
       AND l.dados->>'contratoId' IN (SELECT contrato_id FROM contratos)
@@ -224,7 +233,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(uuid, uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(text, text) TO anon;
 
 
 -- ----------------------------------------------------------------
@@ -233,9 +242,11 @@ GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(uuid, uuid) TO anon;
 --    front a partir de portal_servnet_faturas. Aqui devolvemos o
 --    mesmo cálculo por contrato, para quem consumir a RPC direto.
 -- ----------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.portal_servnet_fidelidade(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION public.portal_servnet_fidelidade(
-  p_cliente_id uuid,
-  p_master_id  uuid
+  p_cliente_id text,
+  p_master_id  text
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -306,4 +317,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.portal_servnet_fidelidade(uuid, uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.portal_servnet_fidelidade(text, text) TO anon;
