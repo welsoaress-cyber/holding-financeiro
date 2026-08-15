@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.5";
+const APP_VERSION = "1.7.6";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1237,7 +1237,7 @@ function bulkBarraAcoesHTML(contexto){
   const total = state[cfg.arr].length;
   return `<div style="display:flex; gap:8px;">
     ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">× Excluir selecionados (${sel.size})</button>` : ""}
-    ${total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora"> Limpar tudo (${total})</button>` : ""}
+    ${ehMaster() && total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora"> Limpar tudo (${total})</button>` : ""}
   </div>`;
 }
 async function bulkExecutarExclusao(contexto, ids){
@@ -2787,28 +2787,27 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  // ---- Menus "por Negócio" — cada negócio ganha um grupo próprio no menu,
-  // com só os dados DELE (Clientes, Financeiro, Chamados, Planos,
-  // Técnicos). Pensado pra quando um usuário só tem acesso a 1 negócio: em
-  // vez de dar acesso ao módulo inteiro (que mistura todos os negócios), dá
-  // pra liberar só esse grupo — que já entra com o filtro travado nesse
-  // negócio. Piloto: só "Provedor" (ServNet) por enquanto.
-  if(master || podeVerNegocio("Provedor")){
-    const provedorItems = [
-      ["cli_lista",      ic("clientes"),      "Clientes"],
-      ["lancamentos",    ic("lancamentos"),   "Lançamentos"],
-      ["receitas",       ic("receber"),       "Contas a Receber"],
-      ["despesas",       ic("pagar"),         "Contas a Pagar"],
-      ["transferencias", ic("transferencias"),"Transferências"],
-      ["cli_chamados",   ic("chamados"),      "Chamados"],
-      ["cli_planos",     ic("planos"),        "Planos"],
-      ["cli_tecnicos",   ic("tecnicos"),      "Técnicos"],
-    ].filter(([view]) => podeVerSubmenuNeg("Provedor", view));
-    const provedorViews = provedorItems.map(([v]) => v);
-    grupos.push(navGrupo("neg_provedor", "", "Provedor", provedorViews,
-      provedorItems.map(([v,ic_,lbl]) => navItemNegocio(v,ic_,lbl,"Provedor")).join("")
-    ));
-  }
+  // ---- Menus "por Negócio" — cada negócio cadastrado ganha um grupo próprio
+  // no menu, com os dados DELE filtrados. O mesmo padrão de sub-itens vale
+  // para qualquer negócio (Provedor, Porto Odonto, etc.) — sem precisar
+  // hardcodar um bloco por negócio.
+  const SUBITENS_NEG_PADRAO = [
+    ["cli_lista",      "clientes",       "Clientes"],
+    ["lancamentos",    "lancamentos",    "Lançamentos"],
+    ["receitas",       "receber",        "Contas a Receber"],
+    ["despesas",       "pagar",          "Contas a Pagar"],
+    ["transferencias", "transferencias", "Transferências"],
+    ["cli_chamados",   "chamados",       "Chamados"],
+    ["cli_planos",     "planos",         "Planos"],
+    ["cli_tecnicos",   "tecnicos",       "Técnicos"],
+  ];
+  state.negocios.filter(n => master || podeVerNegocio(n.nome)).forEach(n => {
+    const itens = SUBITENS_NEG_PADRAO
+      .filter(([view]) => podeVerSubmenuNeg(n.nome, view))
+      .map(([v, icoKey, lbl]) => navItemNegocio(v, ic(icoKey), lbl, n.nome));
+    const views = SUBITENS_NEG_PADRAO.map(([v]) => v);
+    grupos.push(navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")));
+  });
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   if(podeVerModulo("financeiro")){
@@ -2825,19 +2824,6 @@ function sidebarConteudo(){
       master ? navSubmenuAjustes() : "",
     ].join("")));
   }
-
-  // Negócios sem grupo dedicado: cada um vira um item direto no menu (sem agrupador genérico)
-  const negociosVisiveis = state.negocios.filter(n => {
-    if(!master && !podeVerNegocio(n.nome)) return false;
-    if(!master && NEGOCIOS_SUBMENUS[n.nome]) return false; // tem grupo dedicado → só mostra lá
-    return true;
-  });
-  negociosVisiveis.forEach(n => {
-    const active = state.view === `negocio_${n.id}` ? "active" : "";
-    grupos.push(`<div class="nav-item ${active}" data-action="nav" data-view="negocio_${n.id}">
-      <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
-    </div>`);
-  });
 
   if(podeVerModulo("estoque")){
     grupos.push(navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
@@ -7937,7 +7923,7 @@ function viewCliLista(){
   const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
   return `
     <div class="page-header">
-      <div><div class="page-title">Todos os Clientes</div><div class="page-sub">${lista.length} de ${state.cliClientes.length} cliente(s)</div></div>
+      <div><div class="page-title">${filtroNegocioTravado && cliFiltro.negocio ? `Clientes — ${esc(cliFiltro.negocio)}` : "Todos os Clientes"}</div><div class="page-sub">${(() => { const totalBase = filtroNegocioTravado && cliFiltro.negocio ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio)).length : state.cliClientes.length; return lista.length === totalBase ? `${lista.length} cliente(s)` : `${lista.length} de ${totalBase} cliente(s)`; })()}</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}</div>
     </div>
     <div class="panel">
