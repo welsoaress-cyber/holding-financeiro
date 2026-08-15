@@ -476,6 +476,15 @@
   .modal::-webkit-scrollbar-thumb { background: color-mix(in srgb,var(--ink) 18%,transparent); border-radius: 999px; }
   .modal::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb,var(--ink) 32%,transparent); }
   .modal.modal-wide { width: 640px; }
+  .modal.modal-xl   { width: 720px; }
+  /* Cabeçalho de seção dentro de formulários */
+  .form-section-head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--ink-3); font-weight: 700;
+    margin: 18px 0 12px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-section-head:first-child { margin-top: 0; }
   .modal-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px 14px;
@@ -1039,7 +1048,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.2";
+const APP_VERSION = "1.9.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8449,24 +8458,33 @@ function modalCliCliente(existing){
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar cliente":"Novo cliente"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCliCliente"><div class="modal-body">
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Dados pessoais</div>
+      <div class="form-section-head">Dados pessoais</div>
 
       <div class="field-row">
-        <div class="field" style="flex:0 0 auto; min-width:130px;">
+        <div class="field" style="flex:0 0 148px;">
           <label>Código do cliente</label>
-          <input type="text" name="codigo" value="${esc(c.codigo||codigoNovo)}" ${isEdit?"readonly":""} style="${isEdit?"opacity:.6; background:var(--surface-2,var(--surface));":""}" placeholder="CLI-0001">
+          <input type="text" name="codigo" value="${esc(c.codigo||codigoNovo)}" ${isEdit?"readonly":""} style="${isEdit?"opacity:.55; background:var(--surface-2,var(--surface));":""}" placeholder="CLI-0001">
         </div>
-        <div class="field"><label>Tipo de pessoa</label>
+        <div class="field">
+          <label>Tipo de pessoa</label>
           <select name="tipoPessoa" id="cliTipoPessoa">
             <option value="PF" ${(c.tipoPessoa||"PF")==="PF"?"selected":""}>Pessoa Física</option>
             <option value="PJ" ${c.tipoPessoa==="PJ"?"selected":""}>Pessoa Jurídica</option>
           </select>
         </div>
-        <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
-        <div class="field"><label>Cadastrado em</label><input type="text" id="cliDataCadastro" name="dataCadastro" value="${c.dataCadastro ? fmtDateBR(c.dataCadastro) : fmtDateBR(todayISO())}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
+        <div class="field" style="flex:0 0 148px;">
+          <label>Status</label>
+          <select name="status">${statusOpts}</select>
+        </div>
+        <div class="field" style="flex:0 0 148px;">
+          <label>Cadastrado em</label>
+          <input type="text" id="cliDataCadastro" name="dataCadastro" value="${c.dataCadastro ? fmtDateBR(c.dataCadastro) : fmtDateBR(todayISO())}" placeholder="DD/MM/AAAA" autocomplete="off">
+        </div>
       </div>
+
       <div class="field" id="cliNomePFWrap">
-        <label>Nome completo *</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Nome completo">
+        <label>Nome completo *</label>
+        <input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Nome completo">
       </div>
       <div id="cliNomePJWrap" style="display:none;">
         <div class="field-row">
@@ -8474,48 +8492,49 @@ function modalCliCliente(existing){
           <div class="field"><label>Nome fantasia</label><input type="text" name="nomeFantasia" value="${esc(c.nomeFantasia||"")}" placeholder="Nome fantasia"></div>
         </div>
       </div>
+
       <div class="field-row">
         <div class="field"><label id="cliCpfLabel">CPF</label><input type="text" name="cpfCnpj" value="${esc(c.cpfCnpj||"")}" placeholder="000.000.000-00"></div>
         <div class="field" id="cliRgWrap"><label>RG</label><input type="text" name="rg" value="${esc(c.rg||"")}" placeholder="00.000.000-0"></div>
-      </div>
-      <div class="field-row">
         <div class="field" id="cliNascimentoWrap"><label>Data de nascimento</label><input type="text" id="cliDataNascimento" name="dataNascimento" value="${c.dataNascimento ? fmtDateBR(c.dataNascimento) : ""}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
-        <div class="field" id="cliGeneroWrap"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
+        <div class="field" id="cliGeneroWrap" style="flex:0 0 148px;"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
       </div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Contato</div>
+      <div class="form-section-head">Contato</div>
       <div class="field-row">
         <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000"></div>
         <div class="field"><label>WhatsApp</label><input type="text" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(c.email||"")}" placeholder="cliente@email.com"></div>
       </div>
-      <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(c.email||"")}" placeholder="cliente@email.com"></div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Endereço</div>
+      <div class="form-section-head">Endereço</div>
       <div class="field-row">
-        <div class="field"><label>CEP</label><input type="text" id="cliCepInput" name="cep" value="${esc(c.cep||"")}" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="off"></div>
-        <div class="field"><label>UF</label><select name="uf">${ufOpts}</select></div>
+        <div class="field" style="flex:0 0 148px;"><label>CEP</label><input type="text" id="cliCepInput" name="cep" value="${esc(c.cep||"")}" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="off"></div>
+        <div class="field" style="flex:0 0 100px;"><label>UF</label><select name="uf">${ufOpts}</select></div>
+        <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(c.cidade||"")}" placeholder="Cidade"></div>
       </div>
       <div class="field-row">
-        <div class="field" style="flex:2;"><label>Logradouro</label><input type="text" name="logradouro" value="${esc(c.logradouro||"")}" placeholder="Rua, Avenida, etc."></div>
-        <div class="field"><label>Número</label><input type="text" name="numero" value="${esc(c.numero||"")}" placeholder="123"></div>
+        <div class="field" style="flex:3;"><label>Logradouro</label><input type="text" name="logradouro" value="${esc(c.logradouro||"")}" placeholder="Rua, Avenida, etc."></div>
+        <div class="field" style="flex:0 0 100px;"><label>Número</label><input type="text" name="numero" value="${esc(c.numero||"")}" placeholder="123"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>Complemento</label><input type="text" name="complemento" value="${esc(c.complemento||"")}" placeholder="Apto, bloco, casa..."></div>
         <div class="field"><label>Bairro</label><input type="text" name="bairro" value="${esc(c.bairro||"")}" placeholder="Bairro"></div>
       </div>
-      <div class="field"><label>Cidade</label><input type="text" name="cidade" value="${esc(c.cidade||"")}" placeholder="Cidade"></div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Negócios e planos vinculados</div>
-      <div class="field-help" style="margin-bottom:8px;">Marque os negócios desta holding que esse cliente pertence e já escolha o plano de cada um — isso é o que vai alimentar os relatórios por plano/negócio depois.</div>
+      <div class="form-section-head">Negócios e planos vinculados</div>
+      <div class="field-help" style="margin-bottom:10px;">Marque os negócios desta holding que esse cliente pertence e escolha o plano de cada um — isso alimenta os relatórios por plano/negócio.</div>
       <div style="border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:10px;">
         <table><tbody>${negLinhas||`<tr><td>${emptyState("Nenhum negócio cadastrado ainda.")}</td></tr>`}</tbody></table>
       </div>
 
-      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Observações</div>
+      <div class="form-section-head">Observações</div>
       <div class="field"><textarea name="observacoes" rows="3" style="resize:none;" placeholder="Notas internas, histórico de atendimento, etc.">${esc(c.observacoes||"")}</textarea></div>
 
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar alterações":"Cadastrar cliente"}</button></div></form>
   `);
+  // Alarga o modal para acomodar o formulário completo sem truncar campos
+  { const m = document.querySelector(".modal"); if(m) m.classList.add("modal-xl"); }
 
   // PF/PJ toggle
   const tipoPessoa = document.getElementById("cliTipoPessoa");
