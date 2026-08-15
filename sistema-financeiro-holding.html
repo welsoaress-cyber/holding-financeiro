@@ -1190,7 +1190,19 @@ function receberDesbloqueado(){ return true; }
 function permissaoNegocio(negocio, acao){
   if(ehMaster()) return true;
   if(!negocio || !state.perfilAtivo) return false;
-  const perm = (state.perfilAtivo.permissoes || {})[negocio];
+  const perfil = state.perfilAtivo;
+  // Novo modelo: negModulos[neg_id][mod_id] = {ver,criar,editar,excluir}
+  if(perfil.negModulos){
+    const n = state.negocios.find(x => x.nome === negocio);
+    if(!n) return false;
+    const negPerms = perfil.negModulos[n.id] || {};
+    const NEG_MOD_IDS = ["financeiro","clientes","estoque","rh","comprasvendas"];
+    if(acao === "ver") return NEG_MOD_IDS.some(mId => !!(negPerms[mId] || {}).ver);
+    // editar/excluir de negócio = permissão no módulo Financeiro para esse negócio
+    return !!(negPerms.financeiro || {})[acao];
+  }
+  // Fallback modelo legado
+  const perm = (perfil.permissoes || {})[negocio];
   return !!(perm && perm[acao]);
 }
 function podeVerNegocio(negocio){ return permissaoNegocio(negocio, "ver"); }
@@ -1200,11 +1212,16 @@ function lancamentosVisiveis(lista){ return ehMaster() ? lista : lista.filter(l 
 function podeUsarCategoria(nomeCategoria){
   if(ehMaster()) return true;
   if(!nomeCategoria || !state.perfilAtivo) return false;
-  // Se tem acesso de criar no Financeiro → todas as categorias liberadas automaticamente
-  const modFinanceiro = (state.perfilAtivo.modulos || {})["financeiro"];
+  const perfil = state.perfilAtivo;
+  // Se tem acesso de criar no Financeiro em qualquer negócio → todas as categorias liberadas
+  if(perfil.negModulos){
+    return state.negocios.some(n => !!((perfil.negModulos[n.id] || {}).financeiro || {}).criar);
+  }
+  // Fallback legado
+  const modFinanceiro = (perfil.modulos || {})["financeiro"];
   const defaultFin = modulosPadrao()["financeiro"];
   if((modFinanceiro ? modFinanceiro.criar : defaultFin.criar)) return true;
-  return !!(state.perfilAtivo.categoriasPermitidas || {})[nomeCategoria];
+  return !!(perfil.categoriasPermitidas || {})[nomeCategoria];
 }
 function perfilById(id){ return state.perfis.find(p => p.id === id); }
 
@@ -1228,7 +1245,19 @@ function permissaoModulo(moduloId, acao){
   if(ehMaster()) return true;
   if(!MODULOS_GRANULARES.includes(moduloId)) return true; // fora do escopo do controle granular
   if(!state.perfilAtivo) return false;
-  const perm = (state.perfilAtivo.modulos || {})[moduloId] || modulosPadrao()[moduloId];
+  const perfil = state.perfilAtivo;
+  // Novo modelo: módulos de negócio acessíveis se ALGUM negócio libera a ação
+  if(perfil.negModulos){
+    const NEG_MOD_IDS = ["financeiro","clientes","estoque","rh","comprasvendas"];
+    if(!NEG_MOD_IDS.includes(moduloId)){
+      // Módulos globais (visao, cadastro) ficam em modulos
+      const perm = (perfil.modulos || {})[moduloId] || {};
+      return !!perm[acao];
+    }
+    return state.negocios.some(n => !!((perfil.negModulos[n.id] || {})[moduloId] || {})[acao]);
+  }
+  // Fallback modelo legado
+  const perm = (perfil.modulos || {})[moduloId] || modulosPadrao()[moduloId];
   return !!perm[acao];
 }
 function podeVerModulo(moduloId){ return permissaoModulo(moduloId, "ver"); }
@@ -3223,10 +3252,10 @@ function viewVgExecutivo(){
     const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const clientesAtivosNeg = podeVerModulo("clientes") ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const margem = receitaMesNeg>0 ? Math.round(((receitaMesNeg-despesaMesNeg)/receitaMesNeg)*100) : null;
-    const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" }
-      : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:4px;"></span>" }
-      : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" }
-      : { rotulo:"Crítico", cor:"var(--neg)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" };
+    const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;'></span>" }
+      : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:4px;'></span>" }
+      : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;'></span>" }
+      : { rotulo:"Crítico", cor:"var(--neg)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;'></span>" };
     if(isMesAtual && margem!==null && margem<40){
       alertas.push({
         tipo:"margem", negocio:n.nome,
@@ -3484,9 +3513,9 @@ function viewVgExecutivo(){
     if(!vencidos.length) return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">⏰ Inadimplência</div></div><div class="panel-body">${emptyState("Nada vencido. Tudo em dia! ")}</div></div>`;
     const hoje = new Date(hojeISO+"T00:00:00");
     const buckets = [
-      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" },
-      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:4px;"></span>" },
-      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" },
+      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;'></span>" },
+      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:4px;'></span>" },
+      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;'></span>" },
     ].map(b => {
       const itens = vencidos.filter(l => { const dias = Math.floor((hoje-new Date(l.data+"T00:00:00"))/86400000); return dias>=b.min && dias<=b.max; });
       return { ...b, count: itens.length, valor: itens.reduce((s,l)=>s+Number(l.valor),0) };
@@ -4536,11 +4565,21 @@ function viewUsuarios(){
     if(p.tipo === "master"){
       resumo = `<span class="status-pill status-pago"> Master — acesso completo</span>`;
     }else{
-      const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
-      const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
-      const entradasCat = Object.entries(p.categoriasPermitidas || {}).filter(([,v]) => v).map(([cat]) => cat);
-      const catTxt = entradasCat.length ? `<div style="font-size:11px; color:var(--ink-4); margin-top:4px;">Categorias: ${entradasCat.map(esc).join(", ")}</div>` : "";
-      resumo = (negTags || `<span style="color:var(--ink-4); font-size:12px;">Nenhum negócio liberado ainda</span>`) + catTxt;
+      // Resumo adaptado ao novo modelo (negModulos) e ao legado (permissoes)
+      let negTags = "";
+      if(p.negModulos){
+        negTags = state.negocios.map(n => {
+          const negPerms = p.negModulos[n.id] || {};
+          const modsAtivos = MODULOS_POR_NEGOCIO.filter(g => (negPerms[g.id] || {}).ver).map(g => g.label);
+          if(!modsAtivos.length) return "";
+          const cor = n.cor || "var(--accent)";
+          return `<span class="tag" style="background:var(--muted-bg);color:var(--ink-3);margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0;"></span>${esc(n.nome)}: <span style="color:var(--ink-4);">${modsAtivos.join(', ')}</span></span>`;
+        }).join("");
+      } else {
+        const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
+        negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg);color:var(--ink-3);margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
+      }
+      resumo = (negTags || `<span style="color:var(--ink-4);font-size:12px;">Nenhum negócio liberado ainda</span>`);
     }
     return `<tr>
       <td><strong>${esc(p.nome)}</strong></td>
@@ -5250,64 +5289,85 @@ function modalNegocio(existing){
 }
 
 /* =========================================================================
-   MODAL — USUÁRIO com permissões por módulo (todos os menus) e por negócio
+   MODAL — USUÁRIO com permissões por negócio → módulos dentro de cada negócio
 ========================================================================= */
+// Módulos mostrados dentro de cada card de negócio
+const MODULOS_POR_NEGOCIO = [
+  { id:"financeiro",    label:"Financeiro",    acoes:["ver","criar","editar","excluir"],
+    help:"Com 'Criar', acesso automático a todas as categorias." },
+  { id:"clientes",      label:"Clientes",      acoes:["ver","criar","editar","excluir"] },
+  { id:"estoque",       label:"Estoque",       acoes:["ver","criar","editar","excluir"] },
+  { id:"rh",            label:"RH",            acoes:["ver","criar","editar","excluir"] },
+  { id:"comprasvendas", label:"Compra e Venda",acoes:["ver","criar","editar","excluir"] },
+];
+// Módulos globais (não ligados a negócio específico)
+const MODULOS_GLOBAIS_CONFIG = [
+  { id:"visao",    label:"Visão Geral", acoes:["ver"] },
+  { id:"cadastro", label:"Cadastro",   acoes:["ver"] },
+];
+// Para o MODULOS_GRUPOS legado (mantido pra outros usos)
 const MODULOS_GRUPOS = [
-  { id:"visao",         icon:"", label:"Visão",           acoes:["ver"] },
-  { id:"financeiro",    icon:"", label:"Financeiro",       acoes:["ver","criar","editar","excluir"],
-    help:"Com 'Criar', ela terá acesso automático a todas as categorias e subcategorias." },
-  { id:"estoque",       icon:"", label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
-  { id:"clientes",      icon:"", label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
-  { id:"rh",            icon:"", label:"RH",               acoes:["ver","criar","editar","excluir"] },
-  { id:"comprasvendas", icon:"", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
-  { id:"cadastro",      icon:"", label:"Cadastro",         acoes:["ver"] },
+  ...MODULOS_POR_NEGOCIO,
+  ...MODULOS_GLOBAIS_CONFIG,
 ];
 const ACOES_LABEL = { ver:"Ver", criar:"Criar", editar:"Editar", excluir:"Excluir" };
 
 function modalPerfil(existing){
   const isEdit = !!existing;
   const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
-  const pad = modulosPadrao();
 
-  // Pills de checkbox que quebram linha sozinhas (flex-wrap) em vez de colunas de
-  // tabela com largura fixa — assim não precisa de scroll horizontal em nenhuma
-  // largura de tela, o card só fica mais alto no celular.
+  // Pills de checkbox (flex-wrap, sem scroll horizontal em nenhuma tela)
   const pillCheckbox = (nome, marcado, rotulo) => `
-    <label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:5px 10px; border:1px solid var(--border); border-radius:999px; cursor:pointer; user-select:none;">
+    <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 9px;border:1px solid var(--border);border-radius:999px;cursor:pointer;user-select:none;">
       <input type="checkbox" name="${nome}" ${marcado?"checked":""} style="margin:0;">${esc(rotulo)}
     </label>`;
 
-  // ---- Blocos de módulo (o que pode fazer em cada área do sistema) ----
-  const linhasModulo = MODULOS_GRUPOS.map((g, i) => {
-    const perm = (p.modulos || {})[g.id] || pad[g.id] || {};
-    const pills = ["ver","criar","editar","excluir"].filter(a => g.acoes.includes(a))
-      .map(a => pillCheckbox(`mod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
+  // --- Linha de módulo dentro do card de negócio ---
+  const linhaModNeg = (g, negId, perm) => {
+    const pills = g.acoes.map(a => pillCheckbox(`nm_${a}_${negId}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
     return `
-      <div style="padding:11px 14px; ${i < MODULOS_GRUPOS.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
-        <div style="font-size:13px; font-weight:600; margin-bottom:8px;">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 12px;border-top:1px solid var(--border);">
+        <div style="min-width:100px;max-width:110px;font-size:11.5px;font-weight:600;color:var(--ink-2);padding-top:5px;line-height:1.2;">${esc(g.label)}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:10px;">ⓘ</span>`:""}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills}</div>
+      </div>`;
+  };
+
+  // --- Card de negócio com módulos dentro ---
+  const cardsNegocio = state.negocios.map(n => {
+    const cor = n.cor || "var(--accent)";
+    // Lê permissões do novo modelo; fallback para o modelo legado
+    const getNegPerm = (modId) => {
+      if(p.negModulos) return (p.negModulos[n.id] || {})[modId] || {};
+      // Fallback legado: financeiro usa permissoes[nome], outros usam modulos global
+      const legPerm = (p.permissoes || {})[n.nome] || {};
+      if(modId === "financeiro") return { ver: !!legPerm.ver, criar: false, editar: !!legPerm.editar, excluir: !!legPerm.excluir };
+      return (p.modulos || {})[modId] || {};
+    };
+    const modRows = MODULOS_POR_NEGOCIO.map(g => linhaModNeg(g, n.id, getNegPerm(g.id))).join("");
+    return `
+      <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
+        <div style="padding:10px 12px;background:color-mix(in srgb,${cor} 8%,var(--surface));display:flex;align-items:center;gap:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
+          <span style="font-size:13px;font-weight:700;">${esc(n.nome)}</span>
+        </div>
+        ${modRows}
       </div>`;
   }).join("");
 
-  // ---- Blocos de negócio (quais empresas ela enxerga nos dados) ----
-  const linhasNegocio = state.negocios.map((n, i) => {
-    const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
-    const cor = n.cor || "var(--accent)";
-    const pills = [["ver_"+n.id,perm.ver,"Ver"],["editar_"+n.id,perm.editar,"✏️ Editar"],["excluir_"+n.id,perm.excluir,"× Excluir"]]
-      .map(([nome,marcado,rotulo]) => pillCheckbox(nome, marcado, rotulo)).join("");
+  // --- Módulos globais (Visão e Cadastro) ---
+  const linhasGlobal = MODULOS_GLOBAIS_CONFIG.map((g, i) => {
+    const perm = (p.modulos || {})[g.id] || {};
+    const pills = g.acoes.map(a => pillCheckbox(`gmod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
     return `
-      <div style="padding:11px 14px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
-        <div style="display:flex; align-items:center; gap:7px; margin-bottom:8px;">
-          <span style="width:9px;height:9px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0;"></span>
-          <span style="font-size:13px; font-weight:600;">${esc(n.nome)}</span>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;${i < MODULOS_GLOBAIS_CONFIG.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
+        <div style="min-width:90px;font-size:12.5px;font-weight:600;">${esc(g.label)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills}</div>
       </div>`;
   }).join("");
 
   const sectionHeader = (title, subtitle) => `
-    <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:18px 0 8px; border-bottom:1px solid var(--border); padding-bottom:6px;">
-      ${title}${subtitle ? `<span style="font-weight:400; text-transform:none; letter-spacing:0; margin-left:8px; font-size:11px;">${subtitle}</span>` : ""}
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:700;margin:18px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+      ${title}${subtitle ? `<span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;font-size:11px;">${subtitle}</span>` : ""}
     </div>`;
 
   openModal(`
@@ -5319,7 +5379,7 @@ function modalPerfil(existing){
         <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Erica"></div>
         <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: erica123"></div>
       </div>
-      <div class="field-help" style="margin-top:-6px; margin-bottom:10px;">Senha simples, só pra identificar quem está usando — não use senha pessoal.</div>
+      <div class="field-help" style="margin-top:-6px;margin-bottom:10px;">Senha simples, só pra identificar quem está usando — não use senha pessoal.</div>
       <div class="field"><label>Tipo de acesso</label>
         <select name="tipo" id="perfilTipoSelect">
           <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro — acesso definido abaixo</option>
@@ -5333,19 +5393,20 @@ function modalPerfil(existing){
 
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
 
-        <!-- 1. NEGÓCIOS -->
-        ${sectionHeader("1. Negócios que pode acessar", "dados financeiros visíveis por empresa")}
-        <div style="border:1px solid var(--border);border-radius:var(--r); margin-bottom:6px;">
-          ${linhasNegocio || `<div style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</div>`}
-        </div>
-        <div class="field-help" style="margin-bottom:14px;">Sem "Ver", os lançamentos desse negócio ficam invisíveis para este usuário.</div>
+        <!-- POR NEGÓCIO → módulos dentro de cada empresa -->
+        ${sectionHeader("Acesso por negócio", "defina quais módulos esse usuário pode usar em cada empresa")}
+        ${state.negocios.length
+          ? cardsNegocio
+          : `<div style="text-align:center;color:var(--ink-4);padding:14px;border:1px solid var(--border);border-radius:var(--r);">Nenhum negócio cadastrado ainda.</div>`
+        }
+        <div class="field-help" style="margin-bottom:14px;">Sem "Ver", o módulo fica invisível para esse usuário nessa empresa.</div>
 
-        <!-- 2. MÓDULOS DO SISTEMA -->
-        ${sectionHeader("2. O que pode fazer em cada módulo", "funcionalidades do sistema")}
-        <div style="border:1px solid var(--border);border-radius:var(--r); margin-bottom:6px;">
-          ${linhasModulo}
+        <!-- MÓDULOS GLOBAIS (Visão Geral e Cadastro) -->
+        ${sectionHeader("Módulos globais", "não pertencem a um negócio específico")}
+        <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;">
+          ${linhasGlobal}
         </div>
-        <div class="field-help">Sem "Ver", o módulo some do menu. "Criar/Editar/Excluir" controlam as ações dentro dele.</div>
+        <div class="field-help">Sem "Ver", o módulo some completamente do menu.</div>
 
       </div>
     </div>
@@ -5372,26 +5433,25 @@ function modalPerfil(existing){
     const tipo = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
     if(state.perfis.some(x => x.nome === nome && (!isEdit || x !== existing))){ showToast("Já existe um usuário com esse nome.", "error"); return; }
-    const modulos = {};
-    MODULOS_GRUPOS.forEach(g => {
-      modulos[g.id] = {
-        ver:    fd.get(`mod_ver_${g.id}`) === "on",
-        criar:  fd.get(`mod_criar_${g.id}`) === "on",
-        editar: fd.get(`mod_editar_${g.id}`) === "on",
-        excluir:fd.get(`mod_excluir_${g.id}`) === "on",
-      };
-    });
-    const permissoes = {};
+    // Novo modelo: negModulos[neg_id][mod_id] = {ver,criar,editar,excluir}
+    const negModulos = {};
     state.negocios.forEach(n => {
-      permissoes[n.nome] = {
-        ver:    fd.get(`ver_${n.id}`) === "on",
-        editar: fd.get(`editar_${n.id}`) === "on",
-        excluir:fd.get(`excluir_${n.id}`) === "on",
-      };
+      negModulos[n.id] = {};
+      MODULOS_POR_NEGOCIO.forEach(g => {
+        negModulos[n.id][g.id] = {
+          ver:    fd.get(`nm_ver_${n.id}_${g.id}`) === "on",
+          criar:  fd.get(`nm_criar_${n.id}_${g.id}`) === "on",
+          editar: fd.get(`nm_editar_${n.id}_${g.id}`) === "on",
+          excluir:fd.get(`nm_excluir_${n.id}_${g.id}`) === "on",
+        };
+      });
     });
-    // categoriasPermitidas mantido por compatibilidade, mas agora é derivado do módulo Financeiro
-    const categoriasPermitidas = {};
-    const data = { nome, senha, tipo, permissoes, categoriasPermitidas, modulos };
+    // Módulos globais (visão, cadastro)
+    const modulos = {};
+    MODULOS_GLOBAIS_CONFIG.forEach(g => {
+      modulos[g.id] = { ver: fd.get(`gmod_ver_${g.id}`) === "on", criar:false, editar:false, excluir:false };
+    });
+    const data = { nome, senha, tipo, negModulos, modulos, permissoes:{}, categoriasPermitidas:{} };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.perfis.push({ id: uid("perfil"), ...data }); }
     await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
@@ -6917,13 +6977,13 @@ function dadosCobrancaCliente(clienteId, mapa){
   return { data: proximo.data, dias, vencido: dias>0, totalAberto: abertos.reduce((s,l)=>s+Number(l.valor),0), qtd: abertos.length };
 }
 function statusCobranca(dados){
-  if(!dados) return { rotulo: "Sem cobrança em aberto", cor: "var(--ink-4)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" };
-  if(dados.dias > 0) return { rotulo: `Vencido há ${dados.dias} dia${dados.dias===1?"":"s"}`, cor: "var(--neg)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" };
-  if(dados.dias === 0) return { rotulo: "Vence hoje", cor: "#D97706", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" };
+  if(!dados) return { rotulo: "Sem cobrança em aberto", cor: "var(--ink-4)", ponto: "<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;'></span>" };
+  if(dados.dias > 0) return { rotulo: `Vencido há ${dados.dias} dia${dados.dias===1?"":"s"}`, cor: "var(--neg)", ponto: "<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;'></span>" };
+  if(dados.dias === 0) return { rotulo: "Vence hoje", cor: "#D97706", ponto: "<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;'></span>" };
   const faltam = -dados.dias;
   return faltam<=5
-    ? { rotulo: `Vence em ${faltam} dia${faltam===1?"":"s"}`, cor: "#D97706", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" }
-    : { rotulo: `Vence em ${faltam} dias`, cor: "var(--ink-4)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" };
+    ? { rotulo: `Vence em ${faltam} dia${faltam===1?"":"s"}`, cor: "#D97706", ponto: "<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;'></span>" }
+    : { rotulo: `Vence em ${faltam} dias`, cor: "var(--ink-4)", ponto: "<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;'></span>" };
 }
 // Já mandei ESSE modelo pra essa pessoa antes? (pega o mais recente) — é o
 // que evita cobrar/avisar a mesma coisa duas vezes sem perceber.
