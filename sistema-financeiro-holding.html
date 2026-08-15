@@ -1039,7 +1039,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.0";
+const APP_VERSION = "1.9.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3625,8 +3625,7 @@ function avancarDoSplash(){
   renderApp();
 }
 
-// Splash full-screen: saudação com nome + versículo aleatório.
-// Clique EM QUALQUER LUGAR da tela → entra no app imediatamente.
+// Splash full-screen: versículo aleatório. Clique em qualquer lugar → entra no app.
 function viewBoasVindasSplash(){
   const v    = VERSICULOS_BOAS_VINDAS[Math.floor(Math.random() * VERSICULOS_BOAS_VINDAS.length)];
   const hora = new Date().getHours();
@@ -3645,23 +3644,17 @@ function viewBoasVindasSplash(){
       padding:40px 28px; text-align:center; color:#fff; user-select:none;
     }
     .splash-inner { max-width:560px; width:100%; animation:splashIn .6s cubic-bezier(.22,1,.36,1) both; }
-    .splash-nome {
-      font-size:32px; font-weight:800; color:#C5E8F2;
-      margin:0 0 6px; line-height:1.2;
-    }
-    .splash-nome em { font-style:normal; color:#00C4D8; }
-    .splash-saud { font-size:14px; color:rgba(255,255,255,.35); margin:0 0 36px; font-weight:400; }
     .splash-verso {
-      font-size:16px; line-height:1.75; font-style:italic; font-weight:300;
-      color:rgba(197,232,242,.75); margin:0;
+      font-size:18px; line-height:1.8; font-style:italic; font-weight:300;
+      color:rgba(197,232,242,.85); margin:0 0 28px;
     }
-    .splash-verso strong { font-style:normal; font-weight:600; color:#00C4D8; font-size:13px; }
+    .splash-verso strong { font-style:normal; font-weight:600; color:#00C4D8; font-size:14px; }
+    .splash-saud { font-size:13px; color:rgba(255,255,255,.25); margin:0; font-weight:400; letter-spacing:.03em; }
   </style>
   <div id="splashWrap">
     <div class="splash-inner">
-      <p class="splash-nome">${saud}, <em>${esc(nome)}</em>.</p>
-      <p class="splash-saud">Clique em qualquer lugar para continuar</p>
-      <p class="splash-verso">"${esc(v.texto)}"<br><strong>— ${esc(v.ref)}</strong></p>
+      <p class="splash-verso">"${esc(v.texto)}" <strong>— ${esc(v.ref)}</strong></p>
+      <p class="splash-saud">${saud}, ${esc(nome)}.</p>
     </div>
   </div>`;
 }
