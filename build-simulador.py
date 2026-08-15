@@ -26,8 +26,11 @@ def css_entre(a, b):
 
 
 def funcao(header):
-    """Funções de topo do portal fecham numa linha que é exatamente '}'."""
+    """Funções de topo do portal fecham numa linha que é exatamente '}'.
+    Consts de uma linha são copiadas como estão."""
     ini = next(i for i, l in enumerate(linhas) if l.startswith(header))
+    if header.startswith('const'):
+        return linhas[ini]
     fim = next(i for i in range(ini + 1, len(linhas)) if linhas[i] == '}')
     return '\n'.join(linhas[ini:fim + 1])
 
@@ -42,7 +45,8 @@ FUNCOES = [
     'function esc(s)', 'function ctKey(ct, i)', 'function ctNome(ct, i)',
     'function fmtDate(d)', 'function fmtVal(v)', 'function fmtMesRef(m)',
     'function periodoCartao(ct)',
-    'function slotsDoCartao(periodo, fat)', 'function premiosGanhos(fat)',
+    'function slotsDoCartao(periodo, fat)', 'const SELO_VALE',
+    'function premiosGanhos(periodo, fat)',
     'function renderHistoricoFidelidade(fatContrato)',
     'function renderFidelidade(', 'function toggleRules(id,btn)',
 ]
@@ -333,10 +337,10 @@ function atualizar(){
   const doPeriodo = periodo
     ? faturasList.filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
     : faturasList;
-  // mesma contagem do cartão: selos = meses pagos em dia dentro do período
-  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => s.estado === 'ok').length;
+  // mesma contagem do cartão: vale selo o mês quitado dentro da validade
+  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => SELO_VALE.has(s.estado)).length;
   renderLedger(periodo);
-  renderReadout(streak, premiosGanhos(doPeriodo), periodo);
+  renderReadout(streak, premiosGanhos(periodo, doPeriodo), periodo);
   renderFidelidade(session.nome, contratos[0], 0, faturasList);
 }
 

@@ -75,6 +75,13 @@
 }
 .fcs.atrasado .fcs-check{color:#FCD34D;font-size:0.9rem;line-height:1;}
 .fcs.atrasado .fcs-n{color:rgba(245,158,11,0.65);font-size:0.5rem;font-weight:700;}
+/* quitado só depois do fim do cartão — perdeu o selo */
+.fcs.perdido{
+  border-color:rgba(148,163,184,0.4);border-style:solid;
+  background:rgba(148,163,184,0.06);
+}
+.fcs.perdido .fcs-check{color:rgba(148,163,184,0.7);font-size:0.85rem;line-height:1;}
+.fcs.perdido .fcs-n{color:rgba(148,163,184,0.5);font-size:0.5rem;font-weight:700;}
 /* fatura do mês vencida e em aberto */
 .fcs.vencido{
   border-color:rgba(239,68,68,0.6);border-style:solid;
@@ -423,7 +430,12 @@ function slotsDoCartao(periodo, fat){
     if(f){
       const st = (f.status||'').toLowerCase();
       if(st === 'pago'){
-        estado = (f.data_pagamento && f.data_pagamento <= f.vencimento) ? 'ok' : 'atraso';
+        const emDia = f.data_pagamento && f.data_pagamento <= f.vencimento;
+        // Pagou atrasado mas ainda dentro da validade do cartão: o selo
+        // vale. O mês segue marcado como atraso, para o cliente ver — mas
+        // quitar dentro do período não faz perder a recompensa.
+        const dentro = !periodo || (f.data_pagamento||'').slice(0,7) <= periodo.fim;
+        estado = emDia ? 'ok' : (dentro ? 'okAtrasado' : 'atraso');
       }else{
         estado = f.vencimento < hoje ? 'vencida' : 'aberto';
       }
@@ -433,23 +445,18 @@ function slotsDoCartao(periodo, fat){
   return slots;
 }
 
-function premiosGanhos(fat){
-  const hoje=new Date().toISOString().slice(0,10);
-  const asc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?-1:1);
-  const ganhos=[];
-  let n=0;
-  for(let i=0;i<asc.length;i++){
-    const f=asc[i];
-    const st=(f.status||'').toLowerCase();
-    if(st!=='pago' && f.vencimento>=hoje) continue;   // ainda no prazo
-    // Mês em atraso simplesmente não vale selo. NÃO zera os anteriores:
-    // o cartão é um período fixo de 12 meses, não uma sequência.
-    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento){
-      n++;
-      const premiada=asc[i+1];                        // prêmio cai na fatura seguinte
-      if(n===6)  ganhos.push({tipo:'meia',   mes:premiada?premiada.mes_referencia:null});
-      if(n===12) ganhos.push({tipo:'gratis', mes:premiada?premiada.mes_referencia:null});
-    }
+const SELO_VALE = new Set(['ok', 'okAtrasado']);
+
+function premiosGanhos(periodo, fat){
+  const slots = slotsDoCartao(periodo, fat);
+  const ganhos = [];
+  let n = 0;
+  for(let i=0;i<slots.length;i++){
+    if(!SELO_VALE.has(slots[i].estado)) continue;     // esse mês não deu selo
+    n++;
+    const seguinte = slots[i+1];                      // o prêmio cai no mês seguinte
+    if(n===6)  ganhos.push({tipo:'meia',   mes:seguinte?seguinte.mes:null});
+    if(n===12) ganhos.push({tipo:'gratis', mes:seguinte?seguinte.mes:null});
   }
   return ganhos;
 }
@@ -494,7 +501,7 @@ function renderHistoricoFidelidade(fatContrato){
   // Faturas que receberam prêmio. O cartão reinicia a cada atraso, então é
   // aqui — no histórico — que o desconto já concedido fica registrado.
   const premiadas = new Map();
-  for(const g of premiosGanhos(fonte)){
+  for(const g of premiosGanhos(null, fonte)){
     if(g.mes) premiadas.set(g.mes, g.tipo);
   }
 
@@ -537,14 +544,14 @@ function renderHistoricoFidelidade(fatContrato){
     </tr>`;
   }).join('');
 
-  // Cada mês em atraso custa o selo daquele mês — só isso. Não há reinício:
-  // o cartão é um período fixo de 12 meses.
+  // Atraso não custa mais o selo: basta quitar dentro da validade do
+  // cartão. O aviso existe para o cliente ver quais meses atrasaram.
   const atrasos = lista.filter(f=>{
     const st=(f.status||'').toLowerCase();
     return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
   });
   const avisoAtraso = atrasos.length
-    ? `${atrasos.length===1?'A fatura de':'As faturas de'} <strong>${atrasos.map(f=>esc(fmtMesRef(f.mes_referencia)||fmtDate(f.vencimento))).join(', ')}</strong> ${atrasos.length===1?'foi paga':'foram pagas'} em atraso e ${atrasos.length===1?'não valeu selo':'não valeram selo'}. Os outros meses do cartão seguem contando normalmente.`
+    ? `${atrasos.length===1?'A fatura de':'As faturas de'} <strong>${atrasos.map(f=>esc(fmtMesRef(f.mes_referencia)||fmtDate(f.vencimento))).join(', ')}</strong> ${atrasos.length===1?'foi paga':'foram pagas'} em atraso. Como ${atrasos.length===1?'foi quitada':'foram quitadas'} dentro da validade do cartão, ${atrasos.length===1?'o selo valeu':'os selos valeram'}.`
     : '';
 
   return `<div class="fh-wrap">
@@ -584,8 +591,8 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   // Cada slot é um mês fixo do cartão. Os selos são a contagem de meses
   // pagos em dia — um atraso custa aquele selo e nada mais.
   const slots = slotsDoCartao(periodo, doPeriodo);
-  const atrasados = slots.filter(s => s.estado === 'atraso');
-  const streakReal = slots.filter(s => s.estado === 'ok').length;
+  const atrasados = slots.filter(s => s.estado === 'okAtrasado' || s.estado === 'atraso');
+  const streakReal = slots.filter(s => SELO_VALE.has(s.estado)).length;
 
   // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
   // dia) fica com o cartão cheio — o streak real segue guardado para a
@@ -599,8 +606,10 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
     const quando = sl.mes ? esc(fmtMesRef(sl.mes)) : `Mês ${sl.n}`;
     if(sl.estado === 'ok')
       return `<div class="fcs ok" title="${quando} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${sl.n}</span></div>`;
+    if(sl.estado === 'okAtrasado')
+      return `<div class="fcs atrasado" title="${quando} — pago com atraso, dentro da validade do cartão: o selo valeu"><span class="fcs-check">✓</span><span class="fcs-n">${sl.n}</span></div>`;
     if(sl.estado === 'atraso')
-      return `<div class="fcs atrasado" title="${quando} — pago com atraso, não valeu selo"><span class="fcs-check">⚠</span><span class="fcs-n">${sl.n}</span></div>`;
+      return `<div class="fcs perdido" title="${quando} — quitado depois do fim do cartão, não valeu selo"><span class="fcs-check">✕</span><span class="fcs-n">${sl.n}</span></div>`;
     if(sl.estado === 'vencida')
       return `<div class="fcs vencido" title="${quando} — fatura vencida em aberto"><span class="fcs-check">✕</span><span class="fcs-n">${sl.n}</span></div>`;
     return `<div class="fcs empty" title="${quando} — aguardando"><span class="fcs-n">${sl.n}</span></div>`;
@@ -612,7 +621,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   // com ele faz o cliente achar que perdeu o que já recebeu.
   const premio1 = streak >= 6;
   const premio2 = streak >= 12;
-  const ganhos  = premiosGanhos(fatContrato || []);
+  const ganhos  = premiosGanhos(periodo, doPeriodo);
   const antes1  = ganhos.find(g => g.tipo === 'meia');
   const antes2  = ganhos.find(g => g.tipo === 'gratis');
 
@@ -632,14 +641,14 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
            title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto'}">
         <span class="fp-ico">🎁</span>
         <span class="fp-val">50% de desconto</span>
-        <span class="fp-onde">por manter 6 meses de pagamento em dia</span>
+        <span class="fp-onde">por 6 meses pagos dentro da validade do cartão</span>
         <span class="fp-st">${chip(premio1, antes1, 6-streak)}</span>
       </div>
       <div class="fp ${aceso2?'p2ok':'p2e'}${!premio2&&antes2?' passado':''}"
            title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto'}">
         <span class="fp-ico">🏅</span>
         <span class="fp-val">100% de desconto</span>
-        <span class="fp-onde">por manter 12 meses de pagamento em dia</span>
+        <span class="fp-onde">por 12 meses pagos dentro da validade do cartão</span>
         <span class="fp-st">${chip(premio2, antes2, 12-streak)}</span>
       </div>
     </div>`;
@@ -677,7 +686,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
 
         <!-- 12 selos; prêmios logo abaixo, fora da grade -->
         <div class="fc-stamps">${selos.join('')}</div>
-        ${atrasados.length?`<div class="fc-tropeco">⚠ ${atrasados.length===1?'Atraso em':'Atrasos em'} <strong>${atrasados.map(a=>esc(fmtMesRef(a.mes)||('mês '+a.n))).join(', ')}</strong> — ${atrasados.length===1?'esse mês não valeu selo':'esses meses não valeram selo'}. Os demais continuam contando.</div>`:''}
+        ${atrasados.length?`<div class="fc-tropeco">⚠ ${atrasados.length===1?'Pagamento em atraso em':'Pagamentos em atraso em'} <strong>${atrasados.map(a=>esc(fmtMesRef(a.mes)||('mês '+a.n))).join(', ')}</strong> — quitado dentro da validade do cartão, então ${atrasados.length===1?'o selo valeu':'os selos valeram'}.</div>`:''}
         ${premios}
 
         <div class="fc-footer">
@@ -687,7 +696,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
           </div>
           <div class="fc-progress-col">
             <div class="fc-pct">${streak}<small style="font-size:0.9rem;opacity:0.7">/12</small></div>
-            <div class="fc-pct-label">${streak===1?'fatura em dia':'faturas em dia'}</div>
+            <div class="fc-pct-label">${streak===1?'selo no cartão':'selos no cartão'}</div>
           </div>
         </div>
       </div>
@@ -745,7 +754,8 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
         <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
 
         <li>Cada mês do cartão vale <strong>um selo</strong>, e o cartão dura <strong>12 meses</strong> a partir da sua primeira fatura.</li>
-        <li>Mês pago <strong>em atraso não vale selo</strong> — mas <strong>não zera</strong> os outros. Os demais meses do cartão continuam contando.</li>
+        <li>Pagou com atraso? O selo <strong>vale do mesmo jeito</strong>, desde que a fatura seja quitada <strong>até o fim da validade do cartão</strong>. O mês fica marcado como atraso, mas você não perde a recompensa.</li>
+        <li>Só não vale selo o mês que <strong>continuar em aberto</strong> quando o cartão vencer.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
         <li>Os descontos são aplicados <strong>automaticamente</strong> na fatura seguinte — você não precisa pedir.</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
@@ -907,10 +917,10 @@ function atualizar(){
   const doPeriodo = periodo
     ? faturasList.filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
     : faturasList;
-  // mesma contagem do cartão: selos = meses pagos em dia dentro do período
-  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => s.estado === 'ok').length;
+  // mesma contagem do cartão: vale selo o mês quitado dentro da validade
+  const streak = slotsDoCartao(periodo, doPeriodo).filter(s => SELO_VALE.has(s.estado)).length;
   renderLedger(periodo);
-  renderReadout(streak, premiosGanhos(doPeriodo), periodo);
+  renderReadout(streak, premiosGanhos(periodo, doPeriodo), periodo);
   renderFidelidade(session.nome, contratos[0], 0, faturasList);
 }
 
