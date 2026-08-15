@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.0.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5033,7 +5033,7 @@ function viewLancamentos(){
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
       <select data-action="filter-catnome"><option value="">Todas as categorias</option>${catNomeOptions}</select>
       <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"Selecione uma categoria"}</option>${subcatNomeOptions}</select>
-      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
+      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}" min="2000-01-01" max="2099-12-31"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}" min="2000-01-01" max="2099-12-31"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
       <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
@@ -7381,8 +7381,15 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "filter-catnome"){ lancFilter.catNome = e.target.value; lancFilter.subcatNome = ""; renderApp(); }
   if(e.target.dataset.action === "filter-subcatnome"){ lancFilter.subcatNome = e.target.value; renderApp(); }
   if(e.target.dataset.action === "filter-texto"){ lancFilter.texto = e.target.value; renderApp(); }
-  if(e.target.dataset.action === "filter-data-de"){ lancFilter.dataDe = e.target.value; renderApp(); }
-  if(e.target.dataset.action === "filter-data-ate"){ lancFilter.dataAte = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-data-de"){
+    const val = e.target.value;
+    // Ignora datas com ano < 2000 (digitação parcial do ano, ex: "0002")
+    if(!val || parseInt(val.split("-")[0],10) >= 2000){ lancFilter.dataDe = val||""; renderApp(); }
+  }
+  if(e.target.dataset.action === "filter-data-ate"){
+    const val = e.target.value;
+    if(!val || parseInt(val.split("-")[0],10) >= 2000){ lancFilter.dataAte = val||""; renderApp(); }
+  }
   if(e.target.dataset.action === "filter-clienteid"){ lancFilter.clienteId = e.target.value; renderApp(); }
   // Estoque filters
   if(e.target.dataset.action === "est-filtro-cat"){ estFiltroCategoria = e.target.value; renderView(); }
