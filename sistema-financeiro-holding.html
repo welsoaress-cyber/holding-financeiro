@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.5";
+const APP_VERSION = "2.0.6";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -6703,14 +6703,22 @@ function modalEscopoEdicaoSerie(existing, data){
       afetados.push(l);
     }
     const extMsg = mudouDia ? ` Dia de vencimento alterado para ${diaNovo}.` : "";
-    await saveLancamentos(); closeModal(); renderApp(); showToast(`Alteração aplicada a ${afetados.length} lançamento(s).${extMsg}`);
+    // Salva APENAS os afetados (não todos os lançamentos) — mais rápido e
+    // evita falhas por payload gigante no upsert do Supabase.
+    await saveRows("lancamentos", afetados);
+    // Se o dia de vencimento mudou, limpa o filtro manual de datas para que
+    // todos os items alterados fiquem visíveis (eles podem ter saído do range
+    // anterior ao mudarem de dia). Mantém o filtro de mês.
+    if(mudouDia){ lancFilter.dataDe = ""; lancFilter.dataAte = ""; }
+    closeModal(); renderApp();
+    showToast(`Série atualizada: ${afetados.length} lançamento${afetados.length===1?'':'s'} alterado${afetados.length===1?'':'s'}.${extMsg}`);
   };
   document.getElementById("btnEscopoUm").addEventListener("click", async () => {
     Object.assign(existing, data);
-    await saveLancamentos(); closeModal(); renderApp(); showToast("Lançamento atualizado.");
+    await saveRows("lancamentos", [existing]); closeModal(); renderApp(); showToast("Lançamento atualizado.");
   });
-  document.getElementById("btnEscopoFuturos").addEventListener("click", () => aplicarCascata(true));
-  document.getElementById("btnEscopoTodos").addEventListener("click", () => aplicarCascata(false));
+  document.getElementById("btnEscopoFuturos").addEventListener("click", async () => { try{ await aplicarCascata(true); }catch(e){} });
+  document.getElementById("btnEscopoTodos").addEventListener("click", async () => { try{ await aplicarCascata(false); }catch(e){} });
 }
 
 // ============================================================
