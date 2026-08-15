@@ -800,51 +800,58 @@
   tbody tr:hover { background: transparent; }
 }
 
-/* ---- Tela de login — fundo escuro unificado, formulário como card flutuante ---- */
+/* ---- Tela de login — fundo escuro unificado, rede de grafos cobre toda a largura ---- */
 .auth-shell {
   display: flex; justify-content: center; min-height: 100vh;
-  background: radial-gradient(ellipse 70% 60% at 20% 65%, rgba(0,196,216,.13) 0%, transparent 65%),
-              radial-gradient(ellipse 40% 40% at 80% 20%, rgba(0,196,216,.06) 0%, transparent 60%),
+  position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 80% 70% at 18% 60%, rgba(0,196,216,.11) 0%, transparent 60%),
+              radial-gradient(ellipse 50% 50% at 75% 30%, rgba(0,196,216,.07) 0%, transparent 55%),
+              radial-gradient(ellipse 40% 60% at 85% 80%, rgba(0,196,216,.05) 0%, transparent 55%),
               #030F18;
 }
+/* SVG de rede cobre o shell inteiro — sem corte entre hero e form */
+.auth-shell-net {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+}
 .auth-hero {
-  flex: 1 1 46%; max-width: 580px; position: relative; overflow: hidden;
-  background: transparent;
+  flex: 1 1 46%; max-width: 580px;
+  background: transparent; position: relative; z-index: 1;
   color: #fff; display: flex; flex-direction: column; padding: 40px 48px;
 }
-.auth-hero-net { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.auth-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .04em; position: relative; z-index: 1; }
+.auth-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .04em; }
 .auth-hero-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
 @keyframes auth-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .auth-hero-tag {
   display: inline-flex; align-items: center; gap: 8px; width: fit-content;
   font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
   color: var(--accent); border: 1px solid rgba(0,196,216,.35); border-radius: 100px;
-  padding: 5px 14px; margin: auto 0 18px; position: relative; z-index: 1;
+  padding: 5px 14px; margin: auto 0 18px;
 }
 .auth-hero-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
 .auth-hero-title {
   font-family: var(--font-ui); font-size: 36px; line-height: 1.12; font-weight: 800;
-  margin-bottom: 14px; max-width: 380px; color: #C5E8F2; position: relative; z-index: 1;
+  margin-bottom: 14px; max-width: 380px; color: #C5E8F2;
 }
 .auth-hero-title em { font-style: normal; color: var(--accent); text-shadow: 0 0 30px rgba(0,196,216,.45); }
-.auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; position: relative; z-index: 1; }
-.auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); position: relative; z-index: 1; }
+.auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; }
+.auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); }
 
-/* Lado direito — formulário sobre fundo escuro, card destacado */
+/* Lado direito — sem borda, cartão vitra sobre o fundo contínuo */
 .auth-form-side {
   flex: 1 1 54%; max-width: 560px; min-width: 0;
   display: flex; align-items: center; justify-content: center; padding: 40px 32px;
-  border-left: 1px solid rgba(255,255,255,.07);
+  position: relative; z-index: 1;
 }
 .auth-form-card {
-  width: 340px; max-width: 100%; min-width: 0;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 18px;
-  padding: 36px 32px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  width: 360px; max-width: 100%; min-width: 0;
+  background: rgba(3,15,24,.72);
+  border: 1px solid rgba(0,196,216,.18);
+  border-radius: 20px;
+  padding: 40px 36px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(0,196,216,.08) inset;
 }
 /* Sobrescreve cores de texto/fundo do card para funcionar no escuro */
 .auth-form-card h2 { color: #C5E8F2; }
@@ -855,11 +862,11 @@
 .auth-form-card input[type="email"],
 .auth-form-card input[type="password"],
 .auth-form-card input[type="text"] {
-  background: rgba(255,255,255,.08) !important;
-  border-color: rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.07) !important;
+  border-color: rgba(0,196,216,.22) !important;
   color: #fff !important;
 }
-.auth-form-card input::placeholder { color: rgba(255,255,255,.32) !important; }
+.auth-form-card input::placeholder { color: rgba(255,255,255,.28) !important; }
 .auth-form-card input:focus {
   border-color: var(--accent) !important;
   outline: none;
@@ -875,14 +882,10 @@
     flex: 0 0 auto; max-width: none; min-height: 0;
     padding: 18px 20px 24px; align-items: flex-start;
   }
-  .auth-hero-net { opacity: .6; }
   .auth-hero-title, .auth-hero-sub, .auth-hero-foot { display: none; }
   .auth-hero-tag { margin: 10px 0 0; }
-  .auth-form-side {
-    max-width: none; align-items: flex-start; padding: 24px 16px;
-    border-left: none; border-top: 1px solid rgba(255,255,255,.07);
-  }
-  .auth-form-card { background: transparent; border: none; padding: 0; backdrop-filter: none; border-radius: 0; }
+  .auth-form-side { max-width: none; align-items: flex-start; padding: 24px 16px; }
+  .auth-form-card { background: rgba(3,15,24,.85); width: 100%; border-radius: 16px; padding: 28px 20px; }
 }
 
 </style>
@@ -1026,7 +1029,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.3";
+const APP_VERSION = "1.8.5";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1885,6 +1888,7 @@ async function loadData(){
       if(perfilLigado){
         state.perfilAtivo = perfilLigado;
         state.perfilEscolhido = true;
+        state.view = "welcome";
       }else{
         // código de acesso vinculado a um perfil que não existe mais (ex: usuário excluído em Usuários)
         await supabaseClient.auth.signOut();
@@ -1899,6 +1903,7 @@ async function loadData(){
     if(!state.modoMembro){
       state.perfilAtivo = null;
       state.perfilEscolhido = true;
+      state.view = "welcome";
     }
 
     // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
@@ -2940,7 +2945,8 @@ function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
+  if(state.view === "welcome") main.innerHTML = viewBoasVindas();
+  else if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
   else if(state.view.startsWith("negocio_")) main.innerHTML = viewNegocioTudo(state.view.slice(8));
   else if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
@@ -2995,12 +3001,116 @@ function renderView(){
 // escuro com a marca à esquerda (só desktop, some no celular pra não roubar
 // espaço) e o formulário num cartão limpo à direita. "tituloHero"/"subHero"
 // mudam por tela pra dar contexto sem poluir o formulário em si.
-const AUTH_HERO_NET = '<svg class="auth-hero-net" viewBox="0 0 620 940" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="546" y1="57" x2="478" y2="162" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="546" y1="57" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.14"/><line x1="478" y1="162" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.17"/><line x1="478" y1="162" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.05"/><line x1="478" y1="162" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="570" y1="169" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="389" y1="354" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.20"/><line x1="389" y1="354" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="389" y1="354" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="450" y1="345" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.11"/><line x1="450" y1="345" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="280" y1="465" x2="365" y2="639" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="365" y1="639" x2="496" y2="626" stroke="#00C4D8" stroke-width="1" opacity="0.12"/><line x1="365" y1="639" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="365" y1="639" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="365" y1="639" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.16"/><line x1="496" y1="626" x2="591" y2="616" stroke="#00C4D8" stroke-width="1" opacity="0.16"/><line x1="496" y1="626" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="54" y1="719" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="54" y1="719" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.11"/><line x1="54" y1="719" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="180" y1="710" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.17"/><line x1="180" y1="710" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="180" y1="710" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.06"/><line x1="180" y1="710" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="270" y1="722" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.14"/><line x1="270" y1="722" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.07"/><line x1="385" y1="737" x2="452" y2="898" stroke="#00C4D8" stroke-width="1" opacity="0.07"/><line x1="75" y1="854" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.15"/><line x1="452" y1="898" x2="599" y2="872" stroke="#00C4D8" stroke-width="1" opacity="0.10"/><circle cx="546" cy="57" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="478" cy="162" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="570" cy="169" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="389" cy="354" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="450" cy="345" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="589" cy="324" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="280" cy="465" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="365" cy="639" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="496" cy="626" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="591" cy="616" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="54" cy="719" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="180" cy="710" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="270" cy="722" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="385" cy="737" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="75" cy="854" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="177" cy="868" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="452" cy="898" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="599" cy="872" r="1.7" fill="#00C4D8" opacity="0.42"/></svg>';
+// SVG de rede de nós span full-width (viewBox 1440×900).
+// Nós densos à esquerda (área da marca), esparsos à direita (área do form).
+const AUTH_HERO_NET = '<svg class="auth-shell-net" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+  // === LADO ESQUERDO — cluster principal ===
+  +'<line x1="546" y1="57" x2="478" y2="162" stroke="#00C4D8" stroke-width="1" opacity="0.13"/>'
+  +'<line x1="546" y1="57" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.14"/>'
+  +'<line x1="478" y1="162" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.17"/>'
+  +'<line x1="478" y1="162" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="478" y1="162" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="570" y1="169" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.09"/>'
+  +'<line x1="389" y1="354" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.20"/>'
+  +'<line x1="389" y1="354" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.03"/>'
+  +'<line x1="389" y1="354" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.09"/>'
+  +'<line x1="450" y1="345" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.11"/>'
+  +'<line x1="450" y1="345" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.03"/>'
+  +'<line x1="280" y1="465" x2="365" y2="639" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="365" y1="639" x2="496" y2="626" stroke="#00C4D8" stroke-width="1" opacity="0.12"/>'
+  +'<line x1="365" y1="639" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="365" y1="639" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.13"/>'
+  +'<line x1="365" y1="639" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.16"/>'
+  +'<line x1="496" y1="626" x2="591" y2="616" stroke="#00C4D8" stroke-width="1" opacity="0.16"/>'
+  +'<line x1="496" y1="626" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.09"/>'
+  +'<line x1="54" y1="719" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.13"/>'
+  +'<line x1="54" y1="719" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.11"/>'
+  +'<line x1="54" y1="719" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="180" y1="710" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.17"/>'
+  +'<line x1="180" y1="710" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.03"/>'
+  +'<line x1="180" y1="710" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="180" y1="710" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.09"/>'
+  +'<line x1="270" y1="722" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.14"/>'
+  +'<line x1="270" y1="722" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.07"/>'
+  +'<line x1="385" y1="737" x2="452" y2="898" stroke="#00C4D8" stroke-width="1" opacity="0.07"/>'
+  +'<line x1="75" y1="854" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.15"/>'
+  +'<line x1="452" y1="898" x2="599" y2="872" stroke="#00C4D8" stroke-width="1" opacity="0.10"/>'
+  // === PONTE — transição esquerda→direita ===
+  +'<line x1="570" y1="169" x2="680" y2="210" stroke="#00C4D8" stroke-width="1" opacity="0.08"/>'
+  +'<line x1="589" y1="324" x2="710" y2="380" stroke="#00C4D8" stroke-width="1" opacity="0.07"/>'
+  +'<line x1="591" y1="616" x2="700" y2="660" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="599" y1="872" x2="720" y2="840" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  // === LADO DIREITO — nós esparsos (área do form) ===
+  +'<line x1="680" y1="210" x2="830" y2="150" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="830" y1="150" x2="1020" y2="190" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1020" y1="190" x2="1180" y2="130" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="1180" y1="130" x2="1360" y2="170" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="710" y1="380" x2="870" y2="350" stroke="#00C4D8" stroke-width="1" opacity="0.07"/>'
+  +'<line x1="870" y1="350" x2="1060" y2="400" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1060" y1="400" x2="1230" y2="350" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="1230" y1="350" x2="1390" y2="390" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="830" y1="150" x2="870" y2="350" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1020" y1="190" x2="1060" y2="400" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1180" y1="130" x2="1230" y2="350" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="700" y1="660" x2="820" y2="590" stroke="#00C4D8" stroke-width="1" opacity="0.06"/>'
+  +'<line x1="820" y1="590" x2="1010" y2="630" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1010" y1="630" x2="1200" y2="580" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1200" y1="580" x2="1380" y2="620" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1060" y1="400" x2="1010" y2="630" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1230" y1="350" x2="1200" y2="580" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="720" y1="840" x2="860" y2="800" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="860" y1="800" x2="1040" y2="850" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1040" y1="850" x2="1220" y2="810" stroke="#00C4D8" stroke-width="1" opacity="0.05"/>'
+  +'<line x1="1220" y1="810" x2="1400" y2="840" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1010" y1="630" x2="1040" y2="850" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  +'<line x1="1200" y1="580" x2="1220" y2="810" stroke="#00C4D8" stroke-width="1" opacity="0.04"/>'
+  // === NODOS ESQUERDA ===
+  +'<circle cx="546" cy="57" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="478" cy="162" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="570" cy="169" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="389" cy="354" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="450" cy="345" r="3.2" fill="#00C4D8" opacity="0.80"/>'
+  +'<circle cx="589" cy="324" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="280" cy="465" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="365" cy="639" r="3.2" fill="#00C4D8" opacity="0.80"/>'
+  +'<circle cx="496" cy="626" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="591" cy="616" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="54" cy="719" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="180" cy="710" r="3.2" fill="#00C4D8" opacity="0.80"/>'
+  +'<circle cx="270" cy="722" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="385" cy="737" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="75" cy="854" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="177" cy="868" r="3.2" fill="#00C4D8" opacity="0.80"/>'
+  +'<circle cx="452" cy="898" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  +'<circle cx="599" cy="872" r="1.7" fill="#00C4D8" opacity="0.42"/>'
+  // === NODOS PONTE ===
+  +'<circle cx="680" cy="210" r="1.4" fill="#00C4D8" opacity="0.28"/>'
+  +'<circle cx="710" cy="380" r="1.4" fill="#00C4D8" opacity="0.28"/>'
+  +'<circle cx="700" cy="660" r="1.4" fill="#00C4D8" opacity="0.24"/>'
+  +'<circle cx="720" cy="840" r="1.4" fill="#00C4D8" opacity="0.22"/>'
+  // === NODOS DIREITA — opacos, menores ===
+  +'<circle cx="830" cy="150" r="1.5" fill="#00C4D8" opacity="0.22"/>'
+  +'<circle cx="1020" cy="190" r="2.0" fill="#00C4D8" opacity="0.28"/>'
+  +'<circle cx="1180" cy="130" r="1.5" fill="#00C4D8" opacity="0.20"/>'
+  +'<circle cx="1360" cy="170" r="1.5" fill="#00C4D8" opacity="0.18"/>'
+  +'<circle cx="870" cy="350" r="1.5" fill="#00C4D8" opacity="0.22"/>'
+  +'<circle cx="1060" cy="400" r="2.0" fill="#00C4D8" opacity="0.26"/>'
+  +'<circle cx="1230" cy="350" r="1.5" fill="#00C4D8" opacity="0.20"/>'
+  +'<circle cx="1390" cy="390" r="1.5" fill="#00C4D8" opacity="0.16"/>'
+  +'<circle cx="820" cy="590" r="1.5" fill="#00C4D8" opacity="0.20"/>'
+  +'<circle cx="1010" cy="630" r="2.0" fill="#00C4D8" opacity="0.26"/>'
+  +'<circle cx="1200" cy="580" r="1.5" fill="#00C4D8" opacity="0.20"/>'
+  +'<circle cx="1380" cy="620" r="1.5" fill="#00C4D8" opacity="0.16"/>'
+  +'<circle cx="860" cy="800" r="1.5" fill="#00C4D8" opacity="0.18"/>'
+  +'<circle cx="1040" cy="850" r="2.0" fill="#00C4D8" opacity="0.24"/>'
+  +'<circle cx="1220" cy="810" r="1.5" fill="#00C4D8" opacity="0.18"/>'
+  +'<circle cx="1400" cy="840" r="1.5" fill="#00C4D8" opacity="0.14"/>'
+  +'</svg>';
 function authShell(conteudoForm, tagHero, tituloHero, subHero){
   return `
     <div class="auth-shell">
+      ${AUTH_HERO_NET}
       <div class="auth-hero">
-        ${AUTH_HERO_NET}
         <div class="auth-hero-brand"><span class="dot"></span>GRUPOTOM</div>
         <div class="auth-hero-tag"><span class="dot"></span>${tagHero}</div>
         <div class="auth-hero-title">${tituloHero}</div>
@@ -3160,7 +3270,8 @@ function modalSenhaPerfil(perfil){
     if(fd.get("senha") === perfil.senha){
       state.perfilAtivo = perfil;
       state.perfilEscolhido = true;
-      closeModal(); renderApp(); showToast(`Bem-vindo(a), ${perfil.nome}.`);
+      state.view = "welcome";
+      closeModal(); renderApp();
     }else{
       showToast("Senha incorreta.", "error");
       const inp = document.querySelector('#formSenhaPerfil input[name="senha"]');
@@ -3183,7 +3294,8 @@ function modalSenhaMaster(){
     if(fd.get("senha") === state.senhaMaster){
       state.perfilAtivo = null;
       state.perfilEscolhido = true;
-      closeModal(); renderApp(); showToast("Bem-vindo(a), Master.");
+      state.view = "welcome";
+      closeModal(); renderApp();
     }else{
       showToast("Senha incorreta.", "error");
       const inp = document.querySelector('#formSenhaMaster input[name="senha"]');
@@ -3429,6 +3541,135 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
     <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; width:100%;">${cols}</div>
   `;
 }
+// =========================================================================
+// TELA DE BOAS-VINDAS
+// =========================================================================
+const VERSICULOS_BOAS_VINDAS = [
+  { ref:"Provérbios 16:3",    texto:"Consagra ao SENHOR tudo o que fazes, e os teus planos serão estabelecidos." },
+  { ref:"Jeremias 29:11",     texto:"Porque eu bem sei os planos que tenho para vocês, diz o SENHOR — planos de fazê-los prosperar e não de causar dano, planos de dar a vocês esperança e um futuro." },
+  { ref:"Filipenses 4:13",    texto:"Tudo posso naquele que me fortalece." },
+  { ref:"Josué 1:9",          texto:"Seja forte e corajoso. Não se apavore nem desanime, pois o SENHOR, o seu Deus, estará com você por onde você andar." },
+  { ref:"Salmos 37:5",        texto:"Entrega o teu caminho ao SENHOR; confia nele, e ele agirá." },
+  { ref:"Isaías 40:31",       texto:"Os que esperam no SENHOR renovarão as suas forças. Voarão alto como águias; correrão e não ficarão exaustos, andarão e não se cansarão." },
+  { ref:"Mateus 6:33",        texto:"Buscai primeiro o reino de Deus e a sua justiça, e todas essas coisas vos serão acrescentadas." },
+  { ref:"Romanos 8:28",       texto:"Sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus, dos que são chamados segundo o seu propósito." },
+  { ref:"Provérbios 3:5-6",   texto:"Confie no SENHOR de todo o seu coração e não se apoie em seu próprio entendimento; reconheça-o em todos os seus caminhos, e ele endireitará as suas veredas." },
+  { ref:"Filipenses 4:6-7",   texto:"Não andem ansiosos por coisa alguma, mas em tudo, pela oração e súplicas, e com ação de graças, apresentem seus pedidos a Deus. E a paz de Deus, que excede todo o entendimento, guardará os seus corações e as suas mentes em Cristo Jesus." },
+  { ref:"1 Coríntios 10:31",  texto:"Quer comam, quer bebam, quer façam qualquer outra coisa, façam tudo para a glória de Deus." },
+  { ref:"Salmos 23:1",        texto:"O SENHOR é o meu pastor; nada me faltará." },
+  { ref:"Provérbios 22:29",   texto:"Você vê algum homem habilidoso em seu trabalho? Ele servirá diante de reis, não diante de gente obscura." },
+  { ref:"Eclesiastes 9:10",   texto:"Tudo o que as tuas mãos encontrarem para fazer, faze-o com toda a tua força." },
+  { ref:"Deuteronômio 8:18",  texto:"Lembre-se do SENHOR, o seu Deus, pois é ele que lhe dá a capacidade de produzir riqueza." },
+  { ref:"Isaías 41:10",       texto:"Não tema, pois estou com você; não se apavore, pois sou o seu Deus. Eu o fortalecerei e o ajudarei; eu o sustentarei com minha justa destra." },
+  { ref:"Salmos 90:17",       texto:"Que a bondade do Senhor nosso Deus repouse sobre nós; confirmai a obra das nossas mãos — sim, confirmais a obra das nossas mãos." },
+  { ref:"Tiago 1:5",          texto:"Se algum de vocês tem falta de sabedoria, peça-a a Deus, que a todos dá livremente, de boa vontade; e lhe será concedida." },
+  { ref:"Salmos 46:1",        texto:"Deus é o nosso refúgio e a nossa força, socorro bem-presente na angústia." },
+  { ref:"Gálatas 6:9",        texto:"Não nos cansemos de fazer o bem, pois, se não desanimarmos, a seu tempo colheremos." },
+  { ref:"Neemias 8:10",       texto:"A alegria do SENHOR é a nossa força." },
+  { ref:"Lamentações 3:22-23",texto:"As misericórdias do SENHOR não têm fim; as suas compaixões nunca se esgotam. Renovam-se cada manhã — grande é a tua fidelidade!" },
+  { ref:"Salmos 118:24",      texto:"Este é o dia que o SENHOR fez; regozijemo-nos e alegremo-nos nele." },
+  { ref:"Efésios 2:10",       texto:"Somos criação de Deus, criados em Cristo Jesus para fazer boas obras, as quais Deus preparou de antemão para que as praticássemos." },
+  { ref:"2 Timóteo 1:7",      texto:"Deus não nos deu espírito de covardia, mas de poder, de amor e de equilíbrio." },
+  { ref:"Colossenses 3:23-24",texto:"Tudo o que fizerem, façam de todo o coração, como para o Senhor, e não para os homens, sabendo que receberão do Senhor a recompensa da herança." },
+  { ref:"Salmos 27:1",        texto:"O SENHOR é a minha luz e a minha salvação; a quem temerei? O SENHOR é a força da minha vida; a quem me recearei?" },
+  { ref:"Mateus 5:16",        texto:"Assim brilhe a luz de vocês diante dos homens, para que vejam as suas boas obras e glorifiquem o Pai de vocês que está nos céus." },
+  { ref:"Provérbios 10:4",    texto:"Mão preguiçosa empobrece, mas mão diligente enriquece." },
+  { ref:"Provérbios 11:14",   texto:"Na falta de orientação, a nação cai; mas na multidão de conselheiros há vitória." },
+  { ref:"Provérbios 13:11",   texto:"A riqueza obtida às pressas diminui, mas quem a acumula, trabalhando devagar, a aumenta." },
+  { ref:"Isaías 26:3",        texto:"Tu guardas em perfeita paz aquele cujo propósito é firme, porque em ti confia." },
+  { ref:"Salmos 121:1-2",     texto:"Elevo meus olhos para os montes — donde me vem o socorro? O meu socorro vem do SENHOR, que fez os céus e a terra." },
+  { ref:"João 15:5",          texto:"Eu sou a videira; vocês são os ramos. Se alguém permanecer em mim e eu nele, esse dará muito fruto; mas sem mim vocês não podem fazer coisa alguma." },
+  { ref:"Isaías 43:2",        texto:"Quando você atravessar as águas, eu estarei com você; quando atravessar os rios, eles não o submergirão." },
+  { ref:"Salmos 1:3",         texto:"É como uma árvore plantada à beira de águas correntes, que dá o seu fruto no tempo certo e cuja folha não murcha. E tudo o que ele faz prospera." },
+  { ref:"Provérbios 31:25",   texto:"É revestida de força e de dignidade, e ri confiante diante do futuro." },
+  { ref:"Romanos 12:11",      texto:"Não sejam negligentes no zelo; antes, sejam fervorosos no espírito, servindo ao Senhor." },
+  { ref:"Salmos 112:5",       texto:"É feliz o homem que trata com generosidade e empresta, e conduz os seus negócios com justiça." },
+  { ref:"1 Crônicas 29:14",   texto:"Quem sou eu, e quem é o meu povo, para que pudéssemos dar tão generosamente? Tudo vem de ti, e do que é teu nós te demos." },
+  { ref:"2 Coríntios 9:8",    texto:"Deus é poderoso para fazer abundar toda a graça em vocês, para que, tendo sempre tudo o que precisam em tudo, possam abundar em toda boa obra." },
+  { ref:"Zacarias 4:10",      texto:"Não desprezem as pequenas coisas, pois o SENHOR se alegra quando vê o trabalho começar." },
+  { ref:"1 Tessalonicenses 5:18", texto:"Em tudo dai graças, porque esta é a vontade de Deus em Cristo Jesus para com vocês." },
+  { ref:"Provérbios 24:3-4",  texto:"Com sabedoria se constrói uma casa e com entendimento ela se estabelece; com conhecimento os seus quartos se enchem de riquezas raras e belas." },
+  { ref:"Josué 1:8",          texto:"Este livro da lei não se apartará da tua boca; pelo contrário, medita nele de dia e de noite, para que guardes todos os seus preceitos; pois então farás prosperar o teu caminho e então serás bem-sucedido." },
+  { ref:"Salmos 19:14",       texto:"Que as palavras da minha boca e a meditação do meu coração sejam agradáveis à tua presença, ó SENHOR, rocha minha e meu redentor." },
+  { ref:"Miquéias 6:8",       texto:"Ele já te disse, ó homem, o que é bom e o que o SENHOR exige de ti: que pratiques a justiça, ames a bondade e andes humildemente com o teu Deus." },
+  { ref:"Habacuque 2:3",      texto:"Pois a visão espera pelo tempo determinado; fala do fim e não falhará. Ainda que tarde, espera por ela; pois certamente virá, não tardará." },
+  { ref:"Salmos 34:8",        texto:"Provai e vede que o SENHOR é bom; bem-aventurado o homem que nele se refugia." },
+  { ref:"Romanos 5:3-4",      texto:"Gloriamo-nos também nas tribulações, porque sabemos que a tribulação produz perseverança; a perseverança, um caráter aprovado; e o caráter aprovado, esperança." },
+  { ref:"João 14:27",         texto:"Deixo-lhes a paz; a minha paz lhes dou. Não a dou como o mundo a dá. Não se turbe o coração de vocês, nem tenham medo." },
+  { ref:"Efésios 3:20",       texto:"Ora, àquele que é poderoso para fazer infinitamente mais do que tudo o que pedimos ou pensamos, conforme o seu poder que opera em nós." },
+];
+
+function viewBoasVindas(){
+  const hoje = new Date();
+  const hora = hoje.getHours();
+  const nomePerfil = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
+  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+  const emoji    = hora < 12 ? "🌅" : hora < 18 ? "☀️" : "🌙";
+
+  // Versículo do dia — muda a cada dia com base na data
+  const diaAno = Math.floor((hoje - new Date(hoje.getFullYear(),0,0)) / 86400000);
+  const v = VERSICULOS_BOAS_VINDAS[(hoje.getFullYear() * 366 + diaAno) % VERSICULOS_BOAS_VINDAS.length];
+
+  const diasSemana = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+  const meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const dataFormatada = `${diasSemana[hoje.getDay()]}, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+
+  // Quick links — apenas módulos que o usuário pode ver
+  const links = [
+    { view:"vg_executivo", label:"Visão Geral",       icon:"📊", modulo:null },
+    { view:"dashboard",    label:"Financeiro",         icon:"💰", modulo:"financeiro" },
+    { view:"cli_lista",    label:"Clientes",            icon:"👥", modulo:"clientes" },
+    { view:"receitas",     label:"Contas a Receber",   icon:"📥", modulo:"financeiro" },
+    { view:"despesas",     label:"Contas a Pagar",     icon:"📤", modulo:"financeiro" },
+    { view:"est_produtos", label:"Estoque",             icon:"📦", modulo:"estoque" },
+    { view:"rh_dashboard", label:"RH",                  icon:"🧑‍💼", modulo:"rh" },
+  ].filter(l => !l.modulo || ehMaster() || podeVerModulo(l.modulo));
+
+  const btnLinks = links.map(l =>
+    `<button class="btn btn-ghost" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--r-lg);min-width:90px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;" data-action="nav" data-view="${l.view}">
+      <span style="font-size:22px;">${l.icon}</span>${esc(l.label)}
+    </button>`
+  ).join("");
+
+  return `
+    <div style="min-height:80vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;">
+      <div style="max-width:560px;width:100%;">
+
+        <!-- Data e saudação -->
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="font-size:13px;color:var(--ink-3);margin-bottom:8px;">${dataFormatada}</div>
+          <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.2;">
+            ${saudacao}, ${esc(nomePerfil)}! ${emoji}
+          </h1>
+        </div>
+
+        <!-- Versículo do dia -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;">
+          <!-- Aspas decorativas -->
+          <div style="position:absolute;top:-10px;left:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
+          <div style="position:absolute;bottom:-30px;right:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
+
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:14px;opacity:.7;">Versículo do dia</div>
+
+          <p style="font-size:15.5px;line-height:1.75;color:var(--ink);font-style:italic;margin:0 0 20px;position:relative;z-index:1;">${esc(v.texto)}</p>
+
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="display:inline-block;width:24px;height:2px;background:var(--accent);border-radius:999px;"></span>
+            <span style="font-size:13px;font-weight:700;color:var(--accent);">${esc(v.ref)}</span>
+          </div>
+        </div>
+
+        <!-- Acesso rápido -->
+        <div style="text-align:center;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:14px;">Acesso rápido</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">${btnLinks}</div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
 function viewVgExecutivo(){
   garantirTooltipGrafico();
   const master = ehMaster();
