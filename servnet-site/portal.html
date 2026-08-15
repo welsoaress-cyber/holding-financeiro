@@ -907,7 +907,8 @@ function renderIndicacoes(res,data,codigo){
     :'<div class="muted" style="text-align:center;padding:0.75rem 0">Nenhuma indicação ainda — convide seus amigos!</div>';
 
   // Mensagem pré-definida para compartilhar
-  const mensagemCompleta=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\nContrate usando meu código de indicação: *${codigo}*\n\n📶 Veja os planos: https://dapper-chaja-75dbae.netlify.app\n📲 WhatsApp Servnet: https://wa.me/5511954490001`;
+  const linkRef=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const mensagemCompleta=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\nUse o link abaixo para se cadastrar e eu ganho 1 mês grátis! 🎁\n${linkRef}\n\nCódigo de indicação: *${codigo}*\n📲 WhatsApp Servnet: https://wa.me/5511954490001`;
   const waMsgEnc=encodeURIComponent(mensagemCompleta);
 
   document.getElementById('refContent').innerHTML=`
@@ -976,7 +977,8 @@ function copiarMensagem(btn){
   // Pega o código do card mais próximo
   const card=btn.closest('.ref-card');
   const codigo=card?.querySelector('.ref-code')?.textContent?.trim()||'';
-  const msg=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\nContrate usando meu código de indicação: ${codigo}\n\n📶 Veja os planos: https://dapper-chaja-75dbae.netlify.app\n📲 WhatsApp Servnet: https://wa.me/5511954490001`;
+  const linkRefCopy=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const msg=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\nUse o link abaixo para se cadastrar e eu ganho 1 mês grátis! 🎁\n${linkRefCopy}\n\nCódigo de indicação: ${codigo}\n📲 WhatsApp Servnet: https://wa.me/5511954490001`;
   navigator.clipboard.writeText(msg).then(()=>{
     const orig=btn.innerHTML;
     btn.innerHTML='✅ Copiado!';

@@ -650,6 +650,12 @@ button, input, select { font-family: inherit; font-size: inherit; }
 }
 </style>
 
+<!-- BANNER INDICAÇÃO (oculto por padrão, aparece via JS quando ?ref= detectado) -->
+<div id="refBanner" style="display:none;background:linear-gradient(90deg,rgba(0,196,216,0.12),rgba(0,196,216,0.06));border-bottom:1px solid rgba(0,196,216,0.25);padding:0.6rem 1.25rem;text-align:center;font-size:0.85rem;color:var(--text-1,#e2f0f5);">
+  🎁 <strong>Você foi indicado por um amigo!</strong> Cadastre-se agora e a Servnet cuida do resto.
+  <button onclick="openModal()" style="margin-left:0.75rem;background:var(--pool,#00C4D8);color:#03111a;border:none;border-radius:5px;padding:0.28rem 0.8rem;font-size:0.8rem;font-weight:700;cursor:pointer;">Quero assinar</button>
+</div>
+
 <!-- NAV -->
 <nav class="nav">
   <a href="#inicio" class="nav-logo">SERV<span>NET</span></a>
@@ -1114,16 +1120,33 @@ async function handleSubmit(e) {
     await fetch(`${SB_URL}/rest/v1/rpc/site_lead_cadastrar`, {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` },
-      body: JSON.stringify({ p_nome: nome, p_telefone: tel||null, p_plano: plano||null, p_endereco: end||null })
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel||null, p_plano: plano||null, p_endereco: end||null, p_codigo_indicacao: refCode||null })
     });
   } catch(err) { console.warn('[contato]', err); }
   btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
 }
 
-// ===== MODAL DE CAPTURA DE LEAD =====
+// ===== REFERRAL — captura ?ref= da URL =====
 const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
 const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 const WA_NUM = '5511954490001';
+
+let refCode = null;
+(function(){
+  const p = new URLSearchParams(window.location.search);
+  const r = p.get('ref');
+  if(r){
+    refCode = r.trim().toUpperCase();
+    sessionStorage.setItem('sn_ref', refCode);
+    document.getElementById('refBanner').style.display = 'block';
+    // Scroll suave até os planos após 600ms
+    setTimeout(()=> document.getElementById('planos')?.scrollIntoView({behavior:'smooth'}), 600);
+  } else {
+    // Recupera do sessionStorage se o usuário navegar dentro do site
+    const saved = sessionStorage.getItem('sn_ref');
+    if(saved){ refCode = saved; document.getElementById('refBanner').style.display = 'block'; }
+  }
+})();
 
 function openModal(planName) {
   const ov   = document.getElementById('leadOv');
@@ -1239,7 +1262,7 @@ async function submitLead(e) {
         'apikey': SB_KEY,
         'Authorization': `Bearer ${SB_KEY}`
       },
-      body: JSON.stringify({ p_nome: nome, p_telefone: tel, p_plano: plano || null, p_endereco: end || null })
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel, p_plano: plano || null, p_endereco: end || null, p_codigo_indicacao: refCode || null })
     });
   } catch(err2) { console.warn('[lead]', err2); }
 
