@@ -66,16 +66,22 @@
 .fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
 .fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
 /* faixa de prêmios — separada dos selos */
-.fc-premios{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.75rem;position:relative;z-index:1;}
-.fp{display:flex;align-items:center;gap:0.5rem;border-radius:10px;border:1.5px solid;
-  padding:0.5rem 0.6rem;transition:all 0.3s;min-width:0;}
-.fp-ico{font-size:1.1rem;line-height:1;flex-shrink:0;}
-.fp-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
-.fp-val{font-size:0.78rem;font-weight:800;letter-spacing:0.01em;white-space:nowrap;}
-.fp-onde{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.7;white-space:nowrap;}
-.fp-st{margin-left:auto;padding-left:0.4rem;font-size:0.55rem;text-transform:uppercase;
-  letter-spacing:0.05em;font-weight:700;text-align:right;white-space:nowrap;
-  flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;}
+.fc-premios{display:flex;flex-direction:column;gap:0.4rem;margin-top:0.75rem;position:relative;z-index:1;}
+.fp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  column-gap:0.6rem;row-gap:0.05rem;border-radius:10px;border:1.5px solid;
+  padding:0.55rem 0.7rem;transition:all 0.3s;min-width:0;}
+.fp-ico{font-size:1.05rem;line-height:1;grid-row:1 / span 2;align-self:center;}
+.fp-val{font-size:0.8rem;font-weight:800;letter-spacing:0.01em;white-space:nowrap;}
+.fp-st{grid-row:1;grid-column:3;font-size:0.58rem;text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:700;white-space:nowrap;text-align:right;}
+.fp-onde{grid-row:2;grid-column:2 / span 2;font-size:0.63rem;letter-spacing:0.01em;
+  opacity:0.75;line-height:1.3;text-wrap:pretty;}
+/* telas estreitas: encolhe o texto em vez de quebrar o valor do prêmio */
+@media(max-width:400px){
+  .fp-val{font-size:0.72rem;}
+  .fp-onde{font-size:0.58rem;}
+  .fp-st{font-size:0.53rem;}
+}
 /* prêmio 1 — 50% OFF */
 .fp.p1e{border-color:rgba(0,196,216,0.2);border-style:dashed;background:rgba(0,196,216,0.03);}
 .fp.p1e .fp-ico{opacity:0.35;}
@@ -94,7 +100,7 @@
 .fp.p2ok .fp-st{color:#FCD34D;}
 /* conquistado num cartão anterior: continua aceso, sem o brilho de recém-ganho */
 .fp.passado{box-shadow:none;opacity:0.82;}
-@media(max-width:420px){.fc-premios{grid-template-columns:1fr;}}
+
 /* rodapé do cartão */
 .fc-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:0.9rem;position:relative;z-index:1;}
 .fc-cliente{font-size:0.7rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.12em;}
@@ -529,21 +535,17 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   const premios = `
     <div class="fc-premios">
       <div class="fp ${aceso1?'p1ok':'p1e'}${!premio1&&antes1?' passado':''}"
-           title="${aceso1?'50% OFF na 7ª fatura — conquistado':'Pague 6 faturas em dia para liberar'}">
+           title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto'}">
         <span class="fp-ico">🎁</span>
-        <span class="fp-txt">
-          <span class="fp-val">50% OFF</span>
-          <span class="fp-onde">na 7ª fatura</span>
-        </span>
+        <span class="fp-val">50% de desconto</span>
+        <span class="fp-onde">por manter 6 meses de pagamento em dia</span>
         <span class="fp-st">${chip(premio1, antes1, 6-streak)}</span>
       </div>
       <div class="fp ${aceso2?'p2ok':'p2e'}${!premio2&&antes2?' passado':''}"
-           title="${aceso2?'13ª fatura 100% grátis — conquistado':'Pague 12 faturas em dia para liberar'}">
+           title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto'}">
         <span class="fp-ico">🏅</span>
-        <span class="fp-txt">
-          <span class="fp-val">100% grátis</span>
-          <span class="fp-onde">na 13ª fatura</span>
-        </span>
+        <span class="fp-val">100% de desconto</span>
+        <span class="fp-onde">por manter 12 meses de pagamento em dia</span>
         <span class="fp-st">${chip(premio2, antes2, 12-streak)}</span>
       </div>
     </div>`;
@@ -555,11 +557,11 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   let faltam, proximoPremio;
   const pct = (streak / 12) * 100;
   if(streak >= 12){
-    faltam = 0;            proximoPremio = '13ª fatura 100% grátis 🎉';
+    faltam = 0;            proximoPremio = '100% de desconto 🎉';
   } else if(streak >= 6){
-    faltam = 12 - streak;  proximoPremio = '13ª fatura 100% grátis';
+    faltam = 12 - streak;  proximoPremio = '100% de desconto';
   } else {
-    faltam = 6 - streak;   proximoPremio = '50% OFF na 7ª fatura';
+    faltam = 6 - streak;   proximoPremio = '50% de desconto';
   }
 
   const pctTotal = Math.round((streak/12)*100);
@@ -617,15 +619,15 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
 
       <!-- Prêmio do ciclo atual -->
       ${premio2
-        ?`<div class="premio-pill earned">🏅 Parabéns! Suas 12 faturas foram pagas em dia — a <strong>13ª fatura é 100% grátis</strong>, aplicada automaticamente.</div>`
+        ?`<div class="premio-pill earned">🏅 Parabéns! Você ganhou <strong>100% de desconto</strong> por manter <strong>12 meses de pagamento em dia</strong> — aplicado automaticamente na sua fatura.</div>`
         :premio1
-          ?`<div class="premio-pill earned">🎁 Parabéns! Você pagou 6 faturas em dia — a <strong>7ª fatura sai com 50% OFF</strong>, aplicado automaticamente.</div>`
+          ?`<div class="premio-pill earned">🎁 Parabéns! Você ganhou <strong>50% de desconto</strong> por manter <strong>6 meses de pagamento em dia</strong> — aplicado automaticamente na sua fatura.</div>`
           :''
       }
 
       <!-- Próximo prêmio -->
       ${faltam>0
-        ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — mantenha o pagamento em dia por mais ${faltam} ${faltam===1?'fatura':'faturas'}</div>`
+        ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — mantenha o pagamento em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
         :''
       }
 
@@ -640,14 +642,14 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
       <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
       <ol>
         <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 selo ✅.</li>
-        <li>Pagou as <strong>6 primeiras faturas em dia</strong>? A <strong>7ª fatura sai com 50% de desconto</strong>.</li>
-        <li>Seguiu em dia até a <strong>12ª fatura</strong>? A <strong>13ª fatura é 100% grátis</strong>.</li>
-        <li>Os prêmios <strong>não consomem selo</strong>: os meses 7 e 13 continuam contando normalmente no cartão.</li>
+        <li>Manteve <strong>6 meses de pagamento em dia</strong>? Você ganha <strong>50% de desconto</strong> na fatura seguinte.</li>
+        <li>Manteve <strong>12 meses de pagamento em dia</strong>? A fatura seguinte sai com <strong>100% de desconto</strong> — ou seja, de graça.</li>
+        <li>O mês em que você recebe o desconto <strong>continua valendo selo</strong> normalmente.</li>
         <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
         <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
-        <li>Um atraso <strong>reinicia o cartão do mês 1</strong>: os selos voltam a zero e o próximo prêmio passa a ser de novo o 50% na 7ª fatura. Os descontos que você já recebeu ficam marcados no histórico abaixo.</li>
+        <li>Um atraso <strong>reinicia o cartão do mês 1</strong>: os selos voltam a zero e o próximo prêmio volta a ser o de 50%. Os descontos que você já recebeu ficam marcados no histórico abaixo.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
-        <li>Os prêmios são aplicados <strong>automaticamente</strong> na fatura correspondente (7ª ou 13ª).</li>
+        <li>Os descontos são aplicados <strong>automaticamente</strong> na fatura seguinte — você não precisa pedir.</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
       </ol>
     </div>`;
