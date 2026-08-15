@@ -159,7 +159,7 @@ a{color:inherit;}
   border-color:rgba(0,196,216,0.15);border-style:dashed;
   background:rgba(0,196,216,0.02);
 }
-.fcs.empty .fcs-n{color:rgba(0,196,216,0.2);font-size:0.72rem;font-weight:700;}
+.fcs.empty .fcs-n{color:rgba(0,196,216,0.22);font-size:0.52rem;font-weight:700;}
 /* conquistado */
 .fcs.ok{
   border-color:rgba(0,196,216,0.7);border-style:solid;
@@ -167,29 +167,21 @@ a{color:inherit;}
   box-shadow:0 0 8px rgba(0,196,216,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
-.fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
-/* mês pago em atraso — não vale selo, mas fica à vista */
-.fcs.atrasado{
-  border-color:rgba(245,158,11,0.75);border-style:solid;
-  background:linear-gradient(135deg,rgba(245,158,11,0.2) 0%,rgba(245,158,11,0.06) 100%);
-  box-shadow:0 0 8px rgba(245,158,11,0.28),inset 0 1px 0 rgba(255,255,255,0.05);
-}
-.fcs.atrasado .fcs-check{color:#FCD34D;font-size:0.9rem;line-height:1;}
-.fcs.atrasado .fcs-n{color:rgba(245,158,11,0.65);font-size:0.5rem;font-weight:700;}
-/* quitado só depois do fim do cartão — perdeu o selo */
-.fcs.perdido{
-  border-color:rgba(148,163,184,0.4);border-style:solid;
-  background:rgba(148,163,184,0.06);
-}
-.fcs.perdido .fcs-check{color:rgba(148,163,184,0.7);font-size:0.85rem;line-height:1;}
-.fcs.perdido .fcs-n{color:rgba(148,163,184,0.5);font-size:0.5rem;font-weight:700;}
-/* fatura do mês vencida e em aberto */
-.fcs.vencido{
+.fcs.ok .fcs-n{color:rgba(0,196,216,0.55);font-size:0.56rem;font-weight:700;}
+/* mês que já perdeu o selo: pago com atraso, ou vencido sem pagamento */
+.fcs.inelegivel{
   border-color:rgba(239,68,68,0.6);border-style:solid;
-  background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,rgba(239,68,68,0.04) 100%);
+  background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(239,68,68,0.05) 100%);
 }
-.fcs.vencido .fcs-check{color:#F87171;font-size:0.85rem;line-height:1;}
-.fcs.vencido .fcs-n{color:rgba(239,68,68,0.6);font-size:0.5rem;font-weight:700;}
+.fcs.inelegivel .fcs-check{color:#F87171;font-size:0.95rem;line-height:1;}
+.fcs.inelegivel .fcs-n{color:rgba(248,113,113,0.8);font-size:0.56rem;font-weight:700;}
+/* mês ainda no prazo: dá para conquistar o selo */
+.fcs.aberto{
+  border-color:rgba(0,196,216,0.3);border-style:solid;
+  background:rgba(0,196,216,0.05);
+}
+.fcs.aberto .fcs-check{color:rgba(0,196,216,0.45);font-size:0.8rem;line-height:1;}
+.fcs.aberto .fcs-n{color:rgba(0,196,216,0.5);font-size:0.56rem;font-weight:700;}
 /* aviso dos meses em atraso */
 .fc-tropeco{margin-top:0.6rem;font-size:0.66rem;line-height:1.35;color:#FCD34D;
   background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.22);
@@ -412,7 +404,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.9</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.0</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -1041,7 +1033,8 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   // Cada slot é um mês fixo do cartão. Os selos são a contagem de meses
   // pagos em dia — um atraso custa aquele selo e nada mais.
   const slots = slotsDoCartao(periodo, doPeriodo);
-  const atrasados = slots.filter(s => s.estado === 'atraso');
+  const atrasados   = slots.filter(s => s.estado === 'atraso');
+  const inelegiveis = slots.filter(s => s.estado === 'atraso' || s.estado === 'vencida');
   const streakReal = slots.filter(s => SELO_VALE.has(s.estado)).length;
 
   // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
@@ -1052,15 +1045,28 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
 
   // 12 selos, um por mês do cartão. Os prêmios ficam FORA da grade, na
   // faixa logo abaixo: eles não ocupam um mês, são o que o cartão paga.
+  // Cada mês do cartão diz o que aconteceu com ele. Os dois estados que já
+  // perderam o selo — pago depois do vencimento e vencido sem pagar —
+  // aparecem marcados como inelegíveis, para o cliente saber por quê.
+  const DESENHO = {
+    ok:      {cls:'ok',        icone:'✓', rotulo:'em dia',      dica:'pago até o vencimento — selo garantido'},
+    atraso:  {cls:'inelegivel',icone:'✕', rotulo:'inelegível',  dica:'pago depois do vencimento — não vale selo'},
+    vencida: {cls:'inelegivel',icone:'✕', rotulo:'inelegível',  dica:'venceu sem pagamento — não vale selo'},
+    aberto:  {cls:'aberto',    icone:'•', rotulo:'em aberto',   dica:'ainda dentro do prazo — pague até o vencimento e o selo é seu'},
+    vazio:   {cls:'empty',     icone:'',  rotulo:'',            dica:'sem fatura neste mês'}
+  };
   const selos = slots.map(sl => {
+    const d = DESENHO[sl.estado] || DESENHO.vazio;
     const quando = sl.mes ? esc(fmtMesRef(sl.mes)) : `Mês ${sl.n}`;
-    if(sl.estado === 'ok')
-      return `<div class="fcs ok" title="${quando} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${sl.n}</span></div>`;
-    if(sl.estado === 'atraso')
-      return `<div class="fcs atrasado" title="${quando} — pago com atraso, não valeu selo"><span class="fcs-check">⚠</span><span class="fcs-n">${sl.n}</span></div>`;
-    if(sl.estado === 'vencida')
-      return `<div class="fcs vencido" title="${quando} — fatura vencida em aberto"><span class="fcs-check">✕</span><span class="fcs-n">${sl.n}</span></div>`;
-    return `<div class="fcs empty" title="${quando} — aguardando"><span class="fcs-n">${sl.n}</span></div>`;
+    // Mostra o vencimento da fatura daquele mês — é o que o cliente
+    // reconhece. Sem fatura emitida, mostra só o mês.
+    const marca = sl.fatura
+      ? fmtDate(sl.fatura.vencimento).slice(0,5)        // dd/mm
+      : (sl.mes ? esc(fmtMesRef(sl.mes)) : sl.n);
+    return `<div class="fcs ${d.cls}" title="${quando}${d.rotulo?` — ${d.rotulo}`:''}: ${d.dica}">
+      ${d.icone?`<span class="fcs-check">${d.icone}</span>`:''}
+      <span class="fcs-n">${marca}</span>
+    </div>`;
   });
 
   // Prêmios. Os SELOS medem o ciclo atual (um atraso reinicia o cartão),
@@ -1142,13 +1148,13 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
           <div class="fc-title-col">
             <div class="fc-title">Programa</div>
             <div class="fc-subtitle">${contratos.length>1 ? esc(ctNome(ct||{}, idx||0)) : 'Cartão Fidelidade'}</div>
-            ${periodo?`<div class="fc-validade">Válido de <strong>${esc(fmtMesRef(periodo.ini))}</strong> a <strong>${esc(fmtMesRef(periodo.fim))}</strong></div>`:''}
+            ${periodo?`<div class="fc-validade">Faturas de <strong>${esc(fmtMesRef(periodo.ini))}</strong> a <strong>${esc(fmtMesRef(periodo.fim))}</strong></div>`:''}
           </div>
         </div>
 
         <!-- 12 selos; prêmios logo abaixo, fora da grade -->
         <div class="fc-stamps">${selos.join('')}</div>
-        ${atrasados.length?`<div class="fc-tropeco">⚠ ${atrasados.length===1?'Atraso em':'Atrasos em'} <strong>${atrasados.map(a=>esc(fmtMesRef(a.mes)||('mês '+a.n))).join(', ')}</strong> — ${atrasados.length===1?'esse mês não valeu selo':'esses meses não valeram selo'}. O selo é só de quem paga até o vencimento.</div>`:''}
+        ${inelegiveis.length?`<div class="fc-tropeco">✕ <strong>${inelegiveis.length} ${inelegiveis.length===1?'mês inelegível':'meses inelegíveis'}</strong> neste cartão: ${inelegiveis.map(a=>`${esc(fmtMesRef(a.mes)||('mês '+a.n))} <em style="font-style:normal;opacity:0.75">(${a.estado==='atraso'?'pago com atraso':'vencida sem pagamento'})</em>`).join(', ')}. O selo é só de quem paga até o vencimento.</div>`:''}
         ${premios}
 
         <div class="fc-footer">
@@ -1166,12 +1172,16 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
       <!-- Legenda -->
       <div class="fc-legend">
         <div class="fc-leg-item">
-          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.6);border:1.5px solid var(--pool)"></div>
-          Pago em dia
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.55);border:1.5px solid var(--pool)"></div>
+          Pago em dia — vale selo
         </div>
         <div class="fc-leg-item">
-          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.15);border:1.5px dashed rgba(0,196,216,0.35)"></div>
-          Aguardando
+          <div class="fc-leg-dot" style="background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.6)"></div>
+          Inelegível — pago com atraso ou vencido
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.12);border:1.5px solid rgba(0,196,216,0.3)"></div>
+          Em aberto — ainda dá tempo
         </div>
       </div>
 
