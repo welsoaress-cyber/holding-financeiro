@@ -5236,64 +5236,75 @@ function modalPerfil(existing){
       <input type="checkbox" name="${nome}" ${marcado?"checked":""} style="margin:0;">${esc(rotulo)}
     </label>`;
 
+  // ---- Blocos de módulo (o que pode fazer em cada área do sistema) ----
   const linhasModulo = MODULOS_GRUPOS.map((g, i) => {
     const perm = (p.modulos || {})[g.id] || pad[g.id] || {};
     const pills = ["ver","criar","editar","excluir"].filter(a => g.acoes.includes(a))
       .map(a => pillCheckbox(`mod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
-    return `<div style="padding:10px 12px; ${i < MODULOS_GRUPOS.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
-      <div style="font-size:13px; font-weight:600;">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</div>
-      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
-    </div>`;
+    return `
+      <div style="padding:11px 14px; ${i < MODULOS_GRUPOS.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
+        <div style="font-size:13px; font-weight:600; margin-bottom:8px;">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+      </div>`;
   }).join("");
 
+  // ---- Blocos de negócio (quais empresas ela enxerga nos dados) ----
   const linhasNegocio = state.negocios.map((n, i) => {
     const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
-    const pills = [["ver_"+n.id,perm.ver,"Ver"],["editar_"+n.id,perm.editar,"Editar"],["excluir_"+n.id,perm.excluir,"Excluir"]]
+    const cor = n.cor || "var(--accent)";
+    const pills = [["ver_"+n.id,perm.ver,"👁 Ver"],["editar_"+n.id,perm.editar,"✏️ Editar"],["excluir_"+n.id,perm.excluir,"🗑 Excluir"]]
       .map(([nome,marcado,rotulo]) => pillCheckbox(nome, marcado, rotulo)).join("");
-    return `<div style="padding:10px 12px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
-      <div style="font-size:13px; font-weight:600;">${esc(n.nome)}</div>
-      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
-    </div>`;
+    return `
+      <div style="padding:11px 14px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
+        <div style="display:flex; align-items:center; gap:7px; margin-bottom:8px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0;"></span>
+          <span style="font-size:13px; font-weight:600;">${esc(n.nome)}</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+      </div>`;
   }).join("");
+
+  const sectionHeader = (title, subtitle) => `
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:18px 0 8px; border-bottom:1px solid var(--border); padding-bottom:6px;">
+      ${title}${subtitle ? `<span style="font-weight:400; text-transform:none; letter-spacing:0; margin-left:8px; font-size:11px;">${subtitle}</span>` : ""}
+    </div>`;
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPerfil"><div class="modal-body">
 
-      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Erica"></div>
-      <div class="field"><label>Senha de acesso</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: erica123">
-        <div class="field-help">Senha simples, só pra identificar quem está usando — não use uma senha pessoal importante.</div>
+      ${sectionHeader("Identificação")}
+      <div class="field-row">
+        <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Erica"></div>
+        <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: erica123"></div>
       </div>
+      <div class="field-help" style="margin-top:-6px; margin-bottom:10px;">Senha simples, só pra identificar quem está usando — não use senha pessoal.</div>
       <div class="field"><label>Tipo de acesso</label>
         <select name="tipo" id="perfilTipoSelect">
-          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro (acesso definido abaixo)</option>
-          <option value="master" ${p.tipo==="master"?"selected":""}>Master (acesso total, igual a você)</option>
+          <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro — acesso definido abaixo</option>
+          <option value="master" ${p.tipo==="master"?"selected":""}>Master — acesso total (igual a você)</option>
         </select>
       </div>
 
       <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"};margin-bottom:10px;">
-        Esse usuário vai ver e editar absolutamente tudo, igual a você — não precisa configurar nada abaixo.
+        ✅ Esse usuário verá e editará absolutamente tudo — igual a você. Nada mais para configurar.
       </div>
 
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
 
-        <!-- MÓDULOS -->
-        <div class="field">
-          <label>Acesso por módulo (menu)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);">
-            ${linhasModulo}
-          </div>
-          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão.</div>
+        <!-- 1. NEGÓCIOS -->
+        ${sectionHeader("1. Negócios que pode acessar", "dados financeiros visíveis por empresa")}
+        <div style="border:1px solid var(--border);border-radius:var(--r); margin-bottom:6px;">
+          ${linhasNegocio || `<div style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</div>`}
         </div>
+        <div class="field-help" style="margin-bottom:14px;">Sem "Ver", os lançamentos desse negócio ficam invisíveis para este usuário.</div>
 
-        <!-- NEGÓCIOS -->
-        <div class="field">
-          <label>Acesso por negócio (Financeiro)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);">
-            ${linhasNegocio || `<div style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</div>`}
-          </div>
-          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível.</div>
+        <!-- 2. MÓDULOS DO SISTEMA -->
+        ${sectionHeader("2. O que pode fazer em cada módulo", "funcionalidades do sistema")}
+        <div style="border:1px solid var(--border);border-radius:var(--r); margin-bottom:6px;">
+          ${linhasModulo}
         </div>
+        <div class="field-help">Sem "Ver", o módulo some do menu. "Criar/Editar/Excluir" controlam as ações dentro dele.</div>
 
       </div>
     </div>
