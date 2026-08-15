@@ -710,7 +710,13 @@
   .kpi-grid[style*="repeat(4"] {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  /* Tabela de performance por negócio: esconde tabela, mostra cards no mobile */
+  .neg-perf-desktop { display: none; }
+  .neg-perf-mobile  { display: block; }
 }
+/* No desktop, esconde os cards e mostra só a tabela */
+.neg-perf-mobile { display: none; }
+.neg-perf-desktop { display: block; }
 
 /* ---- Touch-friendly adjustments (applies to all touch devices) ---- */
 @media (hover: none) {
@@ -3231,22 +3237,57 @@ function viewVgExecutivo(){
     return { n, receitaMesNeg, despesaMesNeg, aPagarNeg, clientesAtivosNeg, margem, status };
   }).filter(l => l.receitaMesNeg>0 || l.despesaMesNeg>0 || l.aPagarNeg>0 || l.clientesAtivosNeg>0); // esconde negócio 100% inativo esse mês
 
-  const tabelaNegociosHTML = linhasNegocio.length ? `
-    <div>
-      <table><thead><tr>
-        <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar (mês)</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
+  const tabelaNegociosHTML = linhasNegocio.length ? (() => {
+    const sorted = linhasNegocio.slice().sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg);
+    // Versão desktop: tabela compacta
+    const tableHTML = `<div style="overflow-x:auto;">
+      <table style="min-width:520px;"><thead><tr>
+        <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
       </tr></thead><tbody>
-        ${linhasNegocio.sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg).map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
-          <td style="font-weight:600;"><span class="tag-dot" style="background:${negocioCor(l.n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(l.n.nome)}</td>
-          <td class="num" style="color:var(--pos);">${vv(l.receitaMesNeg)}</td>
-          <td class="num" style="color:var(--neg);">${vv(l.aPagarNeg)}</td>
-          <td class="num" style="color:${l.status.cor}; font-weight:700;">${l.margem===null?"—":l.margem+"%"}</td>
-          ${podeVerModulo("clientes")?`<td class="num">${l.clientesAtivosNeg}</td>`:""}
-          <td>${l.status.ponto} ${l.status.rotulo}</td>
+        ${sorted.map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
+          <td style="font-weight:600; white-space:nowrap;"><span class="tag-dot" style="background:${negocioCor(l.n.nome)}; display:inline-block; margin-right:6px;"></span>${esc(l.n.nome)}</td>
+          <td class="num" style="color:var(--pos); white-space:nowrap;">${vv(l.receitaMesNeg)}</td>
+          <td class="num" style="color:var(--neg); white-space:nowrap;">${vv(l.aPagarNeg)}</td>
+          <td class="num" style="color:${l.status.cor}; font-weight:700; white-space:nowrap;">${l.margem===null?"—":l.margem+"%"}</td>
+          ${podeVerModulo("clientes")?`<td class="num" style="white-space:nowrap;">${l.clientesAtivosNeg}</td>`:""}
+          <td style="white-space:nowrap;">${l.status.ponto} ${l.status.rotulo}</td>
         </tr>`).join("")}
       </tbody></table>
-    </div>
-  ` : emptyState("Nenhum negócio com movimento nesse mês.");
+    </div>`;
+    // Versão mobile: cards empilhados
+    const cardsHTML = sorted.map(l => `
+      <div data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" style="cursor:pointer; padding:12px 14px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:7px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:${negocioCor(l.n.nome)};display:inline-block;flex-shrink:0;"></span>
+            ${esc(l.n.nome)}
+          </span>
+          <span style="font-size:12px; color:${l.status.cor}; font-weight:600;">${l.status.ponto} ${l.status.rotulo}</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(${podeVerModulo("clientes")?4:3},1fr); gap:6px; font-size:12px;">
+          <div style="text-align:center;">
+            <div style="color:var(--ink-3); font-size:10.5px; margin-bottom:2px;">Receita</div>
+            <div style="color:var(--pos); font-weight:700;">${vv(l.receitaMesNeg)}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:var(--ink-3); font-size:10.5px; margin-bottom:2px;">A pagar</div>
+            <div style="color:${l.aPagarNeg>0?'var(--neg)':'var(--ink-3)'}; font-weight:700;">${vv(l.aPagarNeg)}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:var(--ink-3); font-size:10.5px; margin-bottom:2px;">Margem</div>
+            <div style="color:${l.status.cor}; font-weight:700;">${l.margem===null?"—":l.margem+"%"}</div>
+          </div>
+          ${podeVerModulo("clientes")?`<div style="text-align:center;">
+            <div style="color:var(--ink-3); font-size:10.5px; margin-bottom:2px;">Clientes</div>
+            <div style="font-weight:700;">${l.clientesAtivosNeg}</div>
+          </div>`:""}
+        </div>
+      </div>`).join("");
+    return `
+      <div class="neg-perf-desktop">${tableHTML}</div>
+      <div class="neg-perf-mobile">${cardsHTML}</div>
+    `;
+  })() : emptyState("Nenhum negócio com movimento nesse mês.");
 
   // ---- Gráfico: evolução do saldo consolidado, últimos 12 meses (master only) ----
   const graficoSaldoHTML = master ? (() => {
