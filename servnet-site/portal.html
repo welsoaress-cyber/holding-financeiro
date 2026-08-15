@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
 :root{
   --pool:#00C4D8;--pool-hi:#2DDAE8;
   --bg:#030F18;--surface:#061520;--card:#091C2A;
@@ -219,6 +220,36 @@ a{color:inherit;}
 .rules-box li strong{color:var(--text);}
 .rules-box .rules-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--pool);margin-bottom:0.5rem;font-weight:700;}
 
+/* upgrade btn */
+.upgrade-btn{display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.55rem 1.1rem;background:rgba(0,196,216,0.1);border:1px solid rgba(0,196,216,0.35);border-radius:6px;color:var(--pool);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background 0.15s,border-color 0.15s;}
+.upgrade-btn:hover{background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
+
+/* promoções */
+.promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:640px){.promo-grid{grid-template-columns:1fr;}}
+.promo-item{background:rgba(0,196,216,0.04);border:1px solid rgba(0,196,216,0.18);border-radius:10px;padding:1rem 1.1rem;}
+.promo-icon{font-size:1.6rem;margin-bottom:0.4rem;}
+.promo-nome{font-size:0.94rem;font-weight:700;color:var(--text);margin-bottom:0.2rem;}
+.promo-tagline{font-size:0.81rem;color:var(--pool);font-weight:600;margin-bottom:0.75rem;line-height:1.4;}
+.promo-rules{padding-left:1.1rem;display:flex;flex-direction:column;gap:0.3rem;margin:0 0 0.9rem;}
+.promo-rules li{font-size:0.8rem;color:var(--text-2);line-height:1.5;}
+.promo-rules li strong{color:var(--text);}
+.promo-prize{font-weight:700;}
+.promo-prize.gold{color:#FCD34D;}
+.promo-prize.green{color:#34D399;}
+.promo-link{display:inline-block;font-size:0.78rem;color:var(--pool);text-decoration:none;opacity:0.8;transition:opacity 0.15s;}
+.promo-link:hover{opacity:1;text-decoration:underline;}
+
+/* chamado */
+.ticket-form{display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;}
+.ticket-select,.ticket-input,.ticket-textarea{padding:0.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
+.ticket-select:focus,.ticket-input:focus,.ticket-textarea:focus{border-color:var(--pool);}
+.ticket-textarea{resize:vertical;min-height:80px;}
+.ticket-btn{padding:0.75rem 1.5rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;align-self:flex-start;}
+.ticket-btn:hover:not(:disabled){opacity:0.85;}
+.ticket-btn:disabled{opacity:0.55;cursor:default;}
+.ticket-ok{display:none;color:#34D399;font-size:0.88rem;margin-top:0.5rem;}
+
 /* aviso boleto */
 .boleto-notice{display:flex;align-items:center;gap:0.55rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.22);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1.1rem;font-size:0.8rem;color:#FCD34D;}
 .boleto-notice svg{flex-shrink:0;opacity:0.85;}
@@ -280,6 +311,44 @@ a{color:inherit;}
         <div id="invContent" class="loading-center"><span class="spin"></span></div>
       </div>
 
+      <!-- Promoções -->
+      <div class="card span2" id="promoCard">
+        <div class="card-lbl">🎁 Promoções &amp; Benefícios</div>
+        <div class="promo-grid">
+
+          <!-- Fidelidade -->
+          <div class="promo-item">
+            <div class="promo-icon">🏆</div>
+            <div class="promo-nome">Programa Fidelidade</div>
+            <div class="promo-tagline">Pague em dia e acumule recompensas!</div>
+            <ul class="promo-rules">
+              <li><strong>6 meses</strong> em dia → <span class="promo-prize gold">50% de desconto</span> na fatura</li>
+              <li><strong>12 meses</strong> em dia → <span class="promo-prize green">1 mês grátis</span> 🎉</li>
+              <li>Cada mês pago até o vencimento = 1 selo ✅</li>
+              <li>Atraso zera o contador — recomece do zero</li>
+              <li>Desconto aplicado automaticamente na próxima fatura</li>
+            </ul>
+            <a class="promo-link" href="#fidelCard">Ver meu progresso ↓</a>
+          </div>
+
+          <!-- Indique e Ganhe -->
+          <div class="promo-item">
+            <div class="promo-icon">👥</div>
+            <div class="promo-nome">Indique e Ganhe</div>
+            <div class="promo-tagline">Cada amigo que assinar vale 1 mês grátis pra você!</div>
+            <ul class="promo-rules">
+              <li>Indique um amigo com nome e telefone no portal</li>
+              <li>Quando ele assinar e pagar o 1º mês → confirmado</li>
+              <li><strong>1 mês grátis</strong> descontado na sua próxima fatura</li>
+              <li>Sem limite de indicações — quanto mais, melhor!</li>
+              <li>Não acumula com outras promoções ativas</li>
+            </ul>
+            <a class="promo-link" href="#refCard">Indicar um amigo ↓</a>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Histórico -->
       <div class="card span2" id="histCard">
         <div class="card-lbl">Histórico de Faturas</div>
@@ -298,17 +367,27 @@ a{color:inherit;}
         <div id="refContent" class="loading-center"><span class="spin"></span></div>
       </div>
 
-      <!-- Suporte -->
+      <!-- Suporte / Chamado -->
       <div class="card span2">
-        <div class="card-lbl">Suporte</div>
-        <p class="sup-desc">Nossa equipe está disponível de segunda a sábado, das 8h às 20h. Resposta rápida via WhatsApp.</p>
-        <a class="wa-btn" href="whatsapp://send?phone=5511954490001">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-          Falar com Suporte
-        </a>
-        <div class="sup-info">Ou ligue: <a href="tel:+5511954490001">(11) 95449-0001</a></div>
+        <div class="card-lbl">🎫 Abrir Chamado</div>
+        <p class="sup-desc">Descreva o problema e abrimos o chamado direto pelo WhatsApp — respondemos rápido.</p>
+        <div class="ticket-form" id="ticketForm">
+          <select class="ticket-select" id="ticketTipo">
+            <option value="">Selecione o tipo de problema</option>
+            <option value="Sem conexão / queda de internet">Sem conexão / queda de internet</option>
+            <option value="Lentidão na internet">Lentidão na internet</option>
+            <option value="Problema com fatura / cobrança">Problema com fatura / cobrança</option>
+            <option value="Solicitar mudança de plano">Solicitar mudança de plano</option>
+            <option value="Dúvida geral">Dúvida geral</option>
+            <option value="Outro">Outro</option>
+          </select>
+          <textarea class="ticket-textarea" id="ticketDesc" placeholder="Descreva o problema com mais detalhes (opcional)…"></textarea>
+          <button class="ticket-btn" id="ticketBtn" onclick="abrirChamado()">
+            📲 Abrir Chamado pelo WhatsApp
+          </button>
+          <div class="ticket-ok" id="ticketOk">✅ Redirecionando para o WhatsApp…</div>
+        </div>
+        <div class="sup-info" style="margin-top:1rem">Ou ligue: <a href="tel:+5511954490001">(11) 95449-0001</a></div>
       </div>
 
     </div>
@@ -416,13 +495,15 @@ function renderPlano(data){
     const vel=p.velocidade||p.nome||'';
     const spd=vel.match(/\d+/)?.[0]||'';
     const unit=vel.toLowerCase().includes('gbps')?'Gbps':'Mbps';
+    const upgMsg=encodeURIComponent(`Olá! Sou cliente da Servnet e gostaria de fazer um upgrade no meu plano atual (${p.nome||'meu plano'}). Podem me ajudar?`);
     html=`
       <div class="plan-speed">${spd}<span> ${unit}</span></div>
       <div class="plan-name">${p.nome||'Fibra Óptica'}</div>
       <div class="plan-detail">📡 ${p.tecnologia||'Fibra Óptica'}</div>
       ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${dv}</div>`:''}
       <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${st}</span></div>
-      ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}`;
+      ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}
+      <a class="upgrade-btn" href="https://wa.me/5511954490001?text=${upgMsg}" target="_blank" rel="noopener">⚡ Solicitar Upgrade de Plano</a>`;
   }else{
     html=`
       ${dv?`<div class="plan-detail" style="margin-bottom:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
@@ -694,6 +775,26 @@ function toggleRules(id,btn){
   const box=document.getElementById(id);
   const open=box.classList.toggle('show');
   btn.classList.toggle('open',open);
+}
+
+function abrirChamado(){
+  const tipo = document.getElementById('ticketTipo').value;
+  const desc = document.getElementById('ticketDesc').value.trim();
+  const btn  = document.getElementById('ticketBtn');
+  const ok   = document.getElementById('ticketOk');
+  if(!tipo){ alert('Selecione o tipo de problema.'); return; }
+  const nome = session?.nome ? session.nome.split(' ')[0] : 'Cliente';
+  let msg = `Olá! Sou ${nome}, cliente da Servnet, e preciso de suporte.\n\n*Tipo:* ${tipo}`;
+  if(desc) msg += `\n*Detalhes:* ${desc}`;
+  btn.disabled = true;
+  ok.style.display = 'block';
+  setTimeout(() => {
+    window.open(`https://wa.me/5511954490001?text=${encodeURIComponent(msg)}`, '_blank');
+    btn.disabled = false;
+    ok.style.display = 'none';
+    document.getElementById('ticketTipo').value = '';
+    document.getElementById('ticketDesc').value = '';
+  }, 800);
 }
 
 function showRefMsg(text,type){

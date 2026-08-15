@@ -72,11 +72,21 @@ button, input, select { font-family: inherit; font-size: inherit; }
   color: var(--text-2); transition: color 0.15s;
 }
 .nav-links a:hover { color: var(--pool); }
+.nav-actions { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.nav-portal-btn {
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--pool); border-radius: 5px;
+  color: var(--pool); font-weight: 600; font-size: 0.85rem;
+  text-decoration: none; transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-portal-btn:hover { background: rgba(0,196,216,0.1); }
 .nav-btn {
   padding: 0.5rem 1.25rem;
   background: var(--pool); color: #fff;
   border-radius: 5px; font-weight: 700; font-size: 0.9rem;
   text-decoration: none; transition: opacity 0.15s;
+  white-space: nowrap;
 }
 .nav-btn:hover { opacity: 0.84; }
 
@@ -222,6 +232,10 @@ button, input, select { font-family: inherit; font-size: inherit; }
   background: var(--pool); border-radius: 100px;
   padding: 0.22rem 0.65rem;
   box-shadow: 0 0 12px rgba(0,196,216,0.55); white-space: nowrap;
+}
+.plan-name-badge {
+  font-size: 0.78rem; font-weight: 700; color: var(--text-2);
+  margin-bottom: 0.5rem; letter-spacing: 0.04em;
 }
 .plan-mbps {
   font-family: 'Courier New', 'SF Mono', monospace;
@@ -623,6 +637,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
 @media (max-width: 480px) {
   .nav { padding: 0 1rem; }
   .nav-logo { font-size: 1.1rem; }
+  .nav-portal-btn { display: none; } /* só "Assinar agora" no mobile */
   .nav-btn { font-size: 0.75rem; padding: 0.38rem 0.85rem; }
   .hero { padding: 78px 1.25rem 44px; }
   .hero h1 { font-size: clamp(1.9rem, 9vw, 2.5rem); }
@@ -643,9 +658,11 @@ button, input, select { font-family: inherit; font-size: inherit; }
     <li><a href="#quem-somos">Quem somos</a></li>
     <li><a href="#cobertura">Cobertura</a></li>
     <li><a href="#contato">Contato</a></li>
-    <li><a href="portal.html">Área do Cliente</a></li>
   </ul>
-  <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+  <div class="nav-actions">
+    <a href="portal.html" class="nav-portal-btn">Área do Cliente</a>
+    <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -709,7 +726,8 @@ button, input, select { font-family: inherit; font-size: inherit; }
   </div>
   <div class="plans-grid">
 
-    <article class="plan-card" aria-label="Plano 100 Mbps">
+    <article class="plan-card" aria-label="Plano Bronze 100 Mbps">
+      <div class="plan-name-badge">🥉 Plano Bronze</div>
       <div class="plan-mbps">100<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -725,12 +743,13 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
       </ul>
-      <button class="plan-action action-line" onclick="openModal('100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-line" onclick="openModal('Plano Bronze — 100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
-    <article class="plan-card hot" aria-label="Plano 200 Mbps, mais popular">
+    <article class="plan-card hot" aria-label="Plano Prata 200 Mbps, mais popular">
       <div class="plan-badge">Mais popular</div>
+      <div class="plan-name-badge">🥈 Plano Prata</div>
       <div class="plan-mbps">200<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -745,13 +764,13 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Internet ilimitada</li>
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
-        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <button class="plan-action action-fill" onclick="openModal('200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-fill" onclick="openModal('Plano Prata — 200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
-    <article class="plan-card" aria-label="Plano 300 Mbps">
+    <article class="plan-card" aria-label="Plano Ouro 300 Mbps">
+      <div class="plan-name-badge">🥇 Plano Ouro</div>
       <div class="plan-mbps">300<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -766,9 +785,8 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Internet ilimitada</li>
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
-        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <button class="plan-action action-line" onclick="openModal('300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-line" onclick="openModal('Plano Ouro — 300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
@@ -940,9 +958,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <label class="f-label" for="f-plano">Plano de interesse</label>
         <select class="f-select" id="f-plano" name="plano">
           <option value="">Selecione um plano</option>
-          <option value="100">100 Mbps — R$ 60,00/mês</option>
-          <option value="200">200 Mbps — R$ 80,00/mês (+ TV via app)</option>
-          <option value="300">300 Mbps — R$ 100,00/mês (+ TV via app)</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
         </select>
       </div>
       <button type="submit" class="f-submit">Solicitar contato</button>
@@ -971,9 +989,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <label class="f-label" for="lPlano">Plano de interesse</label>
         <select class="f-select" id="lPlano">
           <option value="">Escolha um plano</option>
-          <option value="100 Mbps — R$ 60,00/mês">100 Mbps — R$ 60,00/mês</option>
-          <option value="200 Mbps — R$ 80,00/mês">200 Mbps — R$ 80,00/mês (+ TV)</option>
-          <option value="300 Mbps — R$ 100,00/mês">300 Mbps — R$ 100,00/mês (+ TV)</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
         </select>
       </div>
       <div class="f-group" style="display:grid;grid-template-columns:1fr 100px;gap:10px">
@@ -1083,11 +1101,23 @@ button, input, select { font-family: inherit; font-size: inherit; }
   ro.observe(canvas.parentElement);
 })();
 
-function handleSubmit(e) {
+async function handleSubmit(e) {
   e.preventDefault();
-  const btn = e.target.querySelector('.f-submit');
-  btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
+  const btn  = e.target.querySelector('.f-submit');
+  const nome = document.getElementById('f-nome').value.trim();
+  const tel  = document.getElementById('f-tel').value.replace(/\D/g,'');
+  const end  = document.getElementById('f-end').value.trim();
+  const plano= document.getElementById('f-plano').value;
   btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    await fetch(`${SB_URL}/rest/v1/rpc/site_lead_cadastrar`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` },
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel||null, p_plano: plano||null, p_endereco: end||null })
+    });
+  } catch(err) { console.warn('[contato]', err); }
+  btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
 }
 
 // ===== MODAL DE CAPTURA DE LEAD =====

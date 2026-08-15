@@ -6425,10 +6425,12 @@ document.addEventListener("click", async e => {
   // ---- Leads do Site ----
   else if(action === "leads-filtro-status"){ leadsFiltro.status = el.value; renderView(); }
   else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
+  else if(action === "cliPlanos-filtro-clear"){ cliPlanosFiltro = {negocio:"",texto:""}; renderView(); }
   else if(action === "lead-wa"){
     const t = (el.dataset.tel||"").replace(/\D/g,"");
-    const n = el.dataset.nome||"Lead";
-    const msg = encodeURIComponent(`Olá, ${n}! Tudo bem? Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
+    const nomeCompleto = el.dataset.nome||"";
+    const n = nomeCompleto.split(" ")[0] || "tudo bem";
+    const msg = encodeURIComponent(`Olá, ${n}! Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
     window.open(`https://wa.me/55${t}?text=${msg}`,"_blank");
   }
   else if(action === "lead-status"){
@@ -6713,6 +6715,8 @@ document.addEventListener("change", e => {
   if(e.target.dataset.action === "cli-filtro-negocio"){ cliFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-status"){ cliFiltro.status = e.target.value; renderView(); }
   if(e.target.dataset.action === "cli-filtro-plano"){ cliFiltro.plano = e.target.value; renderView(); }
+  if(e.target.dataset.action === "leads-filtro-status"){ leadsFiltro.status = e.target.value; renderView(); }
+  if(e.target.dataset.action === "cliPlanos-filtro-negocio"){ cliPlanosFiltro.negocio = e.target.value; renderView(); }
   // RH filters
   if(e.target.dataset.action === "rh-filtro-negocio"){ rhFuncFiltro.negocio = e.target.value; renderView(); }
   if(e.target.dataset.action === "rh-filtro-cargo"){ rhFuncFiltro.cargo = e.target.value; renderView(); }
@@ -6749,6 +6753,7 @@ document.addEventListener("input", e => {
   if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; debounceBusca("cli-filtro-texto", renderView); }
   if(e.target.dataset.action === "rh-filtro-texto"){ rhFuncFiltro.texto = e.target.value; debounceBusca("rh-filtro-texto", renderView); }
   if(e.target.dataset.action === "leads-filtro-texto"){ leadsFiltro.texto = e.target.value; debounceBusca("leads-filtro-texto", renderView); }
+  if(e.target.dataset.action === "cliPlanos-filtro-texto"){ cliPlanosFiltro.texto = e.target.value; debounceBusca("cliPlanos-filtro-texto", renderView); }
 });
 // =========================================================================
 // MÓDULO CLIENTES — CRM completo para Holding com múltiplos negócios
@@ -6762,6 +6767,7 @@ let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
 // trocar pra outro negócio que talvez nem tenha permissão de ver).
 let filtroNegocioTravado = false;
 let leadsFiltro = { status:"", texto:"" };
+let cliPlanosFiltro = { negocio:"", texto:"" };
 let logsFiltro = { tabela:"", acao:"", autor:"" };
 
 // ---- Constantes ----
@@ -7486,8 +7492,23 @@ function viewCliDetalhe(){
 
 // ---- VIEW: PLANOS ----
 function viewCliPlanos(){
-  const listaPlanos = cliFiltro.negocio ? state.cliPlanos.filter(p=>p.negocio===cliFiltro.negocio) : state.cliPlanos;
-  const rows = listaPlanos.map(p => {
+  // Apply filters
+  let lista = [...state.cliPlanos];
+  if(cliPlanosFiltro.negocio) lista = lista.filter(p => p.negocio === cliPlanosFiltro.negocio);
+  if(cliPlanosFiltro.texto){
+    const t = cliPlanosFiltro.texto.toLowerCase();
+    lista = lista.filter(p =>
+      (p.nome||"").toLowerCase().includes(t) ||
+      (p.descricao||"").toLowerCase().includes(t) ||
+      (p.velocidade||"").toLowerCase().includes(t)
+    );
+  }
+  lista.sort((a,b) => (a.negocio||"").localeCompare(b.negocio||"") || (a.nome||"").localeCompare(b.nome||""));
+
+  const temFiltro = !!(cliPlanosFiltro.negocio || cliPlanosFiltro.texto);
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliPlanosFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+
+  const rows = lista.map(p => {
     const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
     return `<tr>
       ${bulkCheckboxCellHTML("cli_planos", p.id)}
@@ -7504,19 +7525,44 @@ function viewCliPlanos(){
       </div></td>
     </tr>`;
   }).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+
+  // Bulk selection bar (repeated above table for visibility)
+  const selAtual = bulkSet("cli_planos");
+  const bulkBar = selAtual.size > 0 ? `
+    <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:0.5rem 0.9rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+      <span style="font-size:0.83rem;color:var(--text-primary);font-weight:600;">${selAtual.size} plano${selAtual.size!==1?"s":""} selecionado${selAtual.size!==1?"s":""}:</span>
+      <button class="btn btn-ghost" style="color:#EF4444;border-color:rgba(239,68,68,0.4);padding:0.3rem 0.8rem;font-size:0.82rem;" data-action="bulk-excluir" data-contexto="cli_planos">🗑 Excluir selecionados</button>
+      <button class="btn btn-ghost" style="color:var(--text-muted);border-color:var(--border);padding:0.3rem 0.8rem;font-size:0.82rem;" data-action="bulk-toggle-all" data-contexto="cli_planos" data-ids="${Array.from(selAtual).join(",")}">✕ Desmarcar</button>
+    </div>` : "";
+
   return `
     <div class="page-header">
       <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
-    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
-      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
-      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
-    </div></div>` : ""}
+
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
+      <input type="text"
+        placeholder="🔍 Buscar por nome, descrição, velocidade…"
+        value="${(cliPlanosFiltro.texto||"").replace(/"/g,"&quot;")}"
+        data-action="cliPlanos-filtro-texto"
+        style="flex:1;min-width:180px;max-width:340px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem;outline:none"
+      />
+      <select data-action="cliPlanos-filtro-negocio"
+        style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem">
+        <option value="" ${!cliPlanosFiltro.negocio?"selected":""}>Todos os negócios</option>
+        ${negOpts}
+      </select>
+      ${temFiltro?`<button data-action="cliPlanos-filtro-clear"
+        style="background:rgba(100,116,139,0.12);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.9rem;color:var(--text-muted);font-size:0.82rem;cursor:pointer">✕ Limpar filtros</button>`:""}
+    </div>
+
+    ${bulkBar}
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", listaPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", lista.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="8">${emptyState(temFiltro?"Nenhum plano encontrado com esses filtros.":"Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
 }
