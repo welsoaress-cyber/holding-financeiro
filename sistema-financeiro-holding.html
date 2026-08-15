@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.1";
+const APP_VERSION = "2.0.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -6638,7 +6638,9 @@ function modalExcluirLancamento(l){
 // ============================================================
 // MODAL — ESCOPO DA EDIÇÃO EM SÉRIE (ex: reajuste de valor)
 // ============================================================
-const CAMPOS_CASCATA_SERIE = ["tipo","negocio","categoria","subcategoria","contaOrigem","contaDestino","valor"];
+// Campos propagados para os demais itens da série — descricao incluída.
+// Data, status e conciliado NUNCA são copiados (cada ocorrência mantém os seus).
+const CAMPOS_CASCATA_SERIE = ["tipo","negocio","categoria","subcategoria","contaOrigem","contaDestino","valor","descricao"];
 function modalEscopoEdicaoSerie(existing, data){
   const serieTxt = existing.recorrenciaTipo === "parcelado" ? "parcelada" : "recorrente";
   const futuros = state.lancamentos.filter(x => x.recorrenciaId === existing.recorrenciaId && x.data >= existing.data).length;
@@ -6647,7 +6649,7 @@ function modalEscopoEdicaoSerie(existing, data){
     <div class="modal-head"><div class="modal-title">Aplicar alteração</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:14px; font-size:13px;">
-        <strong>${esc(existing.descricao)}</strong> faz parte de uma série ${serieTxt}. Onde aplicar valor, categoria, conta e negócio (ex: um reajuste)?
+        <strong>${esc(existing.descricao)}</strong> faz parte de uma série ${serieTxt}. Onde aplicar descrição, valor, categoria, conta e negócio?
         <br><span style="color:var(--ink-4);">Data, status e conciliado nunca são copiados — cada ocorrência mantém os seus.</span>
       </div>
       <div style="display:flex; flex-direction:column; gap:8px;">
@@ -6659,13 +6661,29 @@ function modalEscopoEdicaoSerie(existing, data){
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
   `);
   const aplicarCascata = async (apenasFuturos) => {
-    Object.assign(existing, data);
+    // Salva referências ANTES do Object.assign sobrescrever o existing
+    const recId = existing.recorrenciaId;
+    const dataOriginal = existing.data; // data de vencimento original (não a do formulário)
+    const isParcelado = existing.recorrenciaTipo === "parcelado";
+    // Nova descrição base (sem sufixo de parcela, ex: " (1/60)")
+    const baseDescricao = isParcelado ? data.descricao.replace(/\s*\(\d+\/\d+\)$/, "") : data.descricao;
+
+    Object.assign(existing, data); // aplica tudo no item editado
     const afetados = [existing];
+
     for(const l of state.lancamentos){
       if(l === existing) continue;
-      if(l.recorrenciaId !== existing.recorrenciaId) continue;
-      if(apenasFuturos && l.data < existing.data) continue;
-      CAMPOS_CASCATA_SERIE.forEach(campo => { l[campo] = data[campo]; });
+      if(l.recorrenciaId !== recId) continue;
+      if(apenasFuturos && l.data < dataOriginal) continue;
+      // Propaga campos cascata exceto descricao (tratada abaixo)
+      CAMPOS_CASCATA_SERIE.filter(c => c !== "descricao").forEach(campo => { l[campo] = data[campo]; });
+      // Descrição: para parcelado preserva o sufixo "(N/total)" de cada item
+      if(isParcelado){
+        const sufixo = (l.descricao.match(/\s*\(\d+\/\d+\)$/) || [""])[0];
+        l.descricao = baseDescricao + sufixo;
+      } else {
+        l.descricao = data.descricao;
+      }
       afetados.push(l);
     }
     await saveLancamentos(); closeModal(); renderApp(); showToast(`Alteração aplicada a ${afetados.length} lançamento(s).`);
