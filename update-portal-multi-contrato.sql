@@ -8,14 +8,18 @@
 --   2. portal_servnet_faturas → passa a ler as receitas reais do admin
 --      (tabela `lancamentos`), em vez da tabela `servnet_faturas`, que
 --      nunca é populada por ninguém.
---   3. portal_servnet_fidelidade → streak por contrato.
---   4. faturas/fidelidade passam a receber os IDs como text. Os IDs do
---      admin são text (cli_xxx / ct_xxx) e a assinatura uuid antiga
---      falhava na conversão — daí o "Erro ao carregar fatura".
+--   3. portal_servnet_fidelidade → removida; a regra do cartão vive no
+--      portal, calculada a partir de portal_servnet_faturas.
+--   4. faturas passa a receber os IDs como text. Os IDs do admin são text
+--      (cli_xxx / ct_xxx) e a assinatura uuid antiga falhava na conversão
+--      — daí o "Erro ao carregar fatura".
 --
 -- Sobre o vencimento das faturas pagas:
---   Ao dar baixa, o admin sobrescreve `dados->>'data'` com a data do
---   pagamento — o vencimento original se perde. Reconstruímos assim,
+--   O admin ATUAL preserva `dados->>'data'` como vencimento e grava o
+--   recebimento em `dados->>'dataPagamento'` — nesse caso lemos os dois
+--   direto, sem reconstruir nada.
+--   Faturas pagas ANTES dessa mudança têm `data` sobrescrito com a data do
+--   pagamento e nenhum `dataPagamento`. Para essas, reconstruímos assim,
 --   em ordem de confiabilidade:
 --     a) âncora da recorrência: qualquer parcela ainda não paga da mesma
 --        série (`recorrenciaId`) guarda o vencimento real; deslocamos pela
@@ -163,6 +167,7 @@ BEGIN
       l.dados->>'recorrenciaId'                     AS rec_id,
       NULLIF(l.dados->>'recorrenciaIndex','')::int  AS rec_idx,
       l.dados->>'data'                              AS data_lanc,
+      NULLIF(l.dados->>'dataPagamento','')          AS data_pgto,
       COALESCE(l.dados->>'status','Provisionado')   AS status
     FROM lancamentos l
     WHERE l.user_id::text = p_master_id
@@ -188,12 +193,18 @@ BEGIN
       b.*,
       ct.dia_venc,
       CASE
-        -- não paga: `data` ainda É o vencimento
+        -- Não paga: `data` é o vencimento.
         WHEN b.status <> 'Pago' THEN b.data_lanc::date
-        -- paga, com âncora da recorrência: desloca pelos meses de diferença
+        -- Paga pelo admin ATUAL: ele preserva `data` como vencimento e grava
+        -- o recebimento em `dataPagamento`. Nada a reconstruir.
+        WHEN b.data_pgto IS NOT NULL THEN b.data_lanc::date
+        -- Daqui para baixo, faturas pagas sob a regra ANTIGA, em que a baixa
+        -- sobrescrevia `data` com a data do pagamento e o vencimento se perdia.
+        -- Âncora da recorrência: uma parcela não paga da mesma série guarda o
+        -- vencimento real; desloca pela diferença de índice em meses.
         WHEN a.rec_id IS NOT NULL THEN
           (a.anc_data + ((b.rec_idx - a.anc_idx) * interval '1 month'))::date
-        -- paga, sem âncora: dia de vencimento do contrato no mês do pagamento
+        -- Sem âncora: dia de vencimento do contrato, no mês do pagamento.
         WHEN ct.dia_venc IS NOT NULL THEN
           (date_trunc('month', b.data_lanc::date)
             + (LEAST(
@@ -201,7 +212,7 @@ BEGIN
                  EXTRACT(DAY FROM (date_trunc('month', b.data_lanc::date)
                                    + interval '1 month - 1 day'))::int
                ) - 1) * interval '1 day')::date
-        -- sem nada: assume que foi paga no vencimento
+        -- Sem nada: assume que foi paga no vencimento.
         ELSE b.data_lanc::date
       END AS vencimento
     FROM base b
@@ -218,8 +229,12 @@ BEGIN
       'mes_referencia', to_char(vencimento, 'YYYY-MM'),
       'descricao',      dados->>'descricao',
       'link_boleto',    dados->>'linkBoleto',
-      -- em lançamento pago, `data` é a data do pagamento
-      'data_pagamento', CASE WHEN status = 'Pago' THEN data_lanc ELSE NULL END
+      -- admin atual grava dataPagamento; no legado, `data` virou a data da baixa
+      'data_pagamento', CASE
+        WHEN status <> 'Pago'    THEN NULL
+        WHEN data_pgto IS NOT NULL THEN data_pgto
+        ELSE data_lanc
+      END
     )
     ORDER BY vencimento DESC
   )
@@ -237,84 +252,15 @@ GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(text, text) TO anon;
 
 
 -- ----------------------------------------------------------------
--- 3. FIDELIDADE — um streak por contrato
---    Mantida para compatibilidade; o portal calcula o streak no
---    front a partir de portal_servnet_faturas. Aqui devolvemos o
---    mesmo cálculo por contrato, para quem consumir a RPC direto.
+-- 3. FIDELIDADE — removida
+--
+-- A regra do cartão (12 meses a partir do mês seguinte ao cadastro, selo
+-- por fatura paga até o vencimento, 6 selos → 50%, 12 → 100%) vive no
+-- portal, que a calcula a partir de portal_servnet_faturas.
+--
+-- Esta função reimplementava a mesma regra em SQL e ficou para trás quando
+-- a regra mudou — passou a devolver números que não batiam com o cartão.
+-- Duas implementações da mesma regra divergem; fica só uma.
 -- ----------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.portal_servnet_fidelidade(text, text);
 DROP FUNCTION IF EXISTS public.portal_servnet_fidelidade(uuid, uuid);
-
-CREATE OR REPLACE FUNCTION public.portal_servnet_fidelidade(
-  p_cliente_id text,
-  p_master_id  text
-)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_fat      json;
-  v_rec      record;
-  v_ct       record;
-  v_streak   int;
-  v_por_ct   jsonb := '{}'::jsonb;
-  v_melhor   int := 0;
-BEGIN
-  -- reaproveita a reconstrução de vencimento da RPC de faturas
-  SELECT (public.portal_servnet_faturas(p_cliente_id, p_master_id)->>'faturas')::json
-  INTO v_fat;
-
-  FOR v_ct IN
-    SELECT DISTINCT f->>'contrato_id' AS contrato_id
-    FROM json_array_elements(v_fat) f
-  LOOP
-    v_streak := 0;
-
-    FOR v_rec IN
-      SELECT
-        f->>'status'         AS status,
-        f->>'vencimento'     AS vencimento,
-        f->>'data_pagamento' AS data_pagamento
-      FROM json_array_elements(v_fat) f
-      WHERE f->>'contrato_id' IS NOT DISTINCT FROM v_ct.contrato_id
-      ORDER BY f->>'vencimento' DESC
-    LOOP
-      -- fatura pendente com vencimento futuro: mês corrente ainda no prazo.
-      -- Não conta como selo, mas também não quebra o streak.
-      IF lower(v_rec.status) = 'pendente'
-         AND v_rec.vencimento >= to_char(current_date, 'YYYY-MM-DD')
-      THEN
-        CONTINUE;
-      END IF;
-
-      IF lower(v_rec.status) = 'pago'
-         AND v_rec.data_pagamento IS NOT NULL
-         AND v_rec.data_pagamento <= v_rec.vencimento
-      THEN
-        v_streak := v_streak + 1;
-      ELSE
-        -- Atraso, vencida ou pendente fora do prazo: encerra a contagem.
-        -- NÃO zera o que já foi contado — a varredura vem do vencimento
-        -- mais recente para o mais antigo, então os selos já somados são
-        -- justamente os posteriores ao atraso. (A versão anterior desta
-        -- função zerava aqui e devolvia 0 para quem tivesse qualquer
-        -- atraso no passado, por mais antigo que fosse.)
-        EXIT;
-      END IF;
-    END LOOP;
-
-    v_por_ct := v_por_ct || jsonb_build_object(COALESCE(v_ct.contrato_id,'—'), v_streak);
-    IF v_streak > v_melhor THEN v_melhor := v_streak; END IF;
-  END LOOP;
-
-  RETURN json_build_object(
-    'ok',            true,
-    'por_contrato',  v_por_ct,
-    -- legado: melhor streak entre os contratos
-    'streak',        v_melhor
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.portal_servnet_fidelidade(text, text) TO anon;
