@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.7";
+const APP_VERSION = "2.0.8";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8344,7 +8344,7 @@ function viewCliDetalhe(){
     const negCor = negocioByNome(ct.negocio)?.cor || "var(--border)";
     const ctStatusClass = ct.status==="Ativo"?"status-pago":ct.status==="Cancelado"?"status-pendente":"status-agendado";
     const metaChips = [
-      ct.dataContrato   ? `<span>Cliente desde <strong>${fmtDateBR(ct.dataContrato)}</strong></span>` : "",
+      ct.dataContrato   ? `<span>Início do contrato <strong>${fmtDateBR(ct.dataContrato)}</strong></span>` : "",
       ct.cobrancaAutomatica ? `<span style="color:var(--pos);">● cobrança automática</span>` : "",
     ].filter(Boolean).join(`<span style="color:var(--border);margin:0 4px;">·</span>`);
     return `<div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;">
@@ -8852,7 +8852,7 @@ function modalCliContrato(clienteId, existing){
         <div class="field-help">Se não houver planos para este negócio, crie em Planos primeiro.</div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Cliente desde</label><input type="date" name="dataContrato" value="${ct.dataContrato||todayISO()}"></div>
+        <div class="field"><label>Data início do contrato</label><input type="date" name="dataContrato" value="${ct.dataContrato||todayISO()}"></div>
         <div class="field"><label>Dia de vencimento</label><input type="number" min="1" max="31" name="diaVencimento" value="${ct.diaVencimento||""}" placeholder="Ex: 10"></div>
       </div>
       <div class="field">
