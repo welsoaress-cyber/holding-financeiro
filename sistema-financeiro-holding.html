@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.4";
+const APP_VERSION = "1.7.5";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2826,18 +2826,18 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  // Projetos: exclui negócios que já têm grupo dedicado no nav (ex: Provedor) para não-masters
+  // Negócios sem grupo dedicado: cada um vira um item direto no menu (sem agrupador genérico)
   const negociosVisiveis = state.negocios.filter(n => {
     if(!master && !podeVerNegocio(n.nome)) return false;
     if(!master && NEGOCIOS_SUBMENUS[n.nome]) return false; // tem grupo dedicado → só mostra lá
     return true;
   });
-  if(negociosVisiveis.length){
-    grupos.push(navGrupo("projetos", ic("projetos"), "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
-      <div class="nav-item ${state.view==="negocio_"+n.id?"active":""}" data-action="nav" data-view="negocio_${n.id}">
-        <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
-      </div>`).join("")));
-  }
+  negociosVisiveis.forEach(n => {
+    const active = state.view === `negocio_${n.id}` ? "active" : "";
+    grupos.push(`<div class="nav-item ${active}" data-action="nav" data-view="negocio_${n.id}">
+      <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
+    </div>`);
+  });
 
   if(podeVerModulo("estoque")){
     grupos.push(navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
