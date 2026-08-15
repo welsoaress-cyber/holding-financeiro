@@ -37,9 +37,9 @@
     --brand:       #0F2045;
     --brand-2:     #162D5C;
     --brand-3:     #1E3A73;
-    --accent:      #0EA5E9;
-    --accent-dark: #0284C7;
-    --accent-glow: rgba(14,165,233,.12);
+    --accent:      #00C4D8;
+    --accent-dark: #0899A8;
+    --accent-glow: rgba(0,196,216,.12);
 
     /* Status */
     --pos:         #059669;
@@ -162,8 +162,8 @@
     transition: all .15s;
     min-width: 140px;
   }
-  .modcard:hover { background: rgba(255,255,255,.1); border-color: rgba(14,165,233,.4); }
-  .modcard.active { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.5); }
+  .modcard:hover { background: rgba(255,255,255,.1); border-color: rgba(0,196,216,.4); }
+  .modcard.active { background: rgba(0,196,216,.12); border-color: rgba(0,196,216,.5); }
   .modcard.soon { opacity: .4; cursor: default; }
   .modcard.soon:hover { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
   .modcard-ico { font-size: 18px; line-height: 1; margin-bottom: 4px; }
@@ -217,11 +217,13 @@
     user-select: none;
   }
   .nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
-  .nav-item.active { background: rgba(14,165,233,.18); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 12px; }
+  .nav-item.active { background: rgba(0,196,216,.18); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 12px; }
   .nav-item.active .nav-ico { color: var(--accent); }
   .nav-item.disabled { color: rgba(255,255,255,.22); cursor: default; }
   .nav-item.disabled:hover { background: transparent; }
-  .nav-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+  .nav-ico { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .nav-ico svg { display: block; opacity: .85; }
+  .nav-item.active .nav-ico svg { opacity: 1; }
   .soon-badge {
     font-size: 9px; font-family: var(--font-mono);
     background: rgba(255,255,255,.06);
@@ -246,7 +248,7 @@
     transition: all .12s;
   }
   .sidebar-lock-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
-  .sidebar-lock-btn.unlocked { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.3); color: var(--accent); }
+  .sidebar-lock-btn.unlocked { background: rgba(0,196,216,.12); border-color: rgba(0,196,216,.3); color: var(--accent); }
   .btn-logout:hover { background: rgba(220,38,38,.15) !important; border-color: rgba(220,38,38,.3) !important; color: #FCA5A5 !important; }
   .footer-detail { font-size: 10.5px; color: rgba(255,255,255,.25); padding: 6px 4px 0; line-height: 1.6; }
 
@@ -322,10 +324,13 @@
     background: var(--surface-2);
   }
   .panel-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
-  .panel-body { padding: 0 18px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .panel-body { padding: 0 18px 16px; }
 
   /* ---- Tables ---- */
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 600px; }
+  /* Sem min-width e sem nowrap de propósito: a tabela precisa encolher e
+     quebrar linha pra caber na tela inteira, sem nunca precisar de scroll
+     (nem lateral, nem vertical). */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: auto; }
   thead th {
     text-align: left;
     font-size: 10.5px;
@@ -335,10 +340,10 @@
     font-weight: 600;
     padding: 10px 10px 8px;
     border-bottom: 2px solid var(--border);
-    white-space: nowrap;
+    white-space: normal;
     background: var(--surface);
   }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; word-break: break-word; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #F7F9FC; }
   td.num, th.num { text-align: right; font-family: var(--font-mono); font-size: 12px; }
@@ -520,7 +525,6 @@
   .modal { width: 90vw; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  table { min-width: 500px; }
   .field-row { flex-direction: column; gap: 0; }
 }
 
@@ -561,13 +565,13 @@
 
   /* Panel */
   .panel { border-radius: var(--r-lg); }
-  .panel-body { padding: 0 12px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .panel-body { padding: 0 12px 12px; }
   .panel-head { padding: 10px 14px 8px; flex-wrap: wrap; gap: 6px; }
   .panel-title { font-size: 12.5px; }
 
-  /* Tabelas: scroll horizontal, sem truncar */
-  .panel-body table { min-width: 560px; font-size: 13.5px; }
-  thead th { padding: 9px 8px 7px; font-size: 11.5px; }
+  /* Tabelas: encolhem e quebram linha pra caber sem scroll, mesmo no celular */
+  .panel-body table { font-size: 13px; }
+  thead th { padding: 9px 8px 7px; font-size: 11px; }
   tbody td { padding: 9px 8px; }
 
   /* Filtros empilhados */
@@ -716,6 +720,47 @@
   tbody tr:hover { background: transparent; }
 }
 
+/* ---- Tela de login (split-screen) — visual puxado do site (fundo quase
+   preto + brilho radial teal + badge piscando), não mais um azul-marinho
+   genérico. ---- */
+.auth-shell { display: flex; justify-content: center; min-height: 100vh; background: #fff; }
+.auth-hero {
+  flex: 1 1 46%; max-width: 620px; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 65% 55% at 22% 60%, rgba(0,196,216,.16) 0%, transparent 70%), #030F18;
+  color: #fff; display: flex; flex-direction: column; padding: 40px 48px;
+}
+.auth-hero-net { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.auth-hero-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .04em; position: relative; z-index: 1; }
+.auth-hero-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
+@keyframes auth-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.auth-hero-tag {
+  display: inline-flex; align-items: center; gap: 8px; width: fit-content;
+  font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid rgba(0,196,216,.35); border-radius: 100px;
+  padding: 5px 14px; margin: auto 0 18px; position: relative; z-index: 1;
+}
+.auth-hero-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: auth-blink 2.2s ease-in-out infinite; }
+.auth-hero-title {
+  font-family: var(--font-ui); font-size: 36px; line-height: 1.12; font-weight: 800;
+  margin-bottom: 14px; max-width: 380px; color: #C5E8F2; position: relative; z-index: 1;
+}
+.auth-hero-title em { font-style: normal; color: var(--accent); text-shadow: 0 0 30px rgba(0,196,216,.45); }
+.auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; position: relative; z-index: 1; }
+.auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); position: relative; z-index: 1; }
+.auth-form-side { flex: 1 1 54%; max-width: 620px; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+.auth-form-card { width: 340px; max-width: 100%; min-width: 0; }
+@media (max-width: 899px) {
+  .auth-shell { flex-direction: column; justify-content: flex-start; }
+  .auth-hero {
+    flex: 0 0 auto; max-width: none; min-height: 0;
+    padding: 18px 20px 24px; align-items: flex-start;
+  }
+  .auth-hero-net { opacity: .6; }
+  .auth-hero-title, .auth-hero-sub, .auth-hero-foot { display: none; }
+  .auth-hero-tag { margin: 10px 0 0; }
+  .auth-form-side { max-width: none; align-items: flex-start; padding: 28px 18px; }
+}
+
 </style>
 </head>
 <body>
@@ -749,12 +794,115 @@ const TABELAS = ["contas","lancamentos","ajustes","categorias","negocios","carto
 const TABELAS_FLAT = new Set(["contas","categorias","negocios"]);
 const SENHA_MASTER_PADRAO = "master123"; // padrão até você trocar em Usuários — mude assim que possível
 
+/* =========================================================================
+   LOG DE AUDITORIA — registra sozinho tudo que passa por saveRows/deleteRow
+   (ou seja, quase todo o sistema: lançamentos, cadastros de estoque/clientes/
+   RH, usuários, etc.), sem precisar mexer em cada tela uma por uma.
+
+   Como funciona: guardamos em "shadowTabelas" uma cópia do último estado
+   que sabemos que está gravado no Supabase, por tabela. Toda vez que uma
+   tela chama saveRows()/deleteRow(), comparamos o que está sendo salvo
+   agora contra essa cópia ANTES de gravar — a diferença vira o log
+   ("criar" se o id é novo, "editar" se mudou algo, "excluir" se sumiu) —
+   e só depois de gravar com sucesso é que atualizamos a cópia e escrevemos
+   o log. Registro do log nunca trava a ação real do usuário: se falhar
+   (ex: tabela do log ainda não existe), só avisa no console.
+========================================================================= */
+let shadowTabelas = {};
+// Mesmo par [tabela do Supabase, chave em state] usado por loadData() —
+// repetido aqui (em vez de extraído pra uma constante única) porque nasceu
+// de blocos diferentes de loadData() que já existiam antes desse recurso;
+// o que importa é que os dois fiquem em sincronia manualmente quando uma
+// tabela nova entrar no sistema.
+const TABELAS_LOG_CHAVES = [
+  ["contas","contas"],["lancamentos","lancamentos"],["ajustes","ajustes"],["categorias","categorias"],["negocios","negocios"],["cartoes","cartoes"],
+  ["perfis","perfis"],
+  ["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],
+  ["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],
+  ["compras_vendas","comprasVendas"],
+  ["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"],
+];
+const LOG_TABELA_LABEL = {
+  contas:"Conta", lancamentos:"Lançamento", ajustes:"Ajuste de saldo", categorias:"Categoria",
+  negocios:"Negócio", cartoes:"Cartão", perfis:"Usuário",
+  est_produtos:"Produto", est_movimentos:"Movimentação de estoque", est_fornecedores:"Fornecedor", est_compras:"Compra (NF)",
+  cli_clientes:"Cliente", cli_planos:"Plano", cli_orcamentos:"Orçamento", cli_os:"Ordem de serviço",
+  cli_tecnicos:"Técnico", cli_chamados:"Chamado", cli_mensagens_enviadas:"Mensagem enviada",
+  compras_vendas:"Compra/Venda", rh_funcionarios:"Funcionário", rh_cargos:"Cargo", rh_folha:"Folha de pagamento", rh_ferias:"Férias",
+};
+// Comparação estável (chaves em ordem fixa) — evita "falso positivo" de
+// diferença só por causa da ordem em que as propriedades foram inseridas.
+function jsonEstavel(valor){
+  if(Array.isArray(valor)) return "[" + valor.map(jsonEstavel).join(",") + "]";
+  if(valor && typeof valor === "object") return "{" + Object.keys(valor).sort().map(k => JSON.stringify(k)+":"+jsonEstavel(valor[k])).join(",") + "}";
+  return JSON.stringify(valor);
+}
+function atualizarShadow(tabela, items){
+  shadowTabelas[tabela] = (items||[]).map(x => JSON.parse(JSON.stringify(x)));
+}
+function snapshotShadowInicial(){
+  shadowTabelas = {};
+  TABELAS_LOG_CHAVES.forEach(([tabela, chave]) => atualizarShadow(tabela, state[chave]));
+}
+function calcularLogsSave(tabela, itemsDepois){
+  const mapAntes = new Map((shadowTabelas[tabela]||[]).map(x => [x.id, x]));
+  const entradas = [];
+  for(const item of itemsDepois){
+    const prev = mapAntes.get(item.id);
+    // Clona "item" AGORA — registrarLogs() só é escrito de fato depois
+    // (é fire-and-forget), e "item" é o objeto vivo dentro de state.X.
+    // Sem clonar, uma edição seguinte no mesmo registro (antes desse log
+    // terminar de gravar) contaminaria retroativamente o "depois" aqui.
+    if(!prev) entradas.push({ tabela, acao:"criar", registroId:item.id, antes:null, depois:JSON.parse(JSON.stringify(item)) });
+    else if(jsonEstavel(prev) !== jsonEstavel(item)) entradas.push({ tabela, acao:"editar", registroId:item.id, antes:prev, depois:JSON.parse(JSON.stringify(item)) });
+  }
+  return entradas;
+}
+function calcularLogsDelete(tabela, ids){
+  const mapAntes = new Map((shadowTabelas[tabela]||[]).map(x => [x.id, x]));
+  return ids.map(id => mapAntes.get(id)).filter(Boolean).map(prev => ({ tabela, acao:"excluir", registroId:prev.id, antes:prev, depois:null }));
+}
+// Quem fez a ação — cobre Master (com ou sem perfil secundário de mesmo
+// tipo "master" escolhido na tela compartilhada), Membro (login individual
+// ou compartilhado, dá no mesmo pro log) e Técnico.
+function autorAtual(){
+  if(state.modoTecnico && state.tecnicoAuthInfo) return { nome: state.tecnicoAuthInfo.nome || "Técnico", tipo: "tecnico" };
+  if(state.modoCliente && state.clienteAuthInfo) return { nome: state.clienteAuthInfo.nome || "Cliente", tipo: "cliente" };
+  if(state.perfilAtivo) return { nome: state.perfilAtivo.nome, tipo: state.perfilAtivo.tipo === "master" ? "master" : "membro" };
+  return { nome: "Master", tipo: "master" };
+}
+function descricaoRegistro(dados){
+  if(!dados) return "";
+  return dados.nome || dados.descricao || dados.titulo || dados.email || "";
+}
+async function registrarLogs(entradas){
+  if(!entradas || !entradas.length || !state.user) return;
+  try{
+    const autor = autorAtual();
+    const dono = donoAtual();
+    const rows = entradas.map(en => ({
+      id: uid("log"), user_id: dono,
+      autor_nome: autor.nome, autor_tipo: autor.tipo,
+      tabela: en.tabela, acao: en.acao, registro_id: en.registroId,
+      descricao: descricaoRegistro(en.depois || en.antes),
+      antes: en.antes, depois: en.depois,
+      criado_em: new Date().toISOString(),
+    }));
+    const { error } = await supabaseClient.from("logs_auditoria").insert(rows);
+    if(error) throw error;
+  }catch(e){
+    // "Melhor esforço": nunca trava a ação real do usuário por causa do log
+    // (ex: tabela de log ainda não criada no Supabase).
+    console.warn("[registrarLogs]", e.message||e);
+  }
+}
+
 // Versão do app — aparece do lado do logo "Holding" (topo do menu, desktop
 // e mobile). Serve pra você conferir rapidinho se o celular/navegador já
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.0.4";
+const APP_VERSION = "1.5.6";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -763,11 +911,13 @@ let state = {
   siteLeads: [],
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
+  logsAuditoria: [],
   view: "dashboard", storageOK: true, ultimoSalvamento: null, user: null, perfilAtivo: null, perfilEscolhido: false,
   modoTecnico: false, tecnicoAuthInfo: null,
   modoCliente: false, clienteAuthInfo: null,
   modoMembro: false, membroAuthInfo: null,
-  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, modpanelAberto: false,
+  senhaMaster: SENHA_MASTER_PADRAO, ajustesMenuAberto: false, ajustesMenuFechado: false,
+  cadastrosMenuAberto: false, cadastrosMenuFechado: false, modpanelAberto: false,
   moduloAtivo: "financeiro",
   mesVisualizado: { ano: new Date().getFullYear(), mes: new Date().getMonth() },
   executivoOculto: true, // valores da Visão Geral Executivo começam ocultos — precisa clicar no olho pra ver
@@ -781,7 +931,7 @@ const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
 const VIEWS_VALIDAS = new Set([
   "vg_sintetico","vg_analitico","vg_executivo",
   "cadastro_hub",
-  "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios",
+  "dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","usuarios","logs_auditoria",
   "rel_fluxo","rel_dre",
   "est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas",
   "cli_dashboard","cli_lista","cli_planos","cli_detalhe","cli_orcamentos","cli_os_lista","cli_os_detalhe","cli_tecnicos","cli_chamados","cli_chamado_detalhe","cli_mensagens","cli_envio_massa",
@@ -1003,6 +1153,7 @@ function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","
 function fmtBRL(n){ n = Number(n)||0; return n.toLocaleString("pt-BR", {style:"currency", currency:"BRL"}); }
 function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ ••••••"; }
 function fmtDateBR(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
+function fmtDataHora(isoComHora){ if(!isoComHora) return "—"; return new Date(isoComHora).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function contaById(id){ return state.contas.find(c => c.id === id); }
 function cartaoById(id){ return state.cartoes.find(c => c.id === id); }
@@ -1075,6 +1226,11 @@ function podeVerModulo(moduloId){ return permissaoModulo(moduloId, "ver"); }
 function podeCriarModulo(moduloId){ return permissaoModulo(moduloId, "criar"); }
 function podeEditarModulo(moduloId){ return permissaoModulo(moduloId, "editar"); }
 function podeExcluirModulo(moduloId){ return permissaoModulo(moduloId, "excluir"); }
+// Esconde valores em R$ (planos, MRR, custos, margens...) de quem não tem acesso ao
+// módulo Financeiro — pensado pra perfis que só cuidam de cadastro de cliente (ex:
+// alguém que lança/ajusta/exclui cliente, mas não deve enxergar quanto cada um paga.
+function podeVerValores(){ return podeVerModulo("financeiro"); }
+const VALOR_OCULTO = "•••";
 // esconde o botão quando o perfil não tem a ação liberada nesse módulo (o clique já é
 // bloqueado no dispatcher central de qualquer forma — isso é só pra não mostrar à toa)
 function seModulo(moduloId, acao, html){ return permissaoModulo(moduloId, acao) ? html : ""; }
@@ -1310,10 +1466,13 @@ async function saveRows(table, items){
         ? { id, user_id: dono, ...rest, updated_at: new Date().toISOString() }
         : { id, user_id: dono, dados: rest, updated_at: new Date().toISOString() };
     });
+    const logs = calcularLogsSave(table, items);
     const { error } = await supabaseClient.from(table).upsert(rows, { onConflict: "id" });
     if(error) throw error;
     state.storageOK = true;
     state.ultimoSalvamento = new Date();
+    atualizarShadow(table, items);
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     state.storageOK = false;
     console.error(`[saveRows:${table}]`, e);
@@ -1325,8 +1484,11 @@ async function saveRows(table, items){
 async function deleteRow(table, id){
   if(!state.user || !id) return;
   try{
+    const logs = calcularLogsDelete(table, [id]);
     const { error } = await supabaseClient.from(table).delete().eq("id", id).eq("user_id", donoAtual());
     if(error) throw error;
+    shadowTabelas[table] = (shadowTabelas[table]||[]).filter(x => x.id !== id);
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     console.error(`[deleteRow:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
@@ -1337,8 +1499,11 @@ async function deleteRow(table, id){
 async function deleteRows(table, ids){
   if(!state.user || !ids || !ids.length) return;
   try{
+    const logs = calcularLogsDelete(table, ids);
     const { error } = await supabaseClient.from(table).delete().in("id", ids).eq("user_id", donoAtual());
     if(error) throw error;
+    shadowTabelas[table] = (shadowTabelas[table]||[]).filter(x => !ids.includes(x.id));
+    if(logs.length) registrarLogs(logs);
   }catch(e){
     console.error(`[deleteRows:${table}]`, e);
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
@@ -1549,6 +1714,23 @@ async function loadData(){
       state.siteLeads = [];
     }
 
+    // Logs de auditoria — só os mais recentes (a tabela só cresce, não faz
+    // sentido carregar tudo desde sempre a cada login).
+    try{
+      const { data, error } = await supabaseClient.from("logs_auditoria").select("*")
+        .eq("user_id", dono).order("criado_em", { ascending:false }).limit(500);
+      if(error) throw error;
+      state.logsAuditoria = data || [];
+    }catch(e){
+      console.warn("[loadData:logs_auditoria] tabela ainda não existe — rode o SQL de criação.", e.message||e);
+      state.logsAuditoria = [];
+    }
+
+    // A partir daqui, qualquer save/delete já compara contra o estado atual
+    // (snapshot) pra gerar o log — inclusive o próprio seed/auto-baixa logo
+    // abaixo, que também são mudanças reais e valem ser registradas.
+    snapshotShadowInicial();
+
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
     if(state.categorias.length === 0 && state.negocios.length === 0){
       state.categorias = seedCategorias();
@@ -1616,6 +1798,10 @@ async function loadDataTecnico(){
     }
     state.estMovimentos = [];
     state.storageOK = true;
+    // Snapshot pro log de auditoria — só as tabelas que o técnico de fato
+    // grava (fechar chamado, registrar material usado).
+    atualizarShadow("cli_chamados", state.cliChamados);
+    atualizarShadow("est_movimentos", state.estMovimentos);
   }catch(e){
     state.storageOK = false;
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
@@ -2064,7 +2250,7 @@ function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
 // clicada, em vez de escolhido manualmente antes de navegar.
 function moduloDaView(view){
   if(view.startsWith("vg_")) return "visaogeral";
-  if(view === "cadastro_hub" || view === "usuarios") return "cadastro";
+  if(view === "cadastro_hub" || view === "usuarios" || view === "logs_auditoria") return "cadastro";
   if(view.startsWith("est_")) return "estoque";
   if(view.startsWith("cli_")) return "clientes";
   if(view.startsWith("rh_")) return "rh";
@@ -2119,14 +2305,6 @@ function renderApp(){
       ${sidebarConteudo()}
 
       <div class="sidebar-footer">
-        ${master ? `<button class="sidebar-lock-btn" data-action="exportar-backup" style="margin-bottom:4px;" title="Exportar backup">⬇<span class="label"> Exportar backup</span></button>
-        <label class="sidebar-lock-btn" style="display:flex; cursor:pointer;" title="Importar backup">
-          ⬆<span class="label"> Importar backup</span>
-          <input type="file" accept="application/json" id="importarBackupInput" style="display:none;">
-        </label>
-        <button class="sidebar-lock-btn" data-action="popular-dados-teste" style="margin-top:4px;" title="Escolha popular Geral (tudo) ou só o módulo em que você está agora">🌱<span class="label"> Popular dados de teste</span></button>
-        <button class="sidebar-lock-btn" data-action="remover-dados-teste" style="margin-top:4px;" title="Escolha remover Geral (tudo) ou só o módulo em que você está agora">🧹<span class="label"> Remover dados de teste</span></button>` : ""}
-        ${!state.modoMembro ? `<button class="sidebar-lock-btn" data-action="trocar-perfil" style="margin-top:4px;" title="Trocar de usuário">🔀<span class="label"> Trocar de usuário</span></button>` : ""}
         <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
@@ -2166,10 +2344,8 @@ function renderApp(){
     </div>
     <button class="fab-btn" id="fabBtn" title="Lançar" aria-label="Lançar">+</button>
   </div>`;
-  const importInput = document.getElementById("importarBackupInput");
-  if(importInput) importInput.addEventListener("change", handleImportarBackup);
   // membros nao acessam Dashboard/Contas/Cartoes/Ajustes/Usuarios — redireciona se necessario
-  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa"];
+  const VIEWS_SOMENTE_MASTER = ["dashboard","contas","cartoes","ajustes","categorias","negocios","usuarios","rel_fluxo","rel_dre","cli_mensagens","cli_envio_massa","logs_auditoria"];
   if(!master && VIEWS_SOMENTE_MASTER.includes(state.view)){
     state.view = "lancamentos";
   }
@@ -2195,7 +2371,7 @@ function renderApp(){
   // fechar um grupo (senão expandir "Financeiro" no celular fechava o
   // menu inteiro em vez de mostrar os itens de dentro).
   mainSidebar?.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => {
-    if(el.dataset.action === "toggle-nav-grupo" || el.dataset.action === "toggle-ajustes-menu") return;
+    if(el.dataset.action === "toggle-nav-grupo" || el.dataset.action === "toggle-ajustes-menu" || el.dataset.action === "toggle-cadastros-menu") return;
     if(window.innerWidth < 900) closeDrawer();
   }));
   // ---- Botão flutuante "+" ----
@@ -2218,9 +2394,69 @@ function renderApp(){
   }
   renderView();
 }
+// ============================================================
+// ÍCONES — SVG de linha (estilo Lucide), no lugar de emoji, pro menu
+// lateral. currentColor herda a cor do texto ao redor (inclusive o teal
+// quando o item está ativo) — não precisa de classe extra pra colorir.
+// Cobre só o menu por enquanto; o resto do sistema (botões, cabeçalhos)
+// continua com emoji e é migrado aos poucos nas próximas rodadas.
+// ============================================================
+function svgIcon(inner){
+  return `<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+const ICONS = {
+  visao: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M12.7 7.3 8.8 8.8l-1.5 3.9 3.9-1.5z"/>`),
+  financeiro: svgIcon(`<rect x="2.5" y="5" width="15" height="11" rx="1.6"/><path d="M2.5 8.5h15"/><circle cx="14" cy="12" r="1"/>`),
+  projetos: svgIcon(`<path d="M7 6V4.8A1.3 1.3 0 0 1 8.3 3.5h3.4A1.3 1.3 0 0 1 13 4.8V6"/><rect x="2.5" y="6" width="15" height="10" rx="1.6"/><path d="M2.5 10.5h15"/>`),
+  estoque: svgIcon(`<path d="M10 3 3 6.5 10 10l7-3.5z"/><path d="M3 6.5v7L10 17l7-3.5v-7"/><path d="M10 10v7"/>`),
+  clientes: svgIcon(`<circle cx="7.2" cy="7" r="2.6"/><path d="M2.5 16c.6-3 2.3-4.6 4.7-4.6S11.4 13 12 16"/><circle cx="14" cy="7.5" r="2"/><path d="M13 11.6c1.9.3 3.1 1.7 3.5 4"/>`),
+  rh: svgIcon(`<rect x="4" y="2.5" width="12" height="15" rx="1"/><path d="M7.3 6h1.4M11.3 6h1.4M7.3 9h1.4M11.3 9h1.4M7.3 12h1.4M11.3 12h1.4"/>`),
+  comprasvendas: svgIcon(`<path d="M3 6.5h11l-2.5-2.5"/><path d="M17 13.5H6l2.5 2.5"/>`),
+  cadastro: svgIcon(`<path d="M2.5 5.8A1.3 1.3 0 0 1 3.8 4.5h3.4l1.4 1.6h7A1.3 1.3 0 0 1 16.9 7.4v7.3a1.3 1.3 0 0 1-1.3 1.3H3.8a1.3 1.3 0 0 1-1.3-1.3z"/>`),
+  dashboard: svgIcon(`<rect x="2.7" y="2.7" width="6" height="6" rx="1"/><rect x="11.3" y="2.7" width="6" height="6" rx="1"/><rect x="2.7" y="11.3" width="6" height="6" rx="1"/><rect x="11.3" y="11.3" width="6" height="6" rx="1"/>`),
+  contas: svgIcon(`<path d="M2.5 8 10 3l7.5 5"/><path d="M4 8v7.5M8 8v7.5M12 8v7.5M16 8v7.5"/><path d="M2.5 15.5h15"/>`),
+  cartoes: svgIcon(`<rect x="2.2" y="4.5" width="15.6" height="11" rx="1.6"/><path d="M2.2 8h15.6"/><path d="M4.5 12.3h3"/>`),
+  lancamentos: svgIcon(`<path d="M3.3 6h13.4M3.3 10h13.4M3.3 14h13.4"/>`),
+  receber: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 6v7M6.8 10.3 10 13.5l3.2-3.2"/>`),
+  pagar: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 14V7M6.8 9.7 10 6.5l3.2 3.2"/>`),
+  transferencias: svgIcon(`<path d="M4 6.5h10.5L12 4"/><path d="M16 13.5H5.5L8 16"/>`),
+  fluxocaixa: svgIcon(`<path d="M2.7 13.5 7.4 8.8l3 3 5.4-6.1"/><path d="M12.6 5.5h3.2v3.2"/>`),
+  dre: svgIcon(`<path d="M5 2.7h7l3 3v11.6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3.7a1 1 0 0 1 1-1z"/><path d="M7 10h6M7 13h6"/>`),
+  ajustes: svgIcon(`<path d="M4 6h9M15.5 6h.5"/><path d="M4 14h.5M6.5 14H16"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/>`),
+  usuarios: svgIcon(`<circle cx="10" cy="6.8" r="3.2"/><path d="M3.5 17c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"/>`),
+  logs: svgIcon(`<circle cx="10" cy="10" r="7.5"/><path d="M10 5.8V10l3 2"/>`),
+  produtos: svgIcon(`<path d="M10 3 3 6.5 10 10l7-3.5z"/><path d="M3 6.5v7L10 17l7-3.5v-7"/><path d="M10 10v7"/>`),
+  compras: svgIcon(`<path d="M5.5 2.7h6l3.2 3.2v10.7a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V3.7a1 1 0 0 1 1-1z"/><path d="M7.3 10h5.4M7.3 13h5.4"/>`),
+  movimentacoes: svgIcon(`<path d="M7 3.5v10.8M4.3 11.6 7 14.3l2.7-2.7"/><path d="M13 16.5V5.7M15.7 8.4 13 5.7l-2.7 2.7"/>`),
+  fornecedores: svgIcon(`<path d="M3 17V7l4-2 4 2v10"/><path d="M11 17V9.5l4-1.5 2 1v8"/><path d="M2.5 17h15"/>`),
+  alertas: svgIcon(`<path d="M10 3.3c-2.4 0-3.7 2-3.7 5v2.7L4.7 13.5h10.6L13.7 11V8.3c0-3-1.3-5-3.7-5z"/><path d="M8.3 15.8a1.7 1.7 0 0 0 3.4 0"/>`),
+  planos: svgIcon(`<rect x="4" y="3.5" width="12" height="13" rx="1.3"/><path d="M7.5 2.5h5v2.3h-5z"/><path d="M6.8 9h6.4M6.8 12h6.4"/>`),
+  orcamentos: svgIcon(`<path d="M12.7 3 15 5.3 6.3 14 3.5 14.5 4 11.7z"/>`),
+  os: svgIcon(`<path d="M13.4 4.2a3 3 0 0 1-4 4l-5.4 5.4a1.4 1.4 0 0 0 2 2l5.4-5.4a3 3 0 0 1 4-4l-2 2-1.6-.4-.4-1.6z"/>`),
+  chamados: svgIcon(`<path d="M4 3.5h3l1.3 3.3-1.6 1.4a9 9 0 0 0 4.6 4.6l1.4-1.6 3.3 1.3v3a1 1 0 0 1-1.1 1C8.7 15.5 4.5 11.3 3 5.1a1 1 0 0 1 1-1.1z"/>`),
+  tecnicos: svgIcon(`<rect x="3" y="7" width="14" height="9" rx="1.3"/><path d="M7 7V5.3A1.3 1.3 0 0 1 8.3 4h3.4A1.3 1.3 0 0 1 13 5.3V7"/><path d="M3 11h14"/>`),
+  enviomassa: svgIcon(`<path d="M17 3 2.5 9.3l5.6 1.9L15 5z"/><path d="M8.1 11.2 9.5 16 12 12.8"/>`),
+  mensagens: svgIcon(`<path d="M3 4.5h14v9H8.5L4.5 16.5V13.5H3z"/>`),
+  funcionarios: svgIcon(`<circle cx="10" cy="6.8" r="3.2"/><path d="M3.5 17c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"/>`),
+  cargos: svgIcon(`<path d="M8.5 3H4a1 1 0 0 0-1 1v4.5l7 7 5.5-5.5-7-7z"/><circle cx="6.3" cy="6.3" r="1"/>`),
+  folha: svgIcon(`<path d="M2.7 13.5 7.4 8.8l3 3 5.4-6.1"/><path d="M12.6 5.5h3.2v3.2"/>`),
+  ferias: svgIcon(`<rect x="3" y="4" width="14" height="12.5" rx="1.3"/><path d="M3 7.5h14"/><path d="M6.3 2.5v3M13.7 2.5v3"/><path d="M6.5 11h1.6M9.2 11h1.6M11.9 11h1.6"/>`),
+  leads: svgIcon(`<circle cx="10" cy="10" r="7.3"/><circle cx="10" cy="10" r="3.8"/><circle cx="10" cy="10" r=".7" fill="currentColor"/>`),
+};
+function ic(nome){ return ICONS[nome] || ""; }
 function navItem(view, icon, label){
   const active = state.view === view ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav" data-view="${view}">
+    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
+  </div>`;
+}
+// Igual navItem, mas trava a tela num negócio só (usado nos menus "por
+// Negócio" — ex: Provedor). Ao clicar, o filtro de negócio da tela de
+// destino já entra travado nesse negócio, e o seletor de negócio some de
+// lá (ver filtroNegocioTravado).
+function navItemNegocio(view, icon, label, negocio){
+  const active = state.view === view && filtroNegocioTravado ? "active" : "";
+  return `<div class="nav-item ${active}" data-action="nav-negocio" data-view="${view}" data-negocio="${esc(negocio)}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
 }
@@ -2232,6 +2468,11 @@ function navItem(view, icon, label){
 // clicar (guardado em sidebarGruposAbertos, só na sessão — não precisa
 // sobreviver a um F5, reabre pela view atual de qualquer jeito).
 let sidebarGruposAbertos = new Set();
+// Grupos que o usuário fechou manualmente — sobrepõe o "abre sozinho por
+// conter a view atual" (sem isso, era impossível recolher o grupo da tela
+// em que você já está: toda vez que tentava fechar, "contém a view atual"
+// forçava aberto de novo, e o clique não tinha efeito nenhum visível).
+let sidebarGruposFechados = new Set();
 // renderApp() sempre desenha o menu lateral já fechado (é uma trava de
 // segurança pra nunca deixar a rolagem travada — ver comentário lá dentro).
 // Isso é ótimo pra navegação de verdade, mas expandir/fechar um grupo do
@@ -2242,9 +2483,9 @@ let sidebarGruposAbertos = new Set();
 let drawerAbertoAntes = false;
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const contemViewAtual = viewsDoGrupo.includes(state.view);
-  const aberto = sidebarGruposAbertos.has(id) || contemViewAtual;
+  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
   return `
-    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" style="cursor:pointer;">
+    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
@@ -2262,97 +2503,112 @@ function sidebarConteudo(){
   const grupos = [];
 
   if(podeVerModulo("visao")){
-    grupos.push(navGrupo("visao", "🧭", "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
-      navItem("vg_executivo","🎯","Executiva"),
-      navItem("vg_sintetico","🧭","Sintética"),
-      navItem("vg_analitico","📊","Analítica"),
+    grupos.push(navGrupo("visao", ic("visao"), "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
+      navItem("vg_executivo",ic("leads"),"Executiva"),
+      navItem("vg_sintetico",ic("visao"),"Sintética"),
+      navItem("vg_analitico",ic("fluxocaixa"),"Analítica"),
+    ].join("")));
+  }
+
+  // ---- Menus "por Negócio" — cada negócio ganha um grupo próprio no menu,
+  // com só os dados DELE (Clientes, Financeiro, Chamados, Planos,
+  // Técnicos). Pensado pra quando um usuário só tem acesso a 1 negócio: em
+  // vez de dar acesso ao módulo inteiro (que mistura todos os negócios), dá
+  // pra liberar só esse grupo — que já entra com o filtro travado nesse
+  // negócio. Piloto: só "Provedor" (ServNet) por enquanto.
+  if(master || podeVerNegocio("Provedor")){
+    grupos.push(navGrupo("neg_provedor", "🌐", "Provedor", ["cli_lista","lancamentos","receitas","despesas","transferencias","cli_chamados","cli_planos","cli_tecnicos"], [
+      navItemNegocio("cli_lista",ic("clientes"),"Clientes","Provedor"),
+      navItemNegocio("lancamentos",ic("lancamentos"),"Lançamentos","Provedor"),
+      navItemNegocio("receitas",ic("receber"),"Contas a Receber","Provedor"),
+      navItemNegocio("despesas",ic("pagar"),"Contas a Pagar","Provedor"),
+      navItemNegocio("transferencias",ic("transferencias"),"Transferências","Provedor"),
+      navItemNegocio("cli_chamados",ic("chamados"),"Chamados","Provedor"),
+      navItemNegocio("cli_planos",ic("planos"),"Planos","Provedor"),
+      navItemNegocio("cli_tecnicos",ic("tecnicos"),"Técnicos","Provedor"),
     ].join("")));
   }
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   if(podeVerModulo("financeiro")){
-    grupos.push(navGrupo("financeiro", "💰", "Financeiro", financeiroViews, [
-      master ? navItem("dashboard","◆","Dashboard") : "",
-      master ? navItem("contas","▢","Contas") : "",
-      master ? navItem("cartoes","💳","Cartões de Crédito") : "",
-      navItem("lancamentos","≡","Todos os Lançamentos"),
-      navItem("receitas","📥","Contas a Receber"),
-      navItem("despesas","📤","Contas a Pagar"),
-      navItem("transferencias","⇄","Transferências"),
-      master ? navItem("rel_fluxo","💵","Fluxo de Caixa") : "",
-      master ? navItem("rel_dre","📑","DRE") : "",
+    grupos.push(navGrupo("financeiro", ic("financeiro"), "Financeiro", financeiroViews, [
+      master ? navItem("dashboard",ic("dashboard"),"Dashboard") : "",
+      master ? navItem("contas",ic("contas"),"Contas") : "",
+      master ? navItem("cartoes",ic("cartoes"),"Cartões de Crédito") : "",
+      navItem("lancamentos",ic("lancamentos"),"Todos os Lançamentos"),
+      navItem("receitas",ic("receber"),"Contas a Receber"),
+      navItem("despesas",ic("pagar"),"Contas a Pagar"),
+      navItem("transferencias",ic("transferencias"),"Transferências"),
+      master ? navItem("rel_fluxo",ic("fluxocaixa"),"Fluxo de Caixa") : "",
+      master ? navItem("rel_dre",ic("dre"),"DRE") : "",
       master ? navSubmenuAjustes() : "",
     ].join("")));
   }
 
   const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
   if(negociosVisiveis.length){
-    grupos.push(navGrupo("projetos", "📋", "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
+    grupos.push(navGrupo("projetos", ic("projetos"), "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
       <div class="nav-item ${state.view==="negocio_"+n.id?"active":""}" data-action="nav" data-view="negocio_${n.id}">
         <span style="display:flex;align-items:center;gap:9px;"><span class="tag-dot" style="background:${negocioCor(n.nome)};"></span><span class="label">${esc(n.nome)}</span></span>
       </div>`).join("")));
   }
 
   if(podeVerModulo("estoque")){
-    grupos.push(navGrupo("estoque", "📦", "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
-      navItem("est_dashboard","◆","Dashboard"),
-      navItem("est_produtos","📦","Produtos"),
-      navItem("est_compras","📄","Compras (NF)"),
-      navItem("est_movimentos","↕","Movimentações"),
-      navItem("est_fornecedores","🏭","Fornecedores"),
-      navItem("est_alertas","🔔","Alertas de Estoque"),
+    grupos.push(navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
+      navItem("est_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("est_produtos",ic("produtos"),"Produtos"),
+      navItem("est_compras",ic("compras"),"Compras (NF)"),
+      navItem("est_movimentos",ic("movimentacoes"),"Movimentações"),
+      navItem("est_fornecedores",ic("fornecedores"),"Fornecedores"),
+      navItem("est_alertas",ic("alertas"),"Alertas de Estoque"),
     ].join("")));
   }
 
   if(podeVerModulo("clientes")){
-    grupos.push(navGrupo("clientes", "👥", "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
-      navItem("cli_dashboard","◆","Dashboard"),
-      navItem("cli_leads","🎯","Leads do Site"),
-      navItem("cli_lista","👥","Todos os Clientes"),
-      navItem("cli_planos","📋","Planos"),
-      navItem("cli_orcamentos","📝","Orçamentos"),
-      navItem("cli_os_lista","🔧","Ordens de Serviço"),
-      navItem("cli_chamados","📞","Chamados"),
-      navItem("cli_tecnicos","🧰","Técnicos"),
-      navItem("cli_envio_massa","📤","Enviar mensagens"),
-      navItem("cli_mensagens","💬","Modelos de mensagem"),
+    grupos.push(navGrupo("clientes", ic("clientes"), "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
+      navItem("cli_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("cli_leads",ic("leads"),"Leads do Site"),
+      navItem("cli_lista",ic("clientes"),"Todos os Clientes"),
+      navItem("cli_planos",ic("planos"),"Planos"),
+      navItem("cli_orcamentos",ic("orcamentos"),"Orçamentos"),
+      navItem("cli_os_lista",ic("os"),"Ordens de Serviço"),
+      navItem("cli_chamados",ic("chamados"),"Chamados"),
+      navItem("cli_tecnicos",ic("tecnicos"),"Técnicos"),
+      navItem("cli_envio_massa",ic("enviomassa"),"Enviar mensagens"),
+      navItem("cli_mensagens",ic("mensagens"),"Modelos de mensagem"),
     ].join("")));
   }
 
   if(podeVerModulo("rh")){
-    grupos.push(navGrupo("rh", "🏢", "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
-      navItem("rh_dashboard","◆","Dashboard"),
-      navItem("rh_funcionarios","🧑‍💼","Funcionários"),
-      navItem("rh_cargos","🏷️","Cargos"),
-      navItem("rh_folha","💵","Folha de Pagamento"),
-      navItem("rh_ferias","🏖️","Férias"),
-      navItem("rh_alertas","🔔","Alertas"),
+    grupos.push(navGrupo("rh", ic("rh"), "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
+      navItem("rh_dashboard",ic("dashboard"),"Dashboard"),
+      navItem("rh_funcionarios",ic("funcionarios"),"Funcionários"),
+      navItem("rh_cargos",ic("cargos"),"Cargos"),
+      navItem("rh_folha",ic("folha"),"Folha de Pagamento"),
+      navItem("rh_ferias",ic("ferias"),"Férias"),
+      navItem("rh_alertas",ic("alertas"),"Alertas"),
     ].join("")));
   }
 
   if(podeVerModulo("comprasvendas")){
-    grupos.push(navGrupo("comprasvendas", "🔄", "Compra e Venda", ["cv_lista"], navItem("cv_lista","🔄","Itens")));
+    grupos.push(navGrupo("comprasvendas", ic("comprasvendas"), "Compra e Venda", ["cv_lista"], navItem("cv_lista",ic("comprasvendas"),"Itens")));
   }
   if(podeVerModulo("cadastro")){
-    grupos.push(navGrupo("cadastro", "🗂️", "Cadastro", ["cadastro_hub","usuarios"], [
-      navItem("cadastro_hub","🗂️","Central de Cadastros"),
-      master ? navItem("usuarios","👤","Usuários") : "",
+    grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
+      navSubmenuCadastros(),
+      master ? navItem("logs_auditoria",ic("logs"),"Logs de Auditoria") : "",
     ].join("")));
   }
 
-  const construcao = master ? `
-    <div class="nav-group-label">Em construção</div>
-    ${navItemSoon("Contas Fixas")}
-    ${navItemSoon("Carteira")}
-    ${navItemSoon("Rateio de Despesas")}
-  ` : "";
-
-  return grupos.join("") + construcao;
+  return grupos.join("");
 }
 const AJUSTES_SUBVIEWS = ["ajustes","categorias","negocios"];
 function navSubmenuAjustes(){
   const dentroDoSubmenu = AJUSTES_SUBVIEWS.includes(state.view);
-  const aberto = state.ajustesMenuAberto || dentroDoSubmenu;
+  // "ajustesMenuFechado" sobrepõe o auto-abre-por-conter-a-view-atual — mesmo
+  // motivo do sidebarGruposFechados no navGrupo() (sem isso, era impossível
+  // recolher esse submenu enquanto você estava numa tela dele).
+  const aberto = state.ajustesMenuFechado ? false : (state.ajustesMenuAberto || dentroDoSubmenu);
   const cabecalhoAtivo = dentroDoSubmenu && !aberto;
   const subItens = [
     navItem("ajustes","∿","Ajustes de Saldo"),
@@ -2360,18 +2616,30 @@ function navSubmenuAjustes(){
     navItem("negocios","🏢","Negócios"),
   ].join("");
   return `
-    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" style="cursor:pointer;">
+    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" data-aberto="${aberto}" style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
   `;
 }
-function navItemSoon(label){
-  return `<div class="nav-item disabled">
-    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">○</span><span class="label">${label}</span></span>
-    <span class="soon-badge label">em breve</span>
-  </div>`;
+const CADASTROS_SUBVIEWS = ["cadastro_hub","usuarios"];
+function navSubmenuCadastros(){
+  const master = ehMaster();
+  const dentroDoSubmenu = CADASTROS_SUBVIEWS.includes(state.view);
+  const aberto = state.cadastrosMenuFechado ? false : (state.cadastrosMenuAberto || dentroDoSubmenu);
+  const cabecalhoAtivo = dentroDoSubmenu && !aberto;
+  const subItens = [
+    navItem("cadastro_hub","🗂️","Central de Cadastros"),
+    master ? navItem("usuarios","👤","Usuários") : "",
+  ].join("");
+  return `
+    <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-cadastros-menu" data-aberto="${aberto}" style="cursor:pointer;">
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">🗂️</span><span class="label">Cadastros</span></span>
+      <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
+    </div>
+    ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
+  `;
 }
 function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
@@ -2392,6 +2660,7 @@ function renderView(){
   else if(state.view === "categorias") main.innerHTML = viewCategorias();
   else if(state.view === "negocios") main.innerHTML = viewNegocios();
   else if(state.view === "usuarios") main.innerHTML = viewUsuarios();
+  else if(state.view === "logs_auditoria") main.innerHTML = viewLogsAuditoria();
   // ---- Módulo Estoque ----
   else if(state.view === "est_dashboard") main.innerHTML = viewEstDashboard();
   else if(state.view === "est_produtos") main.innerHTML = viewEstProdutos();
@@ -2427,77 +2696,87 @@ function renderView(){
 // ============================================================
 // TELA DE LOGIN
 // ============================================================
+// Shell compartilhado das 3 telas de login (padrão/equipe/técnico) — painel
+// escuro com a marca à esquerda (só desktop, some no celular pra não roubar
+// espaço) e o formulário num cartão limpo à direita. "tituloHero"/"subHero"
+// mudam por tela pra dar contexto sem poluir o formulário em si.
+const AUTH_HERO_NET = '<svg class="auth-hero-net" viewBox="0 0 620 940" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="546" y1="57" x2="478" y2="162" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="546" y1="57" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.14"/><line x1="478" y1="162" x2="570" y2="169" stroke="#00C4D8" stroke-width="1" opacity="0.17"/><line x1="478" y1="162" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.05"/><line x1="478" y1="162" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="570" y1="169" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="389" y1="354" x2="450" y2="345" stroke="#00C4D8" stroke-width="1" opacity="0.20"/><line x1="389" y1="354" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="389" y1="354" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="450" y1="345" x2="589" y2="324" stroke="#00C4D8" stroke-width="1" opacity="0.11"/><line x1="450" y1="345" x2="280" y2="465" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="280" y1="465" x2="365" y2="639" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="365" y1="639" x2="496" y2="626" stroke="#00C4D8" stroke-width="1" opacity="0.12"/><line x1="365" y1="639" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="365" y1="639" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="365" y1="639" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.16"/><line x1="496" y1="626" x2="591" y2="616" stroke="#00C4D8" stroke-width="1" opacity="0.16"/><line x1="496" y1="626" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="54" y1="719" x2="180" y2="710" stroke="#00C4D8" stroke-width="1" opacity="0.13"/><line x1="54" y1="719" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.11"/><line x1="54" y1="719" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.04"/><line x1="180" y1="710" x2="270" y2="722" stroke="#00C4D8" stroke-width="1" opacity="0.17"/><line x1="180" y1="710" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.03"/><line x1="180" y1="710" x2="75" y2="854" stroke="#00C4D8" stroke-width="1" opacity="0.06"/><line x1="180" y1="710" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.09"/><line x1="270" y1="722" x2="385" y2="737" stroke="#00C4D8" stroke-width="1" opacity="0.14"/><line x1="270" y1="722" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.07"/><line x1="385" y1="737" x2="452" y2="898" stroke="#00C4D8" stroke-width="1" opacity="0.07"/><line x1="75" y1="854" x2="177" y2="868" stroke="#00C4D8" stroke-width="1" opacity="0.15"/><line x1="452" y1="898" x2="599" y2="872" stroke="#00C4D8" stroke-width="1" opacity="0.10"/><circle cx="546" cy="57" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="478" cy="162" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="570" cy="169" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="389" cy="354" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="450" cy="345" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="589" cy="324" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="280" cy="465" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="365" cy="639" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="496" cy="626" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="591" cy="616" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="54" cy="719" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="180" cy="710" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="270" cy="722" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="385" cy="737" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="75" cy="854" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="177" cy="868" r="3.2" fill="#00C4D8" opacity="0.8"/><circle cx="452" cy="898" r="1.7" fill="#00C4D8" opacity="0.42"/><circle cx="599" cy="872" r="1.7" fill="#00C4D8" opacity="0.42"/></svg>';
+function authShell(conteudoForm, tagHero, tituloHero, subHero){
+  return `
+    <div class="auth-shell">
+      <div class="auth-hero">
+        ${AUTH_HERO_NET}
+        <div class="auth-hero-brand"><span class="dot"></span>GRUPOTOM</div>
+        <div class="auth-hero-tag"><span class="dot"></span>${tagHero}</div>
+        <div class="auth-hero-title">${tituloHero}</div>
+        <div class="auth-hero-sub">${subHero}</div>
+        <div class="auth-hero-foot">Acesso restrito — contas criadas pelo administrador do sistema.</div>
+      </div>
+      <div class="auth-form-side">
+        <div class="auth-form-card">${conteudoForm}</div>
+      </div>
+    </div>
+  `;
+}
 function renderLogin(){
   if(authMode === "tecnico") return renderLoginTecnico();
   if(authMode === "membro") return renderLoginMembro();
   const isLogin = authMode === "login";
-  return `
-    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
-      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">💰 ${isLogin ? "Entrar" : "Criar conta"}</h2>
-        <div style="color:var(--ink-3); margin-bottom:24px;">${isLogin ? "Acesse seu painel financeiro" : "Comece a controlar suas finanças"}</div>
-        <form id="authForm">
-          <div class="field"><label>Email</label><input type="email" id="authEmail" placeholder="seu@email.com" required></div>
-          <div class="field"><label>Senha</label><input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
-          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : (isLogin ? "Entrar" : "Criar conta")}</button>
-        </form>
-        <div style="text-align:center; margin-top:16px; font-size:13px; color:var(--ink-3);">
-          ${isLogin ? "Não tem conta?" : "Já tem conta?"}
-          <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
-        </div>
-      </div>
+  return authShell(`
+    <h2 style="font-family:var(--font-ui); margin-bottom:4px;">${isLogin ? "Entrar" : "Criar conta"}</h2>
+    <div style="color:var(--ink-3); margin-bottom:24px;">${isLogin ? "Acesse seu painel financeiro" : "Comece a controlar suas finanças"}</div>
+    <form id="authForm">
+      <div class="field"><label>Email</label><input type="email" id="authEmail" placeholder="seu@email.com" required></div>
+      <div class="field"><label>Senha</label><input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : (isLogin ? "Entrar" : "Criar conta")}</button>
+    </form>
+    <div style="text-align:center; margin-top:16px; font-size:13px; color:var(--ink-3);">
+      ${isLogin ? "Não tem conta?" : "Já tem conta?"}
+      <a data-action="switch-auth" style="color:var(--accent); cursor:pointer; font-weight:600;">${isLogin ? "Criar conta" : "Entrar"}</a>
     </div>
-  `;
+  `, "Painel de Gestão", "Gestão financeira <em>centralizada</em> para sua holding.", "Contas, lançamentos, estoque, clientes e equipe — tudo em um só lugar.");
 }
 function renderLoginMembro(){
   // Se veio de um link de convite (🔗 em Usuários), os códigos já estão na
   // URL — não precisa mostrar/pedir de novo, só e-mail e senha.
   const convite = codigosConviteDaURL();
-  return `
-    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
-      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">👤 Acesso da Equipe</h2>
-        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">${convite ? "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora." : "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou."}</div>
-        <form id="authMembroForm">
-          <div class="field"><label>Seu e-mail</label><input type="email" id="membroEmail" placeholder="seu@email.com" required></div>
-          <div class="field"><label>Sua senha</label><input type="password" id="membroPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
-          ${!convite ? `
-          <div class="field"><label>Código do usuário</label><input type="text" id="membroCodPerfil" placeholder="Código que o Master te passou" required></div>
-          <div class="field"><label>Código da holding</label><input type="text" id="membroCodHolding" placeholder="Código que o Master te passou" required></div>
-          ` : ""}
-          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
-        </form>
-        <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
-          <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou da equipe</a>
-        </div>
-      </div>
+  return authShell(`
+    <h2 style="font-family:var(--font-ui); margin-bottom:4px;">Acesso da Equipe</h2>
+    <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">${convite ? "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora." : "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou."}</div>
+    <form id="authMembroForm">
+      <div class="field"><label>Seu e-mail</label><input type="email" id="membroEmail" placeholder="seu@email.com" required></div>
+      <div class="field"><label>Sua senha</label><input type="password" id="membroPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+      ${!convite ? `
+      <div class="field"><label>Código do usuário</label><input type="text" id="membroCodPerfil" placeholder="Código que o Master te passou" required></div>
+      <div class="field"><label>Código da holding</label><input type="text" id="membroCodHolding" placeholder="Código que o Master te passou" required></div>
+      ` : ""}
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
+    </form>
+    <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
+      <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou da equipe</a>
     </div>
-  `;
+  `, "Acesso da Equipe", "Seu acesso, <em>do seu jeito</em>.", "Entre com seu próprio e-mail e senha — sem dividir login com ninguém.");
 }
 function renderLoginTecnico(){
   // Se veio de um link de convite (🔗 em Técnicos, com os códigos já
   // embutidos no ?tec=...&holding=...), não precisa mostrar/pedir de novo.
   const convite = codigosConviteTecnicoDaURL();
-  return `
-    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
-      <div style="background:#fff; padding:40px; border-radius:var(--r-xl); width:380px; max-width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <h2 style="font-family:var(--font-ui); margin-bottom:4px;">🧰 Acesso do Técnico</h2>
-        <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">${convite ? "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora." : "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou."}</div>
-        <form id="authTecnicoForm">
-          <div class="field"><label>Seu e-mail</label><input type="email" id="tecEmail" placeholder="seu@email.com" required></div>
-          <div class="field"><label>Sua senha</label><input type="password" id="tecPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
-          ${!convite ? `
-          <div class="field"><label>Código do técnico</label><input type="text" id="tecCodTecnico" placeholder="Código que o Master te passou" required></div>
-          <div class="field"><label>Código da holding</label><input type="text" id="tecCodHolding" placeholder="Código que o Master te passou" required></div>
-          ` : ""}
-          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
-        </form>
-        <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
-          <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou técnico</a>
-        </div>
-      </div>
+  return authShell(`
+    <h2 style="font-family:var(--font-ui); margin-bottom:4px;">Acesso do Técnico</h2>
+    <div style="color:var(--ink-3); margin-bottom:24px; font-size:13px;">${convite ? "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora." : "Use seu e-mail e senha próprios. Se ainda não tem conta, ela é criada agora — preencha os dois códigos que o Master te passou."}</div>
+    <form id="authTecnicoForm">
+      <div class="field"><label>Seu e-mail</label><input type="email" id="tecEmail" placeholder="seu@email.com" required></div>
+      <div class="field"><label>Sua senha</label><input type="password" id="tecPassword" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+      ${!convite ? `
+      <div class="field"><label>Código do técnico</label><input type="text" id="tecCodTecnico" placeholder="Código que o Master te passou" required></div>
+      <div class="field"><label>Código da holding</label><input type="text" id="tecCodHolding" placeholder="Código que o Master te passou" required></div>
+      ` : ""}
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" ${authBusy ? "disabled" : ""}>${authBusy ? "Aguarde..." : "Entrar"}</button>
+    </form>
+    <div style="text-align:center; margin-top:16px; font-size:12.5px; color:var(--ink-3);">
+      <a data-action="switch-auth-master" style="color:var(--accent); cursor:pointer; font-weight:600;">← Não sou técnico</a>
     </div>
-  `;
+  `, "App do Técnico", "No campo, <em>sem burocracia</em>.", "Registre chamados e materiais direto do celular, com seu próprio login.");
 }
 function wireAuthForm(){
   const form = document.getElementById("authForm");
@@ -2852,7 +3131,7 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corA};display:inline-block;"></span>${esc(labelA)}</div>
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corB};display:inline-block;"></span>${esc(labelB)}</div>
     </div>
-    <div style="display:flex; align-items:flex-end; gap:6px; width:100%; overflow-x:auto; padding-bottom:2px;">${cols}</div>
+    <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; width:100%;">${cols}</div>
   `;
 }
 function viewVgExecutivo(){
@@ -2944,8 +3223,8 @@ function viewVgExecutivo(){
   }).filter(l => l.receitaMesNeg>0 || l.despesaMesNeg>0 || l.aPagarNeg>0 || l.clientesAtivosNeg>0); // esconde negócio 100% inativo esse mês
 
   const tabelaNegociosHTML = linhasNegocio.length ? `
-    <div style="overflow-x:auto;">
-      <table style="min-width:600px;"><thead><tr>
+    <div>
+      <table><thead><tr>
         <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar (mês)</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
       </tr></thead><tbody>
         ${linhasNegocio.sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg).map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
@@ -3283,7 +3562,7 @@ function viewVgAnalitico(){
     <div class="page-header">
       <div><div class="page-title">Visão Geral — Analítico</div><div class="page-sub">Comparativo por negócio — só entram os negócios que esse usuário pode ver.</div></div>
     </div>
-    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+    <div class="panel"><div class="panel-body">
       <table style="min-width:760px;"><thead><tr>
         <th>Negócio</th><th class="num">Receita (mês)</th><th class="num">Despesa (mês)</th><th class="num">Resultado (mês)</th>
         <th class="num">A receber (mês)</th><th class="num">A pagar (mês)</th>
@@ -3719,17 +3998,13 @@ function viewDashboard(){
           </div>
           <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
         </div>
-        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo final mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${saldoAtualMes>=0?'pos':'neg'}">${fmtBRL(saldoAtualMes)}</div><div class="kpi-note">Mês anterior + realizado receitas − realizado despesas</div></div>
-        </div>
-        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-label">📥 Previsto receitas</div><div class="kpi-value pos">${fmtBRL(movPendente.entradas)}</div><div class="kpi-note">Ainda não baixado</div></div>
-          <div class="kpi-card"><div class="kpi-label">📤 Previsto despesas</div><div class="kpi-value neg">${fmtBRL(movPendente.saidas)}</div><div class="kpi-note">Ainda não baixado</div></div>
-        </div>
-        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(150px, 1fr)); margin-bottom:0;">
+        <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-bottom:0;">
+          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
+          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${saldoAtualMes>=0?'pos':'neg'}">${fmtBRL(saldoAtualMes)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value pos">${fmtBRL(movReal.entradas)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value neg">${fmtBRL(movReal.saidas)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Previsto receitas</div><div class="kpi-value pos">${fmtBRL(movPendente.entradas)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Previsto despesas</div><div class="kpi-value neg">${fmtBRL(movPendente.saidas)}</div></div>
         </div>
       </div>
     </div>
@@ -3833,7 +4108,7 @@ function viewRelFluxoCaixa(){
       ${vgKpiCard("Total de saídas", fmtBRL(totalSaidas), `${relFluxoPeriodo} meses`, "neg")}
       ${master ? vgKpiCard("Resultado do período", fmtBRL(totalEntradas-totalSaidas), "Entradas − saídas", (totalEntradas-totalSaidas)>=0?"pos":"neg") : ""}
     </div>
-    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+    <div class="panel"><div class="panel-body">
       <table style="min-width:${master?560:460}px;"><thead><tr>
         <th>Mês</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Resultado</th>${master?`<th class="num">Saldo acumulado</th>`:""}
       </tr></thead><tbody>${linhasHTML}</tbody></table>
@@ -4129,7 +4404,7 @@ function viewLancamentos(){
     <div class="panel"><div class="filter-bar">
       <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
-      <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
+      ${!filtroNegocioTravado ? `<select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>` : ""}
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
@@ -4239,475 +4514,91 @@ function viewUsuarios(){
 }
 
 // ============================================================
-// BACKUP (exportar/importar JSON)
+// LOGS DE AUDITORIA — "quem fez o quê, quando, como estava e como ficou".
+// Alimentado sozinho pelo saveRows()/deleteRow() (ver bloco lá em cima,
+// perto de donoAtual()) — essa parte aqui é só a tela de consulta.
 // ============================================================
-function exportarBackup(){
-  const dados = {
-    versao: "4-supabase", exportadoEm: new Date().toISOString(),
-    contas: state.contas, lancamentos: state.lancamentos, ajustes: state.ajustes,
-    categorias: state.categorias, negocios: state.negocios, cartoes: state.cartoes
-  };
-  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `backup-financeiro-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  showToast("Backup exportado.");
+function badgeAcaoLog(acao){
+  if(acao === "criar") return `<span class="status-pill status-pago">+ Criado</span>`;
+  if(acao === "excluir") return `<span class="status-pill" style="background:var(--neg-bg); color:var(--neg);">🗑 Excluído</span>`;
+  return `<span class="status-pill status-agendado">✎ Editado</span>`;
 }
-function handleImportarBackup(e){
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (ev) => {
-    try{
-      const dados = JSON.parse(ev.target.result);
-      if(!dados || !Array.isArray(dados.contas)){ showToast("Arquivo de backup inválido.", "error"); return; }
-      if(!confirm("Importar esse backup vai substituir TODOS os dados atuais. Continuar?")) return;
-      state.contas = dados.contas || [];
-      state.lancamentos = dados.lancamentos || [];
-      state.ajustes = dados.ajustes || [];
-      state.categorias = dados.categorias || seedCategorias();
-      state.negocios = dados.negocios || seedNegocios();
-      state.cartoes = dados.cartoes || [];
-      await saveContas(); await saveLancamentos(); await saveAjustes();
-      await saveCategorias(); await saveNegocios(); await saveCartoes();
-      renderApp();
-      showToast("Backup importado com sucesso.");
-    }catch(err){ showToast("Não consegui ler esse arquivo.", "error"); }
-  };
-  reader.readAsText(file);
-  e.target.value = "";
+function badgeAutorLog(tipo){
+  const label = tipo === "master" ? "👑 Master" : tipo === "tecnico" ? "🧰 Técnico" : tipo === "cliente" ? "👤 Cliente" : "🙋 Membro";
+  return `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3);">${label}</span>`;
 }
+function valorLegivel(v){
+  if(v === undefined || v === null || v === "") return "—";
+  if(typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function camposAlterados(antes, depois){
+  const chaves = new Set([...Object.keys(antes||{}), ...Object.keys(depois||{})]);
+  const linhas = [];
+  chaves.forEach(k => {
+    const a = antes ? antes[k] : undefined;
+    const d = depois ? depois[k] : undefined;
+    if(jsonEstavel(a) !== jsonEstavel(d)) linhas.push({ campo:k, antes:a, depois:d });
+  });
+  return linhas;
+}
+function viewLogsAuditoria(){
+  const logs = state.logsAuditoria || [];
+  const tabelasPresentes = [...new Set(logs.map(l=>l.tabela))].sort();
+  const autoresPresentes = [...new Set(logs.map(l=>l.autor_nome))].sort();
+  let lista = logs;
+  if(logsFiltro.tabela) lista = lista.filter(l => l.tabela === logsFiltro.tabela);
+  if(logsFiltro.acao) lista = lista.filter(l => l.acao === logsFiltro.acao);
+  if(logsFiltro.autor) lista = lista.filter(l => l.autor_nome === logsFiltro.autor);
+  const temFiltro = logsFiltro.tabela || logsFiltro.acao || logsFiltro.autor;
 
-// ============================================================
-// DADOS DE TESTE — popular/remover ~10 registros por área (só Master)
-// Propositalmente NÃO mexe em Contas/Cartões/Categorias/Negócios/Lançamentos:
-// são o núcleo financeiro real da holding, e misturar dado fake ali contaminaria
-// saldo e relatórios de verdade. Tudo que é criado aqui vem marcado com
-// "_teste: true" (guardado dentro do jsonb "dados", não é coluna nova) e prefixo
-// "[TESTE]" no nome, pra ficar óbvio e fácil de tirar depois.
-// ============================================================
-// ============================================================
-// DADOS DE TESTE — Geral (todas as áreas) ou só a área/módulo selecionado,
-// tanto pra popular quanto pra remover. Cada área é independente (não
-// depende de outra ter rodado antes), mas se a outra já tiver dados
-// (de teste ou reais), aproveita pra enriquecer (ex: Chamados usa
-// produtos/contas que já existirem, senão só pula essa parte opcional).
-// ============================================================
-const AREAS_DADOS_TESTE = [
-  { id:"financeiro", nome:"Financeiro", desc:"contas, cartões e lançamentos" },
-  { id:"estoque",    nome:"Estoque",    desc:"fornecedores, produtos e compras" },
-  { id:"clientes",   nome:"Clientes",   desc:"planos, clientes, técnicos e chamados" },
-  { id:"rh",         nome:"RH",         desc:"cargos, funcionários, folha e férias" },
-];
-function areaDadosTesteDoModulo(moduloId){ return AREAS_DADOS_TESTE.find(a => a.id === moduloId) || null; }
-function testeCpfFake(i){ return `${String(100+i).padStart(3,'0')}.${String(200+i*3).padStart(3,'0')}.${String(300+i*7).padStart(3,'0')}-${String(10+i).padStart(2,'0')}`; }
-function testeTelFake(base, i){ return `(11) 9${String(base+i*111).padStart(4,'0')}-${String(1000+i*97).padStart(4,'0')}`; }
-function testeNegAleatorio(){ const nomes = state.negocios.map(n=>n.nome); return nomes.length ? nomes[Math.floor(Math.random()*nomes.length)] : ""; }
+  const rows = lista.map(l => `<tr>
+    <td style="white-space:nowrap; color:var(--ink-3); font-size:12.5px;">${fmtDataHora(l.criado_em)}</td>
+    <td>${badgeAutorLog(l.autor_tipo)} ${esc(l.autor_nome||"—")}</td>
+    <td>${badgeAcaoLog(l.acao)}</td>
+    <td>${esc(LOG_TABELA_LABEL[l.tabela]||l.tabela)}</td>
+    <td>${esc(l.descricao||"—")}</td>
+    <td><button class="icon-btn" data-action="ver-log-detalhe" data-id="${l.id}" title="Ver detalhes">👁</button></td>
+  </tr>`).join("");
 
-function modalDadosTeste(acao){
-  if(!ehMaster()){ showToast(`Apenas o Master pode ${acao==="popular"?"popular":"remover"} dados de teste.`, "error"); return; }
-  const areaAtual = areaDadosTesteDoModulo(state.moduloAtivo);
-  const titulo = acao==="popular" ? "🌱 Popular dados de teste" : "🧹 Remover dados de teste";
-  const verbo = acao==="popular" ? "Cria" : "Remove";
+  return `
+    <div class="page-header">
+      <div><div class="page-title">Logs de Auditoria</div><div class="page-sub">Tudo que foi criado, editado ou excluído no sistema — quem fez, quando, e como estava antes/depois. Mostrando os ${logs.length} registros mais recentes.</div></div>
+    </div>
+    <div class="panel">
+      <div class="filter-bar">
+        <select data-action="logs-filtro-tabela"><option value="">Todas as áreas</option>${tabelasPresentes.map(t=>`<option value="${esc(t)}" ${logsFiltro.tabela===t?"selected":""}>${esc(LOG_TABELA_LABEL[t]||t)}</option>`).join("")}</select>
+        <select data-action="logs-filtro-acao"><option value="">Todas as ações</option><option value="criar" ${logsFiltro.acao==="criar"?"selected":""}>Criado</option><option value="editar" ${logsFiltro.acao==="editar"?"selected":""}>Editado</option><option value="excluir" ${logsFiltro.acao==="excluir"?"selected":""}>Excluído</option></select>
+        <select data-action="logs-filtro-autor"><option value="">Todos os autores</option>${autoresPresentes.map(a=>`<option value="${esc(a)}" ${logsFiltro.autor===a?"selected":""}>${esc(a)}</option>`).join("")}</select>
+        ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="logs-filtro-limpar">Limpar</button>` : ""}
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Área</th><th>Registro</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="6">${emptyState(temFiltro ? "Nenhum log com esse filtro." : "Nenhuma ação registrada ainda.")}</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+function modalLogDetalhe(logId){
+  const log = (state.logsAuditoria||[]).find(l => l.id === logId);
+  if(!log) return;
+  let corpo;
+  if(log.acao === "editar"){
+    const linhas = camposAlterados(log.antes, log.depois);
+    corpo = linhas.length
+      ? `<table><thead><tr><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead><tbody>${linhas.map(l=>`<tr><td>${esc(l.campo)}</td><td style="color:var(--ink-3);">${esc(valorLegivel(l.antes))}</td><td>${esc(valorLegivel(l.depois))}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="field-help">Nenhum campo com diferença — provavelmente uma gravação repetida do mesmo valor.</div>`;
+  }else{
+    const dados = log.depois || log.antes;
+    corpo = `<pre style="white-space:pre-wrap; word-break:break-all; font-size:12px; background:var(--muted-bg); padding:12px; border-radius:var(--r);">${esc(JSON.stringify(dados, null, 2))}</pre>`;
+  }
   openModal(`
-    <div class="modal-head"><div class="modal-title">${titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">${badgeAcaoLog(log.acao)} ${esc(LOG_TABELA_LABEL[log.tabela]||log.tabela)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
-      <div class="field-help" style="margin-bottom:14px;">Escolha o alcance:</div>
-      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; margin-bottom:8px; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="geral">
-        <div><div style="font-weight:700;">🌐 Geral</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} ~10 registros de teste em Financeiro, Estoque, Clientes e RH.</div></div>
-      </button>
-      ${areaAtual ? `
-      <button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; text-align:left; padding:14px;" data-action="dados-teste-executar" data-acao="${acao}" data-escopo="${areaAtual.id}">
-        <div><div style="font-weight:700;">📍 Somente ${esc(areaAtual.nome)}</div><div style="font-size:11.5px; color:var(--ink-4); font-weight:400; margin-top:2px;">${verbo} só ${esc(areaAtual.desc)}.</div></div>
-      </button>` : `<div class="field-help">Você está num módulo sem dados de teste próprios (Cadastro, Visão Geral ou Relatórios) — só "Geral" está disponível aqui. Abra Financeiro, Estoque, Clientes ou RH pra liberar a opção "Somente esse módulo".</div>`}
-    </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button></div>
+      <div class="field-help" style="margin-bottom:14px;">${badgeAutorLog(log.autor_tipo)} ${esc(log.autor_nome)} — ${fmtDataHora(log.criado_em)}</div>
+      ${corpo}
+    </div><div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Fechar</button></div>
   `);
-}
-
-async function seedTesteFinanceiro(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Contas Bancárias (tabela "flat" — sem coluna "dados", não aceita o
-  // marcador _teste; a identificação de teste aqui é só pelo prefixo no nome) ----
-  const contaDefs = [
-    ["Nubank PJ","Nubank","Conta Pagamento"], ["Itaú Empresarial","Itaú","Conta Corrente"],
-    ["C6 Bank","C6 Bank","Conta Corrente"], ["Mercado Pago","Mercado Pago","Conta Pagamento"],
-    ["Caixa Poupança","Caixa Econômica","Poupança"], ["Bradesco","Bradesco","Conta Corrente"],
-    ["Inter PJ","Banco Inter","Conta Pagamento"], ["Santander","Santander","Conta Corrente"],
-  ];
-  const novasContas = contaDefs.map(([nome,instituicao,tipo]) => ({
-    id: uid("c"), parentId: null, nome: `[TESTE] ${nome}`, instituicao, tipo,
-    negocio: negAleatorio(), saldoInicial: Math.round((1000+Math.random()*9000)*100)/100, limite: 0, ativa: true,
-  }));
-  state.contas.push(...novasContas);
-  await saveContas();
-
-  // ---- Cartões de Crédito ----
-  const cartaoDefs = [
-    ["Nubank Ultravioleta","Mastercard",5,15,5000], ["Itaú Click","Visa",10,20,3000],
-    ["C6 Carbon","Mastercard",1,10,8000], ["Inter Gold","Visa",7,17,4000],
-    ["Santander Free","Elo",20,5,2500],
-  ];
-  const novosCartoes = cartaoDefs.map(([nome,bandeira,diaFechamento,diaVencimento,limite],i) => ({
-    id: uid("cartao"), nome: `[TESTE] ${nome}`, bandeira, ultimosDigitos: String(1000+i*111).slice(-4),
-    limite, diaFechamento, diaVencimento, contaPagamentoId: novasContas[i % novasContas.length].id,
-    negocio: negAleatorio(), ativo: true, _teste: true,
-  }));
-  state.cartoes.push(...novosCartoes);
-  await saveCartoes();
-
-  // ---- Lançamentos (Receitas/Despesas/Transferências, espalhados em 3 meses) ----
-  const categoriasNomes = state.categorias.map(c => c.nome);
-  const categoriaAleatoria = () => categoriasNomes.length ? categoriasNomes[Math.floor(Math.random()*categoriasNomes.length)] : "";
-  const statusVariados = ["Pago","Provisionado","Agendado"];
-  const novosLancamentos = [];
-  const hoje = new Date();
-  for(let m=-1; m<=1; m++){
-    const anoRef = hoje.getFullYear(), mesRef = hoje.getMonth()+m;
-    for(let i=0;i<4;i++){
-      const data = new Date(anoRef, mesRef, Math.min(3+i*6, 28)).toISOString().slice(0,10);
-      const contaR = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusR = statusVariados[i%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Receita", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaR.id, contaDestino: "", valor: Math.round((300+Math.random()*2000)*100)/100,
-        descricao: "[TESTE] Receita de teste", status: statusR, conciliado: statusR==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-      const contaD = novasContas[Math.floor(Math.random()*novasContas.length)];
-      const statusD = statusVariados[(i+1)%3];
-      novosLancamentos.push({
-        id: uid("l"), data, tipo: "Despesa", negocio: negAleatorio(), categoria: categoriaAleatoria(), subcategoria: "",
-        contaOrigem: contaD.id, contaDestino: "", valor: Math.round((100+Math.random()*1200)*100)/100,
-        descricao: "[TESTE] Despesa de teste", status: statusD, conciliado: statusD==="Pago",
-        lancadoPor: "Master", _teste: true,
-      });
-    }
-    if(novasContas.length >= 2){
-      novosLancamentos.push({
-        id: uid("l"), data: new Date(anoRef, mesRef, 15).toISOString().slice(0,10), tipo: "Transferência",
-        negocio: "", categoria: "", subcategoria: "", contaOrigem: novasContas[0].id, contaDestino: novasContas[1].id,
-        valor: Math.round((200+Math.random()*800)*100)/100, descricao: "[TESTE] Transferência entre contas",
-        status: "Pago", conciliado: true, lancadoPor: "Master", _teste: true,
-      });
-    }
-  }
-  state.lancamentos.push(...novosLancamentos);
-  await saveLancamentos();
-
-  return `${novasContas.length} contas, ${novosCartoes.length} cartões, ${novosLancamentos.length} lançamentos`;
-}
-
-async function seedTesteEstoque(){
-  const telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Fornecedores ----
-  const fornNomes = ["Fibra Sul Distribuidora","Conexão Norte Equipamentos","TechNet Atacado","Rede Forte Suprimentos","Ótica Brasil Cabos","Distribuidora Sinal Rápido","Comercial Torres & Postes","Atacado Provedor Total","Fibra Express Insumos","Central de Redes Ltda"];
-  const contatos = ["Carlos","Ana","Marcos","Fernanda","João","Patrícia","Rafael","Juliana","Eduardo","Camila"];
-  const novosFornecedores = fornNomes.map((nome,i) => ({
-    id: uid("ef"), nome: `[TESTE] ${nome}`,
-    cnpj: `${String(10+i).padStart(2,'0')}.${String(345+i*11).padStart(3,'0')}.${String(678+i*7).padStart(3,'0')}/0001-${String(10+i)}`,
-    contato: contatos[i], telefone: telFake(8000,i), email: `contato@fornecedor${i+1}teste.com.br`,
-    endereco: "", negocio: "", observacoes: "Fornecedor de teste", _teste: true,
-  }));
-  state.estFornecedores.push(...novosFornecedores);
-  await saveEstFornecedores();
-
-  // ---- Produtos ----
-  const prodDefs = [
-    ["ONU GPON AC","ONU/ONT","un",0.35,"Residencial"],
-    ["Roteador Wi-Fi 6 AX1800","Roteador","un",0.42,"Residencial"],
-    ["Switch 8 Portas Gigabit","Switch","un",0.60,"Empresarial"],
-    ["Cabo Drop 2FO (rolo 1000m)","Fibra Óptica","rolo",18,""],
-    ["Conector SC/APC","Conector","un",0.01,""],
-    ["Splitter Óptico 1x8","Fibra Óptica","un",0.05,""],
-    ["Caixa de Emenda Óptica 24FO","Rack/Gabinete","un",1.2,""],
-    ["Cordão Óptico SC/APC 2m","Fibra Óptica","un",0.08,""],
-    ["Rack 12U de Parede","Rack/Gabinete","un",9.5,"Empresarial"],
-    ["Fonte Chaveada 12V 2A","Eletrônico","un",0.15,""],
-  ];
-  const novosProdutos = prodDefs.map(([nome,categoria,unidade,peso,familia],i) => ({
-    id: uid("ep"), nome: `[TESTE] ${nome}`, codigoInterno: `TST-${String(i+1).padStart(3,'0')}`,
-    categoria, modelo: "", fabricante: "", familia, peso, unidade,
-    fornecedorId: novosFornecedores[i % novosFornecedores.length].id,
-    negocio: negAleatorio(), precoUnitario: 0, estoqueMinimo: 5+i, localizacao: "Estoque teste",
-    observacoes: "Produto de teste", _teste: true,
-  }));
-  state.estProdutos.push(...novosProdutos);
-  await saveEstProdutos();
-
-  // ---- Compras (3 notas — já populam movimentações e Custo Médio Real) ----
-  for(let n=0; n<3; n++){
-    const itensCompra = novosProdutos.slice(n*3, n*3+3);
-    if(!itensCompra.length) break;
-    const itens = itensCompra.map(p => ({ produtoId: p.id, quantidade: 20+n*5, valorUnitario: Math.round((5+Math.random()*40)*100)/100 }));
-    const valoresTotais = itens.map(it => it.quantidade*it.valorUnitario);
-    const frete = Math.round((30+n*15)*100)/100;
-    const rateios = ratearProporcional(frete, valoresTotais);
-    const compraId = uid("compra");
-    const numeroNota = `TESTE-${1000+n}`;
-    const itensSalvos = itens.map((it,i) => {
-      const valorTotal = valoresTotais[i];
-      const custoUnitarioFinal = Math.round(((valorTotal+rateios[i])/it.quantidade)*100)/100;
-      return { produtoId: it.produtoId, quantidade: it.quantidade, valorUnitario: it.valorUnitario, valorTotal, rateio: rateios[i], custoUnitarioFinal };
-    });
-    state.estCompras.push({
-      id: compraId, numeroNota, fornecedorId: novosFornecedores[n].id, data: todayISO(), negocio: "",
-      frete, seguro: 0, outrasDespesas: 0, baseRateio: "valor", itens: itensSalvos,
-      observacoes: "Compra de teste", lancadoPor: "Master", _teste: true,
-    });
-    itensSalvos.forEach(it => {
-      state.estMovimentos.push({
-        id: uid("em"), data: todayISO(), tipo: "Entrada", produtoId: it.produtoId, qtd: it.quantidade,
-        custoUnitario: it.custoUnitarioFinal, localOrigem: novosFornecedores[n].nome, localDestino: "",
-        motivo: `Compra NF ${numeroNota}`, responsavel: "Master", notaFiscal: numeroNota,
-        notaFiscalCompraId: compraId, _teste: true,
-      });
-    });
-  }
-  await saveEstCompras();
-  await saveEstMovimentos();
-
-  return `${novosFornecedores.length} fornecedores, ${novosProdutos.length} produtos, 3 compras`;
-}
-
-async function seedTesteClientes(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Planos ----
-  const planoDefs = [
-    ["Fibra 100 Mega",89.9,"100 Mbps","GPON"], ["Fibra 200 Mega",109.9,"200 Mbps","GPON"],
-    ["Fibra 300 Mega",129.9,"300 Mbps","GPON"], ["Fibra 500 Mega",159.9,"500 Mbps","GPON"],
-    ["Fibra 700 Mega Duo",189.9,"700 Mbps","GPON"], ["Fibra 1 Giga",219.9,"1000 Mbps","GPON"],
-    ["Combo TV + Internet 200",169.9,"200 Mbps","GPON + IPTV"], ["Plano Empresarial 300",249.9,"300 Mbps dedicado","GPON"],
-    ["Plano Empresarial 1 Giga",499.9,"1000 Mbps dedicado","GPON"], ["Rádio Rural 20 Mega",99.9,"20 Mbps","Rádio"],
-  ];
-  const novosPlanos = planoDefs.map(([nome,valor,velocidade,tecnologia]) => ({
-    id: uid("pl"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), descricao: "", valor, velocidade, tecnologia,
-    observacoes: "Plano de teste", _teste: true,
-  }));
-  state.cliPlanos.push(...novosPlanos);
-  await saveCliPlanos();
-
-  // ---- Clientes ----
-  const clienteNomes = ["Ana Beatriz Souza","Carlos Eduardo Lima","Fernanda Oliveira","João Pedro Alves","Mariana Costa","Ricardo Santos","Juliana Pereira","Bruno Rodrigues","Camila Ferreira","Lucas Martins"];
-  const cidades = ["Campinas","Sorocaba","Ribeirão Preto","Piracicaba","Bauru","São Carlos","Jundiaí","Limeira","Araraquara","Franca"];
-  const novosClientes = clienteNomes.map((nome,i) => {
-    const neg = negAleatorio();
-    const planosDoNeg = novosPlanos.filter(p => p.negocio === neg);
-    const plano = planosDoNeg.length ? planosDoNeg[i % planosDoNeg.length] : null;
-    return {
-      id: uid("cli"), tipoPessoa: "PF", nome: `[TESTE] ${nome}`, razaoSocial: "", nomeFantasia: "",
-      cpfCnpj: cpfFake(i), rg: "", dataNascimento: "", genero: "Não informado",
-      email: `cliente${i+1}teste@email.com`, telefone: telFake(7000,i), whatsapp: "",
-      logradouro: `Rua Teste ${i+1}`, numero: String(100+i*10), complemento: "", bairro: "Centro",
-      cidade: cidades[i], uf: "SP", cep: "13000-000", status: "Ativo", dataCadastro: todayISO(),
-      observacoes: "Cliente de teste", _teste: true,
-      contratos: neg ? [{ id: uid("ct"), negocio: neg, planoId: plano?plano.id:"", status: "Ativo", dataContrato: todayISO() }] : [],
-    };
-  });
-  state.cliClientes.push(...novosClientes);
-  await saveCliClientes();
-
-  // ---- Técnicos ----
-  const tecnicoDefs = [
-    ["Carlos Eduardo","fins de semana e feriados",1000],
-    ["Rafael Souza","segunda a sexta, período da tarde",1800],
-    ["Fernando Lima","plantão 24h",2500],
-    ["André Santos","apenas emergências",800],
-    ["Bruno Costa","fins de semana",900],
-  ];
-  const novosTecnicos = tecnicoDefs.map(([nome,diasAtendimento,valorMensal],i) => ({
-    id: uid("tec"), nome: `[TESTE] ${nome}`, telefone: telFake(9000,i), negocio: negAleatorio(),
-    diasAtendimento, valorMensal, ativo: true, _teste: true,
-  }));
-  state.cliTecnicos.push(...novosTecnicos);
-  await saveCliTecnicos();
-
-  // ---- Chamados (espalhados pelos status, alguns com material baixado e cobrança gerada) ----
-  const chamadoDefs = [
-    ["Instalação","Alta","Aberto",-2], ["Suporte técnico","Urgente","Aberto",0],
-    ["Manutenção","Normal","Agendado",2], ["Instalação","Alta","Agendado",3],
-    ["Suporte técnico","Normal","Em atendimento",-1], ["Manutenção","Baixa","Em atendimento",0],
-    ["Instalação","Alta","Concluído",-5], ["Suporte técnico","Normal","Concluído",-7],
-    ["Mudança de endereço","Normal","Concluído",-10], ["Cancelamento de plano","Baixa","Cancelado",-3],
-  ];
-  const novosChamados = chamadoDefs.map(([tipo,prioridade,status,offsetDias],i) => {
-    const cliente = novosClientes[i % novosClientes.length];
-    const tecnico = novosTecnicos[i % novosTecnicos.length];
-    const d = new Date(); d.setDate(d.getDate()+offsetDias);
-    const dataAgendada = d.toISOString().slice(0,10);
-    const concluido = status === "Concluído";
-    return {
-      id: uid("cham"), numero: `[TESTE] CH-${String(state.cliChamados.length+i+1).padStart(4,"0")}`,
-      clienteId: cliente.id, negocio: cliente.contratos[0]?.negocio || negAleatorio(), tecnicoId: tecnico.id,
-      tipo, prioridade, motivo: `Chamado de teste — ${tipo.toLowerCase()}`, dataAgendada, status,
-      valorCobranca: concluido ? 80 : 0, observacoes: concluido ? "Atendimento concluído sem intercorrências." : "",
-      dataCadastro: todayISO(), dataConclusao: concluido ? dataAgendada : "",
-      lancadoPor: "Master", _teste: true,
-    };
-  });
-  state.cliChamados.push(...novosChamados);
-  await saveCliChamados();
-
-  // material baixado nos chamados concluídos, se já existir produto cadastrado
-  // (de teste ou real — Estoque não precisa ter rodado nesse mesmo escopo)
-  const chamadosConcluidos = novosChamados.filter(c => c.status === "Concluído");
-  if(state.estProdutos.length){
-    chamadosConcluidos.forEach((cham,i) => {
-      const p = state.estProdutos[i % state.estProdutos.length];
-      const custoUnit = estValorUnitarioEstimado(p) || 10;
-      state.estMovimentos.push({
-        id: uid("em"), data: cham.dataConclusao, tipo: "Saída", produtoId: p.id, qtd: 1, custoUnitario: custoUnit,
-        localOrigem: "Estoque", localDestino: novosClientes.find(c=>c.id===cham.clienteId)?.nome||"Cliente",
-        motivo: `Chamado ${cham.numero}`, responsavel: "Master", chamadoId: cham.id, _teste: true,
-      });
-    });
-    await saveEstMovimentos();
-  }
-
-  // cobrança gerada só no 1º chamado concluído (se já existir conta pra receber),
-  // pra mostrar o vínculo com Lançamentos
-  if(chamadosConcluidos.length && state.contas.length){
-    let catVendas = categoriaByNome(CATEGORIA_VENDAS_SERVICOS);
-    if(!catVendas){ catVendas = { id: uid("cat"), nome: CATEGORIA_VENDAS_SERVICOS, subcategorias: [] }; state.categorias.push(catVendas); await saveCategorias(); }
-    const chamCobranca = chamadosConcluidos[0];
-    const contaCobranca = state.contas.find(c=>c.ativa!==false) || state.contas[0];
-    const lancId = uid("l");
-    state.lancamentos.push({
-      id: lancId, data: chamCobranca.dataConclusao, tipo: "Receita", negocio: chamCobranca.negocio||"",
-      categoria: catVendas.nome, subcategoria: "", contaOrigem: contaCobranca?contaCobranca.id:"", contaDestino: "",
-      valor: chamCobranca.valorCobranca, descricao: `[TESTE] ${chamCobranca.numero} — cobrança de visita`,
-      status: "Provisionado", conciliado: false, lancadoPor: "Master", chamadoId: chamCobranca.id, _teste: true,
-    });
-    chamCobranca.lancamentoId = lancId;
-    await saveLancamentos();
-    await saveCliChamados();
-  }
-
-  return `${novosPlanos.length} planos, ${novosClientes.length} clientes, ${novosTecnicos.length} técnicos, ${novosChamados.length} chamados`;
-}
-
-async function seedTesteRh(){
-  const cpfFake = testeCpfFake, telFake = testeTelFake, negAleatorio = testeNegAleatorio;
-  // ---- Cargos ----
-  const cargoDefs = [
-    ["Técnico de Instalação","44h/semana",2200], ["Técnico de Suporte N1","44h/semana",1900],
-    ["Técnico de Suporte N2","44h/semana",2600], ["Atendente SAC","36h/semana",1700],
-    ["Vendedor Externo","44h/semana",1800], ["Analista Financeiro","40h/semana",3200],
-    ["Auxiliar Administrativo","40h/semana",1700], ["Coordenador Comercial","44h/semana",4200],
-    ["Motorista","44h/semana",2100], ["Gerente de Operações","44h/semana",6500],
-  ];
-  const novosCargos = cargoDefs.map(([nome,carga,salario]) => ({
-    id: uid("cargo"), nome: `[TESTE] ${nome}`, negocio: negAleatorio(), salarioBase: salario, cargaHoraria: carga,
-    descricao: "", _teste: true,
-  }));
-  state.rhCargos.push(...novosCargos);
-  await saveRhCargos();
-
-  // ---- Funcionários ----
-  const funcNomes = ["Pedro Henrique Silva","Larissa Gomes","Thiago Almeida","Beatriz Cardoso","Gustavo Ribeiro","Amanda Barbosa","Felipe Nascimento","Vanessa Teixeira","Diego Moraes","Priscila Araújo"];
-  const novosFuncionarios = funcNomes.map((nome,i) => {
-    const cargo = novosCargos[i % novosCargos.length];
-    const d = new Date(); d.setMonth(d.getMonth() - (3 + i*4));
-    return {
-      id: uid("func"), nome: `[TESTE] ${nome}`, cpf: cpfFake(i+20), rg: "", dataNascimento: "",
-      genero: "Não informado", email: `func${i+1}teste@empresa.com`, telefone: telFake(6000,i),
-      negocio: cargo.negocio, cargoId: cargo.id, dataAdmissao: d.toISOString().slice(0,10), tipoContrato: "CLT",
-      salario: cargo.salarioBase, status: "Ativo", pix: "",
-      logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "SP", cep: "",
-      dataDemissao: "", tipoDesligamento: "", motivoDesligamento: "", observacoes: "Funcionário de teste", _teste: true,
-    };
-  });
-  state.rhFuncionarios.push(...novosFuncionarios);
-  await saveRhFuncionarios();
-
-  // ---- Folha de Pagamento (2 competências por funcionário) ----
-  const competenciaAnterior = (() => { const d = new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; })();
-  const novaFolha = [];
-  novosFuncionarios.forEach((f,i) => {
-    [[competenciaAnterior,"Pago"], [competenciaAtual(), i%2===0?"Pago":"Pendente"]].forEach(([competencia,status]) => {
-      novaFolha.push({
-        id: uid("folha"), funcionarioId: f.id, competencia, salarioBase: f.salario, bonus: 0, descontos: 0,
-        valorLiquido: f.salario, dataPagamento: status==="Pago"?todayISO():"", status,
-        observacoes: "Folha de teste", _teste: true,
-      });
-    });
-  });
-  state.rhFolha.push(...novaFolha);
-  await saveRhFolha();
-
-  // ---- Férias (1 registro por funcionário) ----
-  const novasFerias = novosFuncionarios.map((f,i) => {
-    const venc = rhProximoVencimentoFerias(f.id);
-    const fim = venc ? venc.vencimento : f.dataAdmissao;
-    const inicio = (() => { const d = new Date(fim+"T00:00:00"); d.setFullYear(d.getFullYear()-1); return d.toISOString().slice(0,10); })();
-    const concluida = i % 3 === 0;
-    return {
-      id: uid("ferias"), funcionarioId: f.id, periodoAquisitivoInicio: inicio, periodoAquisitivoFim: fim,
-      dataInicioGozo: concluida ? inicio : "", dataFimGozo: concluida ? fim : "",
-      diasDireito: 30, diasGozados: concluida ? 30 : 0,
-      status: concluida ? "Concluída" : "Programada", observacoes: "Férias de teste", _teste: true,
-    };
-  });
-  state.rhFerias.push(...novasFerias);
-  await saveRhFerias();
-
-  return `${novosCargos.length} cargos, ${novosFuncionarios.length} funcionários, folha e férias`;
-}
-
-async function popularDadosTeste(escopo){
-  if(!ehMaster()){ showToast("Apenas o Master pode popular dados de teste.", "error"); return; }
-  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
-  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
-  if(!confirm(`Isso cria ~10 registros de teste em ${areas.map(a=>nomesArea[a]).join(", ")}, tudo marcado com [TESTE]. Continuar?`)) return;
-  showToast("Gerando dados de teste...");
-  const resumo = [];
-  if(areas.includes("financeiro")) resumo.push(await seedTesteFinanceiro());
-  if(areas.includes("estoque")) resumo.push(await seedTesteEstoque());
-  if(areas.includes("clientes")) resumo.push(await seedTesteClientes());
-  if(areas.includes("rh")) resumo.push(await seedTesteRh());
-  renderApp();
-  showToast(`Dados de teste criados: ${resumo.join(" · ")}.`);
-}
-
-async function removerDadosTeste(escopo){
-  if(!ehMaster()){ showToast("Apenas o Master pode remover dados de teste.", "error"); return; }
-  const areas = escopo==="geral" ? ["financeiro","estoque","clientes","rh"] : [escopo];
-  const nomesArea = { financeiro:"Financeiro", estoque:"Estoque", clientes:"Clientes", rh:"RH" };
-  if(!confirm(`Remover os registros marcados como [TESTE] de ${areas.map(a=>nomesArea[a]).join(", ")}? Não afeta seus dados reais.`)) return;
-  const removerDoArray = async (arrName, tabela) => {
-    const idsTeste = state[arrName].filter(x => x._teste).map(x => x.id);
-    state[arrName] = state[arrName].filter(x => !x._teste);
-    if(idsTeste.length) await deleteRows(tabela, idsTeste);
-  };
-  if(areas.includes("financeiro")){
-    // "contas" é tabela flat (sem coluna dados) — não tem campo _teste, identifica pelo nome
-    const idsContasTeste = state.contas.filter(c => (c.nome||"").startsWith("[TESTE]")).map(c => c.id);
-    state.contas = state.contas.filter(c => !(c.nome||"").startsWith("[TESTE]"));
-    if(idsContasTeste.length) await deleteRows("contas", idsContasTeste);
-    await removerDoArray("cartoes", "cartoes");
-    await removerDoArray("lancamentos", "lancamentos");
-  }
-  if(areas.includes("estoque")){
-    await removerDoArray("estMovimentos", "est_movimentos");
-    await removerDoArray("estCompras", "est_compras");
-    await removerDoArray("estProdutos", "est_produtos");
-    await removerDoArray("estFornecedores", "est_fornecedores");
-  }
-  if(areas.includes("clientes")){
-    await removerDoArray("cliClientes", "cli_clientes");
-    await removerDoArray("cliPlanos", "cli_planos");
-    await removerDoArray("cliChamados", "cli_chamados");
-    await removerDoArray("cliTecnicos", "cli_tecnicos");
-  }
-  if(areas.includes("rh")){
-    await removerDoArray("rhFuncionarios", "rh_funcionarios");
-    await removerDoArray("rhCargos", "rh_cargos");
-    await removerDoArray("rhFolha", "rh_folha");
-    await removerDoArray("rhFerias", "rh_ferias");
-  }
-  renderApp();
-  showToast("Dados de teste removidos.");
 }
 
 // ============================================================
@@ -5328,30 +5219,33 @@ function modalPerfil(existing){
   const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
   const pad = modulosPadrao();
 
-  const linhasModulo = MODULOS_GRUPOS.map(g => {
+  // Pills de checkbox que quebram linha sozinhas (flex-wrap) em vez de colunas de
+  // tabela com largura fixa — assim não precisa de scroll horizontal em nenhuma
+  // largura de tela, o card só fica mais alto no celular.
+  const pillCheckbox = (nome, marcado, rotulo) => `
+    <label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:5px 10px; border:1px solid var(--border); border-radius:999px; cursor:pointer; user-select:none;">
+      <input type="checkbox" name="${nome}" ${marcado?"checked":""} style="margin:0;">${esc(rotulo)}
+    </label>`;
+
+  const linhasModulo = MODULOS_GRUPOS.map((g, i) => {
     const perm = (p.modulos || {})[g.id] || pad[g.id] || {};
-    const checkboxes = ["ver","criar","editar","excluir"].map(a =>
-      g.acoes.includes(a)
-        ? `<td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="mod_${a}_${g.id}" ${perm[a]?"checked":""}></td>`
-        : `<td style="text-align:center;padding:7px 4px;color:var(--ink-4)">—</td>`
-    ).join("");
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:7px 8px;white-space:nowrap">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</td>
-      ${checkboxes}
-    </tr>`;
+    const pills = ["ver","criar","editar","excluir"].filter(a => g.acoes.includes(a))
+      .map(a => pillCheckbox(`mod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
+    return `<div style="padding:10px 12px; ${i < MODULOS_GRUPOS.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
+      <div style="font-size:13px; font-weight:600;">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+    </div>`;
   }).join("");
 
-  const linhasNegocio = state.negocios.map(n => {
+  const linhasNegocio = state.negocios.map((n, i) => {
     const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:7px 8px">${esc(n.nome)}</td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
-    </tr>`;
+    const pills = [["ver_"+n.id,perm.ver,"Ver"],["editar_"+n.id,perm.editar,"Editar"],["excluir_"+n.id,perm.excluir,"Excluir"]]
+      .map(([nome,marcado,rotulo]) => pillCheckbox(nome, marcado, rotulo)).join("");
+    return `<div style="padding:10px 12px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
+      <div style="font-size:13px; font-weight:600;">${esc(n.nome)}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+    </div>`;
   }).join("");
-
-  const thStyle = "padding:6px 4px;font-size:11px;font-weight:600;color:var(--ink-3);text-align:center;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap";
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -5377,19 +5271,8 @@ function modalPerfil(existing){
         <!-- MÓDULOS -->
         <div class="field">
           <label>Acesso por módulo (menu)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead style="background:var(--surface-2)">
-                <tr>
-                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Módulo</th>
-                  <th style="${thStyle}">Ver</th>
-                  <th style="${thStyle}">Criar</th>
-                  <th style="${thStyle}">Editar</th>
-                  <th style="${thStyle}">Excluir</th>
-                </tr>
-              </thead>
-              <tbody>${linhasModulo}</tbody>
-            </table>
+          <div style="border:1px solid var(--border);border-radius:var(--r);">
+            ${linhasModulo}
           </div>
           <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão.</div>
         </div>
@@ -5397,18 +5280,8 @@ function modalPerfil(existing){
         <!-- NEGÓCIOS -->
         <div class="field">
           <label>Acesso por negócio (Financeiro)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead style="background:var(--surface-2)">
-                <tr>
-                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Negócio</th>
-                  <th style="${thStyle}">Ver</th>
-                  <th style="${thStyle}">Editar</th>
-                  <th style="${thStyle}">Excluir</th>
-                </tr>
-              </thead>
-              <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</td></tr>`}</tbody>
-            </table>
+          <div style="border:1px solid var(--border);border-radius:var(--r);">
+            ${linhasNegocio || `<div style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</div>`}
           </div>
           <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível.</div>
         </div>
@@ -6043,7 +5916,13 @@ document.addEventListener("click", async e => {
   else if(action === "tec-app-materiais"){ modalChamadoMateriais(id); return; }
   else if(action === "tec-app-prorrogar"){ modalChamadoProrrogar(id); return; }
   else if(action === "tec-app-logout"){ await doLogout(); return; }
-  else if(action === "nav") setView(el.dataset.view);
+  else if(action === "nav"){ filtroNegocioTravado = false; setView(el.dataset.view); }
+  else if(action === "nav-negocio"){
+    filtroNegocioTravado = true;
+    cliFiltro.negocio = el.dataset.negocio;
+    lancFilter.negocio = el.dataset.negocio;
+    setView(el.dataset.view);
+  }
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
@@ -6105,10 +5984,27 @@ document.addEventListener("click", async e => {
     state.view = "lancamentos";
     renderApp();
   }
-  else if(action === "toggle-ajustes-menu"){ state.ajustesMenuAberto = !state.ajustesMenuAberto; renderApp(); }
+  else if(action === "toggle-ajustes-menu"){
+    const estavaAberto = el.dataset.aberto === "true";
+    state.ajustesMenuAberto = !estavaAberto;
+    state.ajustesMenuFechado = estavaAberto;
+    renderApp();
+  }
+  else if(action === "toggle-cadastros-menu"){
+    const estavaAberto = el.dataset.aberto === "true";
+    state.cadastrosMenuAberto = !estavaAberto;
+    state.cadastrosMenuFechado = estavaAberto;
+    renderApp();
+  }
   else if(action === "toggle-nav-grupo"){
     const grupoId = el.dataset.id;
-    if(sidebarGruposAbertos.has(grupoId)) sidebarGruposAbertos.delete(grupoId); else sidebarGruposAbertos.add(grupoId);
+    // Lê o estado real (o "data-aberto" que navGrupo() acabou de desenhar),
+    // não só sidebarGruposAbertos — senão o grupo que já estava aberto por
+    // conter a view atual nunca conseguia ser fechado (ver comentário perto
+    // de sidebarGruposFechados).
+    const estavaAberto = el.dataset.aberto === "true";
+    if(estavaAberto){ sidebarGruposAbertos.delete(grupoId); sidebarGruposFechados.add(grupoId); }
+    else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
     renderApp();
   }
@@ -6120,10 +6016,6 @@ document.addEventListener("click", async e => {
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
   else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
-  else if(action === "trocar-perfil"){ state.perfilAtivo = null; state.perfilEscolhido = false; renderApp(); }
-  else if(action === "exportar-backup") exportarBackup();
-  else if(action === "popular-dados-teste") modalDadosTeste("popular");
-  else if(action === "remover-dados-teste") modalDadosTeste("remover");
   else if(action === "dados-teste-executar"){
     const acaoTeste = el.dataset.acao, escopo = el.dataset.escopo;
     closeModal();
@@ -6133,7 +6025,7 @@ document.addEventListener("click", async e => {
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio: filtroNegocioTravado ? lancFilter.negocio : "",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
   else if(action === "toggle-select-lanc"){
     if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
     renderView();
@@ -6490,7 +6382,7 @@ document.addEventListener("click", async e => {
     cliFiltro.negocio = el.dataset.negocio||"";
     state.view = "cli_lista"; renderApp();
   }
-  else if(action === "cli-filtro-clear"){ cliFiltro = {negocio:"",status:"",plano:"",texto:""}; renderView(); }
+  else if(action === "cli-filtro-clear"){ cliFiltro = {negocio: filtroNegocioTravado ? cliFiltro.negocio : "", status:"",plano:"",texto:""}; renderView(); }
   // ---- Orçamento / OS ----
   else if(action === "orc-novo") modalCliOrcamento(null);
   else if(action === "orc-edit"){ const o = cliOrcamentoById(id); if(o) modalCliOrcamento(o); }
@@ -6526,6 +6418,8 @@ document.addEventListener("click", async e => {
   else if(action === "tec-edit"){ const t = cliTecnicoById(id); if(t) modalCliTecnico(t); }
   else if(action === "tec-app-codigo"){ const t = cliTecnicoById(id); if(t) modalCodigoTecnico(t); }
   else if(action === "perfil-app-codigo"){ const p = perfilById(id); if(p) modalCodigoPerfil(p); }
+  else if(action === "ver-log-detalhe") modalLogDetalhe(id);
+  else if(action === "logs-filtro-limpar"){ logsFiltro = {tabela:"",acao:"",autor:""}; renderView(); }
   else if(action === "tec-gerar-pagamento"){
     const t = cliTecnicoById(id);
     if(!t) return;
@@ -6573,6 +6467,8 @@ document.addEventListener("click", async e => {
     await saveMensagensModelo(); renderView(); showToast("Modelo excluído.");
   }
   else if(action === "envio-iniciar") iniciarFilaEnvioMassa();
+  else if(action === "envio-iniciar-auto") await enviarMassaAutomatico();
+  else if(action === "envio-auto-fechar"){ envioMassaAutoStatus = null; closeModal(); renderView(); }
   else if(action === "envio-fila-proximo"){
     const fila = envioMassaFila; if(!fila) return;
     const atual = fila.itens[fila.indice];
@@ -6722,6 +6618,9 @@ document.addEventListener("change", e => {
   if(e.target.id === "relDreNegocioSelect"){ relDreNegocio = e.target.value; renderView(); }
   if(e.target.id === "envioNegocioSelect"){ envioMassaNegocioFiltro = e.target.value; renderView(); }
   if(e.target.id === "envioModeloSelect"){ envioMassaModeloId = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-tabela"){ logsFiltro.tabela = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-acao"){ logsFiltro.acao = e.target.value; renderView(); }
+  if(e.target.dataset.action === "logs-filtro-autor"){ logsFiltro.autor = e.target.value; renderView(); }
 });
 // Busca por texto: espera uma pausa de digitação antes de atualizar o
 // resultado (em vez de re-renderizar a cada tecla) — evita que a lista
@@ -6746,8 +6645,13 @@ document.addEventListener("input", e => {
 // ---- Estado de navegação e filtros ----
 let cliViewDetalheId = null;
 let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
+// Quando true, o filtro de negócio some da tela (porque a pessoa entrou por um
+// menu de um negócio específico, tipo "Provedor" — não faz sentido deixar ela
+// trocar pra outro negócio que talvez nem tenha permissão de ver).
+let filtroNegocioTravado = false;
 let leadsFiltro = { status:"", texto:"" };
 let cliPlanosFiltro = { negocio:"", texto:"" };
+let logsFiltro = { tabela:"", acao:"", autor:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
@@ -6857,6 +6761,80 @@ let envioMassaNegocioFiltro = "";
 let envioMassaModeloId = "";
 let envioMassaFila = null; // {itens:[{clienteId,nome,link}], indice, enviados:Set, pulados:Set} quando a fila está em andamento
 let envioMassaOcultarEnviados = false;
+// Envio automático de verdade (via Z-API, ver função Edge "enviar-whatsapp")
+// — sem precisar abrir o WhatsApp e clicar "Enviar" um por um.
+let envioMassaAutoStatus = null; // {total, feito, sucesso:[], falha:[], emAndamento}
+async function chamarWhatsAppAuto(telefoneDigits, mensagem){
+  try{
+    const { data, error } = await supabaseClient.functions.invoke("enviar-whatsapp", { body: { telefone: telefoneDigits, mensagem } });
+    if(error){
+      // Quando a função responde com erro (ex: status 500/502), o supabase-js
+      // só bota um texto genérico em error.message ("Edge Function returned
+      // a non-2xx status code") — o motivo real fica dentro de error.context,
+      // que é a resposta de verdade da função. Sem isso, a gente nunca via
+      // a mensagem específica (ex: erro que a Z-API devolveu).
+      let mensagemReal = null;
+      if(error.context && typeof error.context.json === "function"){
+        try{
+          const corpo = await error.context.clone().json();
+          mensagemReal = corpo.error || corpo.message || null;
+        }catch(parseErr){ /* resposta não era JSON — segue com a mensagem genérica */ }
+      }
+      throw new Error(mensagemReal || error.message);
+    }
+    if(data && data.error) throw new Error(data.error);
+    return { ok:true };
+  }catch(e){
+    return { ok:false, msg: e.message || String(e) };
+  }
+}
+async function enviarMassaAutomatico(){
+  const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId);
+  if(!modeloAtual){ showToast("Escolha um modelo de mensagem.", "error"); return; }
+  const sel = bulkSet("envio_massa");
+  const clientes = clientesParaEnvio(envioMassaNegocioFiltro).filter(c => sel.has(c.id) && waDigits(c.whatsapp||c.telefone));
+  if(!clientes.length){ showToast("Selecione ao menos um contato com WhatsApp/telefone cadastrado.", "error"); return; }
+  if(!confirm(`Enviar automaticamente pro WhatsApp de ${clientes.length} contato(s) agora, sem precisar abrir/clicar em nada? Isso usa sua conta do WhatsApp conectada.`)) return;
+
+  envioMassaAutoStatus = { total: clientes.length, feito: 0, sucesso: [], falha: [], emAndamento: true };
+  renderAutoEnvioModal();
+  for(const c of clientes){
+    const nome = cliNome(c);
+    const fone = waDigits(c.whatsapp||c.telefone);
+    const resultado = await chamarWhatsAppAuto(fone, modeloAtual.texto);
+    if(resultado.ok){
+      envioMassaAutoStatus.sucesso.push(nome);
+      state.cliMensagensEnviadas.push({ id: uid("msgenv"), clienteId: c.id, modeloId: modeloAtual.id, modeloNome: modeloAtual.nome, data: todayISO() });
+      await saveCliMensagensEnviadas();
+    }else{
+      envioMassaAutoStatus.falha.push(`${nome}: ${resultado.msg}`);
+    }
+    envioMassaAutoStatus.feito++;
+    renderAutoEnvioModal();
+    // Pequena pausa entre envios — não sobrecarrega e evita risco de bloqueio
+    // por disparo em rajada.
+    await new Promise(r => setTimeout(r, 1200));
+  }
+  envioMassaAutoStatus.emAndamento = false;
+  renderAutoEnvioModal();
+}
+function renderAutoEnvioModal(){
+  const st = envioMassaAutoStatus;
+  if(!st) return;
+  closeModal(); // openModal() empilha — sem isso, cada atualização de progresso abriria um modal novo por cima
+  const pct = st.total ? Math.round((Math.min(st.feito,st.total)/st.total)*100) : 0;
+  openModal(`
+    <div class="modal-head"><div class="modal-title">⚡ Envio automático</div>${!st.emAndamento ? `<button class="modal-close" data-action="envio-auto-fechar">✕</button>` : ""}</div>
+    <div class="modal-body">
+      <div style="font-size:14px; margin-bottom:10px;">${st.emAndamento ? `Enviando ${Math.min(st.feito+1,st.total)} de ${st.total}...` : `Concluído: ${st.sucesso.length} enviado(s), ${st.falha.length} falharam, de ${st.total}.`}</div>
+      <div style="height:6px; background:var(--muted-bg); border-radius:4px; overflow:hidden; margin-bottom:12px;">
+        <div style="height:100%; width:${pct}%; background:var(--accent); transition:width .3s;"></div>
+      </div>
+      ${st.falha.length ? `<div class="field-help" style="color:var(--neg);">Falharam: ${st.falha.map(esc).join("; ")}</div>` : ""}
+    </div>
+    ${!st.emAndamento ? `<div class="modal-foot"><button type="button" class="btn btn-primary" data-action="envio-auto-fechar">Fechar</button></div>` : ""}
+  `);
+}
 // Mapa clienteId -> lançamentos em aberto (Receita, não Pago) — cobrança de
 // contrato já vem com clienteId; a gerada a partir de chamado só tem
 // chamadoId, então resolve o cliente por esse caminho também (mesma lógica
@@ -6961,7 +6939,7 @@ function viewCliEnvioMassa(){
   }).join("");
   const qtdSelecionados = Array.from(sel).length;
   return `
-    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois é só ir enviando pelo WhatsApp, um por um.</div></div></div>
+    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-body">
       <div class="field-row">
         <div class="field"><label>Negócio</label><select id="envioNegocioSelect"><option value="">Todos os negócios</option>${negOptions}</select></div>
@@ -6976,7 +6954,8 @@ function viewCliEnvioMassa(){
         <div class="panel-title">Contatos (${lista.length}) — ${qtdSelecionados} selecionado(s)</div>
         <div style="display:flex; gap:8px;">
           ${idsVencidos.length ? `<button class="btn btn-ghost btn-sm" data-action="envio-selecionar-vencidos" title="Marca só quem está com pagamento vencido">🔴 Selecionar vencidos (${idsVencidos.length})</button>` : ""}
-          <button class="btn btn-primary btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"}>📤 Iniciar envio</button>
+          <button class="btn btn-ghost btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Abre o WhatsApp um contato de cada vez — você clica em Enviar lá dentro">📤 Enviar manual</button>
+          <button class="btn btn-primary btn-sm" data-action="envio-iniciar-auto" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Envia sozinho pra todos os selecionados, sem precisar abrir o WhatsApp (precisa do WhatsApp automático configurado)">⚡ Enviar automático</button>
         </div>
       </div>
       <div class="panel-body">
@@ -7085,7 +7064,7 @@ function viewCliDashboard(){
         <span class="kpi-label" style="margin:0;">${esc(n.nome)}</span>
       </div>
       <div class="kpi-value" style="font-size:26px;">${total}</div>
-      <div class="kpi-note">${ativos} ativos · MRR ${fmtBRL(mrr)}</div>
+      <div class="kpi-note">${ativos} ativos${podeVerValores()?` · MRR ${fmtBRL(mrr)}`:""}</div>
     </div>`).join("");
 
   return `
@@ -7093,10 +7072,10 @@ function viewCliDashboard(){
       <div><div class="page-title">Clientes — Dashboard</div><div class="page-sub">Visão consolidada de todos os negócios</div></div>
       ${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?5:4},1fr);">
       <div class="kpi-card"><div class="kpi-label">Total de clientes</div><div class="kpi-value">${total}</div></div>
       <div class="kpi-card"><div class="kpi-label">Clientes ativos</div><div class="kpi-value pos">${ativos}</div></div>
-      <div class="kpi-card"><div class="kpi-label">MRR total</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(mrrTotal)}</div><div class="kpi-note">Receita mensal recorrente</div></div>
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">MRR total</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(mrrTotal)}</div><div class="kpi-note">Receita mensal recorrente</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Novos (30 dias)</div><div class="kpi-value">${novos30}</div><div class="kpi-note" style="color:${crescPos?'var(--pos)':'var(--neg)'};">${crescPos?'↑':'↓'} ${Math.abs(crescPct)}% vs mês anterior</div></div>
       <div class="kpi-card"><div class="kpi-label">Inadimplentes</div><div class="kpi-value ${inadimplentes>0?'neg':''}">${inadimplentes}</div></div>
     </div>
@@ -7197,40 +7176,49 @@ function viewCliLeads(){
       </div>
     ` : `
     <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      ${lista.map((l,i)=>{
-        const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
-        return `
-        <div style="padding:0.9rem 1rem;${i>0?"border-top:1px solid var(--border)":""}${i%2===1?";background:rgba(255,255,255,0.015)":""}">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;flex-wrap:wrap">
-            <!-- Info principal -->
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;color:var(--text-primary);font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nome||"—"}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1rem;margin-top:0.3rem;font-size:0.78rem;color:var(--text-muted)">
-                <span>📱 ${fmtTel(l.telefone)}</span>
-                ${l.plano?`<span>📶 ${l.plano}</span>`:""}
-                ${l.endereco?`<span title="${(l.endereco||"").replace(/"/g,"&quot;")}">📍 ${l.endereco.length>35?l.endereco.slice(0,35)+"…":l.endereco}</span>`:""}
-                <span>🕐 ${fmtData(l.created_at)}</span>
-              </div>
-            </div>
-            <!-- Status + Ações -->
-            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex-shrink:0">
-              <span style="display:inline-block;padding:0.2rem 0.65rem;border-radius:20px;font-size:0.72rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
-              <button data-action="lead-wa" data-id="${l.id}" data-nome="${(l.nome||"").replace(/"/g,"&quot;")}"
-                title="Contatar no WhatsApp"
-                style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WA</button>
-              ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
-                title="Marcar como Contatado"
-                style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓</button>`:""}
-              ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
-                title="Marcar como Convertido"
-                style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">⭐</button>`:""}
-              ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
-                title="Descartar lead"
-                style="background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.28rem 0.7rem;cursor:pointer;font-size:0.75rem;color:#94A3B8;white-space:nowrap">✕</button>`:""}
-            </div>
-          </div>
-        </div>`;
-      }).join("")}
+      <div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;">Nome</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Telefone</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Plano</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Endereço</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;">Status</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Recebido</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lista.map((l,i)=>{
+              const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
+              return `<tr style="border-bottom:1px solid var(--border);${i%2===1?"background:rgba(255,255,255,0.02)":""}">
+                <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500;">${l.nome||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);">${fmtTel(l.telefone)}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);">${l.plano||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.endereco||"").replace(/"/g,"&quot;")}">${l.endereco||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;text-align:center">
+                  <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
+                </td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);font-size:0.78rem">${fmtData(l.created_at)}</td>
+                <td style="padding:0.7rem 0.75rem;text-align:center">
+                  <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center">
+                    <button data-action="lead-wa" data-id="${l.id}"
+                      title="Contatar no WhatsApp"
+                      style="width:100%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WhatsApp</button>
+                    ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
+                      style="width:100%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓ Contatado</button>`:""}
+                    ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
+                      style="width:100%;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">⭐ Convertido</button>`:""}
+                    ${l.status!=="Descartado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Descartado"
+                      style="width:100%;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#94A3B8;white-space:nowrap">✕ Descartar</button>`:""}
+                  </div>
+                </td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
       <div style="padding:0.6rem 1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.75rem">
         ${lista.length} lead${lista.length!==1?"s":""} exibido${lista.length!==1?"s":""}${temFiltro?" (filtrado)":""}
       </div>
@@ -7261,7 +7249,7 @@ function viewCliLista(){
       <td>${esc(c.cidade||"—")}${c.uf?`/${c.uf}`:""}</td>
       <td>${esc(c.telefone||"—")}</td>
       <td>${fmtDateBR(c.dataCadastro)}</td>
-      <td>${mrr>0?fmtBRL(mrr):"—"}</td>
+      ${podeVerValores()?`<td>${mrr>0?fmtBRL(mrr):"—"}</td>`:""}
       <td><span class="status-pill ${statusClass}">${esc(c.status||"—")}</span></td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
@@ -7281,13 +7269,13 @@ function viewCliLista(){
     <div class="panel">
       <div class="filter-bar">
         <input type="text" placeholder="Buscar por nome, CPF, e-mail, telefone, cidade..." value="${esc(cliFiltro.texto)}" data-action="cli-filtro-texto" style="min-width:260px;">
-        <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+        ${!filtroNegocioTravado ? `<select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>` : ""}
         <select data-action="cli-filtro-status"><option value="">Todos os status</option>${statusOpts}</select>
         <select data-action="cli-filtro-plano"><option value="">Todos os planos</option>${planoOpts}</select>
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th><th class="num">MRR</th><th>Status</th><th></th></tr></thead>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th>${podeVerValores()?`<th class="num">MRR</th>`:""}<th>Status</th><th></th></tr></thead>
         <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
       </div>
     </div>
@@ -7311,7 +7299,7 @@ function viewCliDetalhe(){
           <div>
             <div style="font-weight:700; font-size:14px;">${esc(ct.negocio)}</div>
             <div style="font-size:12px; color:var(--ink-3); margin-top:2px;">
-              Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano?`· ${fmtBRL(plano.valor)}/mês`:""}
+              Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano&&podeVerValores()?`· ${fmtBRL(plano.valor)}/mês`:""}
               ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
               ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
               ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">🔁 cobrança automática</span>`:""}
@@ -7345,8 +7333,8 @@ function viewCliDetalhe(){
       </div>
     </div>
 
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
-      <div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:3},1fr); margin-bottom:16px;">
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Negócios vinculados</div><div class="kpi-value">${(c.contratos||[]).length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Cidade</div><div class="kpi-value" style="font-size:16px;">${esc(c.cidade||"—")}</div></div>
       <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:16px;"><span class="status-pill ${statusClass} " style="font-size:13px;">${c.status}</span></div></div>
@@ -7412,7 +7400,7 @@ function viewCliPlanos(){
       <td style="font-weight:600;">${esc(p.nome)}</td>
       <td><span class="status-pill status-agendado">${esc(p.negocio)}</span></td>
       <td style="color:var(--ink-3);">${esc(p.descricao||"—")}</td>
-      <td class="num" style="font-weight:700; color:var(--pos);">${fmtBRL(p.valor)}</td>
+      ${podeVerValores()?`<td class="num" style="font-weight:700; color:var(--pos);">${fmtBRL(p.valor)}</td>`:""}
       <td style="color:var(--ink-3);">${esc(p.velocidade||"—")}</td>
       <td style="text-align:center;">${usos}</td>
       <td><div class="row-actions">
@@ -7438,6 +7426,7 @@ function viewCliPlanos(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
 
+
     <!-- Filtros -->
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
       <input type="text"
@@ -7457,7 +7446,7 @@ function viewCliPlanos(){
 
     ${bulkBar}
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", lista.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", lista.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="8">${emptyState(temFiltro?"Nenhum plano encontrado com esses filtros.":"Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7475,7 +7464,7 @@ function modalCliCliente(existing){
     const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
     const hasContrato = !!contratoAtual;
     const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
-    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
     return `<tr>
       <td style="white-space:nowrap;">
         <label class="checkbox-row" style="padding:4px 0;">
@@ -7716,7 +7705,7 @@ function modalCliContrato(clienteId, existing){
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
   const conexaoOpts = CLI_TIPOS_CONEXAO.map(t=>`<option value="${t}" ${ct.tipoConexao===t?"selected":""}>${t}</option>`).join("");
   const planosDoPNegocio = state.cliPlanos.filter(p=>p.negocio===ct.negocio);
-  const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+  const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar contrato":"Vincular negócio ao cliente"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -7744,7 +7733,7 @@ function modalCliContrato(clienteId, existing){
   document.getElementById("cliCtNegocio").addEventListener("change", e => {
     const planos = state.cliPlanos.filter(p=>p.negocio===e.target.value);
     const sel = document.getElementById("cliCtPlano");
-    sel.innerHTML = `<option value="">— Selecione um plano —</option>` + planos.map(p=>`<option value="${p.id}">${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    sel.innerHTML = `<option value="">— Selecione um plano —</option>` + planos.map(p=>`<option value="${p.id}">${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
   });
 
   document.getElementById("formCliContrato").addEventListener("submit", async e => {
@@ -7848,7 +7837,7 @@ function viewCliOrcamentos(){
       <td>${cliente ? esc(cliNome(cliente)) : "— cliente removido —"}</td>
       <td>${o.negocio?esc(o.negocio):"—"}</td>
       <td>${fmtDateBR(o.data)}</td>
-      <td class="num" style="font-weight:700;">${fmtBRL(o.valorTotal)}</td>
+      ${podeVerValores()?`<td class="num" style="font-weight:700;">${fmtBRL(o.valorTotal)}</td>`:""}
       <td><span class="status-pill ${statusClass}">${o.status}</span></td>
       <td><div class="row-actions">
         ${podeEditar ? `<button class="btn btn-primary btn-sm" data-action="orc-aprovar" data-id="${o.id}">Aprovar → OS</button>` : ""}
@@ -7864,7 +7853,7 @@ function viewCliOrcamentos(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_orcamentos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="orc-novo">+ Novo orçamento</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Status</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum orçamento criado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7885,9 +7874,9 @@ function viewCliOSLista(){
       <td>${cliente?esc(cliNome(cliente)):"— removido —"}</td>
       <td>${os.negocio?esc(os.negocio):"—"}</td>
       <td>${fmtDateBR(os.data)}</td>
-      <td class="num">${fmtBRL(venda)}</td>
+      ${podeVerValores()?`<td class="num">${fmtBRL(venda)}</td>
       <td class="num" style="color:var(--ink-3);">${fmtBRL(custo)}</td>
-      <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>
+      <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>`:""}
       <td><span class="status-pill ${statusClass}">${os.status}</span></td>
       <td><div class="row-actions"><button class="icon-btn" data-action="os-detalhe" data-id="${os.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="os-del" data-id="${os.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
@@ -7898,7 +7887,7 @@ function viewCliOSLista(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_os")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="os-nova">+ Nova venda direta</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th>${podeVerValores()?`<th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th>`:""}<th>Status</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhuma OS ainda. Aprove um orçamento ou crie uma venda direta.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7916,13 +7905,15 @@ function viewCliOSDetalhe(){
   const itensBaixados = osItensBaixados(os.id);
   const statusClass = os.status==="Concluída"?"status-pago":os.status==="Cancelada"?"status-pendente":"status-agendado";
 
-  const itensVendaHTML = (os.itens||[]).map(it => `
+  const itensVendaHTML = (os.itens||[]).map(it => podeVerValores() ? `
     <tr><td>${esc(it.descricao)}</td><td class="num">${it.quantidade}</td><td class="num">${fmtBRL(it.valorUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(it.valorTotal)}</td></tr>
-  `).join("") || `<tr><td colspan="4">${emptyState("Nenhum item.")}</td></tr>`;
+  ` : `<tr><td>${esc(it.descricao)}</td><td class="num">${it.quantidade}</td></tr>`).join("") || `<tr><td colspan="4">${emptyState("Nenhum item.")}</td></tr>`;
 
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
-    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`;
+    return podeVerValores()
+      ? `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`
+      : `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td></tr>`;
   }).join("") : `<tr><td colspan="4">${emptyState("Nenhuma baixa de estoque ainda.")}</td></tr>`;
 
   return `
@@ -7937,15 +7928,15 @@ function viewCliOSDetalhe(){
         ${(os.status!=="Concluída" && os.status!=="Cancelada") ? `<button class="btn btn-primary" data-action="os-concluir" data-id="${os.id}">✓ Concluir OS</button>` : ""}
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
-      <div class="kpi-card"><div class="kpi-label">Valor da venda</div><div class="kpi-value pos">${fmtBRL(venda)}</div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:1},1fr); margin-bottom:16px;">
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">Valor da venda</div><div class="kpi-value pos">${fmtBRL(venda)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Custo de implantação</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custo)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Conta a receber</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:"— não gerada —"}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
     </div>
     <div class="two-col">
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Valor unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
   `;
@@ -7985,7 +7976,7 @@ function modalCliOrcamento(existing, modoOS){
         ${!modoOS ? `<div class="field"><label>Validade</label><input type="date" name="validade" value="${o.validade||""}" ${podeEditar?"":"disabled"}></div>` : ""}
       </div>
       <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:640px;"><thead><tr><th>Produto (opcional)</th><th>Descrição</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead>
         <tbody id="orcItensBody">${itensIniciais.map(linhaItemHTML).join("")}</tbody></table>
       </div>
@@ -8135,7 +8126,7 @@ function modalOSBaixaEstoque(osId){
     <div class="modal-head"><div class="modal-title">📦 Dar baixa de estoque — ${esc(os.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaOS"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado na instalação de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th><th class="num">Custo estimado</th><th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
@@ -8228,7 +8219,8 @@ async function osConcluir(osId){
 
 // ---- VIEW: TÉCNICOS ----
 function viewCliTecnicos(){
-  const lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
+  let lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
+  if(cliFiltro.negocio) lista = lista.filter(t => t.negocio === cliFiltro.negocio);
   const rows = lista.map(t => {
     const negTag = t.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(t.negocio)} 14%, white); color:${negocioCor(t.negocio)};"><span class="tag-dot" style="background:${negocioCor(t.negocio)}"></span>${esc(t.negocio)}</span>` : "—";
     const qtdChamados = state.cliChamados.filter(c => c.tecnicoId === t.id && c.status!=="Concluído" && c.status!=="Cancelado").length;
@@ -8238,23 +8230,28 @@ function viewCliTecnicos(){
       <td>${esc(t.telefone||"—")}</td>
       <td>${negTag}</td>
       <td style="color:var(--ink-3);">${esc(t.diasAtendimento||"—")}</td>
-      <td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>
+      ${podeVerValores()?`<td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>`:""}
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">🔗</button>
-        ${Number(t.valorMensal)>0 ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
+        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
       </div></td>
     </tr>`;
   }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em 💲 pra lançar o pagamento em Contas a Pagar.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
+    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
+      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+    </div></div>` : ""}
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th><th class="num">Valor mensal</th><th class="num">Chamados abertos</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th>${podeVerValores()?`<th class="num">Valor mensal</th>`:""}<th class="num">Chamados abertos</th><th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum técnico cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -8372,7 +8369,8 @@ const CHAM_SORT_GETTERS = {
 };
 function viewCliChamados(){
   sortState("cli_chamados", "dataAgendada", "desc");
-  const lista = aplicarSort("cli_chamados", state.cliChamados, CHAM_SORT_GETTERS);
+  let lista = aplicarSort("cli_chamados", state.cliChamados, CHAM_SORT_GETTERS);
+  if(cliFiltro.negocio) lista = lista.filter(c => c.negocio === cliFiltro.negocio);
   const rows = lista.map(c => {
     const cliente = cliClienteById(c.clienteId);
     const tecnico = cliTecnicoById(c.tecnicoId);
@@ -8388,11 +8386,16 @@ function viewCliChamados(){
       <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
   }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Chamados</div><div class="page-sub">O cliente ligou — abra o chamado, agende o técnico e acompanhe até concluir.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_chamados")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cham-novo">+ Novo chamado</button>`)}</div>
     </div>
+    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
+      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+    </div></div>` : ""}
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_chamados", lista.map(c=>c.id))}${thSort("cli_chamados","Número","numero")}${thSort("cli_chamados","Cliente","cliente")}${thSort("cli_chamados","Tipo","tipo")}${thSort("cli_chamados","Técnico","tecnico")}${thSort("cli_chamados","Agendado p/","dataAgendada")}${thSort("cli_chamados","Prioridade","prioridade")}${thSort("cli_chamados","Status","status")}<th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum chamado ainda.")}</td></tr>`}</tbody></table>
@@ -8412,7 +8415,7 @@ function viewCliChamadoDetalhe(){
 
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
-    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>
+    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td>${podeVerValores()?`<td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>`:""}
       <td class="num"><button class="icon-btn" data-action="cham-mat-editar" data-id="${m.id}" title="Editar item">✎</button><button class="icon-btn danger" data-action="cham-mat-excluir" data-id="${m.id}" title="Excluir item">🗑</button></td></tr>`;
   }).join("") : `<tr><td colspan="5">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
 
@@ -8430,18 +8433,18 @@ function viewCliChamadoDetalhe(){
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
         ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
-        ${(!lanc && Number(c.valorCobranca)>0) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
+        ${(!lanc && Number(c.valorCobranca)>0 && podeVerValores()) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
         <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
         ${podeConcluir ? `<button class="btn btn-ghost" data-action="cham-prorrogar" data-id="${c.id}">⏸ Não concluiu</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
         ${podeCancelar ? `<button class="btn btn-ghost" style="color:var(--neg);" data-action="cham-cancelar" data-id="${c.id}">✕ Cancelar</button>` : ""}
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:2},1fr); margin-bottom:16px;">
       <div class="kpi-card"><div class="kpi-label">Técnico</div><div class="kpi-value" style="font-size:16px;">${tecnico?esc(tecnico.nome):"— não atribuído —"}</div></div>
       <div class="kpi-card"><div class="kpi-label">Agendado para</div><div class="kpi-value" style="font-size:16px;">${c.dataAgendada?fmtDateBR(c.dataAgendada):"— sem data —"}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>`:""}
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📋 Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
@@ -8451,7 +8454,7 @@ function viewCliChamadoDetalhe(){
         <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
         ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
       </div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th><th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
   `;
@@ -10158,7 +10161,7 @@ function modalEstCompra(){
       <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Estoque compartilhado —</option>${negOptions}</select></div>
 
       <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens da nota</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:680px;"><thead><tr>
           <th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th><th></th>
         </tr></thead><tbody id="compraItensBody">${linhaItemHTML()}</tbody></table>
@@ -10306,7 +10309,7 @@ function modalDetalheCompra(compraId){
     <div class="modal-head"><div class="modal-title">📋 Compra — Nota ${esc(c.numeroNota)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">${fmtDateBR(c.data)} · Fornecedor: <strong>${esc(fornecedor?.nome||"—")}</strong>${c.negocio?` · ${esc(c.negocio)}`:""} · base do rateio: ${EST_BASE_RATEIO.find(o=>o.v===c.baseRateio)?.l||c.baseRateio}</div>
-      <div style="overflow-x:auto;"><table style="min-width:560px;"><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div style="display:flex; flex-direction:column; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:12.5px;">
         <div style="display:flex; justify-content:space-between;"><span>Itens</span><strong>${fmtBRL(totalItens)}</strong></div>
         <div style="display:flex; justify-content:space-between;"><span>Frete</span><strong>${fmtBRL(c.frete||0)}</strong></div>
