@@ -651,14 +651,14 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
            title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':(foraDeAlcance(6)?'Não é mais possível somar 6 selos neste cartão':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto')}">
         <span class="fp-ico">🎁</span>
         <span class="fp-val">50% de desconto</span>
-        <span class="fp-onde">por 6 meses de pagamento em dia</span>
+        <span class="fp-onde">por 6 faturas pagas até o vencimento, dentro deste cartão</span>
         <span class="fp-st">${chip(premio1, antes1, 6)}</span>
       </div>
       <div class="fp ${aceso2?'p2ok':(foraDeAlcance(12)?'impossivel':'p2e')}${!premio2&&antes2?' passado':''}"
            title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':(foraDeAlcance(12)?'Não é mais possível somar 12 selos neste cartão':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto')}">
         <span class="fp-ico">🏅</span>
         <span class="fp-val">100% de desconto</span>
-        <span class="fp-onde">por 12 meses de pagamento em dia</span>
+        <span class="fp-onde">por 12 faturas pagas até o vencimento, dentro deste cartão</span>
         <span class="fp-st">${chip(premio2, antes2, 12)}</span>
       </div>
     </div>`;
@@ -710,7 +710,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
           </div>
           <div class="fc-progress-col">
             <div class="fc-pct">${streak}<small style="font-size:0.9rem;opacity:0.7">/12</small></div>
-            <div class="fc-pct-label">${streak===1?'mês em dia':'meses em dia'}</div>
+            <div class="fc-pct-label">${streak===1?'fatura em dia':'faturas em dia'}</div>
           </div>
         </div>
       </div>
@@ -732,7 +732,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
         <div class="fidel-bar-labels">
           <span>Progresso total</span>
           <span>${faltam>0
-            ? `Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`
+            ? `Faltam ${faltam} ${faltam===1?'fatura paga':'faturas pagas'} em dia`
             : semAlcance ? `${streak} de 12 selos neste cartão` : '🎉 Prêmio disponível!'}</span>
         </div>
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
@@ -748,7 +748,7 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
 
       <!-- Próximo prêmio -->
       ${faltam>0
-        ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — mantenha o pagamento em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
+        ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — pague mais ${faltam} ${faltam===1?'fatura':'faturas'} <strong>até o vencimento</strong>, dentro deste cartão</div>`
         : semAlcance
           ?`<div class="premio-pill neutro">Este cartão não alcança mais o <strong>${proximoPremio}</strong> — não sobram meses suficientes. Seu próximo cartão começa em <strong>${esc(fmtMesRef(somaMeses(periodo?periodo.fim:'', 1)))}</strong>, com 12 chances novas.</div>`
           :''
