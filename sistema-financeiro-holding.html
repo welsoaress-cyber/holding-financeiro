@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.3";
+const APP_VERSION = "1.7.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5654,12 +5654,15 @@ function modalPerfil(existing){
       </div>`;
     }
 
+    // Chevron: ▾ = expandido, ▸ = recolhido (só relevante quando ticado)
+    const chevron = perm.ver ? "▾" : "▸";
     return `
       <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:color-mix(in srgb,${cor} 7%,var(--surface));">
-          <div style="display:flex;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;user-select:none;" data-perm-title-toggle="${subId}" data-perm-chk="${negId}">
             <span style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
             <span style="font-size:13px;font-weight:700;">${esc(n.nome)}</span>
+            <span id="chev_${subId}" style="font-size:11px;color:var(--ink-3);margin-left:2px;transition:opacity .15s;">${chevron}</span>
           </div>
           <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border:1px solid ${perm.ver?"var(--accent)":"var(--border)"};border-radius:999px;cursor:pointer;user-select:none;background:${perm.ver?"color-mix(in srgb,var(--accent) 10%,var(--surface))":"transparent"};color:${perm.ver?"var(--accent)":"var(--ink-3)"};" data-ver-label="${negId}">
             <input type="checkbox" name="pver_${n.id}" id="${negId}" ${perm.ver?"checked":""} style="margin:0;" data-ver-toggle="${subId}">
@@ -5729,8 +5732,9 @@ function modalPerfil(existing){
     const chk = e.target;
     // Toggle de negócio (Sem acesso / Com acesso)
     if(chk.dataset.verToggle){
-      const sub = document.getElementById(chk.dataset.verToggle);
-      const lbl = document.querySelector(`[data-ver-label="${chk.id}"]`);
+      const sub  = document.getElementById(chk.dataset.verToggle);
+      const lbl  = document.querySelector(`[data-ver-label="${chk.id}"]`);
+      const chev = document.getElementById(`chev_${chk.dataset.verToggle}`);
       if(sub){
         const hasSubs = sub.dataset.hasSubs === "1";
         sub.style.display = chk.checked ? (hasSubs ? "block" : "flex") : "none";
@@ -5740,7 +5744,26 @@ function modalPerfil(existing){
         lbl.style.background = chk.checked ? "color-mix(in srgb,var(--accent) 10%,var(--surface))" : "transparent";
         lbl.style.color      = chk.checked ? "var(--accent)" : "var(--ink-3)";
       }
+      // Ao marcar → expandido (▾); ao desmarcar → recolhido (▸)
+      if(chev) chev.textContent = chk.checked ? "▾" : "▸";
     }
+  });
+
+  // Clique no título do negócio — recolhe/expande o painel de permissões (só quando ticado)
+  document.getElementById("formPerfil").addEventListener("click", e => {
+    const title = e.target.closest("[data-perm-title-toggle]");
+    if(!title) return;
+    const subId = title.dataset.permTitleToggle;
+    const chkId = title.dataset.permChk;
+    const chk   = document.getElementById(chkId);
+    if(!chk || !chk.checked) return; // só colapsa se estiver ativo
+    const sub   = document.getElementById(subId);
+    const chev  = document.getElementById(`chev_${subId}`);
+    if(!sub) return;
+    const estaAberto = sub.style.display !== "none";
+    const hasSubs = sub.dataset.hasSubs === "1";
+    sub.style.display = estaAberto ? "none" : (hasSubs ? "block" : "flex");
+    if(chev) chev.textContent = estaAberto ? "▸" : "▾";
   });
 
   document.getElementById("formPerfil").addEventListener("submit", async e => {
