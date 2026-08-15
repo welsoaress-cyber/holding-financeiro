@@ -403,6 +403,7 @@
     box-shadow: var(--shadow-xl);
     border: 1px solid var(--border);
   }
+  .modal.modal-wide { width: 640px; }
   .modal-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px 14px;
@@ -1246,17 +1247,26 @@ function permissaoModulo(moduloId, acao){
   if(!MODULOS_GRANULARES.includes(moduloId)) return true; // fora do escopo do controle granular
   if(!state.perfilAtivo) return false;
   const perfil = state.perfilAtivo;
-  // Novo modelo: módulos de negócio acessíveis se ALGUM negócio libera a ação
+  // Modelo novo com negModulos explícito
   if(perfil.negModulos){
     const NEG_MOD_IDS = ["financeiro","clientes","estoque","rh","comprasvendas"];
     if(!NEG_MOD_IDS.includes(moduloId)){
-      // Módulos globais (visao, cadastro) ficam em modulos
       const perm = (perfil.modulos || {})[moduloId] || {};
       return !!perm[acao];
     }
     return state.negocios.some(n => !!((perfil.negModulos[n.id] || {})[moduloId] || {})[acao]);
   }
-  // Fallback modelo legado
+  // Modelo simplificado: permissoes[negocio] = {ver, criar, editar, excluir}
+  // Módulo é acessível se o usuário tem essa ação em pelo menos um negócio
+  const negPerms = Object.values(perfil.permissoes || {});
+  if(negPerms.length > 0){
+    if(acao === "ver")    return negPerms.some(p => p.ver);
+    if(acao === "criar")  return negPerms.some(p => p.criar);
+    if(acao === "editar") return negPerms.some(p => p.editar);
+    if(acao === "excluir")return negPerms.some(p => p.excluir);
+    return false;
+  }
+  // Fallback modelo muito legado (modulos explícitos por módulo)
   const perm = (perfil.modulos || {})[moduloId] || modulosPadrao()[moduloId];
   return !!perm[acao];
 }
@@ -4565,21 +4575,16 @@ function viewUsuarios(){
     if(p.tipo === "master"){
       resumo = `<span class="status-pill status-pago"> Master — acesso completo</span>`;
     }else{
-      // Resumo adaptado ao novo modelo (negModulos) e ao legado (permissoes)
-      let negTags = "";
-      if(p.negModulos){
-        negTags = state.negocios.map(n => {
-          const negPerms = p.negModulos[n.id] || {};
-          const modsAtivos = MODULOS_POR_NEGOCIO.filter(g => (negPerms[g.id] || {}).ver).map(g => g.label);
-          if(!modsAtivos.length) return "";
-          const cor = n.cor || "var(--accent)";
-          return `<span class="tag" style="background:var(--muted-bg);color:var(--ink-3);margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0;"></span>${esc(n.nome)}: <span style="color:var(--ink-4);">${modsAtivos.join(', ')}</span></span>`;
-        }).join("");
-      } else {
-        const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
-        negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg);color:var(--ink-3);margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
-      }
-      resumo = (negTags || `<span style="color:var(--ink-4);font-size:12px;">Nenhum negócio liberado ainda</span>`);
+      // Resumo: negócios com acesso
+      const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver);
+      const negTags = entradasNeg.map(([negNome, perm]) => {
+        const n = state.negocios.find(x => x.nome === negNome);
+        const cor = n ? (n.cor || "var(--accent)") : "var(--accent)";
+        const acoes = [perm.criar&&"Incluir", perm.editar&&"Editar", perm.excluir&&"Excluir"].filter(Boolean);
+        const sub = acoes.length ? `<span style="color:var(--ink-4);margin-left:3px;">${acoes.join("·")}</span>` : "";
+        return `<span class="tag" style="background:var(--muted-bg);color:var(--ink-3);margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0;display:inline-block;"></span>${esc(negNome)}${sub}</span>`;
+      }).join("");
+      resumo = (negTags || `<span style="color:var(--ink-4);font-size:12px;">Nenhum negócio com acesso</span>`);
     }
     return `<tr>
       <td><strong>${esc(p.nome)}</strong></td>
@@ -5289,196 +5294,160 @@ function modalNegocio(existing){
 }
 
 /* =========================================================================
-   MODAL — USUÁRIO com permissões por negócio → módulos dentro de cada negócio
+   MODAL — USUÁRIO (permissões simplificadas: por negócio)
 ========================================================================= */
-// Módulos mostrados dentro de cada card de negócio
-const MODULOS_POR_NEGOCIO = [
-  { id:"financeiro",    label:"Financeiro",    acoes:["ver","criar","editar","excluir"],
-    help:"Com 'Criar', acesso automático a todas as categorias." },
-  { id:"clientes",      label:"Clientes",      acoes:["ver","criar","editar","excluir"] },
-  { id:"estoque",       label:"Estoque",       acoes:["ver","criar","editar","excluir"] },
-  { id:"rh",            label:"RH",            acoes:["ver","criar","editar","excluir"] },
-  { id:"comprasvendas", label:"Compra e Venda",acoes:["ver","criar","editar","excluir"] },
-];
-// Módulos globais (não ligados a negócio específico)
-const MODULOS_GLOBAIS_CONFIG = [
-  { id:"visao",    label:"Visão Geral", acoes:["ver"] },
-  { id:"cadastro", label:"Cadastro",   acoes:["ver"] },
-];
-// Para o MODULOS_GRUPOS legado (mantido pra outros usos)
+// Mantido para compatibilidade com código que usa MODULOS_GRUPOS em outros lugares
 const MODULOS_GRUPOS = [
-  ...MODULOS_POR_NEGOCIO,
-  ...MODULOS_GLOBAIS_CONFIG,
+  { id:"visao",         label:"Visão",           acoes:["ver"] },
+  { id:"financeiro",    label:"Financeiro",       acoes:["ver","criar","editar","excluir"] },
+  { id:"estoque",       label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
+  { id:"clientes",      label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
+  { id:"rh",            label:"RH",               acoes:["ver","criar","editar","excluir"] },
+  { id:"comprasvendas", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
+  { id:"cadastro",      label:"Cadastro",         acoes:["ver"] },
 ];
-const ACOES_LABEL = { ver:"Ver", criar:"Criar", editar:"Editar", excluir:"Excluir" };
+const ACOES_LABEL = { ver:"Ver", criar:"Incluir", editar:"Editar", excluir:"Excluir" };
 
 function modalPerfil(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
+  const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{} };
 
-  // Pills de checkbox (flex-wrap, sem scroll horizontal em nenhuma tela)
-  const pillCheckbox = (nome, marcado, rotulo) => `
-    <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 9px;border:1px solid var(--border);border-radius:999px;cursor:pointer;user-select:none;">
-      <input type="checkbox" name="${nome}" ${marcado?"checked":""} style="margin:0;">${esc(rotulo)}
-    </label>`;
-
-  // --- Linha de módulo dentro do card de negócio ---
-  // "Habilitar" = checkbox de ver; quando marcado expande Criar/Editar/Excluir inline
-  const linhaModNeg = (g, negId, perm) => {
-    const habId  = `nm_ver_${negId}_${g.id}`;
-    const subId  = `nmsub_${negId}_${g.id}`;
-    const habOk  = !!perm.ver;
-    // sub-ações = tudo exceto "ver" (que virou "habilitar")
-    const subAcoes = g.acoes.filter(a => a !== "ver");
-    const subPills = subAcoes.map(a => pillCheckbox(`nm_${a}_${negId}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
-    return `
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-top:1px solid var(--border);flex-wrap:wrap;">
-        <div style="min-width:100px;font-size:11.5px;font-weight:600;color:var(--ink-2);">
-          ${esc(g.label)}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:10px;">ⓘ</span>`:""}
-        </div>
-        <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border:1px solid ${habOk?"var(--accent)":"var(--border)"};border-radius:999px;cursor:pointer;user-select:none;background:${habOk?"color-mix(in srgb,var(--accent) 10%,var(--surface))":"transparent"};color:${habOk?"var(--accent)":"var(--ink-3)"};" data-hab-label="${habId}">
-          <input type="checkbox" name="${habId}" id="${habId}" ${habOk?"checked":""} style="margin:0;" data-hab-toggle="${subId}">${habOk?"Habilitado":"Habilitar"}
-        </label>
-        <div id="${subId}" style="display:${habOk?"flex":"none"};flex-wrap:wrap;gap:5px;">${subPills}</div>
-      </div>`;
+  // Lê permissão do negócio (suporta modelo antigo e novo)
+  const getPermNeg = (n) => {
+    if(p.negModulos){
+      // Modelo novo: usa financeiro como proxy de ver/editar/excluir de negócio
+      const fm = (p.negModulos[n.id] || {}).financeiro || {};
+      const anyVer = Object.values(p.negModulos[n.id] || {}).some(m => m.ver);
+      return { ver: anyVer, criar: !!fm.criar, editar: !!fm.editar, excluir: !!fm.excluir };
+    }
+    return (p.permissoes || {})[n.nome] || { ver:false, criar:false, editar:false, excluir:false };
   };
 
-  // --- Card de negócio com módulos dentro ---
+  // Pill checkbox estilizado
+  const pill = (name, checked, label, accent) => {
+    const ac = accent ? "var(--accent)" : "var(--border)";
+    const bg = accent ? "color-mix(in srgb,var(--accent) 8%,var(--surface))" : "transparent";
+    const cl = accent ? "var(--accent)" : "var(--ink-3)";
+    return `<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:5px 11px;border:1px solid ${ac};border-radius:999px;cursor:pointer;user-select:none;background:${bg};color:${cl};transition:all .15s;">
+      <input type="checkbox" name="${name}" ${checked?"checked":""} style="margin:0;">${esc(label)}</label>`;
+  };
+
+  // Card de cada negócio: toggle Ver → expande Incluir/Editar/Excluir
   const cardsNegocio = state.negocios.map(n => {
     const cor = n.cor || "var(--accent)";
-    // Lê permissões do novo modelo; fallback para o modelo legado
-    const getNegPerm = (modId) => {
-      if(p.negModulos) return (p.negModulos[n.id] || {})[modId] || {};
-      // Fallback legado: financeiro usa permissoes[nome], outros usam modulos global
-      const legPerm = (p.permissoes || {})[n.nome] || {};
-      if(modId === "financeiro") return { ver: !!legPerm.ver, criar: false, editar: !!legPerm.editar, excluir: !!legPerm.excluir };
-      return (p.modulos || {})[modId] || {};
-    };
-    const modRows = MODULOS_POR_NEGOCIO.map(g => linhaModNeg(g, n.id, getNegPerm(g.id))).join("");
+    const perm = getPermNeg(n);
+    const negId = `neg_${n.id}`;
+    const subId = `negsub_${n.id}`;
     return `
-      <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
-        <div style="padding:10px 12px;background:color-mix(in srgb,${cor} 8%,var(--surface));display:flex;align-items:center;gap:8px;">
-          <span style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
-          <span style="font-size:13px;font-weight:700;">${esc(n.nome)}</span>
+      <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:color-mix(in srgb,${cor} 7%,var(--surface));">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
+            <span style="font-size:13px;font-weight:700;">${esc(n.nome)}</span>
+          </div>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 11px;border:1px solid ${perm.ver?"var(--accent)":"var(--border)"};border-radius:999px;cursor:pointer;user-select:none;background:${perm.ver?"color-mix(in srgb,var(--accent) 10%,var(--surface))":"transparent"};color:${perm.ver?"var(--accent)":"var(--ink-3)"};" data-ver-label="${negId}">
+            <input type="checkbox" name="pver_${n.id}" id="${negId}" ${perm.ver?"checked":""} style="margin:0;" data-ver-toggle="${subId}">${perm.ver?"Com acesso":"Sem acesso"}
+          </label>
         </div>
-        ${modRows}
+        <div id="${subId}" style="display:${perm.ver?"flex":"none"};flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface);">
+          ${pill(`pcri_${n.id}`, !!perm.criar, "Incluir", !!perm.criar)}
+          ${pill(`ped_${n.id}`,  !!perm.editar,"Editar",  !!perm.editar)}
+          ${pill(`pex_${n.id}`,  !!perm.excluir,"Excluir", !!perm.excluir)}
+        </div>
       </div>`;
   }).join("");
 
-  // --- Módulos globais (Visão e Cadastro) ---
-  const linhasGlobal = MODULOS_GLOBAIS_CONFIG.map((g, i) => {
-    const perm = (p.modulos || {})[g.id] || {};
-    const pills = g.acoes.map(a => pillCheckbox(`gmod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
-    return `
-      <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;${i < MODULOS_GLOBAIS_CONFIG.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
-        <div style="min-width:90px;font-size:12.5px;font-weight:600;">${esc(g.label)}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills}</div>
-      </div>`;
-  }).join("");
-
-  const sectionHeader = (title, subtitle) => `
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:700;margin:18px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-      ${title}${subtitle ? `<span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;font-size:11px;">${subtitle}</span>` : ""}
+  const sectionHeader = (title, sub) => `
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:700;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+      ${title}${sub?`<span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;font-size:11px;">${sub}</span>`:""}
     </div>`;
 
   openModal(`
-    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">${isEdit?"Editar usuário":"Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPerfil"><div class="modal-body">
 
       ${sectionHeader("Identificação")}
       <div class="field-row">
         <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex: Erica"></div>
-        <div class="field"><label>Senha</label><input required type="text" name="senha" value="${esc(p.senha)}" placeholder="Ex: erica123"></div>
+        <div class="field"><label>Senha de acesso</label><input required type="text" name="senha" value="${esc(p.senha||"")}" placeholder="Ex: erica123"></div>
       </div>
-      <div class="field-help" style="margin-top:-6px;margin-bottom:10px;">Senha simples, só pra identificar quem está usando — não use senha pessoal.</div>
-      <div class="field"><label>Tipo de acesso</label>
+      <div class="field-help" style="margin-top:-6px;margin-bottom:12px;">Senha simples, só pra identificar quem está usando — não use senha pessoal.</div>
+
+      ${sectionHeader("Tipo de acesso")}
+      <div class="field">
         <select name="tipo" id="perfilTipoSelect">
           <option value="membro" ${p.tipo!=="master"?"selected":""}>Membro — acesso definido abaixo</option>
           <option value="master" ${p.tipo==="master"?"selected":""}>Master — acesso total (igual a você)</option>
         </select>
       </div>
-
       <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"};margin-bottom:10px;">
-         Esse usuário verá e editará absolutamente tudo — igual a você. Nada mais para configurar.
+        Esse usuário verá e editará absolutamente tudo — igual a você. Nada mais para configurar.
       </div>
 
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
-
-        <!-- POR NEGÓCIO → módulos dentro de cada empresa -->
-        ${sectionHeader("Acesso por negócio", "defina quais módulos esse usuário pode usar em cada empresa")}
+        ${sectionHeader("Acesso por negócio", "o que esse usuário pode fazer em cada empresa")}
         ${state.negocios.length
           ? cardsNegocio
-          : `<div style="text-align:center;color:var(--ink-4);padding:14px;border:1px solid var(--border);border-radius:var(--r);">Nenhum negócio cadastrado ainda.</div>`
-        }
-        <div class="field-help" style="margin-bottom:14px;">Sem "Ver", o módulo fica invisível para esse usuário nessa empresa.</div>
-
-        <!-- MÓDULOS GLOBAIS (Visão Geral e Cadastro) -->
-        ${sectionHeader("Módulos globais", "não pertencem a um negócio específico")}
-        <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;">
-          ${linhasGlobal}
-        </div>
-        <div class="field-help">Sem "Ver", o módulo some completamente do menu.</div>
-
+          : `<div style="text-align:center;color:var(--ink-4);padding:14px;border:1px solid var(--border);border-radius:var(--r);">Nenhum negócio cadastrado ainda.</div>`}
+        <div class="field-help" style="margin-top:6px;">Sem acesso, os dados desse negócio ficam invisíveis para este usuário.</div>
       </div>
+
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
-      <button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Criar usuário"}</button>
+      <button type="submit" class="btn btn-primary">${isEdit?"Salvar alterações":"Criar usuário"}</button>
     </div></form>
   `);
+
+  // Alarga o modal no desktop
+  const modalEl = document.querySelector("#modalOverlay .modal");
+  if(modalEl) modalEl.classList.add("modal-wide");
 
   const tipoSelect = document.getElementById("perfilTipoSelect");
   const permissoesWrap = document.getElementById("perfilPermissoesWrap");
   const masterAviso = document.getElementById("perfilMasterAviso");
   tipoSelect.addEventListener("change", () => {
-    const ehTipoMaster = tipoSelect.value === "master";
-    permissoesWrap.style.display = ehTipoMaster ? "none" : "block";
-    masterAviso.style.display = ehTipoMaster ? "block" : "none";
+    const isMaster = tipoSelect.value === "master";
+    permissoesWrap.style.display = isMaster ? "none" : "block";
+    masterAviso.style.display    = isMaster ? "block" : "none";
   });
 
-  // Toggle habilitar: ao marcar/desmarcar o "Habilitar" de um módulo, mostra/oculta
-  // as sub-permissões (Criar/Editar/Excluir) e atualiza estilo do botão-label
+  // Toggle "Com acesso / Sem acesso" por negócio
   document.getElementById("formPerfil").addEventListener("change", e => {
     const chk = e.target;
-    if(!chk.dataset.habToggle) return;
-    const subDiv = document.getElementById(chk.dataset.habToggle);
-    const lbl = document.querySelector(`[data-hab-label="${chk.id}"]`);
-    if(subDiv) subDiv.style.display = chk.checked ? "flex" : "none";
+    if(!chk.dataset.verToggle) return;
+    const sub = document.getElementById(chk.dataset.verToggle);
+    const lbl = document.querySelector(`[data-ver-label="${chk.id}"]`);
+    if(sub) sub.style.display = chk.checked ? "flex" : "none";
     if(lbl){
-      lbl.style.border = chk.checked ? "1px solid var(--accent)" : "1px solid var(--border)";
+      lbl.style.border     = chk.checked ? "1px solid var(--accent)" : "1px solid var(--border)";
       lbl.style.background = chk.checked ? "color-mix(in srgb,var(--accent) 10%,var(--surface))" : "transparent";
-      lbl.style.color = chk.checked ? "var(--accent)" : "var(--ink-3)";
-      lbl.childNodes[1].textContent = chk.checked ? "Habilitado" : "Habilitar";
+      lbl.style.color      = chk.checked ? "var(--accent)" : "var(--ink-3)";
+      // Atualiza texto (o texto é o último nó dentro do label)
+      const txt = Array.from(lbl.childNodes).find(n => n.nodeType === 3);
+      if(txt) txt.textContent = chk.checked ? "Com acesso" : "Sem acesso";
     }
   });
 
   document.getElementById("formPerfil").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const nome = fd.get("nome").trim();
+    const nome  = fd.get("nome").trim();
     const senha = fd.get("senha").trim();
-    const tipo = fd.get("tipo") === "master" ? "master" : "membro";
+    const tipo  = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
     if(state.perfis.some(x => x.nome === nome && (!isEdit || x !== existing))){ showToast("Já existe um usuário com esse nome.", "error"); return; }
-    // Novo modelo: negModulos[neg_id][mod_id] = {ver,criar,editar,excluir}
-    const negModulos = {};
+    // Salva no modelo simples: permissoes[nome] = {ver, criar, editar, excluir}
+    const permissoes = {};
     state.negocios.forEach(n => {
-      negModulos[n.id] = {};
-      MODULOS_POR_NEGOCIO.forEach(g => {
-        negModulos[n.id][g.id] = {
-          ver:    fd.get(`nm_ver_${n.id}_${g.id}`) === "on",
-          criar:  fd.get(`nm_criar_${n.id}_${g.id}`) === "on",
-          editar: fd.get(`nm_editar_${n.id}_${g.id}`) === "on",
-          excluir:fd.get(`nm_excluir_${n.id}_${g.id}`) === "on",
-        };
-      });
+      permissoes[n.nome] = {
+        ver:    fd.get(`pver_${n.id}`) === "on",
+        criar:  fd.get(`pcri_${n.id}`) === "on",
+        editar: fd.get(`ped_${n.id}`)  === "on",
+        excluir:fd.get(`pex_${n.id}`)  === "on",
+      };
     });
-    // Módulos globais (visão, cadastro)
-    const modulos = {};
-    MODULOS_GLOBAIS_CONFIG.forEach(g => {
-      modulos[g.id] = { ver: fd.get(`gmod_ver_${g.id}`) === "on", criar:false, editar:false, excluir:false };
-    });
-    const data = { nome, senha, tipo, negModulos, modulos, permissoes:{}, categoriasPermitidas:{} };
+    const data = { nome, senha, tipo, permissoes, categoriasPermitidas:{}, modulos:{}, negModulos:null };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.perfis.push({ id: uid("perfil"), ...data }); }
     await savePerfis(); closeModal(); renderApp(); showToast(isEdit ? "Usuário atualizado." : "Usuário criado.");
