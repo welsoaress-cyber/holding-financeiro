@@ -902,7 +902,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.5.5";
+const APP_VERSION = "1.5.6";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2450,6 +2450,16 @@ function navItem(view, icon, label){
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
 }
+// Igual navItem, mas trava a tela num negócio só (usado nos menus "por
+// Negócio" — ex: Provedor). Ao clicar, o filtro de negócio da tela de
+// destino já entra travado nesse negócio, e o seletor de negócio some de
+// lá (ver filtroNegocioTravado).
+function navItemNegocio(view, icon, label, negocio){
+  const active = state.view === view && filtroNegocioTravado ? "active" : "";
+  return `<div class="nav-item ${active}" data-action="nav-negocio" data-view="${view}" data-negocio="${esc(negocio)}">
+    <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
+  </div>`;
+}
 // Menu de primeiro nível, colapsável — o menu lateral inteiro agora é uma
 // lista desses (Visão / Financeiro / Projetos / Estoque / Clientes / RH /
 // Compra e Venda / Cadastro), sempre todos visíveis, em vez do seletor de
@@ -2497,6 +2507,25 @@ function sidebarConteudo(){
       navItem("vg_executivo",ic("leads"),"Executiva"),
       navItem("vg_sintetico",ic("visao"),"Sintética"),
       navItem("vg_analitico",ic("fluxocaixa"),"Analítica"),
+    ].join("")));
+  }
+
+  // ---- Menus "por Negócio" — cada negócio ganha um grupo próprio no menu,
+  // com só os dados DELE (Clientes, Financeiro, Chamados, Planos,
+  // Técnicos). Pensado pra quando um usuário só tem acesso a 1 negócio: em
+  // vez de dar acesso ao módulo inteiro (que mistura todos os negócios), dá
+  // pra liberar só esse grupo — que já entra com o filtro travado nesse
+  // negócio. Piloto: só "Provedor" (ServNet) por enquanto.
+  if(master || podeVerNegocio("Provedor")){
+    grupos.push(navGrupo("neg_provedor", "🌐", "Provedor", ["cli_lista","lancamentos","receitas","despesas","transferencias","cli_chamados","cli_planos","cli_tecnicos"], [
+      navItemNegocio("cli_lista",ic("clientes"),"Clientes","Provedor"),
+      navItemNegocio("lancamentos",ic("lancamentos"),"Lançamentos","Provedor"),
+      navItemNegocio("receitas",ic("receber"),"Contas a Receber","Provedor"),
+      navItemNegocio("despesas",ic("pagar"),"Contas a Pagar","Provedor"),
+      navItemNegocio("transferencias",ic("transferencias"),"Transferências","Provedor"),
+      navItemNegocio("cli_chamados",ic("chamados"),"Chamados","Provedor"),
+      navItemNegocio("cli_planos",ic("planos"),"Planos","Provedor"),
+      navItemNegocio("cli_tecnicos",ic("tecnicos"),"Técnicos","Provedor"),
     ].join("")));
   }
 
@@ -4375,7 +4404,7 @@ function viewLancamentos(){
     <div class="panel"><div class="filter-bar">
       <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
-      <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
+      ${!filtroNegocioTravado ? `<select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>` : ""}
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
@@ -5887,7 +5916,13 @@ document.addEventListener("click", async e => {
   else if(action === "tec-app-materiais"){ modalChamadoMateriais(id); return; }
   else if(action === "tec-app-prorrogar"){ modalChamadoProrrogar(id); return; }
   else if(action === "tec-app-logout"){ await doLogout(); return; }
-  else if(action === "nav") setView(el.dataset.view);
+  else if(action === "nav"){ filtroNegocioTravado = false; setView(el.dataset.view); }
+  else if(action === "nav-negocio"){
+    filtroNegocioTravado = true;
+    cliFiltro.negocio = el.dataset.negocio;
+    lancFilter.negocio = el.dataset.negocio;
+    setView(el.dataset.view);
+  }
   else if(action === "abrir-modulo"){
     const mod = MODULOS_CATALOGO.find(m => m.id === el.dataset.id);
     if(!mod || !mod.ativo){ showToast("Esse módulo ainda está em construção.", "error"); return; }
@@ -5990,7 +6025,7 @@ document.addEventListener("click", async e => {
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio: filtroNegocioTravado ? lancFilter.negocio : "",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:""}; lancSelecionados.clear(); renderApp(); }
   else if(action === "toggle-select-lanc"){
     if(lancSelecionados.has(id)) lancSelecionados.delete(id); else lancSelecionados.add(id);
     renderView();
@@ -6345,7 +6380,7 @@ document.addEventListener("click", async e => {
     cliFiltro.negocio = el.dataset.negocio||"";
     state.view = "cli_lista"; renderApp();
   }
-  else if(action === "cli-filtro-clear"){ cliFiltro = {negocio:"",status:"",plano:"",texto:""}; renderView(); }
+  else if(action === "cli-filtro-clear"){ cliFiltro = {negocio: filtroNegocioTravado ? cliFiltro.negocio : "", status:"",plano:"",texto:""}; renderView(); }
   // ---- Orçamento / OS ----
   else if(action === "orc-novo") modalCliOrcamento(null);
   else if(action === "orc-edit"){ const o = cliOrcamentoById(id); if(o) modalCliOrcamento(o); }
@@ -6605,6 +6640,10 @@ document.addEventListener("input", e => {
 // ---- Estado de navegação e filtros ----
 let cliViewDetalheId = null;
 let cliFiltro = { negocio:"", plano:"", status:"", texto:"" };
+// Quando true, o filtro de negócio some da tela (porque a pessoa entrou por um
+// menu de um negócio específico, tipo "Provedor" — não faz sentido deixar ela
+// trocar pra outro negócio que talvez nem tenha permissão de ver).
+let filtroNegocioTravado = false;
 let leadsFiltro = { status:"", texto:"" };
 let logsFiltro = { tabela:"", acao:"", autor:"" };
 
@@ -7224,7 +7263,7 @@ function viewCliLista(){
     <div class="panel">
       <div class="filter-bar">
         <input type="text" placeholder="Buscar por nome, CPF, e-mail, telefone, cidade..." value="${esc(cliFiltro.texto)}" data-action="cli-filtro-texto" style="min-width:260px;">
-        <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+        ${!filtroNegocioTravado ? `<select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>` : ""}
         <select data-action="cli-filtro-status"><option value="">Todos os status</option>${statusOpts}</select>
         <select data-action="cli-filtro-plano"><option value="">Todos os planos</option>${planoOpts}</select>
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
@@ -7332,7 +7371,8 @@ function viewCliDetalhe(){
 
 // ---- VIEW: PLANOS ----
 function viewCliPlanos(){
-  const rows = state.cliPlanos.map(p => {
+  const listaPlanos = cliFiltro.negocio ? state.cliPlanos.filter(p=>p.negocio===cliFiltro.negocio) : state.cliPlanos;
+  const rows = listaPlanos.map(p => {
     const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
     return `<tr>
       ${bulkCheckboxCellHTML("cli_planos", p.id)}
@@ -7349,13 +7389,18 @@ function viewCliPlanos(){
       </div></td>
     </tr>`;
   }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
+    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
+      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+    </div></div>` : ""}
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", listaPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -8128,7 +8173,8 @@ async function osConcluir(osId){
 
 // ---- VIEW: TÉCNICOS ----
 function viewCliTecnicos(){
-  const lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
+  let lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
+  if(cliFiltro.negocio) lista = lista.filter(t => t.negocio === cliFiltro.negocio);
   const rows = lista.map(t => {
     const negTag = t.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(t.negocio)} 14%, white); color:${negocioCor(t.negocio)};"><span class="tag-dot" style="background:${negocioCor(t.negocio)}"></span>${esc(t.negocio)}</span>` : "—";
     const qtdChamados = state.cliChamados.filter(c => c.tecnicoId === t.id && c.status!=="Concluído" && c.status!=="Cancelado").length;
@@ -8148,11 +8194,16 @@ function viewCliTecnicos(){
       </div></td>
     </tr>`;
   }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em 💲 pra lançar o pagamento em Contas a Pagar.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
+    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
+      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+    </div></div>` : ""}
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th>${podeVerValores()?`<th class="num">Valor mensal</th>`:""}<th class="num">Chamados abertos</th><th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum técnico cadastrado ainda.")}</td></tr>`}</tbody></table>
@@ -8272,7 +8323,8 @@ const CHAM_SORT_GETTERS = {
 };
 function viewCliChamados(){
   sortState("cli_chamados", "dataAgendada", "desc");
-  const lista = aplicarSort("cli_chamados", state.cliChamados, CHAM_SORT_GETTERS);
+  let lista = aplicarSort("cli_chamados", state.cliChamados, CHAM_SORT_GETTERS);
+  if(cliFiltro.negocio) lista = lista.filter(c => c.negocio === cliFiltro.negocio);
   const rows = lista.map(c => {
     const cliente = cliClienteById(c.clienteId);
     const tecnico = cliTecnicoById(c.tecnicoId);
@@ -8288,11 +8340,16 @@ function viewCliChamados(){
       <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
   }).join("");
+  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Chamados</div><div class="page-sub">O cliente ligou — abra o chamado, agende o técnico e acompanhe até concluir.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_chamados")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cham-novo">+ Novo chamado</button>`)}</div>
     </div>
+    ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
+      <select data-action="cli-filtro-negocio"><option value="">Todos os negócios</option>${negOpts}</select>
+      ${cliFiltro.negocio?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
+    </div></div>` : ""}
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("cli_chamados", lista.map(c=>c.id))}${thSort("cli_chamados","Número","numero")}${thSort("cli_chamados","Cliente","cliente")}${thSort("cli_chamados","Tipo","tipo")}${thSort("cli_chamados","Técnico","tecnico")}${thSort("cli_chamados","Agendado p/","dataAgendada")}${thSort("cli_chamados","Prioridade","prioridade")}${thSort("cli_chamados","Status","status")}<th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum chamado ainda.")}</td></tr>`}</tbody></table>
