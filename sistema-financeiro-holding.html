@@ -10462,11 +10462,17 @@ async function init(){
   // do navegador, se houver) assim que nos inscrevemos — não precisamos chamar
   // getSession() à parte, isso evitaria um carregamento duplicado.
   let carregouUmaVez = false;
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
     const jaLogado = !!state.user;
     state.user = session ? session.user : null;
     if(state.user && (!jaLogado || !carregouUmaVez)){
       carregouUmaVez = true;
+      // Login real (SIGNED_IN) → sempre vai pra Visão Geral, ignorando navegação salva.
+      // Refresh de página (INITIAL_SESSION / TOKEN_REFRESHED) → restaura onde estava.
+      if(event === "SIGNED_IN"){
+        try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+        state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
+      }
       await carregarSessao();
       renderApp();
     }else if(!state.user){
