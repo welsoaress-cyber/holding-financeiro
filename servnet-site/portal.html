@@ -143,8 +143,8 @@ a{color:inherit;}
 .fc-title-col{text-align:right;}
 .fc-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.2em;color:rgba(0,196,216,0.6);margin-bottom:0.1rem;}
 .fc-subtitle{font-size:0.78rem;font-weight:700;color:rgba(205,234,242,0.9);}
-/* grade de selos */
-.fc-stamps{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;margin-bottom:0.5rem;position:relative;z-index:1;}
+/* grade de selos — 7 colunas: 6 pagamentos + 1 prêmio por fase */
+.fc-stamps{display:grid;grid-template-columns:repeat(7,1fr);gap:0.38rem;margin-bottom:0.5rem;position:relative;z-index:1;}
 .fcs{
   aspect-ratio:1;border-radius:9px;border:2px solid;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -293,6 +293,21 @@ a{color:inherit;}
 .upgrade-btn:hover:not(:disabled){background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
 .upgrade-btn:disabled{opacity:0.55;cursor:default;}
 
+/* seletor de plano (upgrade) */
+.upgrade-seletor{margin-top:0.9rem;background:rgba(0,196,216,0.05);border:1px solid rgba(0,196,216,0.2);border-radius:10px;padding:12px;}
+.upgrade-seletor-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--pool);margin-bottom:8px;}
+.upgrade-plano-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:7px;border:1.5px solid rgba(0,196,216,0.15);background:rgba(0,196,216,0.03);cursor:pointer;margin-bottom:5px;transition:all 0.12s;}
+.upgrade-plano-item:hover{border-color:rgba(0,196,216,0.4);background:rgba(0,196,216,0.08);}
+.upgrade-plano-item.selected{border-color:var(--pool);background:rgba(0,196,216,0.12);}
+.upgrade-plano-nome{font-size:0.82rem;font-weight:600;color:var(--text);}
+.upgrade-plano-info{font-size:0.72rem;color:var(--pool);}
+.upgrade-seletor-desc{width:100%;resize:none;border:1px solid rgba(0,196,216,0.2);background:rgba(0,0,0,0.2);color:var(--text);border-radius:6px;padding:7px 9px;font-size:0.78rem;font-family:inherit;margin-top:4px;box-sizing:border-box;}
+.upgrade-seletor-desc::placeholder{color:var(--text-2);}
+.upgrade-seletor-btns{display:flex;gap:7px;margin-top:8px;}
+.upgrade-seletor-btns .btn-cancel{flex:1;padding:8px;border-radius:7px;border:1px solid rgba(0,196,216,0.2);background:transparent;color:var(--text-2);cursor:pointer;font-size:0.8rem;font-family:inherit;}
+.upgrade-seletor-btns .btn-send{flex:2;padding:8px;border-radius:7px;border:none;background:var(--pool);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:700;font-family:inherit;}
+.upgrade-seletor-btns .btn-send:disabled{opacity:0.55;cursor:default;}
+
 /* promoções */
 .promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
 @media(max-width:640px){.promo-grid{grid-template-columns:1fr;}}
@@ -364,7 +379,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.5</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.6</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -391,11 +406,11 @@ a{color:inherit;}
             <div class="promo-nome">Programa Fidelidade</div>
             <div class="promo-tagline">Pague em dia e acumule recompensas!</div>
             <ul class="promo-rules">
-              <li><strong>6 meses</strong> em dia → <span class="promo-prize gold">50% de desconto</span> na fatura</li>
-              <li><strong>12 meses</strong> em dia → <span class="promo-prize green">1 mês grátis</span> 🎉</li>
+              <li><strong>6 meses</strong> em dia → <span class="promo-prize gold">7ª fatura com 50% OFF</span> 🎁</li>
+              <li><strong>12 meses</strong> em dia → <span class="promo-prize green">13ª fatura 100% grátis</span> 🎉</li>
               <li>Cada mês pago até o vencimento = 1 selo ✅</li>
               <li>Atraso zera o contador — recomece do zero</li>
-              <li>Desconto aplicado automaticamente na próxima fatura</li>
+              <li>Prêmio aplicado automaticamente na fatura correspondente</li>
             </ul>
             <a class="promo-link" href="#fidelCard">Ver meu progresso ↓</a>
           </div>
@@ -486,33 +501,124 @@ document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
 });
 
+// Estado do seletor de upgrade
+let _upgradePlanos = [];
+let _upgradeSelecionado = null;
+
 async function solicitarUpgrade(tipo){
   if(!session) return;
+  if(tipo === 'upgrade'){
+    await _mostrarSeletorPlano();
+  } else {
+    // Suporte: envia diretamente, sem seleção de plano
+    await _enviarSolicitar('suporte','','','');
+  }
+}
+
+async function _mostrarSeletorPlano(){
   const btn = document.getElementById('upgradeBtn');
   const msg = document.getElementById('upgradeMsg');
-  if(!btn || !msg) return;
+  if(!btn) return;
+
   btn.disabled = true;
-  btn.textContent = '⏳ Enviando...';
-  msg.style.display = 'none';
+  btn.textContent = '⏳ Carregando planos...';
+  if(msg) msg.style.display = 'none';
+  _upgradeSelecionado = null;
+
   try{
-    const {data:res,error} = await sb.rpc('portal_servnet_solicitar',{
-      p_cliente_id: session.cliente_id,
-      p_master_id:  session.master_id,
-      p_tipo:       tipo,
-      p_descricao:  ''
+    const {data:r, error} = await sb.rpc('portal_servnet_planos',{p_master_id: session.master_id});
+    if(error) throw error;
+    _upgradePlanos = (r?.planos || []).filter(p => p.nome !== (session.plano?.nome||''));
+  }catch(e){
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = '⚡ Solicitar Upgrade de Plano';
+    if(msg){ msg.style.display='block'; msg.style.color='#F87171'; msg.textContent='Não foi possível carregar os planos. Tente novamente.'; }
+    return;
+  }
+
+  const planosHTML = _upgradePlanos.length > 0
+    ? _upgradePlanos.map((p,i) =>
+        `<div class="upgrade-plano-item" data-idx="${i}" onclick="_selecionarPlano(${i})">
+          <span class="upgrade-plano-nome">${p.nome}</span>
+          <span class="upgrade-plano-info">${p.velocidade?p.velocidade+' · ':''}${p.valor?fmtVal(p.valor)+'/mês':''}</span>
+        </div>`
+      ).join('')
+    : '<div style="color:var(--text-2);font-size:0.78rem;text-align:center;padding:6px 0;">Fale com o suporte para ver as opções disponíveis.</div>';
+
+  // Remove seletor anterior se houver
+  document.getElementById('_upgradeSeletor')?.remove();
+
+  const html = `<div id="_upgradeSeletor" class="upgrade-seletor">
+    <div class="upgrade-seletor-title">Selecione o plano desejado</div>
+    ${session.plano?.nome ? `<div style="font-size:0.75rem;color:var(--text-2);margin-bottom:8px;">Plano atual: <strong style="color:var(--text)">${session.plano.nome}</strong></div>` : ''}
+    <div id="_planosLista">${planosHTML}</div>
+    <textarea id="_upgDesc" class="upgrade-seletor-desc" rows="2" placeholder="Informações adicionais (opcional)..."></textarea>
+    <div class="upgrade-seletor-btns">
+      <button class="btn-cancel" onclick="_cancelarSeletor()">Cancelar</button>
+      <button class="btn-send" id="_btnEnviar" onclick="_confirmarUpgrade()">Enviar solicitação →</button>
+    </div>
+    <div id="_seletorMsg" style="display:none;font-size:0.74rem;margin-top:6px;text-align:center;"></div>
+  </div>`;
+
+  btn.style.display = 'none';
+  btn.insertAdjacentHTML('afterend', html);
+}
+
+function _selecionarPlano(idx){
+  _upgradeSelecionado = _upgradePlanos[idx];
+  document.querySelectorAll('.upgrade-plano-item').forEach((el,i) => el.classList.toggle('selected', i===idx));
+}
+
+function _cancelarSeletor(){
+  document.getElementById('_upgradeSeletor')?.remove();
+  const btn = document.getElementById('upgradeBtn');
+  if(btn){ btn.style.display=''; btn.disabled=false; }
+  _upgradeSelecionado = null;
+}
+
+async function _confirmarUpgrade(){
+  if(_upgradePlanos.length > 0 && !_upgradeSelecionado){
+    const sMsg = document.getElementById('_seletorMsg');
+    if(sMsg){ sMsg.style.display='block'; sMsg.style.color='#F87171'; sMsg.textContent='Selecione o plano desejado acima.'; }
+    return;
+  }
+  const descricao = document.getElementById('_upgDesc')?.value?.trim()||'';
+  const planoAtual = session.plano?.nome||'';
+  const planoDesejado = _upgradeSelecionado?.nome||'';
+  const btnEnv = document.getElementById('_btnEnviar');
+  if(btnEnv){ btnEnv.disabled=true; btnEnv.textContent='⏳ Enviando...'; }
+  await _enviarSolicitar('upgrade', planoAtual, planoDesejado, descricao);
+}
+
+async function _enviarSolicitar(tipo, planoAtual, planoDesejado, descricao){
+  const btn    = document.getElementById('upgradeBtn');
+  const msg    = document.getElementById('upgradeMsg');
+  const seletor = document.getElementById('_upgradeSeletor');
+  try{
+    const {data:res, error} = await sb.rpc('portal_servnet_solicitar',{
+      p_cliente_id:     session.cliente_id,
+      p_master_id:      session.master_id,
+      p_tipo:           tipo,
+      p_descricao:      descricao,
+      p_plano_atual:    planoAtual,
+      p_plano_desejado: planoDesejado
     });
     if(error) throw error;
     if(!res?.ok) throw new Error(res?.msg||'Erro ao enviar.');
-    btn.textContent = '✅ Solicitação enviada!';
-    msg.style.display = 'block';
-    msg.style.color = '#34D399';
-    msg.textContent = `Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`;
+    seletor?.remove();
+    if(btn){ btn.style.display=''; btn.disabled=true; btn.textContent='✅ Solicitação enviada!'; }
+    if(msg){ msg.style.display='block'; msg.style.color='#34D399'; msg.textContent=`Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`; }
   }catch(e){
-    btn.disabled = false;
-    btn.textContent = tipo==='upgrade' ? '⚡ Solicitar Upgrade de Plano' : '💬 Falar com Suporte';
-    msg.style.display = 'block';
-    msg.style.color = '#F87171';
-    msg.textContent = 'Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.';
+    const sMsg = document.getElementById('_seletorMsg');
+    const btnEnv = document.getElementById('_btnEnviar');
+    if(seletor){
+      if(sMsg){ sMsg.style.display='block'; sMsg.style.color='#F87171'; sMsg.textContent='Erro ao enviar. Tente novamente.'; }
+      if(btnEnv){ btnEnv.disabled=false; btnEnv.textContent='Enviar solicitação →'; }
+    } else {
+      if(btn){ btn.style.display=''; btn.disabled=false; btn.textContent=tipo==='upgrade'?'⚡ Solicitar Upgrade de Plano':'💬 Falar com Suporte'; }
+      if(msg){ msg.style.display='block'; msg.style.color='#F87171'; msg.textContent='Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.'; }
+    }
     console.error(e);
   }
 }
@@ -754,48 +860,45 @@ function renderHistoricoFidelidade(){
 }
 
 function renderFidelidade(streak, nomeCliente){
-  // Gera os 12 selos
+  // Grade 14 slots = Fase 1 (6 pagamentos + 1 prêmio) + Fase 2 (6 pagamentos + 1 prêmio)
+  // Prêmio 1: 7ª fatura com 50% OFF (após pagar meses 1-6 em dia)
+  // Prêmio 2: 13ª fatura grátis (após pagar meses 1-12 em dia)
   const selos = [];
-  for(let i=1;i<=12;i++){
-    const conquistado = i <= streak;
-    const isM6  = i === 6;
-    const isM12 = i === 12;
 
-    if(isM6){
-      const cls = conquistado ? 'fcs m6ok' : 'fcs m6e';
-      selos.push(`<div class="${cls}" title="${conquistado?'50% OFF conquistado!':'Meta: 50% de desconto'}">
-        <span class="fcs-icon">${conquistado?'🎁':'🎁'}</span>
-        <span class="fcs-n">50%${conquistado?'\nOFF':'\nOFF'}</span>
-      </div>`);
-    } else if(isM12){
-      const cls = conquistado ? 'fcs m12ok' : 'fcs m12e';
-      selos.push(`<div class="${cls}" title="${conquistado?'1 mês grátis conquistado!':'Meta: 1 mês grátis'}">
-        <span class="fcs-icon">${conquistado?'🏅':'🏅'}</span>
-        <span class="fcs-n">MÊS${conquistado?'\nGRÁTIS':'\nGRÁTIS'}</span>
-      </div>`);
-    } else if(conquistado){
-      selos.push(`<div class="fcs ok" title="Mês ${i} — pago em dia ✓">
-        <span class="fcs-check">✓</span>
-        <span class="fcs-n">${i}</span>
-      </div>`);
-    } else {
-      selos.push(`<div class="fcs empty" title="Mês ${i} — aguardando">
-        <span class="fcs-n">${i}</span>
-      </div>`);
-    }
+  // Fase 1 — pagamentos meses 1-6
+  for(let i=1; i<=6; i++){
+    const ok = i <= streak;
+    selos.push(ok
+      ? `<div class="fcs ok" title="Mês ${i} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${i}</span></div>`
+      : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`
+    );
   }
+  // Slot prêmio 1 — 7ª fatura 50% OFF
+  const r1 = streak >= 6;
+  selos.push(`<div class="fcs ${r1?'m6ok':'m6e'}" title="${r1?'7ª fatura com 50% OFF conquistada! ✓':'Pague 6 meses em dia → 7ª fatura com 50% OFF'}"><span class="fcs-icon">🎁</span><span class="fcs-n">50%\nOFF</span></div>`);
+
+  // Fase 2 — pagamentos meses 7-12
+  for(let i=7; i<=12; i++){
+    const ok = i <= streak;
+    selos.push(ok
+      ? `<div class="fcs ok" title="Mês ${i} — pago em dia ✓"><span class="fcs-check">✓</span><span class="fcs-n">${i}</span></div>`
+      : `<div class="fcs empty" title="Mês ${i} — aguardando"><span class="fcs-n">${i}</span></div>`
+    );
+  }
+  // Slot prêmio 2 — 13ª fatura grátis
+  const r2 = streak >= 12;
+  selos.push(`<div class="fcs ${r2?'m12ok':'m12e'}" title="${r2?'13ª fatura GRÁTIS conquistada! 🎉':'Pague 12 meses em dia → 13ª fatura grátis'}"><span class="fcs-icon">🏅</span><span class="fcs-n">MÊS\nGRÁTIS</span></div>`);
 
   // Progresso e próximo prêmio
   let pct, faltam, proximoPremio;
   if(streak >= 12){
-    pct = 100; faltam = 0; proximoPremio = '1 mês grátis 🎉';
+    pct = 100; faltam = 0; proximoPremio = '13ª fatura grátis 🎉';
   } else if(streak >= 6){
-    pct = ((streak-6)/6)*100; faltam = 12-streak; proximoPremio = '1 mês grátis';
+    pct = ((streak-6)/6)*100; faltam = 12-streak; proximoPremio = '13ª fatura grátis';
   } else {
-    pct = (streak/6)*100; faltam = 6-streak; proximoPremio = '50% de desconto';
+    pct = (streak/6)*100; faltam = 6-streak; proximoPremio = '50% OFF na 7ª fatura';
   }
 
-  const pctTotal = Math.round((streak/12)*100);
   const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
 
   document.getElementById('fidelContent').innerHTML=`
@@ -821,7 +924,7 @@ function renderFidelidade(streak, nomeCliente){
           </div>
           <div class="fc-progress-col">
             <div class="fc-pct">${streak}<small style="font-size:0.9rem;opacity:0.7">/12</small></div>
-            <div class="fc-pct-label">${streak===1?'mês em dia':'meses em dia'}</div>
+            <div class="fc-pct-label">${streak===1?'pagamento em dia':'pagamentos em dia'}</div>
           </div>
         </div>
       </div>
@@ -838,11 +941,11 @@ function renderFidelidade(streak, nomeCliente){
         </div>
         <div class="fc-leg-item">
           <div class="fc-leg-dot" style="background:rgba(0,196,216,0.2);border:1.5px solid var(--pool)">🎁</div>
-          6 meses → 50% OFF
+          6 meses → 7ª 50% OFF
         </div>
         <div class="fc-leg-item">
           <div class="fc-leg-dot" style="background:rgba(245,158,11,0.2);border:1.5px solid #F59E0B">🏅</div>
-          12 meses → Grátis
+          12 meses → 13ª Grátis
         </div>
       </div>
 
@@ -858,7 +961,7 @@ function renderFidelidade(streak, nomeCliente){
       <!-- Pill do prêmio -->
       ${faltam>0
         ?`<div class="premio-pill next">🎁 Próximo prêmio: <strong>${proximoPremio}</strong> — pague em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
-        :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou <strong>${proximoPremio}</strong> — Fale com o suporte para resgatar!</div>`
+        :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou <strong>${proximoPremio}</strong>. Será aplicado automaticamente!</div>`
       }
 
     </div>
@@ -871,12 +974,12 @@ function renderFidelidade(streak, nomeCliente){
     <div class="rules-box" id="fidelRules">
       <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
       <ol>
-        <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 mês em dia.</li>
-        <li>Acumule <strong>6 meses consecutivos</strong> em dia e ganhe <strong>50% de desconto</strong> na próxima fatura.</li>
-        <li>Continue por mais <strong>6 meses</strong> (12 no total) e ganhe <strong>1 mês inteiramente grátis</strong>.</li>
+        <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 pagamento em dia.</li>
+        <li>Pague <strong>6 meses consecutivos</strong> em dia → a <strong>7ª fatura</strong> sai com <strong>50% de desconto</strong>.</li>
+        <li>Pague <strong>12 meses consecutivos</strong> em dia → a <strong>13ª fatura</strong> é <strong>100% grátis</strong>.</li>
         <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
-        <li>Os prêmios são descontados automaticamente na <strong>próxima fatura</strong> após atingir a meta.</li>
+        <li>Os prêmios são aplicados automaticamente na fatura correspondente (7ª ou 13ª).</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
       </ol>
     </div>`;
