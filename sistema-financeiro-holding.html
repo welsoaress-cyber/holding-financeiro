@@ -132,6 +132,71 @@
   .modbar-btn:hover { color: #fff; background: rgba(255,255,255,.05); }
   .modbar-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+  /* ---- Notification bell (modbar + mobile topbar) ---- */
+  .notif-bell-btn {
+    display: flex; align-items: center; justify-content: center;
+    position: relative; margin-left: auto;
+    padding: 0 13px; height: 44px;
+    background: transparent; border: none; cursor: pointer;
+    color: rgba(255,255,255,.7); border-radius: var(--r);
+    transition: color .15s, background .15s;
+    flex-shrink: 0;
+  }
+  .notif-bell-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+  .notif-bell-btn svg { width: 18px; height: 18px; }
+  .notif-badge {
+    position: absolute; top: 7px; right: 5px;
+    min-width: 16px; height: 16px; border-radius: 999px;
+    background: var(--neg); color: #fff;
+    font-size: 9.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 4px; pointer-events: none;
+    border: 2px solid var(--brand);
+    line-height: 1;
+  }
+  /* Notification slide-in panel */
+  .notif-panel-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.38); z-index: 700;
+    display: flex; justify-content: flex-end;
+  }
+  .notif-panel {
+    background: var(--surface);
+    width: min(390px, 96vw); max-height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+    box-shadow: -6px 0 40px rgba(0,0,0,.28);
+    border-left: 1px solid var(--border);
+  }
+  .notif-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 18px 13px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    flex-shrink: 0; position: sticky; top: 0; z-index: 1;
+  }
+  .notif-panel-title { font-size: 14.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .notif-group-head {
+    font-size: 10.5px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: 10px 18px 5px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .notif-item {
+    display: flex; align-items: flex-start; gap: 11px;
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .12s;
+  }
+  .notif-item:hover { background: var(--surface-2); }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+  }
+  .notif-dot.alta { background: var(--neg); box-shadow: 0 0 6px rgba(239,68,68,.5); }
+  .notif-dot.media { background: #F59E0B; }
+  .notif-dot.baixa { background: var(--ink-4); }
+
   .modpanel {
     position: absolute;
     top: 44px; left: 0; right: 0;
@@ -953,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.2";
+const APP_VERSION = "1.7.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2440,7 +2505,16 @@ function setView(v){ state.view = v; state.moduloAtivo = moduloDaView(v); render
 function renderModbar(){
   const wrap = document.getElementById("modbarWrap");
   if(!wrap || !state.user) return;
-  wrap.innerHTML = `<div class="modbar"><div class="modbar-logo"><span class="dot"></span>GrupoTom <span style="opacity:.35; font-weight:400; font-size:11px;">v${APP_VERSION}</span></div></div>`;
+  const pends = calcularPendencias();
+  const badge = pends.length ? `<span class="notif-badge">${pends.length > 99 ? "99+" : pends.length}</span>` : "";
+  const bellSVG = '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5.5 5.5 0 0 1 5.5 5.5v3.2l1.4 1.8H3.1l1.4-1.8V8A5.5 5.5 0 0 1 10 2.5z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg>';
+  const bellTitle = pends.length ? pends.length + " pendência(s)" : "Sem pendências";
+  wrap.innerHTML = `<div class="modbar">
+    <div class="modbar-logo"><span class="dot"></span>GrupoTom <span style="opacity:.35; font-weight:400; font-size:11px;">v${APP_VERSION}</span></div>
+    <button class="notif-bell-btn" data-action="abrir-notificacoes" title="${bellTitle}">
+      ${bellSVG}${badge}
+    </button>
+  </div>`;
 }
 
 function renderApp(){
@@ -2466,6 +2540,7 @@ function renderApp(){
         <span></span><span></span><span></span>
       </button>
       <div class="mob-logo"><span class="dot"></span>GrupoTom <span style="opacity:.4; font-weight:400; font-size:10px;">v${APP_VERSION}</span></div>
+      ${(() => { const _p = calcularPendencias(); const _cnt = _p.length; const _bdg = _cnt ? `<span class="notif-badge">${_cnt > 99 ? "99+" : _cnt}</span>` : ""; return '<button class="notif-bell-btn" data-action="abrir-notificacoes" style="height:48px;" title="' + (_cnt ? _cnt+" pendência(s)" : "Sem pendências") + '"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5.5 5.5 0 0 1 5.5 5.5v3.2l1.4 1.8H3.1l1.4-1.8V8A5.5 5.5 0 0 1 10 2.5z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg>' + _bdg + '</button>'; })()}
     </div>
     <!-- Overlay para fechar o drawer -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -6381,6 +6456,7 @@ document.addEventListener("click", async e => {
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
     renderApp();
   }
+  else if(action === "abrir-notificacoes") modalNotificacoes();
   else if(action === "close-modal") closeModal();
   else if(action === "switch-auth"){ authMode = authMode === "login" ? "signup" : "login"; renderApp(); }
   else if(action === "switch-auth-tecnico"){ authMode = "tecnico"; renderApp(); }
@@ -7061,6 +7137,177 @@ function clienteStatusEfetivo(c){
   return emAtraso ? "Inadimplente" : (c.status || "Ativo");
 }
 function statusClassCli(st){ return st==="Ativo"?"status-pago":st==="Inadimplente"||st==="Cancelado"?"status-pendente":"status-agendado"; }
+
+// ============================================================
+// CENTRAL DE PENDÊNCIAS — calcula itens que precisam de ação
+// ============================================================
+function calcularPendencias(){
+  if(!state.user) return [];
+  const hoje = todayISO();
+  const pends = [];
+  const subDias = (isoDate, days) => {
+    const d = new Date(isoDate + "T00:00:00");
+    d.setDate(d.getDate() - days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  // 1. Clientes inadimplentes e se já foram cobrados
+  if(podeVerModulo("clientes")){
+    state.cliClientes.forEach(c => {
+      if(clienteStatusEfetivo(c) !== "Inadimplente") return;
+      const mensagens = state.cliMensagensEnviadas.filter(m => m.clienteId === c.id);
+      const ultima = mensagens.sort((a,b) => (b.data||"").localeCompare(a.data||""))[0];
+      const cobrado = ultima && ultima.data >= subDias(hoje, 7);
+      pends.push({
+        urgencia: cobrado ? "media" : "alta",
+        tipo: "inadimplente",
+        titulo: `${cliLabel(c)} — inadimplente`,
+        desc: cobrado ? `Cobrado via WhatsApp em ${fmtDateBR(ultima.data)}` : "Ainda não cobrado via WhatsApp",
+        clienteId: c.id,
+        action: "notif-ir-cliente"
+      });
+    });
+
+    // 2. Contratos ativos sem plano definido
+    state.cliClientes.forEach(c => {
+      (c.contratos||[]).filter(ct => ct.status==="Ativo" && (!ct.planoId || !cliPlanoById(ct.planoId))).forEach(ct => {
+        pends.push({
+          urgencia: "media",
+          tipo: "sem-plano",
+          titulo: `${cliLabel(c)} — sem plano`,
+          desc: `Contrato ${esc(ct.negocio||"ativo")} sem plano definido`,
+          clienteId: c.id,
+          action: "notif-ir-cliente"
+        });
+      });
+    });
+
+    // 3. Chamados/OS em aberto há 3+ dias
+    state.cliChamados.filter(ch => !["Concluído","Cancelado"].includes(ch.status)).forEach(ch => {
+      const aberto = ch.dataCadastro || "";
+      if(!aberto) return;
+      const dias = Math.floor((new Date(hoje+"T00:00:00") - new Date(aberto+"T00:00:00")) / 86400000);
+      if(dias >= 3){
+        const cli = cliClienteById(ch.clienteId);
+        pends.push({
+          urgencia: dias >= 7 ? "alta" : "media",
+          tipo: "chamado",
+          titulo: `OS ${ch.numero||"#"+ch.id.slice(0,6)} — aberta há ${dias} dia(s)`,
+          desc: cli ? `Cliente: ${cliLabel(cli)}` : (ch.motivo ? String(ch.motivo).slice(0,60) : "Sem descrição"),
+          chamadoId: ch.id,
+          action: "notif-ir-chamados"
+        });
+      }
+    });
+  }
+
+  // 4. Receitas em atraso (requer permissão financeiro)
+  if(podeVerValores()){
+    const atrasadas = state.lancamentos.filter(l => l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data < hoje);
+    if(atrasadas.length){
+      const total = atrasadas.reduce((s,l)=>s+Number(l.valor||0),0);
+      pends.push({
+        urgencia: "alta",
+        tipo: "receita-atrasada",
+        titulo: `${atrasadas.length} receita(s) vencida(s) sem baixa`,
+        desc: `Total em aberto: ${fmtBRL(total)}`,
+        action: "notif-ir-receitas"
+      });
+    }
+
+    // 5. Receitas vencendo hoje (aviso)
+    const venceHoje = state.lancamentos.filter(l => l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data===hoje);
+    if(venceHoje.length){
+      const total = venceHoje.reduce((s,l)=>s+Number(l.valor||0),0);
+      pends.push({
+        urgencia: "baixa",
+        tipo: "vence-hoje",
+        titulo: `${venceHoje.length} receita(s) vencem hoje`,
+        desc: `Total: ${fmtBRL(total)}`,
+        action: "notif-ir-receitas"
+      });
+    }
+  }
+
+  return pends;
+}
+
+function modalNotificacoes(){
+  const pends = calcularPendencias();
+  const grupos = {
+    alta:  pends.filter(p => p.urgencia === "alta"),
+    media: pends.filter(p => p.urgencia === "media"),
+    baixa: pends.filter(p => p.urgencia === "baixa")
+  };
+
+  const renderItem = p => {
+    const extras = p.clienteId ? `data-cliente-id="${p.clienteId}"` : (p.chamadoId ? `data-chamado-id="${p.chamadoId}"` : "");
+    return `<div class="notif-item" data-notif-action="${p.action}" ${extras}>
+      <span class="notif-dot ${p.urgencia}"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.35;">${p.titulo}</div>
+        ${p.desc ? `<div style="font-size:11.5px;color:var(--ink-3);margin-top:2px;line-height:1.3;">${p.desc}</div>` : ""}
+      </div>
+      <span style="color:var(--ink-4);font-size:17px;flex-shrink:0;">›</span>
+    </div>`;
+  };
+
+  const renderGrupo = (label, items) => items.length ? `
+    <div class="notif-group-head">${label}</div>
+    ${items.map(renderItem).join("")}` : "";
+
+  const body = pends.length === 0
+    ? `<div style="text-align:center;padding:52px 24px 40px;color:var(--ink-3);">
+        <div style="font-size:36px;margin-bottom:14px;">✅</div>
+        <div style="font-size:14px;font-weight:700;color:var(--ink-2);">Tudo em dia!</div>
+        <div style="font-size:12.5px;margin-top:6px;">Nenhuma pendência encontrada.</div>
+       </div>`
+    : renderGrupo("🔴 Urgente", grupos.alta) +
+      renderGrupo("🟡 Atenção", grupos.media) +
+      renderGrupo("⚪ Informativo", grupos.baixa);
+
+  const countBadge = pends.length
+    ? `<span style="background:var(--neg);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;">${pends.length}</span>`
+    : "";
+
+  const overlay = document.createElement("div");
+  overlay.className = "notif-panel-overlay";
+  overlay.id = "notifPanelOverlay";
+  overlay.innerHTML = `
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-head">
+        <span class="notif-panel-title">🔔 Pendências ${countBadge}</span>
+        <button class="modal-close" id="notifClose" style="font-size:18px;">✕</button>
+      </div>
+      <div>${body}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const fechar = () => overlay.remove();
+  overlay.addEventListener("click", e => { if(e.target === overlay) fechar(); });
+  document.getElementById("notifClose")?.addEventListener("click", fechar);
+
+  // Navegação ao clicar num item
+  overlay.querySelectorAll("[data-notif-action]").forEach(el => {
+    el.addEventListener("click", () => {
+      fechar();
+      const notifAction = el.dataset.notifAction;
+      const clienteId   = el.dataset.clienteId;
+      const chamadoId   = el.dataset.chamadoId;
+      if(notifAction === "notif-ir-cliente" && clienteId){
+        state.cliClienteAtualId = clienteId;
+        state.view = "cli_detalhe"; state.moduloAtivo = "clientes"; renderApp();
+      } else if(notifAction === "notif-ir-chamados"){
+        state.view = "cli_chamados"; state.moduloAtivo = "clientes"; renderApp();
+      } else if(notifAction === "notif-ir-receitas"){
+        lancFilter.clienteId = "";
+        lancMesNav = { ano: new Date().getFullYear(), mes: new Date().getMonth() };
+        state.view = "receitas"; state.moduloAtivo = "financeiro"; renderApp();
+      }
+    });
+  });
+}
+
 // Gera o próximo código de cliente: CLI-0001, CLI-0042, etc.
 function gerarCodigoCli(){
   const numeros = state.cliClientes
