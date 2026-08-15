@@ -1399,7 +1399,7 @@ function abrirChamado(){
   if(!tipo){ alert('Selecione o tipo de problema.'); return; }
   const nome   = session?.nome ? session.nome.split(' ')[0] : 'Cliente';
   const codigo = session?.codigo ? ` (Cód. ${session.codigo})` : '';
-  let msg = `Olá! Sou ${nome}${codigo}, cliente da Servnet, e preciso de suporte.\n\n*Tipo:* ${tipo}`;
+  let msg = `Olá! Sou ${nome}${codigo}, cliente da Servnet, e preciso de suporte.\n\n*Motivo:* ${tipo}`;
   if(desc) msg += `\n*Detalhes:* ${desc}`;
   btn.disabled = true;
   ok.style.display = 'block';

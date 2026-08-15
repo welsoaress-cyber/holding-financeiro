@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.3";
+const APP_VERSION = "2.0.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -6664,9 +6664,15 @@ function modalEscopoEdicaoSerie(existing, data){
     // Salva referências ANTES do Object.assign sobrescrever o existing
     const recId = existing.recorrenciaId;
     const dataOriginal = existing.data; // data de vencimento original (não a do formulário)
-    const isParcelado = existing.recorrenciaTipo === "parcelado";
+    const isParcelado  = existing.recorrenciaTipo === "parcelado";
     // Nova descrição base (sem sufixo de parcela, ex: " (1/60)")
     const baseDescricao = isParcelado ? data.descricao.replace(/\s*\(\d+\/\d+\)$/, "") : data.descricao;
+
+    // Detecta mudança de dia de vencimento (ex: do dia 10 para o dia 15)
+    // → propaga o novo dia para cada item futuro preservando o mês deles
+    const diaNovo     = data.data ? parseInt(data.data.split("-")[2], 10) : null;
+    const diaAntigo   = dataOriginal ? parseInt(dataOriginal.split("-")[2], 10) : null;
+    const mudouDia    = diaNovo !== null && diaAntigo !== null && diaNovo !== diaAntigo;
 
     Object.assign(existing, data); // aplica tudo no item editado
     const afetados = [existing];
@@ -6675,7 +6681,7 @@ function modalEscopoEdicaoSerie(existing, data){
       if(l === existing) continue;
       if(l.recorrenciaId !== recId) continue;
       if(apenasFuturos && l.data < dataOriginal) continue;
-      // Propaga campos cascata exceto descricao (tratada abaixo)
+      // Propaga campos cascata exceto descricao (tratada separadamente abaixo)
       CAMPOS_CASCATA_SERIE.filter(c => c !== "descricao").forEach(campo => { l[campo] = data[campo]; });
       // Descrição: para parcelado preserva o sufixo "(N/total)" de cada item
       if(isParcelado){
@@ -6684,9 +6690,17 @@ function modalEscopoEdicaoSerie(existing, data){
       } else {
         l.descricao = data.descricao;
       }
+      // Propaga mudança de dia de vencimento: cada item mantém seu mês/ano,
+      // mas o DIA é atualizado para o novo (ex: todos passam do dia 10 para o dia 15)
+      if(mudouDia){
+        const [ano, mes] = l.data.split("-");
+        const ultimoDiaMes = new Date(parseInt(ano,10), parseInt(mes,10), 0).getDate();
+        l.data = `${ano}-${mes}-${String(Math.min(diaNovo, ultimoDiaMes)).padStart(2,"0")}`;
+      }
       afetados.push(l);
     }
-    await saveLancamentos(); closeModal(); renderApp(); showToast(`Alteração aplicada a ${afetados.length} lançamento(s).`);
+    const extMsg = mudouDia ? ` Dia de vencimento alterado para ${diaNovo}.` : "";
+    await saveLancamentos(); closeModal(); renderApp(); showToast(`Alteração aplicada a ${afetados.length} lançamento(s).${extMsg}`);
   };
   document.getElementById("btnEscopoUm").addEventListener("click", async () => {
     Object.assign(existing, data);
