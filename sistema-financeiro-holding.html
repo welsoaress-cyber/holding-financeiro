@@ -1048,7 +1048,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.6";
+const APP_VERSION = "1.9.7";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3373,7 +3373,7 @@ function vgBlocoNegocio(n, inicioMesISO, fimMesISO){
   cards.push(vgKpiCard("Despesa do mês", fmtBRL(despesaMes), "Pago, mês atual", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"}));
 
   if(podeVerModulo("clientes")){
-    const clientesDoNeg = state.cliClientes.filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome));
+    const clientesDoNeg = cliAtivos().filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome));
     if(clientesDoNeg.length){
       const clientesAtivos = clientesDoNeg.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length;
       cards.push(vgKpiCard("Clientes ativos", clientesAtivos, `${clientesDoNeg.length} vinculado(s) no total`, "", {modulo:"clientes", view:"cli_lista", label:"Clientes"}));
@@ -3747,7 +3747,7 @@ function viewVgExecutivo(){
     const receitaMesNeg = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const despesaMesNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status==="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
-    const clientesAtivosNeg = podeVerModulo("clientes") ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
+    const clientesAtivosNeg = podeVerModulo("clientes") ? cliAtivos().filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const margem = receitaMesNeg>0 ? Math.round(((receitaMesNeg-despesaMesNeg)/receitaMesNeg)*100) : null;
     const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;'></span>" }
       : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:4px;'></span>" }
@@ -3981,7 +3981,7 @@ function viewVgExecutivo(){
   // qual cliente pagou, então não dá pra fazer isso com o realizado do mês
   // sem inventar um vínculo que não existe de verdade). ----
   const topClientesHTML = podeVerModulo("clientes") ? (() => {
-    const comMrr = state.cliClientes.map(c => {
+    const comMrr = cliAtivos().map(c => {
       const contratosAtivos = (c.contratos||[]).filter(ct=>ct.status==="Ativo");
       const mrr = contratosAtivos.reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
       const negs = [...new Set(contratosAtivos.map(ct=>ct.negocio).filter(Boolean))];
@@ -4117,7 +4117,7 @@ function viewVgAnalitico(){
     const aReceber = lancDoNeg.filter(l=>l.tipo==="Receita" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const aPagar = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const abaixoMinimo = vErEstoque ? state.estProdutos.filter(p => p.negocio===n.nome && estSaldoAtual(p.id)<=Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0)>0).length : null;
-    const clientesAtivos = vErClientes ? state.cliClientes.filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
+    const clientesAtivos = vErClientes ? cliAtivos().filter(c => (c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const chamadosAbertos = vErClientes ? state.cliChamados.filter(c => c.negocio===n.nome && ["Aberto","Agendado","Em atendimento"].includes(c.status)).length : null;
     const funcionariosAtivos = vErRh ? state.rhFuncionarios.filter(f => f.negocio===n.nome && f.status!=="Desligado").length : null;
     return `<tr>
@@ -4977,7 +4977,7 @@ function viewLancamentos(){
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
   const catNomeOptions = state.categorias.map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
   const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s.nome)}" ${lancFilter.subcatNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
-  const clienteOptions = state.cliClientes.map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
+  const clienteOptions = cliAtivos().map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
   // Negócio só conta como "filtro manual" quando o usuário escolheu um diferente do contexto travado
   const negFiltroManual = filtroNegocioTravado ? (lancFilter.negocio && lancFilter.negocio !== cliFiltro.negocio) : !!lancFilter.negocio;
   const temFiltro = negFiltroManual||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId;
@@ -5017,7 +5017,7 @@ function viewLancamentos(){
       <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
-      ${state.cliClientes.length ? `<select data-action="filter-clienteid"><option value="">Todos os clientes</option>${clienteOptions}</select>` : ""}
+      ${cliAtivos().length ? `<select data-action="filter-clienteid"><option value="">Todos os clientes</option>${clienteOptions}</select>` : ""}
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
@@ -7092,9 +7092,9 @@ document.addEventListener("click", async e => {
   else if(action === "cli-del"){
     const c = cliClienteById(id);
     if(!c) return;
-    if(!confirm(`Excluir o cliente "${cliNome(c)}" e todos os seus contratos?`)) return;
-    state.cliClientes = state.cliClientes.filter(x=>x.id!==id);
-    await deleteRow("cli_clientes", id);
+    if(!confirm(`Excluir o cliente "${cliNome(c)}" e todos os seus contratos?\nEsta ação não poderá ser desfeita.`)) return;
+    c.excluido = true; c.excluidoEm = todayISO();
+    await saveCliClientes();
     state.view = "cli_lista"; renderApp(); showToast("Cliente excluído.");
   }
   else if(action === "cli-detalhe"){ cliViewDetalheId = id; state.view = "cli_detalhe"; renderApp(); }
@@ -7420,6 +7420,8 @@ const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 
 // ---- Helpers ----
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
+// Clientes não excluídos — use em TODAS as telas/contagens/dropdowns
+function cliAtivos(){ return state.cliClientes.filter(c => !c.excluido); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
 // Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
@@ -7451,7 +7453,7 @@ function calcularPendencias(){
 
   // 1. Clientes inadimplentes e se já foram cobrados
   if(podeVerModulo("clientes")){
-    state.cliClientes.forEach(c => {
+    cliAtivos().forEach(c => {
       if(clienteStatusEfetivo(c) !== "Inadimplente") return;
       const mensagens = state.cliMensagensEnviadas.filter(m => m.clienteId === c.id);
       const ultima = mensagens.sort((a,b) => (b.data||"").localeCompare(a.data||""))[0];
@@ -7467,7 +7469,7 @@ function calcularPendencias(){
     });
 
     // 2. Contratos ativos sem plano definido
-    state.cliClientes.forEach(c => {
+    cliAtivos().forEach(c => {
       (c.contratos||[]).filter(ct => ct.status==="Ativo" && (!ct.planoId || !cliPlanoById(ct.planoId))).forEach(ct => {
         pends.push({
           urgencia: "media",
@@ -7830,7 +7832,7 @@ function ultimoEnvioParaCliente(clienteId, modeloId){
 // cadastrado nem aparece pra selecionar (mas o resumo abaixo avisa quantos
 // ficaram de fora, pra lembrar de completar o cadastro).
 function clientesParaEnvio(negocioFiltro){
-  return state.cliClientes.filter(c => {
+  return cliAtivos().filter(c => {
     if(c.status && c.status !== "Ativo") return false;
     if(!waDigits(c.whatsapp||c.telefone)) return false;
     if(!negocioFiltro) return true;
@@ -7844,7 +7846,7 @@ function viewCliEnvioMassa(){
   if(!envioMassaModeloId && modeloAtual) envioMassaModeloId = modeloAtual.id;
 
   const mapaAbertos = lancamentosAbertosPorCliente();
-  const semWhatsapp = state.cliClientes.filter(c =>
+  const semWhatsapp = cliAtivos().filter(c =>
     (!c.status || c.status==="Ativo") &&
     (!envioMassaNegocioFiltro || (c.contratos||[]).some(ct=>ct.negocio===envioMassaNegocioFiltro)) &&
     !waDigits(c.whatsapp||c.telefone)
@@ -7968,16 +7970,17 @@ function cliDataRecente(dias){ const d = new Date(); d.setDate(d.getDate()-dias)
 
 // ---- VIEW: DASHBOARD CLIENTES ----
 function viewCliDashboard(){
-  const total = state.cliClientes.length;
-  const ativos = state.cliClientes.filter(c => clienteStatusEfetivo(c) === "Ativo").length;
+  const _cliAtvs = cliAtivos();
+  const total = _cliAtvs.length;
+  const ativos = _cliAtvs.filter(c => clienteStatusEfetivo(c) === "Ativo").length;
   const inativos = total - ativos;
-  const novos30 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(30)).length;
-  const novos60 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(60) && c.dataCadastro < cliDataRecente(30)).length;
+  const novos30 = _cliAtvs.filter(c => c.dataCadastro >= cliDataRecente(30)).length;
+  const novos60 = _cliAtvs.filter(c => c.dataCadastro >= cliDataRecente(60) && c.dataCadastro < cliDataRecente(30)).length;
   const crescPct = novos60 > 0 ? ((novos30 - novos60)/novos60*100).toFixed(1) : novos30 > 0 ? "+100" : "0";
   const crescPos = Number(crescPct) >= 0;
 
   const negocioTotais = state.negocios.map(n => {
-    const clientes = state.cliClientes.filter(c => (c.contratos||[]).some(ct => ct.negocio === n.nome));
+    const clientes = _cliAtvs.filter(c => (c.contratos||[]).some(ct => ct.negocio === n.nome));
     const ativos = clientes.filter(c => (c.contratos||[]).find(ct=>ct.negocio===n.nome)?.status === "Ativo").length;
     const mrr = clientes.reduce((s,c) => {
       const ct = (c.contratos||[]).find(ct=>ct.negocio===n.nome && ct.status==="Ativo");
@@ -7987,8 +7990,8 @@ function viewCliDashboard(){
     return { n, total: clientes.length, ativos, mrr };
   }).filter(r => r.total > 0);
 
-  const inadimplentes = state.cliClientes.filter(c => clienteStatusEfetivo(c) === "Inadimplente").length;
-  const mrrTotal = state.cliClientes.reduce((s,c) => {
+  const inadimplentes = _cliAtvs.filter(c => clienteStatusEfetivo(c) === "Inadimplente").length;
+  const mrrTotal = _cliAtvs.reduce((s,c) => {
     return s + (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((ss,ct) => {
       const p = cliPlanoById(ct.planoId);
       return ss + (p ? Number(p.valor||0) : 0);
@@ -8213,7 +8216,7 @@ function viewCliLista(){
   const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
   return `
     <div class="page-header">
-      <div><div class="page-title">${filtroNegocioTravado && cliFiltro.negocio ? `Clientes — ${esc(cliFiltro.negocio)}` : "Todos os Clientes"}</div><div class="page-sub">${(() => { const totalBase = filtroNegocioTravado && cliFiltro.negocio ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio)).length : state.cliClientes.length; return lista.length === totalBase ? `${lista.length} cliente(s)` : `${lista.length} de ${totalBase} cliente(s)`; })()}</div></div>
+      <div><div class="page-title">${filtroNegocioTravado && cliFiltro.negocio ? `Clientes — ${esc(cliFiltro.negocio)}` : "Todos os Clientes"}</div><div class="page-sub">${(() => { const totalBase = filtroNegocioTravado && cliFiltro.negocio ? cliAtivos().filter(c=>(c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio)).length : cliAtivos().length; return lista.length === totalBase ? `${lista.length} cliente(s)` : `${lista.length} de ${totalBase} cliente(s)`; })()}</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}</div>
     </div>
     <div class="panel">
@@ -8360,7 +8363,7 @@ function viewCliPlanos(){
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliPlanosFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
 
   const rows = lista.map(p => {
-    const usos = state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
+    const usos = cliAtivos().filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
     return `<tr>
       ${bulkCheckboxCellHTML("cli_planos", p.id)}
       <td style="font-weight:600;">${esc(p.nome)}</td>
@@ -8581,7 +8584,7 @@ function modalCliCliente(existing){
     cliCpfField.addEventListener("blur", function(){
       const v = this.value.replace(/\D/g,"");
       if(v.length < 11){ cliCpfWarn.style.display="none"; this.style.borderColor=""; return; }
-      const dup = state.cliClientes.find(c => c.id !== (existing?.id) && (c.cpfCnpj||"").replace(/\D/g,"") === v);
+      const dup = cliAtivos().find(c => c.id !== (existing?.id) && (c.cpfCnpj||"").replace(/\D/g,"") === v);
       if(dup){
         cliCpfWarn.textContent = `⚠️ CPF já vinculado a: ${cliNome(dup)} (cód. ${dup.codigo||"—"}) — ao salvar, você poderá confirmar ou cancelar.`;
         cliCpfWarn.style.display = "block";
@@ -8663,7 +8666,7 @@ function modalCliCliente(existing){
       const cpfNorm = (data.cpfCnpj||"").replace(/\D/g,"");
       const nomeNorm = (data.nome||"").toLowerCase().trim();
       const negNomes = negociosMarcados.map(n => n.nome);
-      const duplicata = state.cliClientes.find(c => {
+      const duplicata = cliAtivos().find(c => {
         const mesmoNeg = negNomes.length === 0 || (c.contratos||[]).some(ct => negNomes.includes(ct.negocio));
         if(!mesmoNeg) return false;
         if(cpfNorm && cpfNorm.length >= 11 && (c.cpfCnpj||"").replace(/\D/g,"") === cpfNorm) return true;
@@ -8672,8 +8675,8 @@ function modalCliCliente(existing){
       });
       if(duplicata){
         const label = cpfNorm && cpfNorm.length >= 11 ? "este CPF/CNPJ" : "este nome";
-        const ok = confirm(`⚠️ Já existe um cliente com ${label}:\n"${cliNome(duplicata)}" (${duplicata.codigo||"sem código"})\n\nDeseja cadastrar mesmo assim?`);
-        if(!ok) return;
+        showToast(`⚠️ Já existe um cliente com ${label}: "${cliNome(duplicata)}" (cód. ${duplicata.codigo||"—"})`, "warn");
+        return;
       }
       const novoId = uid("cli");
       state.cliClientes.push({ id:novoId, ...data });
@@ -8993,10 +8996,10 @@ function viewCliOSDetalhe(){
 ========================================================================= */
 function modalCliOrcamento(existing, modoOS){
   const isEdit = !!existing;
-  if(!state.cliClientes.length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
+  if(!cliAtivos().length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
   const o = existing || { clienteId: state.cliClientes[0].id, negocio:"", data: todayISO(), validade:"", itens:[], desconto:0, observacoes:"" };
   const podeEditar = modoOS || !isEdit || o.status==="Rascunho" || o.status==="Enviado";
-  const clienteOptions = state.cliClientes.map(c=>`<option value="${c.id}" ${o.clienteId===c.id?"selected":""}>${esc(cliNome(c))}</option>`).join("");
+  const clienteOptions = cliAtivos().map(c=>`<option value="${c.id}" ${o.clienteId===c.id?"selected":""}>${esc(cliNome(c))}</option>`).join("");
   const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${o.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const produtoOptionsHTML = (sel) => `<option value="">— Item livre / serviço —</option>` + state.estProdutos.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
   const linhaItemHTML = (it) => `
@@ -9511,9 +9514,9 @@ function viewCliChamadoDetalhe(){
 ========================================================================= */
 function modalCliChamado(existing){
   const isEdit = !!existing;
-  if(!isEdit && !state.cliClientes.length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
+  if(!isEdit && !cliAtivos().length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
   const c = existing || { clienteId: state.cliClientes[0]?.id||"", negocio:"", tecnicoId:"", tipo:CHAMADO_TIPOS[0], prioridade:"Normal", motivo:"", dataAgendada:"", status:"Aberto", valorCobranca:0, observacoes:"" };
-  const clienteOptions = state.cliClientes.map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliNome(cl))}</option>`).join("");
+  const clienteOptions = cliAtivos().map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliNome(cl))}</option>`).join("");
   const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const tecnicoOptions = state.cliTecnicos.filter(t=>t.ativo!==false).map(t=>`<option value="${t.id}" ${c.tecnicoId===t.id?"selected":""}>${esc(t.nome)}</option>`).join("");
   const tipoOptions = CHAMADO_TIPOS.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("");
