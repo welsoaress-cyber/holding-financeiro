@@ -1048,7 +1048,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.4";
+const APP_VERSION = "1.9.5";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8431,7 +8431,7 @@ function modalCliCliente(existing){
     const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
     const hasContrato = !!contratoAtual;
     const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
-    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
+    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)}${p.velocidade?` — ${esc(p.velocidade)}`:""}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
     return `<tr>
       <td style="white-space:nowrap;">
         <label class="checkbox-row" style="padding:4px 0;">
