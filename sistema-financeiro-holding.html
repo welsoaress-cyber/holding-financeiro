@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.2";
+const APP_VERSION = "1.6.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1338,10 +1338,14 @@ function permissaoModulo(moduloId, acao){
     }
     return state.negocios.some(n => !!((perfil.negModulos[n.id] || {})[moduloId] || {})[acao]);
   }
-  // Modelo simplificado: permissoes[negocio] = {ver, criar, editar, excluir}
-  // Módulo é acessível se o usuário tem essa ação em pelo menos um negócio
+  // Modelo simplificado: permissoes[negocio] = {ver, criar, editar, excluir, [submenus]}
   const negPerms = Object.values(perfil.permissoes || {});
   if(negPerms.length > 0){
+    // Usuário com acesso granular por sub-menu (ex: só Provedor > Clientes) não recebe
+    // acesso automático a módulos globais — o acesso dele é via grupos dedicados no nav
+    const temSubmenusGranulares = negPerms.some(p => p.submenus && Object.keys(p.submenus).length > 0);
+    if(temSubmenusGranulares) return false;
+    // Sem sub-menus: acesso padrão por negócio (qualquer ação liberada em algum negócio → libera módulo)
     if(acao === "ver")    return negPerms.some(p => p.ver);
     if(acao === "criar")  return negPerms.some(p => p.criar);
     if(acao === "editar") return negPerms.some(p => p.editar);
@@ -2684,7 +2688,12 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  const negociosVisiveis = state.negocios.filter(n => master || podeVerNegocio(n.nome));
+  // Projetos: exclui negócios que já têm grupo dedicado no nav (ex: Provedor) para não-masters
+  const negociosVisiveis = state.negocios.filter(n => {
+    if(!master && !podeVerNegocio(n.nome)) return false;
+    if(!master && NEGOCIOS_SUBMENUS[n.nome]) return false; // tem grupo dedicado → só mostra lá
+    return true;
+  });
   if(negociosVisiveis.length){
     grupos.push(navGrupo("projetos", ic("projetos"), "Projetos", negociosVisiveis.map(n=>`negocio_${n.id}`), negociosVisiveis.map(n => `
       <div class="nav-item ${state.view==="negocio_"+n.id?"active":""}" data-action="nav" data-view="negocio_${n.id}">
