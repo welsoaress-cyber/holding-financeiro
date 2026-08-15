@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.2";
+const APP_VERSION = "2.0.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -9496,7 +9496,7 @@ function viewCliChamados(){
     return `<tr>
       ${bulkCheckboxCellHTML("cli_chamados", c.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cham-detalhe" data-id="${c.id}">${esc(c.numero)}</td>
-      <td>${cliente?esc(cliNome(cliente)):"— removido —"}</td>
+      <td>${cliente?`<span style="cursor:pointer;color:var(--accent);" data-action="cli-detalhe" data-id="${cliente.id}">${esc(cliLabel(cliente))}</span>`:"— removido —"}</td>
       <td>${esc(c.tipo)}</td>
       <td>${tecnico?esc(tecnico.nome):"— sem técnico —"}</td>
       <td>${c.dataAgendada?fmtDateBR(c.dataAgendada):"—"}</td>
@@ -9547,7 +9547,7 @@ function viewCliChamadoDetalhe(){
     <div class="page-header">
       <div style="display:flex; align-items:center; gap:12px;">
         <button class="btn btn-ghost btn-sm" ${filtroNegocioTravado && cliFiltro.negocio ? `data-action="nav-negocio" data-view="cli_chamados" data-negocio="${esc(cliFiltro.negocio)}"` : `data-action="nav" data-view="cli_chamados"`}>← Voltar</button>
-        <div><div class="page-title">${esc(c.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${c.negocio?` · ${esc(c.negocio)}`:""} · <span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></div></div>
+        <div><div class="page-title">${esc(c.numero)}</div><div class="page-sub">${cliente?`<span style="cursor:pointer;color:var(--accent);" data-action="cli-detalhe" data-id="${cliente.id}">${esc(cliLabel(cliente))}</span>`:"— cliente removido —"}${c.negocio?` · ${esc(c.negocio)}`:""} · <span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></div></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
@@ -9567,6 +9567,7 @@ function viewCliChamadoDetalhe(){
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
+        ${cliente?`<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);"><strong>Cliente:</strong> <span style="cursor:pointer;color:var(--accent);" data-action="cli-detalhe" data-id="${cliente.id}">${esc(cliNome(cliente))}</span>${cliente.codigo?` <span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-3);font-weight:700;">Cód. ${esc(cliente.codigo)}</span>`:""}</div>`:""}
         <div><strong>Tipo:</strong> ${esc(c.tipo)}</div>
         <div><strong>Prioridade:</strong> ${esc(c.prioridade)}</div>
         <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
@@ -9586,7 +9587,7 @@ function modalCliChamado(existing){
   const isEdit = !!existing;
   if(!isEdit && !cliAtivos().length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
   const c = existing || { clienteId: state.cliClientes[0]?.id||"", negocio:"", tecnicoId:"", tipo:CHAMADO_TIPOS[0], prioridade:"Normal", motivo:"", dataAgendada:"", status:"Aberto", valorCobranca:0, observacoes:"" };
-  const clienteOptions = cliAtivos().map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliNome(cl))}</option>`).join("");
+  const clienteOptions = cliAtivos().map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliLabel(cl))}</option>`).join("");
   const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const tecnicoOptions = state.cliTecnicos.filter(t=>t.ativo!==false).map(t=>`<option value="${t.id}" ${c.tecnicoId===t.id?"selected":""}>${esc(t.nome)}</option>`).join("");
   const tipoOptions = CHAMADO_TIPOS.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("");
