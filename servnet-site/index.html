@@ -233,6 +233,10 @@ button, input, select { font-family: inherit; font-size: inherit; }
   padding: 0.22rem 0.65rem;
   box-shadow: 0 0 12px rgba(0,196,216,0.55); white-space: nowrap;
 }
+.plan-name-badge {
+  font-size: 0.78rem; font-weight: 700; color: var(--text-2);
+  margin-bottom: 0.5rem; letter-spacing: 0.04em;
+}
 .plan-mbps {
   font-family: 'Courier New', 'SF Mono', monospace;
   font-size: clamp(2.3rem, 3.2vw, 3rem);
@@ -722,7 +726,8 @@ button, input, select { font-family: inherit; font-size: inherit; }
   </div>
   <div class="plans-grid">
 
-    <article class="plan-card" aria-label="Plano 100 Mbps">
+    <article class="plan-card" aria-label="Plano Bronze 100 Mbps">
+      <div class="plan-name-badge">🥉 Plano Bronze</div>
       <div class="plan-mbps">100<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -738,12 +743,13 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
       </ul>
-      <button class="plan-action action-line" onclick="openModal('100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-line" onclick="openModal('Plano Bronze — 100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
-    <article class="plan-card hot" aria-label="Plano 200 Mbps, mais popular">
+    <article class="plan-card hot" aria-label="Plano Prata 200 Mbps, mais popular">
       <div class="plan-badge">Mais popular</div>
+      <div class="plan-name-badge">🥈 Plano Prata</div>
       <div class="plan-mbps">200<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -758,13 +764,13 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Internet ilimitada</li>
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
-        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <button class="plan-action action-fill" onclick="openModal('200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-fill" onclick="openModal('Plano Prata — 200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
-    <article class="plan-card" aria-label="Plano 300 Mbps">
+    <article class="plan-card" aria-label="Plano Ouro 300 Mbps">
+      <div class="plan-name-badge">🥇 Plano Ouro</div>
       <div class="plan-mbps">300<span class="plan-unit">Mbps</span></div>
       <div class="plan-fiber">Fibra 100%</div>
       <div class="plan-por-apenas">Por apenas</div>
@@ -779,9 +785,8 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <li><span class="feat-dot"></span>Internet ilimitada</li>
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
         <li><span class="feat-dot"></span>Instalação grátis</li>
-        <li><span class="feat-dot"></span>📺 TV via aplicativo inclusa</li>
       </ul>
-      <button class="plan-action action-line" onclick="openModal('300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
+      <button class="plan-action action-line" onclick="openModal('Plano Ouro — 300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
       <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
     </article>
 
@@ -953,9 +958,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <label class="f-label" for="f-plano">Plano de interesse</label>
         <select class="f-select" id="f-plano" name="plano">
           <option value="">Selecione um plano</option>
-          <option value="100">100 Mbps — R$ 60,00/mês</option>
-          <option value="200">200 Mbps — R$ 80,00/mês (+ TV via app)</option>
-          <option value="300">300 Mbps — R$ 100,00/mês (+ TV via app)</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
         </select>
       </div>
       <button type="submit" class="f-submit">Solicitar contato</button>
@@ -984,9 +989,9 @@ button, input, select { font-family: inherit; font-size: inherit; }
         <label class="f-label" for="lPlano">Plano de interesse</label>
         <select class="f-select" id="lPlano">
           <option value="">Escolha um plano</option>
-          <option value="100 Mbps — R$ 60,00/mês">100 Mbps — R$ 60,00/mês</option>
-          <option value="200 Mbps — R$ 80,00/mês">200 Mbps — R$ 80,00/mês (+ TV)</option>
-          <option value="300 Mbps — R$ 100,00/mês">300 Mbps — R$ 100,00/mês (+ TV)</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
         </select>
       </div>
       <div class="f-group" style="display:grid;grid-template-columns:1fr 100px;gap:10px">
