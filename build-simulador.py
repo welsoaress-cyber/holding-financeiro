@@ -2,12 +2,19 @@
 """
 Gera simulador-fidelidade.html a partir de servnet-site/portal.html.
 
-O simulador precisa mostrar exatamente o que o cliente vê, então o CSS e as
-funções do cartão são COPIADOS do portal em vez de reescritos. Rode este
-script sempre que mexer no cartão de fidelidade, para o simulador não
-descolar do produto:
+O arquivo gerado NÃO fica versionado de propósito: se ficasse, bastaria
+mexer no cartão e esquecer de rodar este script para o simulador começar a
+mentir em silêncio. Gere quando precisar, use, e descarte:
 
-    python3 build-simulador.py
+    python3 build-simulador.py     # cria simulador-fidelidade.html na raiz
+
+Ele copia o CSS e as funções do cartão direto do portal em vez de
+reescrevê-las, então o que aparece na tela é o comportamento real. Serve
+para conferir a regra de fidelidade em qualquer cenário de pagamento sem
+tocar em dados de produção — informe a data de início do cliente e clique
+nas faturas para alternar entre pago em dia, pago com atraso e em aberto.
+
+Nada disso vai para o ar: o Netlify publica só a pasta servnet-site/.
 """
 import re, pathlib
 
