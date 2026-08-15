@@ -228,6 +228,13 @@ a{color:inherit;}
   box-shadow:0 0 14px rgba(245,158,11,0.35);}
 .fp.p2ok .fp-val{color:#FCD34D;} .fp.p2ok .fp-onde{color:rgba(245,158,11,0.8);}
 .fp.p2ok .fp-st{color:#FCD34D;}
+/* prêmio que não cabe mais no que resta do cartão */
+.fp.impossivel{border-color:rgba(148,163,184,0.25);border-style:solid;background:rgba(148,163,184,0.05);}
+.fp.impossivel .fp-ico{opacity:0.25;filter:grayscale(1);}
+.fp.impossivel .fp-val{color:rgba(148,163,184,0.6);text-decoration:line-through;text-decoration-thickness:1px;}
+.fp.impossivel .fp-onde{color:rgba(148,163,184,0.45);}
+.fp.impossivel .fp-st{color:rgba(148,163,184,0.7);}
+.premio-pill.neutro{background:rgba(148,163,184,0.07);border:1px solid rgba(148,163,184,0.2);color:rgba(203,213,225,0.85);}
 /* conquistado num cartão anterior: continua aceso, sem o brilho de recém-ganho */
 .fp.passado{box-shadow:none;opacity:0.82;}
 
@@ -405,7 +412,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.8</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.8.1</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -1068,29 +1075,39 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
 
   // liberado agora → "✓ liberado"; conquistado num cartão anterior →
   // "✓ recebido em Fev/2026"; nada ainda → quantas faltam
-  const chip = (aceso, antes, faltam) =>
+  // Quantos selos ainda cabem no cartão: só os meses cuja fatura ainda não
+  // venceu. Mês em atraso ou vencido em aberto já não rende selo — se o que
+  // sobra não alcança a meta, o prêmio está fora deste cartão e prometer
+  // "faltam N" seria mentira.
+  const aindaPossiveis = slots.filter(s => s.estado === 'aberto' || s.estado === 'vazio').length;
+  const teto = streak + aindaPossiveis;
+
+  const chip = (aceso, antes, meta) =>
     aceso  ? '✓ liberado'
     : antes ? `✓ ${antes.mes ? esc(fmtMesRef(antes.mes)) : 'recebido'}`
-    : `faltam ${faltam}`;
+    : teto < meta ? '✕ não liberado'
+    : `faltam ${meta - streak}`;
+
+  const foraDeAlcance = meta => teto < meta;
 
   const aceso1 = premio1 || !!antes1;
   const aceso2 = premio2 || !!antes2;
 
   const premios = `
     <div class="fc-premios">
-      <div class="fp ${aceso1?'p1ok':'p1e'}${!premio1&&antes1?' passado':''}"
-           title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto'}">
+      <div class="fp ${aceso1?'p1ok':(foraDeAlcance(6)?'impossivel':'p1e')}${!premio1&&antes1?' passado':''}"
+           title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':(foraDeAlcance(6)?'Não é mais possível somar 6 selos neste cartão':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto')}">
         <span class="fp-ico">🎁</span>
         <span class="fp-val">50% de desconto</span>
         <span class="fp-onde">por 6 meses de pagamento em dia</span>
-        <span class="fp-st">${chip(premio1, antes1, 6-streak)}</span>
+        <span class="fp-st">${chip(premio1, antes1, 6)}</span>
       </div>
-      <div class="fp ${aceso2?'p2ok':'p2e'}${!premio2&&antes2?' passado':''}"
-           title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto'}">
+      <div class="fp ${aceso2?'p2ok':(foraDeAlcance(12)?'impossivel':'p2e')}${!premio2&&antes2?' passado':''}"
+           title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':(foraDeAlcance(12)?'Não é mais possível somar 12 selos neste cartão':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto')}">
         <span class="fp-ico">🏅</span>
         <span class="fp-val">100% de desconto</span>
         <span class="fp-onde">por 12 meses de pagamento em dia</span>
-        <span class="fp-st">${chip(premio2, antes2, 12-streak)}</span>
+        <span class="fp-st">${chip(premio2, antes2, 12)}</span>
       </div>
     </div>`;
 
@@ -1107,6 +1124,10 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   } else {
     faltam = 6 - streak;   proximoPremio = '50% de desconto';
   }
+  // Se o prêmio já não cabe no que sobrou do cartão, para de cobrar por ele.
+  const metaAtual = streak >= 6 ? 12 : 6;
+  const semAlcance = faltam > 0 && foraDeAlcance(metaAtual);
+  if(semAlcance) faltam = 0;
 
   const pctTotal = Math.round((streak/12)*100);
   const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
@@ -1158,7 +1179,9 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
       <div class="fidel-bar-wrap">
         <div class="fidel-bar-labels">
           <span>Progresso total</span>
-          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
+          <span>${faltam>0
+            ? `Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`
+            : semAlcance ? `${streak} de 12 selos neste cartão` : '🎉 Prêmio disponível!'}</span>
         </div>
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
       </div>
@@ -1174,7 +1197,9 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
       <!-- Próximo prêmio -->
       ${faltam>0
         ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — mantenha o pagamento em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
-        :''
+        : semAlcance
+          ?`<div class="premio-pill neutro">Este cartão não alcança mais o <strong>${proximoPremio}</strong> — não sobram meses suficientes. Seu próximo cartão começa em <strong>${esc(fmtMesRef(somaMeses(periodo?periodo.fim:'', 1)))}</strong>, com 12 chances novas.</div>`
+          :''
       }
 
     </div>
