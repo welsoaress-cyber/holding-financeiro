@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.3";
+const APP_VERSION = "1.6.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2491,7 +2491,25 @@ function renderApp(){
   // módulos com acesso granular (Estoque/Clientes/RH) — sem "ver" liberado, volta pro Financeiro
   if(state.view.startsWith("rh_") && !podeVerModulo("rh")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
   if(state.view.startsWith("est_") && !podeVerModulo("estoque")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
-  if(state.view.startsWith("cli_") && !podeVerModulo("clientes")){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
+  if(state.view.startsWith("cli_") && !podeVerModulo("clientes") && !podeVerSubmenuNeg("Provedor", state.view)){ state.view = "lancamentos"; state.moduloAtivo = "financeiro"; }
+  // Usuário com acesso restrito a sub-menus: redireciona para primeira view acessível
+  if(!master && state.perfilAtivo){
+    const negPerms = Object.values(state.perfilAtivo.permissoes || {});
+    const ehSubmenusOnly = negPerms.some(p => p.submenus && Object.keys(p.submenus).length > 0);
+    if(ehSubmenusOnly){
+      // Coleta todas as views acessíveis via sub-menus
+      const acessiveis = new Set(
+        Object.entries(state.perfilAtivo.permissoes || {})
+          .flatMap(([neg, perm]) => perm.ver
+            ? (NEGOCIOS_SUBMENUS[neg] || []).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
+            : [])
+      );
+      if(!acessiveis.has(state.view)){
+        const primeira = [...acessiveis][0];
+        if(primeira){ state.view = primeira; state.moduloAtivo = moduloDaView(primeira) || ""; }
+      }
+    }
+  }
   salvarNavegacaoAtual();
   renderModbar();
   // ---- Mobile drawer ----
