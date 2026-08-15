@@ -141,3 +141,85 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(uuid, uuid) TO anon;
+
+-- ----------------------------------------------------------------
+-- 5. FUNÇÃO PARA SOLICITAR UPGRADE / SUPORTE VIA PORTAL
+--    Insere um chamado direto em cli_chamados do painel de controle
+-- ----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.portal_servnet_solicitar(
+  p_cliente_id uuid,
+  p_master_id  uuid,
+  p_tipo       text,        -- 'upgrade' | 'suporte'
+  p_descricao  text DEFAULT ''
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_id      uuid := gen_random_uuid();
+  v_numero  text;
+  v_nome    text;
+  v_negocio text;
+  v_motivo  text;
+  v_tipo_chamado text;
+BEGIN
+  -- valida que o cliente pertence ao master
+  SELECT
+    dados->>'nome',
+    COALESCE(
+      (SELECT c->>'negocio' FROM jsonb_array_elements(COALESCE(dados->'contratos','[]'::jsonb)) c
+       WHERE c->>'status' = 'Ativo' LIMIT 1),
+      ''
+    )
+  INTO v_nome, v_negocio
+  FROM cli_clientes
+  WHERE id = p_cliente_id AND user_id = p_master_id
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('ok', false, 'msg', 'Cliente não identificado.');
+  END IF;
+
+  -- número único para o chamado
+  v_numero := 'PT-' || to_char(now(), 'YYYYMMDD') || '-' || UPPER(LEFT(v_id::text, 4));
+
+  -- tipo e motivo conforme solicitação
+  IF p_tipo = 'upgrade' THEN
+    v_tipo_chamado := 'Suporte técnico';
+    v_motivo := 'Solicitação de upgrade de plano enviada pelo cliente via portal.'
+                || CASE WHEN p_descricao <> '' THEN E'\n\nMensagem: ' || p_descricao ELSE '' END;
+  ELSE
+    v_tipo_chamado := 'Suporte técnico';
+    v_motivo := 'Solicitação de suporte enviada pelo cliente via portal.'
+                || CASE WHEN p_descricao <> '' THEN E'\n\nMensagem: ' || p_descricao ELSE '' END;
+  END IF;
+
+  INSERT INTO cli_chamados(id, user_id, dados, updated_at)
+  VALUES (
+    v_id,
+    p_master_id,
+    jsonb_build_object(
+      'clienteId',    p_cliente_id::text,
+      'negocio',      v_negocio,
+      'tipo',         v_tipo_chamado,
+      'prioridade',   'Normal',
+      'motivo',       v_motivo,
+      'tecnicoId',    '',
+      'dataAgendada', '',
+      'status',       'Aberto',
+      'valorCobranca',0,
+      'observacoes',  '',
+      'numero',       v_numero,
+      'dataCadastro', to_char(now(), 'YYYY-MM-DD'),
+      'lancadoPor',   'Portal — ' || COALESCE(v_nome, 'Cliente')
+    ),
+    now()
+  );
+
+  RETURN json_build_object('ok', true, 'numero', v_numero);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.portal_servnet_solicitar(uuid, uuid, text, text) TO anon;

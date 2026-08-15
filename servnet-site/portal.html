@@ -289,8 +289,9 @@ a{color:inherit;}
 .rules-box .rules-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--pool);margin-bottom:0.5rem;font-weight:700;}
 
 /* upgrade btn */
-.upgrade-btn{display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.55rem 1.1rem;background:rgba(0,196,216,0.1);border:1px solid rgba(0,196,216,0.35);border-radius:6px;color:var(--pool);font-size:0.82rem;font-weight:700;text-decoration:none;transition:background 0.15s,border-color 0.15s;}
-.upgrade-btn:hover{background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
+.upgrade-btn{display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.55rem 1.1rem;background:rgba(0,196,216,0.1);border:1px solid rgba(0,196,216,0.35);border-radius:6px;color:var(--pool);font-size:0.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s,border-color 0.15s;}
+.upgrade-btn:hover:not(:disabled){background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
+.upgrade-btn:disabled{opacity:0.55;cursor:default;}
 
 /* promoções */
 .promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
@@ -485,6 +486,37 @@ document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
 });
 
+async function solicitarUpgrade(tipo){
+  if(!session) return;
+  const btn = document.getElementById('upgradeBtn');
+  const msg = document.getElementById('upgradeMsg');
+  if(!btn || !msg) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.style.display = 'none';
+  try{
+    const {data:res,error} = await sb.rpc('portal_servnet_solicitar',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_tipo:       tipo,
+      p_descricao:  ''
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao enviar.');
+    btn.textContent = '✅ Solicitação enviada!';
+    msg.style.display = 'block';
+    msg.style.color = '#34D399';
+    msg.textContent = `Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`;
+  }catch(e){
+    btn.disabled = false;
+    btn.textContent = tipo==='upgrade' ? '⚡ Solicitar Upgrade de Plano' : '💬 Falar com Suporte';
+    msg.style.display = 'block';
+    msg.style.color = '#F87171';
+    msg.textContent = 'Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.';
+    console.error(e);
+  }
+}
+
 async function doLogin(){
   const cpf = document.getElementById('cpf').value.replace(/\D/g,'');
   const nascRaw = document.getElementById('nasc').value.replace(/\D/g,'');
@@ -570,7 +602,6 @@ function renderPlano(data){
     const vel=p.velocidade||p.nome||'';
     const spd=vel.match(/\d+/)?.[0]||'';
     const unit=vel.toLowerCase().includes('gbps')?'Gbps':'Mbps';
-    const upgMsg=encodeURIComponent(`Olá! Sou cliente da Servnet e gostaria de fazer um upgrade no meu plano atual (${p.nome||'meu plano'}). Podem me ajudar?`);
     html=`
       <div class="plan-speed">${spd}<span> ${unit}</span></div>
       <div class="plan-name">${p.nome||'Fibra Óptica'}</div>
@@ -579,14 +610,16 @@ function renderPlano(data){
       ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
       <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${st}</span></div>
       ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}
-      <a class="upgrade-btn" href="https://wa.me/5511954490001?text=${upgMsg}" target="_blank" rel="noopener">⚡ Solicitar Upgrade de Plano</a>`;
+      <button class="upgrade-btn" id="upgradeBtn" onclick="solicitarUpgrade('upgrade')">⚡ Solicitar Upgrade de Plano</button>
+      <div id="upgradeMsg" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
   }else{
     html=`
       <span class="badge ${badgeClass(st)}">${st}</span>
       ${dv?`<div class="plan-detail" style="margin-top:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
       ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
       <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>
-      <a class="upgrade-btn" href="https://wa.me/5511954490001?text=${encodeURIComponent('Olá! Preciso de informações sobre meu plano Servnet.')}" target="_blank" rel="noopener">💬 Falar com Suporte</a>`;
+      <button class="upgrade-btn" id="upgradeBtn" onclick="solicitarUpgrade('suporte')" style="background:rgba(0,196,216,0.15);color:var(--pool);">💬 Falar com Suporte</button>
+      <div id="upgradeMsg" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
   }
   document.getElementById('planContent').innerHTML=html;
 }
