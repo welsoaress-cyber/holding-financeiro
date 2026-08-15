@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.8";
+const APP_VERSION = "1.7.8";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1256,7 +1256,7 @@ function podeVerSubmenuNeg(negNome, view){
   if(!state.perfilAtivo) return false;
   const perm = (state.perfilAtivo.permissoes || {})[negNome];
   if(!perm || !perm.ver) return false;
-  const subs = NEGOCIOS_SUBMENUS[negNome];
+  const subs = NEGOCIOS_SUBMENUS[negNome] || NEGOCIOS_SUBMENUS_PADRAO;
   if(!subs) return true;
   if(!perm.submenus) return true;  // nunca configurado → libera tudo
   const s = perm.submenus[view];
@@ -1314,18 +1314,21 @@ function perfilById(id){ return state.perfis.find(p => p.id === id); }
 // sensível), por negócio — permissaoNegocio acima — pra não afrouxar nada que já existe.
 const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comprasvendas","cadastro"];
 
+// Sub-menus padrão usados por TODOS os negócios (modal de permissões + sidebar)
+const NEGOCIOS_SUBMENUS_PADRAO = [
+  { view:"cli_lista",      label:"Clientes" },
+  { view:"lancamentos",    label:"Lançamentos" },
+  { view:"receitas",       label:"Contas a Receber" },
+  { view:"despesas",       label:"Contas a Pagar" },
+  { view:"transferencias", label:"Transferências" },
+  { view:"cli_chamados",   label:"Chamados" },
+  { view:"cli_planos",     label:"Planos" },
+  { view:"cli_tecnicos",   label:"Técnicos" },
+];
 // Sub-menus por negócio (exibidos na modal de permissões)
+// Negócios não listados aqui recebem NEGOCIOS_SUBMENUS_PADRAO automaticamente
 const NEGOCIOS_SUBMENUS = {
-  "Provedor": [
-    { view:"cli_lista",      label:"Clientes" },
-    { view:"lancamentos",    label:"Lançamentos" },
-    { view:"receitas",       label:"Contas a Receber" },
-    { view:"despesas",       label:"Contas a Pagar" },
-    { view:"transferencias", label:"Transferências" },
-    { view:"cli_chamados",   label:"Chamados" },
-    { view:"cli_planos",     label:"Planos" },
-    { view:"cli_tecnicos",   label:"Técnicos" },
-  ]
+  "Provedor": NEGOCIOS_SUBMENUS_PADRAO,
 };
 function modulosPadrao(){
   return {
@@ -2529,7 +2532,7 @@ function renderApp(){
       const acessiveis = new Set(
         Object.entries(state.perfilAtivo.permissoes || {})
           .flatMap(([neg, perm]) => perm.ver
-            ? (NEGOCIOS_SUBMENUS[neg] || []).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
+            ? (NEGOCIOS_SUBMENUS[neg] || NEGOCIOS_SUBMENUS_PADRAO).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
             : [])
       );
       if(!acessiveis.has(state.view)){
@@ -2654,7 +2657,7 @@ function navItem(view, icon, label){
 // destino já entra travado nesse negócio, e o seletor de negócio some de
 // lá (ver filtroNegocioTravado).
 function navItemNegocio(view, icon, label, negocio){
-  const active = state.view === view && filtroNegocioTravado ? "active" : "";
+  const active = state.view === view && filtroNegocioTravado && cliFiltro.negocio === negocio ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav-negocio" data-view="${view}" data-negocio="${esc(negocio)}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
@@ -2681,7 +2684,14 @@ let sidebarGruposFechados = new Set();
 // continua aberto" antes de chamar renderApp().
 let drawerAbertoAntes = false;
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
-  const contemViewAtual = viewsDoGrupo.includes(state.view);
+  // Para grupos de negócio (neg_*), só marca como "contendo a view atual" se
+  // o filtro de negócio também estiver travado nesse negócio — evita que dois
+  // grupos diferentes com as mesmas views (ex: Lançamentos em Provedor e Porto)
+  // fiquem ambos destacados ao mesmo tempo.
+  const eGrupoNegocio = id.startsWith("neg_");
+  const contemViewAtual = eGrupoNegocio
+    ? (viewsDoGrupo.includes(state.view) && filtroNegocioTravado && cliFiltro.negocio === nome)
+    : viewsDoGrupo.includes(state.view);
   const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
   return `
     <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
@@ -2709,28 +2719,29 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  // ---- Menus "por Negócio" — cada negócio ganha um grupo próprio no menu,
-  // com só os dados DELE (Clientes, Financeiro, Chamados, Planos,
-  // Técnicos). Pensado pra quando um usuário só tem acesso a 1 negócio: em
-  // vez de dar acesso ao módulo inteiro (que mistura todos os negócios), dá
-  // pra liberar só esse grupo — que já entra com o filtro travado nesse
-  // negócio. Piloto: só "Provedor" (ServNet) por enquanto.
-  if(master || podeVerNegocio("Provedor")){
-    const provedorItems = [
-      ["cli_lista",      ic("clientes"),      "Clientes"],
-      ["lancamentos",    ic("lancamentos"),   "Lançamentos"],
-      ["receitas",       ic("receber"),       "Contas a Receber"],
-      ["despesas",       ic("pagar"),         "Contas a Pagar"],
-      ["transferencias", ic("transferencias"),"Transferências"],
-      ["cli_chamados",   ic("chamados"),      "Chamados"],
-      ["cli_planos",     ic("planos"),        "Planos"],
-      ["cli_tecnicos",   ic("tecnicos"),      "Técnicos"],
-    ].filter(([view]) => podeVerSubmenuNeg("Provedor", view));
-    const provedorViews = provedorItems.map(([v]) => v);
-    grupos.push(navGrupo("neg_provedor", "", "Provedor", provedorViews,
-      provedorItems.map(([v,ic_,lbl]) => navItemNegocio(v,ic_,lbl,"Provedor")).join("")
-    ));
-  }
+  // ---- Menus "por Negócio" — cada negócio cadastrado ganha um grupo próprio
+  // no menu, com os dados DELE filtrados. O mesmo padrão de sub-itens vale
+  // para qualquer negócio (Provedor, Porto Odonto, etc.) — sem precisar
+  // hardcodar um bloco por negócio.
+  // Usa NEGOCIOS_SUBMENUS_PADRAO (módulo global) como fonte de verdade para
+  // manter sidebar e modal de permissões sempre em sincronia.
+  const SUBITENS_NEG_PADRAO = [
+    ["cli_lista",      "clientes",       "Clientes"],
+    ["lancamentos",    "lancamentos",    "Lançamentos"],
+    ["receitas",       "receber",        "Contas a Receber"],
+    ["despesas",       "pagar",          "Contas a Pagar"],
+    ["transferencias", "transferencias", "Transferências"],
+    ["cli_chamados",   "chamados",       "Chamados"],
+    ["cli_planos",     "planos",         "Planos"],
+    ["cli_tecnicos",   "tecnicos",       "Técnicos"],
+  ];
+  state.negocios.filter(n => master || podeVerNegocio(n.nome)).forEach(n => {
+    const itens = SUBITENS_NEG_PADRAO
+      .filter(([view]) => podeVerSubmenuNeg(n.nome, view))
+      .map(([v, icoKey, lbl]) => navItemNegocio(v, ic(icoKey), lbl, n.nome));
+    const views = SUBITENS_NEG_PADRAO.map(([v]) => v);
+    grupos.push(navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")));
+  });
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   if(podeVerModulo("financeiro")){
@@ -5541,7 +5552,7 @@ function modalPerfil(existing){
     const perm = getPermNeg(n);
     const negId = `neg_${n.id}`;
     const subId = `negsub_${n.id}`;
-    const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
+    const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
     const savedSubs = (perm.submenus) || {};
     // "nunca configurado" → padrão: tela visível, sem ações
     const neverSaved = Object.keys(savedSubs).length === 0;
@@ -5676,7 +5687,7 @@ function modalPerfil(existing){
     // Salva permissoes[nome] = {ver, criar, editar, excluir, [submenus]}
     const permissoes = {};
     state.negocios.forEach(n => {
-      const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
+      const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
       const ver = fd.get(`pver_${n.id}`) === "on";
       if(subs.length){
         // Negócio COM sub-menus: salva ações por tela
