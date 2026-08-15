@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.4";
+const APP_VERSION = "2.0.5";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5010,6 +5010,10 @@ function viewLancamentos(){
             : `<span style="font-size:10.5px;color:var(--ink-4);cursor:pointer;text-decoration:underline;" data-action="lanc-mes-hoje">voltar para o mês atual</span>`}
       </div>
       <button class="icon-btn" data-action="lanc-mes-next" title="Próximo mês" style="font-size:15px;padding:5px 11px;border:1px solid var(--border);border-radius:var(--r);">▶</button>
+      <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);margin-left:6px;border-left:1px solid var(--border);padding-left:10px;">
+        De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}" min="2000-01-01" max="2099-12-31" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);">
+        até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}" min="2000-01-01" max="2099-12-31" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);">
+      </span>
       ${lancFilter.clienteId ? (() => { const _cl = cliClienteById(lancFilter.clienteId); return _cl ? `<span style="font-size:12px;color:var(--ink-3);margin-left:4px;">· Cliente: <strong>${esc(cliLabel(_cl))}</strong></span>` : ""; })() : ""}
     </div>`;
   })();
@@ -5033,8 +5037,7 @@ function viewLancamentos(){
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
       <select data-action="filter-catnome"><option value="">Todas as categorias</option>${catNomeOptions}</select>
       <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"Selecione uma categoria"}</option>${subcatNomeOptions}</select>
-      <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}" min="2000-01-01" max="2099-12-31"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}" min="2000-01-01" max="2099-12-31"></span>
-      ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
+${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
       <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
       <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th>
