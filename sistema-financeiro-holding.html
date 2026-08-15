@@ -900,7 +900,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.5.2";
+const APP_VERSION = "1.5.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5181,30 +5181,33 @@ function modalPerfil(existing){
   const p = existing || { nome:"", senha:"", tipo:"membro", permissoes:{}, categoriasPermitidas:{}, modulos:{} };
   const pad = modulosPadrao();
 
-  const linhasModulo = MODULOS_GRUPOS.map(g => {
+  // Pills de checkbox que quebram linha sozinhas (flex-wrap) em vez de colunas de
+  // tabela com largura fixa — assim não precisa de scroll horizontal em nenhuma
+  // largura de tela, o card só fica mais alto no celular.
+  const pillCheckbox = (nome, marcado, rotulo) => `
+    <label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; padding:5px 10px; border:1px solid var(--border); border-radius:999px; cursor:pointer; user-select:none;">
+      <input type="checkbox" name="${nome}" ${marcado?"checked":""} style="margin:0;">${esc(rotulo)}
+    </label>`;
+
+  const linhasModulo = MODULOS_GRUPOS.map((g, i) => {
     const perm = (p.modulos || {})[g.id] || pad[g.id] || {};
-    const checkboxes = ["ver","criar","editar","excluir"].map(a =>
-      g.acoes.includes(a)
-        ? `<td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="mod_${a}_${g.id}" ${perm[a]?"checked":""}></td>`
-        : `<td style="text-align:center;padding:7px 4px;color:var(--ink-4)">—</td>`
-    ).join("");
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:7px 8px;white-space:nowrap">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</td>
-      ${checkboxes}
-    </tr>`;
+    const pills = ["ver","criar","editar","excluir"].filter(a => g.acoes.includes(a))
+      .map(a => pillCheckbox(`mod_${a}_${g.id}`, !!perm[a], ACOES_LABEL[a])).join("");
+    return `<div style="padding:10px 12px; ${i < MODULOS_GRUPOS.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
+      <div style="font-size:13px; font-weight:600;">${g.icon} ${g.label}${g.help?` <span title="${g.help}" style="cursor:help;color:var(--accent);font-size:11px;">ⓘ</span>`:""}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+    </div>`;
   }).join("");
 
-  const linhasNegocio = state.negocios.map(n => {
+  const linhasNegocio = state.negocios.map((n, i) => {
     const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:7px 8px">${esc(n.nome)}</td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="ver_${n.id}" ${perm.ver?"checked":""}></td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="editar_${n.id}" ${perm.editar?"checked":""}></td>
-      <td style="text-align:center;padding:7px 4px;"><input type="checkbox" name="excluir_${n.id}" ${perm.excluir?"checked":""}></td>
-    </tr>`;
+    const pills = [["ver_"+n.id,perm.ver,"Ver"],["editar_"+n.id,perm.editar,"Editar"],["excluir_"+n.id,perm.excluir,"Excluir"]]
+      .map(([nome,marcado,rotulo]) => pillCheckbox(nome, marcado, rotulo)).join("");
+    return `<div style="padding:10px 12px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""} display:flex; flex-direction:column; gap:7px;">
+      <div style="font-size:13px; font-weight:600;">${esc(n.nome)}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">${pills}</div>
+    </div>`;
   }).join("");
-
-  const thStyle = "padding:6px 4px;font-size:11px;font-weight:600;color:var(--ink-3);text-align:center;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap";
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar usuário" : "Novo usuário"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -5230,44 +5233,19 @@ function modalPerfil(existing){
         <!-- MÓDULOS -->
         <div class="field">
           <label>Acesso por módulo (menu)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
-              <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:13px;">
-                <thead style="background:var(--surface-2)">
-                  <tr>
-                    <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Módulo</th>
-                    <th style="${thStyle}">Ver</th>
-                    <th style="${thStyle}">Criar</th>
-                    <th style="${thStyle}">Editar</th>
-                    <th style="${thStyle}">Excluir</th>
-                  </tr>
-                </thead>
-                <tbody>${linhasModulo}</tbody>
-              </table>
-            </div>
+          <div style="border:1px solid var(--border);border-radius:var(--r);">
+            ${linhasModulo}
           </div>
-          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão. Arraste a tabela pros lados pra ver todas as colunas.</div>
+          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão.</div>
         </div>
 
         <!-- NEGÓCIOS -->
         <div class="field">
           <label>Acesso por negócio (Financeiro)</label>
-          <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
-              <table style="width:100%;min-width:420px;border-collapse:collapse;font-size:13px;">
-                <thead style="background:var(--surface-2)">
-                  <tr>
-                    <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Negócio</th>
-                    <th style="${thStyle}">Ver</th>
-                    <th style="${thStyle}">Editar</th>
-                    <th style="${thStyle}">Excluir</th>
-                  </tr>
-                </thead>
-                <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</td></tr>`}</tbody>
-              </table>
-            </div>
+          <div style="border:1px solid var(--border);border-radius:var(--r);">
+            ${linhasNegocio || `<div style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</div>`}
           </div>
-          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível. Arraste a tabela pros lados pra ver todas as colunas.</div>
+          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível.</div>
         </div>
 
       </div>
