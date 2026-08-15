@@ -405,7 +405,7 @@ a{color:inherit;}
             <div class="promo-nome">Indique e Ganhe</div>
             <div class="promo-tagline">Cada amigo que assinar vale 1 mês grátis pra você!</div>
             <ul class="promo-rules">
-              <li>Indique um amigo com nome e telefone no portal</li>
+              <li>Compartilhe seu link de indicação com um amigo</li>
               <li>Quando ele assinar e pagar o 1º mês → confirmado</li>
               <li><strong>1 mês grátis</strong> descontado na sua próxima fatura</li>
               <li>Sem limite de indicações — quanto mais, melhor!</li>
@@ -415,12 +415,6 @@ a{color:inherit;}
           </div>
 
         </div>
-      </div>
-
-      <!-- Histórico -->
-      <div class="card span2" id="histCard">
-        <div class="card-lbl">Histórico de Faturas</div>
-        <div id="histContent" class="loading-center"><span class="spin"></span></div>
       </div>
 
       <!-- Fidelidade -->
@@ -555,10 +549,22 @@ function fmtVal(v){
   return 'R$ '+Number(v||0).toFixed(2).replace('.',',');
 }
 
+function fmtDateBR(iso){
+  if(!iso) return null;
+  // aceita YYYY-MM-DD ou DD/MM/YYYY
+  if(iso.includes('/')){
+    const [d,m,y]=iso.split('/');
+    return `${d}/${m}/${y}`;
+  }
+  const [y,m,d]=iso.split('T')[0].split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function renderPlano(data){
   const p=data.plano;
   const st=data.status||'Ativo';
   const dv=data.diaVencimento;
+  const adesao=data.data_adesao ? fmtDateBR(data.data_adesao) : null;
   let html='';
   if(p){
     const vel=p.velocidade||p.nome||'';
@@ -570,14 +576,17 @@ function renderPlano(data){
       <div class="plan-name">${p.nome||'Fibra Óptica'}</div>
       <div class="plan-detail">📡 ${p.tecnologia||'Fibra Óptica'}</div>
       ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${dv}</div>`:''}
+      ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
       <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${st}</span></div>
       ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}
       <a class="upgrade-btn" href="https://wa.me/5511954490001?text=${upgMsg}" target="_blank" rel="noopener">⚡ Solicitar Upgrade de Plano</a>`;
   }else{
     html=`
-      ${dv?`<div class="plan-detail" style="margin-bottom:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
       <span class="badge ${badgeClass(st)}">${st}</span>
-      <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>`;
+      ${dv?`<div class="plan-detail" style="margin-top:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
+      ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
+      <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>
+      <a class="upgrade-btn" href="https://wa.me/5511954490001?text=${encodeURIComponent('Olá! Preciso de informações sobre meu plano Servnet.')}" target="_blank" rel="noopener">💬 Falar com Suporte</a>`;
   }
   document.getElementById('planContent').innerHTML=html;
 }
@@ -589,10 +598,8 @@ async function loadFaturas(data){
     const fat=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
     faturasList = fat; // disponibiliza para renderFidelidade (que roda depois, em loadFidelidade)
     renderNextFatura(fat);
-    renderHist(fat);
   }catch(e){
     document.getElementById('invContent').innerHTML=`<div class="muted">Erro ao carregar fatura. Fale com o suporte.</div>`;
-    document.getElementById('histContent').innerHTML=`<div class="muted">Erro ao carregar histórico.</div>`;
     console.error(e);
   }
 }
@@ -612,28 +619,6 @@ function renderNextFatura(fat){
     <span class="badge ${badgeClass(st)}">${st}</span>
     ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${f.link_boleto}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
   `;
-}
-
-function renderHist(fat){
-  if(!fat.length){
-    document.getElementById('histContent').innerHTML=`<div class="muted" style="text-align:center;padding:1.5rem 0;">Nenhuma fatura encontrada ainda.</div>`;
-    return;
-  }
-  const items=fat.map(f=>{
-    const st=f.status||'Pendente';
-    return `<div class="hist-item">
-      <div>
-        <div class="hist-month">${f.mes_referencia||'Fatura'}</div>
-        <div class="hist-due">Vencimento: ${fmtDate(f.vencimento)}</div>
-      </div>
-      <div class="hist-right">
-        <div class="hist-val">${fmtVal(f.valor)}</div>
-        <span class="badge ${badgeClass(st)}" style="display:inline-block;margin-top:0.3rem">${st}</span>
-        ${f.link_boleto?`<br><a class="hist-link" href="${f.link_boleto}" target="_blank">Ver boleto</a>`:''}
-      </div>
-    </div>`;
-  }).join('');
-  document.getElementById('histContent').innerHTML=`<div class="hist-list">${items}</div>`;
 }
 
 // ===== FIDELIDADE =====
@@ -658,8 +643,11 @@ function renderHistoricoFidelidade(){
     </div>`;
   }
 
-  // Ordena do mais antigo pro mais recente
-  const lista = [...faturasList].sort((a,b)=> a.vencimento > b.vencimento ? 1 : -1);
+  // Ordena do mais recente pro mais antigo, limita a 12 meses
+  const lista = [...faturasList]
+    .sort((a,b)=> b.vencimento > a.vencimento ? 1 : -1)
+    .slice(0,12)
+    .reverse(); // volta a ordem cronológica para a tabela
 
   let streakRunning = 0; // marca o streak atual a partir do mês mais recente
   // Calcula quais faturas contribuem pro streak (do mais recente pro mais antigo)
@@ -937,14 +925,7 @@ function renderIndicacoes(res,data,codigo){
         </a>
       </div>
     </div>
-    <div style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.4rem;font-weight:600">Registrar nova indicação:</div>
-    <div class="ref-form">
-      <input class="f-input" type="text" id="refNome" placeholder="Nome do amigo" maxlength="80">
-      <input class="f-input" type="text" id="refTel" placeholder="(11) 99999-9999" maxlength="15" inputmode="tel">
-      <button class="ref-submit" id="refBtn" onclick="doIndicar()">Indicar</button>
-    </div>
-    <div class="ref-msg" id="refMsg"></div>
-    <div style="font-size:0.78rem;color:var(--text-2);font-weight:600;margin:0.25rem 0 0.4rem">Minhas indicações (${lista.length}):</div>
+    <div style="font-size:0.78rem;color:var(--text-2);font-weight:600;margin:0.5rem 0 0.4rem">Minhas indicações (${lista.length}):</div>
     <div class="ref-list">${listHtml}</div>
     <button class="rules-toggle" onclick="toggleRules('refRules',this)" style="margin-top:0.75rem">
       <em class="arrow">▶</em> Ver regras do programa
@@ -952,7 +933,7 @@ function renderIndicacoes(res,data,codigo){
     <div class="rules-box" id="refRules">
       <div class="rules-title">📋 Regras — Indique e Ganhe</div>
       <ul>
-        <li>Indique um amigo preenchendo o formulário acima com o <strong>nome e telefone</strong> dele.</li>
+        <li>Compartilhe seu <strong>link de indicação</strong> com amigos pelo WhatsApp ou onde quiser.</li>
         <li>Assim que o amigo indicado <strong>assinar um plano e efetuar o primeiro pagamento</strong>, a indicação é confirmada.</li>
         <li>A cada indicação confirmada, você ganha <strong>1 mês grátis</strong> descontado automaticamente na sua próxima fatura.</li>
         <li><strong>Não há limite</strong> de indicações — quanto mais amigos você trouxer, mais meses grátis você ganha.</li>
@@ -962,15 +943,6 @@ function renderIndicacoes(res,data,codigo){
       </ul>
     </div>`;
 
-  // máscara telefone
-  document.getElementById('refTel')?.addEventListener('input',e=>{
-    let v=e.target.value.replace(/\D/g,'').slice(0,11);
-    if(v.length>10) v='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);
-    else if(v.length>6) v='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);
-    else if(v.length>2) v='('+v.slice(0,2)+') '+v.slice(2);
-    else if(v.length>0) v='('+v;
-    e.target.value=v;
-  });
 }
 
 function copiarMensagem(btn){

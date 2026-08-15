@@ -85,6 +85,7 @@ BEGIN
     'telefone',      v_dados->>'telefone',
     'diaVencimento', v_dados->>'diaVencimento',
     'status',        COALESCE(v_dados->>'status', 'Ativo'),
+    'data_adesao',   COALESCE(v_ct->>'dataContrato', v_dados->>'dataCadastro'),
     'plano', CASE
       WHEN v_plano.id IS NOT NULL THEN json_build_object(
         'nome',       v_plano.dados->>'nome',
