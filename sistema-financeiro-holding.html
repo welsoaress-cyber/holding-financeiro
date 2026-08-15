@@ -1029,7 +1029,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.5";
+const APP_VERSION = "1.8.6";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2544,7 +2544,9 @@ function renderApp(){
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
   if(state.modoTecnico){ renderAppTecnico(); return; }
   if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
-  if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
+  // Só restaura navegação salva se não viemos de um login/seleção de perfil
+  // que já definiu "welcome" — senão o localStorage sobrescreve a tela de boas-vindas.
+  if(!navegacaoRestaurada){ navegacaoRestaurada = true; if(state.view !== "welcome") restaurarNavegacaoSalva(); }
 
   const horaSalvo = state.ultimoSalvamento ? state.ultimoSalvamento.toLocaleTimeString("pt-BR") : null;
   const master = ehMaster();
