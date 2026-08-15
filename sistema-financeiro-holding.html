@@ -324,10 +324,13 @@
     background: var(--surface-2);
   }
   .panel-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
-  .panel-body { padding: 0 18px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .panel-body { padding: 0 18px 16px; }
 
   /* ---- Tables ---- */
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 600px; }
+  /* Sem min-width e sem nowrap de propósito: a tabela precisa encolher e
+     quebrar linha pra caber na tela inteira, sem nunca precisar de scroll
+     (nem lateral, nem vertical). */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: auto; }
   thead th {
     text-align: left;
     font-size: 10.5px;
@@ -337,10 +340,10 @@
     font-weight: 600;
     padding: 10px 10px 8px;
     border-bottom: 2px solid var(--border);
-    white-space: nowrap;
+    white-space: normal;
     background: var(--surface);
   }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; word-break: break-word; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #F7F9FC; }
   td.num, th.num { text-align: right; font-family: var(--font-mono); font-size: 12px; }
@@ -522,7 +525,6 @@
   .modal { width: 90vw; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  table { min-width: 500px; }
   .field-row { flex-direction: column; gap: 0; }
 }
 
@@ -563,13 +565,13 @@
 
   /* Panel */
   .panel { border-radius: var(--r-lg); }
-  .panel-body { padding: 0 12px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .panel-body { padding: 0 12px 12px; }
   .panel-head { padding: 10px 14px 8px; flex-wrap: wrap; gap: 6px; }
   .panel-title { font-size: 12.5px; }
 
-  /* Tabelas: scroll horizontal, sem truncar */
-  .panel-body table { min-width: 560px; font-size: 13.5px; }
-  thead th { padding: 9px 8px 7px; font-size: 11.5px; }
+  /* Tabelas: encolhem e quebram linha pra caber sem scroll, mesmo no celular */
+  .panel-body table { font-size: 13px; }
+  thead th { padding: 9px 8px 7px; font-size: 11px; }
   tbody td { padding: 9px 8px; }
 
   /* Filtros empilhados */
@@ -721,7 +723,7 @@
 /* ---- Tela de login (split-screen) — visual puxado do site (fundo quase
    preto + brilho radial teal + badge piscando), não mais um azul-marinho
    genérico. ---- */
-.auth-shell { display: flex; min-height: 100vh; background: #fff; }
+.auth-shell { display: flex; justify-content: center; min-height: 100vh; background: #fff; }
 .auth-hero {
   flex: 1 1 46%; max-width: 620px; position: relative; overflow: hidden;
   background: radial-gradient(ellipse 65% 55% at 22% 60%, rgba(0,196,216,.16) 0%, transparent 70%), #030F18;
@@ -752,11 +754,18 @@
 .auth-hero-title em { font-style: normal; color: var(--accent); text-shadow: 0 0 30px rgba(0,196,216,.45); }
 .auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; position: relative; z-index: 1; }
 .auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); position: relative; z-index: 1; }
-.auth-form-side { flex: 1 1 54%; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
-.auth-form-card { width: 380px; max-width: 100%; min-width: 0; }
+.auth-form-side { flex: 1 1 54%; max-width: 620px; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+.auth-form-card { width: 340px; max-width: 100%; min-width: 0; }
 @media (max-width: 899px) {
-  .auth-hero { display: none; }
-  .auth-form-side { padding: 24px 18px; }
+  .auth-shell { flex-direction: column; justify-content: flex-start; }
+  .auth-hero {
+    flex: 0 0 auto; max-width: none; min-height: 0;
+    padding: 18px 20px 24px; align-items: flex-start;
+  }
+  .auth-hero::before, .auth-hero::after { display: none; }
+  .auth-hero-title, .auth-hero-sub, .auth-hero-foot { display: none; }
+  .auth-hero-tag { margin: 10px 0 0; }
+  .auth-form-side { max-width: none; align-items: flex-start; padding: 28px 18px; }
 }
 
 </style>
@@ -900,7 +909,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.5.3";
+const APP_VERSION = "1.5.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1224,6 +1233,11 @@ function podeVerModulo(moduloId){ return permissaoModulo(moduloId, "ver"); }
 function podeCriarModulo(moduloId){ return permissaoModulo(moduloId, "criar"); }
 function podeEditarModulo(moduloId){ return permissaoModulo(moduloId, "editar"); }
 function podeExcluirModulo(moduloId){ return permissaoModulo(moduloId, "excluir"); }
+// Esconde valores em R$ (planos, MRR, custos, margens...) de quem não tem acesso ao
+// módulo Financeiro — pensado pra perfis que só cuidam de cadastro de cliente (ex:
+// alguém que lança/ajusta/exclui cliente, mas não deve enxergar quanto cada um paga.
+function podeVerValores(){ return podeVerModulo("financeiro"); }
+const VALOR_OCULTO = "•••";
 // esconde o botão quando o perfil não tem a ação liberada nesse módulo (o clique já é
 // bloqueado no dispatcher central de qualquer forma — isso é só pra não mostrar à toa)
 function seModulo(moduloId, acao, html){ return permissaoModulo(moduloId, acao) ? html : ""; }
@@ -3093,7 +3107,7 @@ function graficoColunasParesHTML(pontos, corA, corB, labelA, labelB, alturaMax){
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corA};display:inline-block;"></span>${esc(labelA)}</div>
       <div style="display:flex; align-items:center; gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${corB};display:inline-block;"></span>${esc(labelB)}</div>
     </div>
-    <div style="display:flex; align-items:flex-end; gap:6px; width:100%; overflow-x:auto; padding-bottom:2px;">${cols}</div>
+    <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px; width:100%;">${cols}</div>
   `;
 }
 function viewVgExecutivo(){
@@ -3185,8 +3199,8 @@ function viewVgExecutivo(){
   }).filter(l => l.receitaMesNeg>0 || l.despesaMesNeg>0 || l.aPagarNeg>0 || l.clientesAtivosNeg>0); // esconde negócio 100% inativo esse mês
 
   const tabelaNegociosHTML = linhasNegocio.length ? `
-    <div style="overflow-x:auto;">
-      <table style="min-width:600px;"><thead><tr>
+    <div>
+      <table><thead><tr>
         <th>Negócio</th><th class="num">Receita/mês</th><th class="num">A pagar (mês)</th><th class="num">Margem</th>${podeVerModulo("clientes")?`<th class="num">Clientes</th>`:""}<th>Status</th>
       </tr></thead><tbody>
         ${linhasNegocio.sort((a,b)=>b.receitaMesNeg-a.receitaMesNeg).map(l => `<tr style="cursor:pointer;" data-action="vg-ver-negocio" data-negocio="${esc(l.n.nome)}" title="Ver lançamentos de ${esc(l.n.nome)}">
@@ -3524,7 +3538,7 @@ function viewVgAnalitico(){
     <div class="page-header">
       <div><div class="page-title">Visão Geral — Analítico</div><div class="page-sub">Comparativo por negócio — só entram os negócios que esse usuário pode ver.</div></div>
     </div>
-    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+    <div class="panel"><div class="panel-body">
       <table style="min-width:760px;"><thead><tr>
         <th>Negócio</th><th class="num">Receita (mês)</th><th class="num">Despesa (mês)</th><th class="num">Resultado (mês)</th>
         <th class="num">A receber (mês)</th><th class="num">A pagar (mês)</th>
@@ -4070,7 +4084,7 @@ function viewRelFluxoCaixa(){
       ${vgKpiCard("Total de saídas", fmtBRL(totalSaidas), `${relFluxoPeriodo} meses`, "neg")}
       ${master ? vgKpiCard("Resultado do período", fmtBRL(totalEntradas-totalSaidas), "Entradas − saídas", (totalEntradas-totalSaidas)>=0?"pos":"neg") : ""}
     </div>
-    <div class="panel"><div class="panel-body" style="overflow-x:auto;">
+    <div class="panel"><div class="panel-body">
       <table style="min-width:${master?560:460}px;"><thead><tr>
         <th>Mês</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Resultado</th>${master?`<th class="num">Saldo acumulado</th>`:""}
       </tr></thead><tbody>${linhasHTML}</tbody></table>
@@ -7010,7 +7024,7 @@ function viewCliDashboard(){
         <span class="kpi-label" style="margin:0;">${esc(n.nome)}</span>
       </div>
       <div class="kpi-value" style="font-size:26px;">${total}</div>
-      <div class="kpi-note">${ativos} ativos · MRR ${fmtBRL(mrr)}</div>
+      <div class="kpi-note">${ativos} ativos${podeVerValores()?` · MRR ${fmtBRL(mrr)}`:""}</div>
     </div>`).join("");
 
   return `
@@ -7018,10 +7032,10 @@ function viewCliDashboard(){
       <div><div class="page-title">Clientes — Dashboard</div><div class="page-sub">Visão consolidada de todos os negócios</div></div>
       ${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?5:4},1fr);">
       <div class="kpi-card"><div class="kpi-label">Total de clientes</div><div class="kpi-value">${total}</div></div>
       <div class="kpi-card"><div class="kpi-label">Clientes ativos</div><div class="kpi-value pos">${ativos}</div></div>
-      <div class="kpi-card"><div class="kpi-label">MRR total</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(mrrTotal)}</div><div class="kpi-note">Receita mensal recorrente</div></div>
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">MRR total</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(mrrTotal)}</div><div class="kpi-note">Receita mensal recorrente</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Novos (30 dias)</div><div class="kpi-value">${novos30}</div><div class="kpi-note" style="color:${crescPos?'var(--pos)':'var(--neg)'};">${crescPos?'↑':'↓'} ${Math.abs(crescPct)}% vs mês anterior</div></div>
       <div class="kpi-card"><div class="kpi-label">Inadimplentes</div><div class="kpi-value ${inadimplentes>0?'neg':''}">${inadimplentes}</div></div>
     </div>
@@ -7122,31 +7136,31 @@ function viewCliLeads(){
       </div>
     ` : `
     <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="overflow-x:auto">
+      <div>
         <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
           <thead>
             <tr style="border-bottom:1px solid var(--border)">
-              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Nome</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Telefone</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Plano</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Endereço</th>
-              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Status</th>
-              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap">Recebido</th>
-              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap">Ações</th>
+              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;">Nome</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Telefone</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Plano</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Endereço</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;">Status</th>
+              <th style="padding:0.75rem 0.75rem;text-align:left;color:var(--text-muted);font-weight:600;">Recebido</th>
+              <th style="padding:0.75rem 0.75rem;text-align:center;color:var(--text-muted);font-weight:600;">Ações</th>
             </tr>
           </thead>
           <tbody>
             ${lista.map((l,i)=>{
               const corStyle = STATUS_CORES[l.status||"Novo"] || STATUS_CORES["Novo"];
               return `<tr style="border-bottom:1px solid var(--border);${i%2===1?"background:rgba(255,255,255,0.02)":""}">
-                <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500;white-space:nowrap">${l.nome||"—"}</td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${fmtTel(l.telefone)}</td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);white-space:nowrap">${l.plano||"—"}</td>
+                <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500;">${l.nome||"—"}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);">${fmtTel(l.telefone)}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);">${l.plano||"—"}</td>
                 <td style="padding:0.7rem 0.75rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.endereco||"").replace(/"/g,"&quot;")}">${l.endereco||"—"}</td>
                 <td style="padding:0.7rem 0.75rem;text-align:center">
                   <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
                 </td>
-                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);white-space:nowrap;font-size:0.78rem">${fmtData(l.created_at)}</td>
+                <td style="padding:0.7rem 0.75rem;color:var(--text-muted);font-size:0.78rem">${fmtData(l.created_at)}</td>
                 <td style="padding:0.7rem 0.75rem;text-align:center">
                   <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center">
                     <button data-action="lead-wa" data-id="${l.id}"
@@ -7195,7 +7209,7 @@ function viewCliLista(){
       <td>${esc(c.cidade||"—")}${c.uf?`/${c.uf}`:""}</td>
       <td>${esc(c.telefone||"—")}</td>
       <td>${fmtDateBR(c.dataCadastro)}</td>
-      <td>${mrr>0?fmtBRL(mrr):"—"}</td>
+      ${podeVerValores()?`<td>${mrr>0?fmtBRL(mrr):"—"}</td>`:""}
       <td><span class="status-pill ${statusClass}">${esc(c.status||"—")}</span></td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
@@ -7221,7 +7235,7 @@ function viewCliLista(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th><th class="num">MRR</th><th>Status</th><th></th></tr></thead>
+        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th>${podeVerValores()?`<th class="num">MRR</th>`:""}<th>Status</th><th></th></tr></thead>
         <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
       </div>
     </div>
@@ -7245,7 +7259,7 @@ function viewCliDetalhe(){
           <div>
             <div style="font-weight:700; font-size:14px;">${esc(ct.negocio)}</div>
             <div style="font-size:12px; color:var(--ink-3); margin-top:2px;">
-              Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano?`· ${fmtBRL(plano.valor)}/mês`:""}
+              Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano&&podeVerValores()?`· ${fmtBRL(plano.valor)}/mês`:""}
               ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
               ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
               ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">🔁 cobrança automática</span>`:""}
@@ -7279,8 +7293,8 @@ function viewCliDetalhe(){
       </div>
     </div>
 
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
-      <div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:3},1fr); margin-bottom:16px;">
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Negócios vinculados</div><div class="kpi-value">${(c.contratos||[]).length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Cidade</div><div class="kpi-value" style="font-size:16px;">${esc(c.cidade||"—")}</div></div>
       <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:16px;"><span class="status-pill ${statusClass} " style="font-size:13px;">${c.status}</span></div></div>
@@ -7330,7 +7344,7 @@ function viewCliPlanos(){
       <td style="font-weight:600;">${esc(p.nome)}</td>
       <td><span class="status-pill status-agendado">${esc(p.negocio)}</span></td>
       <td style="color:var(--ink-3);">${esc(p.descricao||"—")}</td>
-      <td class="num" style="font-weight:700; color:var(--pos);">${fmtBRL(p.valor)}</td>
+      ${podeVerValores()?`<td class="num" style="font-weight:700; color:var(--pos);">${fmtBRL(p.valor)}</td>`:""}
       <td style="color:var(--ink-3);">${esc(p.velocidade||"—")}</td>
       <td style="text-align:center;">${usos}</td>
       <td><div class="row-actions">
@@ -7346,7 +7360,7 @@ function viewCliPlanos(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th><th class="num">Valor</th><th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_planos", state.cliPlanos.map(p=>p.id))}<th>Nome do plano</th><th>Negócio</th><th>Descrição</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Velocidade</th><th style="text-align:center;">Clientes</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum plano cadastrado. Crie planos para vincular a clientes.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7364,7 +7378,7 @@ function modalCliCliente(existing){
     const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
     const hasContrato = !!contratoAtual;
     const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
-    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
     return `<tr>
       <td style="white-space:nowrap;">
         <label class="checkbox-row" style="padding:4px 0;">
@@ -7605,7 +7619,7 @@ function modalCliContrato(clienteId, existing){
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
   const conexaoOpts = CLI_TIPOS_CONEXAO.map(t=>`<option value="${t}" ${ct.tipoConexao===t?"selected":""}>${t}</option>`).join("");
   const planosDoPNegocio = state.cliPlanos.filter(p=>p.negocio===ct.negocio);
-  const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+  const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
 
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar contrato":"Vincular negócio ao cliente"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -7633,7 +7647,7 @@ function modalCliContrato(clienteId, existing){
   document.getElementById("cliCtNegocio").addEventListener("change", e => {
     const planos = state.cliPlanos.filter(p=>p.negocio===e.target.value);
     const sel = document.getElementById("cliCtPlano");
-    sel.innerHTML = `<option value="">— Selecione um plano —</option>` + planos.map(p=>`<option value="${p.id}">${esc(p.nome)} — ${fmtBRL(p.valor)}</option>`).join("");
+    sel.innerHTML = `<option value="">— Selecione um plano —</option>` + planos.map(p=>`<option value="${p.id}">${esc(p.nome)}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
   });
 
   document.getElementById("formCliContrato").addEventListener("submit", async e => {
@@ -7737,7 +7751,7 @@ function viewCliOrcamentos(){
       <td>${cliente ? esc(cliNome(cliente)) : "— cliente removido —"}</td>
       <td>${o.negocio?esc(o.negocio):"—"}</td>
       <td>${fmtDateBR(o.data)}</td>
-      <td class="num" style="font-weight:700;">${fmtBRL(o.valorTotal)}</td>
+      ${podeVerValores()?`<td class="num" style="font-weight:700;">${fmtBRL(o.valorTotal)}</td>`:""}
       <td><span class="status-pill ${statusClass}">${o.status}</span></td>
       <td><div class="row-actions">
         ${podeEditar ? `<button class="btn btn-primary btn-sm" data-action="orc-aprovar" data-id="${o.id}">Aprovar → OS</button>` : ""}
@@ -7753,7 +7767,7 @@ function viewCliOrcamentos(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_orcamentos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="orc-novo">+ Novo orçamento</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_orcamentos", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th>${podeVerValores()?`<th class="num">Valor</th>`:""}<th>Status</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="8">${emptyState("Nenhum orçamento criado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7774,9 +7788,9 @@ function viewCliOSLista(){
       <td>${cliente?esc(cliNome(cliente)):"— removido —"}</td>
       <td>${os.negocio?esc(os.negocio):"—"}</td>
       <td>${fmtDateBR(os.data)}</td>
-      <td class="num">${fmtBRL(venda)}</td>
+      ${podeVerValores()?`<td class="num">${fmtBRL(venda)}</td>
       <td class="num" style="color:var(--ink-3);">${fmtBRL(custo)}</td>
-      <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>
+      <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>`:""}
       <td><span class="status-pill ${statusClass}">${os.status}</span></td>
       <td><div class="row-actions"><button class="icon-btn" data-action="os-detalhe" data-id="${os.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="os-del" data-id="${os.id}" title="Excluir">🗑</button></div></td>
     </tr>`;
@@ -7787,7 +7801,7 @@ function viewCliOSLista(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_os")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="os-nova">+ Nova venda direta</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th><th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_os", lista.map(o=>o.id))}<th>Número</th><th>Cliente</th><th>Negócio</th><th>Data</th>${podeVerValores()?`<th class="num">Venda</th><th class="num">Custo</th><th class="num">Margem</th>`:""}<th>Status</th><th></th></tr></thead>
       <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhuma OS ainda. Aprove um orçamento ou crie uma venda direta.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -7805,13 +7819,15 @@ function viewCliOSDetalhe(){
   const itensBaixados = osItensBaixados(os.id);
   const statusClass = os.status==="Concluída"?"status-pago":os.status==="Cancelada"?"status-pendente":"status-agendado";
 
-  const itensVendaHTML = (os.itens||[]).map(it => `
+  const itensVendaHTML = (os.itens||[]).map(it => podeVerValores() ? `
     <tr><td>${esc(it.descricao)}</td><td class="num">${it.quantidade}</td><td class="num">${fmtBRL(it.valorUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(it.valorTotal)}</td></tr>
-  `).join("") || `<tr><td colspan="4">${emptyState("Nenhum item.")}</td></tr>`;
+  ` : `<tr><td>${esc(it.descricao)}</td><td class="num">${it.quantidade}</td></tr>`).join("") || `<tr><td colspan="4">${emptyState("Nenhum item.")}</td></tr>`;
 
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
-    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`;
+    return podeVerValores()
+      ? `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td></tr>`
+      : `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td></tr>`;
   }).join("") : `<tr><td colspan="4">${emptyState("Nenhuma baixa de estoque ainda.")}</td></tr>`;
 
   return `
@@ -7826,15 +7842,15 @@ function viewCliOSDetalhe(){
         ${(os.status!=="Concluída" && os.status!=="Cancelada") ? `<button class="btn btn-primary" data-action="os-concluir" data-id="${os.id}">✓ Concluir OS</button>` : ""}
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
-      <div class="kpi-card"><div class="kpi-label">Valor da venda</div><div class="kpi-value pos">${fmtBRL(venda)}</div></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:1},1fr); margin-bottom:16px;">
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">Valor da venda</div><div class="kpi-value pos">${fmtBRL(venda)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Custo de implantação</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custo)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margem</div><div class="kpi-value ${margem>=0?'pos':'neg'}">${fmtBRL(margem)}</div></div>`:""}
       <div class="kpi-card"><div class="kpi-label">Conta a receber</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:"— não gerada —"}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
     </div>
     <div class="two-col">
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Valor unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
   `;
@@ -7874,7 +7890,7 @@ function modalCliOrcamento(existing, modoOS){
         ${!modoOS ? `<div class="field"><label>Validade</label><input type="date" name="validade" value="${o.validade||""}" ${podeEditar?"":"disabled"}></div>` : ""}
       </div>
       <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:640px;"><thead><tr><th>Produto (opcional)</th><th>Descrição</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead>
         <tbody id="orcItensBody">${itensIniciais.map(linhaItemHTML).join("")}</tbody></table>
       </div>
@@ -8024,7 +8040,7 @@ function modalOSBaixaEstoque(osId){
     <div class="modal-head"><div class="modal-title">📦 Dar baixa de estoque — ${esc(os.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaOS"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado na instalação de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:480px;"><thead><tr><th>Produto</th><th class="num">Qtd usada</th><th class="num">Custo estimado</th><th></th></tr></thead><tbody id="baixaItensBody">${linhaHTML()}</tbody></table>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="btnAddItemBaixa" style="margin-top:8px;">+ Adicionar item</button>
@@ -8127,11 +8143,11 @@ function viewCliTecnicos(){
       <td>${esc(t.telefone||"—")}</td>
       <td>${negTag}</td>
       <td style="color:var(--ink-3);">${esc(t.diasAtendimento||"—")}</td>
-      <td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>
+      ${podeVerValores()?`<td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>`:""}
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">🔗</button>
-        ${Number(t.valorMensal)>0 ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
+        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
       </div></td>
@@ -8143,7 +8159,7 @@ function viewCliTecnicos(){
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th><th class="num">Valor mensal</th><th class="num">Chamados abertos</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("cli_tecnicos", lista.map(t=>t.id))}<th>Nome</th><th>Telefone</th><th>Negócio</th><th>Atende quando</th>${podeVerValores()?`<th class="num">Valor mensal</th>`:""}<th class="num">Chamados abertos</th><th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhum técnico cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -8301,7 +8317,7 @@ function viewCliChamadoDetalhe(){
 
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
-    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td><td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>
+    return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td>${podeVerValores()?`<td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>`:""}
       <td class="num"><button class="icon-btn" data-action="cham-mat-editar" data-id="${m.id}" title="Editar item">✎</button><button class="icon-btn danger" data-action="cham-mat-excluir" data-id="${m.id}" title="Excluir item">🗑</button></td></tr>`;
   }).join("") : `<tr><td colspan="5">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
 
@@ -8319,18 +8335,18 @@ function viewCliChamadoDetalhe(){
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
         ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
-        ${(!lanc && Number(c.valorCobranca)>0) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
+        ${(!lanc && Number(c.valorCobranca)>0 && podeVerValores()) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
         <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
         ${podeConcluir ? `<button class="btn btn-ghost" data-action="cham-prorrogar" data-id="${c.id}">⏸ Não concluiu</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
         ${podeCancelar ? `<button class="btn btn-ghost" style="color:var(--neg);" data-action="cham-cancelar" data-id="${c.id}">✕ Cancelar</button>` : ""}
       </div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:2},1fr); margin-bottom:16px;">
       <div class="kpi-card"><div class="kpi-label">Técnico</div><div class="kpi-value" style="font-size:16px;">${tecnico?esc(tecnico.nome):"— não atribuído —"}</div></div>
       <div class="kpi-card"><div class="kpi-label">Agendado para</div><div class="kpi-value" style="font-size:16px;">${c.dataAgendada?fmtDateBR(c.dataAgendada):"— sem data —"}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
+      ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">Custo de materiais</div><div class="kpi-value" style="font-size:18px;">${fmtBRL(custoMateriais)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>`:""}
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📋 Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
@@ -8340,7 +8356,7 @@ function viewCliChamadoDetalhe(){
         <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
         ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
       </div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Total</th><th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
   `;
@@ -10047,7 +10063,7 @@ function modalEstCompra(){
       <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Estoque compartilhado —</option>${negOptions}</select></div>
 
       <div class="field-help" style="margin:10px 0 6px; font-weight:600; color:var(--ink-2);">Itens da nota</div>
-      <div style="overflow-x:auto; border:1px solid var(--border); border-radius:var(--r);">
+      <div style="border:1px solid var(--border); border-radius:var(--r);">
         <table style="min-width:680px;"><thead><tr>
           <th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th><th></th>
         </tr></thead><tbody id="compraItensBody">${linhaItemHTML()}</tbody></table>
@@ -10195,7 +10211,7 @@ function modalDetalheCompra(compraId){
     <div class="modal-head"><div class="modal-title">📋 Compra — Nota ${esc(c.numeroNota)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">${fmtDateBR(c.data)} · Fornecedor: <strong>${esc(fornecedor?.nome||"—")}</strong>${c.negocio?` · ${esc(c.negocio)}`:""} · base do rateio: ${EST_BASE_RATEIO.find(o=>o.v===c.baseRateio)?.l||c.baseRateio}</div>
-      <div style="overflow-x:auto;"><table style="min-width:560px;"><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div style="display:flex; flex-direction:column; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:12.5px;">
         <div style="display:flex; justify-content:space-between;"><span>Itens</span><strong>${fmtBRL(totalItens)}</strong></div>
         <div style="display:flex; justify-content:space-between;"><span>Frete</span><strong>${fmtBRL(c.frete||0)}</strong></div>
