@@ -223,6 +223,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   letter-spacing:0.16em;color:var(--pool);margin-bottom:0.2rem;font-weight:700;}
 .panel-sub{font-size:0.82rem;color:var(--text-2);margin-bottom:1rem;max-width:68ch;}
 
+.janela{display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;margin-bottom:1rem;
+  padding-bottom:0.9rem;border-bottom:1px dashed var(--hair);}
+.janela label{font-family:var(--mono);font-size:0.62rem;text-transform:uppercase;
+  letter-spacing:0.1em;color:var(--text-2);display:flex;align-items:center;gap:0.45rem;}
+.janela input{font-family:var(--mono);font-size:0.76rem;background:var(--chrome-2);
+  border:1px solid var(--hair);border-radius:6px;color:var(--text);padding:0.32rem 0.5rem;
+  color-scheme:dark;}
+.janela input:focus-visible{outline:2px solid var(--pool);outline-offset:1px;}
+.janela-sep{color:var(--text-2);}
+.janela-nota{font-size:0.72rem;color:var(--text-2);flex:1;min-width:14ch;}
 .ledger{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:0.5rem;}
 .fx{font-family:var(--mono);background:var(--chrome-2);border:1.5px solid var(--hair);
   border-radius:8px;padding:0.55rem 0.4rem;cursor:pointer;text-align:center;color:inherit;
@@ -273,7 +283,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <header class="masthead">
     <div>
       <div class="mast-t">Simulador do <b>Cartão Fidelidade</b></div>
-      <div class="mast-s">servnet · portal v2.7 · regra 7ª / 13ª fatura</div>
+      <div class="mast-s">servnet · portal v2.7 · 6 meses em dia → 50% · 12 meses → 100%</div>
     </div>
     <div class="mast-s">clique numa fatura para trocar o estado</div>
   </header>
@@ -281,6 +291,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <section class="panel">
     <div class="panel-h">Histórico de faturas</div>
     <p class="panel-sub">Cada clique alterna entre <strong>pago em dia</strong> → <strong>pago com atraso</strong> → <strong>em aberto</strong>. O cartão abaixo recalcula na hora, com o mesmo código que roda no portal.</p>
+    <div class="janela">
+      <label>Primeira fatura <input type="month" id="mesIni" onchange="moverJanela('ini',this.value)"></label>
+      <span class="janela-sep">→</span>
+      <label>Última fatura <input type="month" id="mesFim" onchange="moverJanela('fim',this.value)"></label>
+      <span class="janela-nota">a janela mantém sempre 20 faturas — mexer numa ponta arrasta a outra</span>
+    </div>
     <div class="ledger" id="ledger"></div>
     <div class="toolbar">
       <button class="tb" onclick="preset('novo')">Cliente novo</button>
@@ -673,22 +689,44 @@ const PLANOS = {
 };
 let planoAtual = 'prata';
 
-const N = 14;                       // 12 selos do cartão + as duas faturas premiadas
+const N = 20;                       // a janela do simulador é sempre de 20 faturas
 const CICLO = ['emdia','atraso','aberto'];
 let estados = [];
+let mesInicio = null;               // 'AAAA-MM' da primeira fatura da janela
 
 const hojeISO = () => new Date().toISOString().slice(0,10);
+const mesAtual = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+};
+function addMeses(ym, n){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 
-// Fatura i (0 = mais antiga) vence no dia do plano; a última cai no mês que vem.
+// Fatura i (0 = mais antiga) vence no dia do plano, no mês correspondente
+// da janela. Meses curtos caem no último dia (dia 30 em fevereiro → 28).
 function vencimentoDe(i){
   const p = PLANOS[planoAtual];
-  const base = new Date();
-  const d = new Date(base.getFullYear(), base.getMonth() - (N - 2 - i), 1);
-  const ultimoDia = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
-  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), Math.min(p.dia, ultimoDia)))
-           .toISOString().slice(0,10);
+  const ym = addMeses(mesInicio, i);
+  const [y,m] = ym.split('-').map(Number);
+  const ultimoDia = new Date(y, m, 0).getDate();
+  return `${ym}-${String(Math.min(p.dia, ultimoDia)).padStart(2,'0')}`;
 }
 const ehFutura = i => vencimentoDe(i) > hojeISO();
+
+// Arrastar uma ponta move a outra: a janela nunca deixa de ter 20 faturas.
+function moverJanela(ponta, valor){
+  if(!valor) return;
+  setJanela(ponta === 'ini' ? valor : addMeses(valor, -(N-1)));
+}
+function setJanela(ini){
+  mesInicio = ini;
+  document.getElementById('mesIni').value = mesInicio;
+  document.getElementById('mesFim').value = addMeses(mesInicio, N-1);
+  atualizar();
+}
 
 function montarFaturas(){
   const p = PLANOS[planoAtual];
@@ -730,9 +768,9 @@ function renderReadout(streak, ganhos){
   // olha só o streak. O que já foi recebido antes vai no tile ao lado.
   let premio, nota, cls;
   if(streak >= 12){
-    premio = fmtVal(p.valor); cls = 'green'; nota = 'a 13ª fatura sai zerada';
+    premio = fmtVal(p.valor); cls = 'green'; nota = 'a próxima fatura sai zerada';
   } else if(streak >= 6){
-    premio = fmtVal(desconto); cls = 'gold'; nota = '50% OFF liberado na 7ª fatura';
+    premio = fmtVal(desconto); cls = 'gold'; nota = '50% OFF na próxima fatura';
   } else {
     premio = '—'; cls = 'dim';
     nota = `faltam ${6-streak} ${6-streak===1?'fatura':'faturas'} em dia`;
@@ -765,7 +803,7 @@ function renderReadout(streak, ganhos){
     <div class="ro">
       <div class="ro-k">Ciclo completo vale</div>
       <div class="ro-v dim">${fmtVal(desconto + p.valor)}</div>
-      <div class="ro-n">${fmtVal(desconto)} na 7ª + ${fmtVal(p.valor)} na 13ª</div>
+      <div class="ro-n">${fmtVal(desconto)} aos 6 meses + ${fmtVal(p.valor)} aos 12</div>
     </div>`;
 }
 
@@ -809,6 +847,9 @@ function setPlano(q){
 }
 
 estados = Array.from({length:N}, () => 'emdia');
-setPlano('prata');
+mesInicio = addMeses(mesAtual(), -(N-2));   // última fatura cai no mês que vem
+planoAtual = 'prata';
+document.getElementById('btnPrata').classList.add('on');
+setJanela(mesInicio);
 preset('doze');
 </script>
