@@ -110,80 +110,110 @@ a{color:inherit;}
 .sup-info{margin-top:1rem;font-size:0.82rem;color:var(--text-2);}
 .sup-info a{color:var(--pool);text-decoration:none;}
 
-/* ===== FIDELIDADE ===== */
-.fidel-card{background:linear-gradient(135deg,rgba(0,196,216,0.04) 0%,transparent 60%);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1rem;margin:0.5rem 0 0.75rem;}
-.fidel-phase-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.65rem;}
-.fidel-phase-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:800;flex-shrink:0;}
-.fidel-phase-num.p1{background:rgba(0,196,216,0.2);color:var(--pool);}
-.fidel-phase-num.p2{background:rgba(245,158,11,0.2);color:#FCD34D;}
-.fidel-phase-title{font-size:0.78rem;font-weight:700;color:var(--text);}
-.fidel-phase-prize{margin-left:auto;font-size:0.72rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;white-space:nowrap;}
-.fidel-phase-prize.p1{background:rgba(0,196,216,0.1);color:var(--pool);border:1px solid rgba(0,196,216,0.25);}
-.fidel-phase-prize.p2{background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
-/* Grade de selos */
-.stamps-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-bottom:0.4rem;}
-.stamp{
-  aspect-ratio:1;border-radius:10px;border:2px solid;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;transition:all 0.25s;cursor:default;
-  overflow:hidden;
+/* ===== FIDELIDADE — Cartão Físico ===== */
+/* Wrapper do cartão */
+.fc-wrap{display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* O cartão em si */
+.fc{
+  width:100%;max-width:480px;
+  background:linear-gradient(135deg,#041825 0%,#061e2e 40%,#031219 100%);
+  border:1px solid rgba(0,196,216,0.25);
+  border-radius:18px;
+  padding:1.4rem 1.4rem 1.2rem;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(0,196,216,0.08),inset 0 1px 0 rgba(255,255,255,0.04);
 }
-/* estado vazio */
-.stamp.empty{
+/* brilho de canto */
+.fc::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.18) 0%,transparent 70%);
+  pointer-events:none;
+}
+.fc::after{
+  content:'';position:absolute;bottom:-40px;left:-40px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+/* topo do cartão */
+.fc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;}
+.fc-brand{font-size:1.1rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 16px rgba(0,196,216,0.5);}
+.fc-brand span{color:rgba(205,234,242,0.7);font-weight:700;}
+.fc-title-col{text-align:right;}
+.fc-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.2em;color:rgba(0,196,216,0.6);margin-bottom:0.1rem;}
+.fc-subtitle{font-size:0.78rem;font-weight:700;color:rgba(205,234,242,0.9);}
+/* grade de selos */
+.fc-stamps{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;margin-bottom:0.5rem;position:relative;z-index:1;}
+.fcs{
+  aspect-ratio:1;border-radius:9px;border:2px solid;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;transition:all 0.3s;cursor:default;overflow:hidden;position:relative;
+}
+/* vazio */
+.fcs.empty{
   border-color:rgba(0,196,216,0.15);border-style:dashed;
   background:rgba(0,196,216,0.02);
 }
-.stamp.empty .s-num{color:rgba(0,196,216,0.2);font-size:0.9rem;font-weight:800;}
-/* pago em dia */
-.stamp.ok{
-  border-color:#10B981;border-style:solid;
-  background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(16,185,129,0.08) 100%);
-  box-shadow:0 0 10px rgba(16,185,129,0.2),inset 0 1px 0 rgba(255,255,255,0.05);
+.fcs.empty .fcs-n{color:rgba(0,196,216,0.2);font-size:0.72rem;font-weight:700;}
+/* conquistado */
+.fcs.ok{
+  border-color:rgba(0,196,216,0.7);border-style:solid;
+  background:linear-gradient(135deg,rgba(0,196,216,0.2) 0%,rgba(0,196,216,0.08) 100%);
+  box-shadow:0 0 8px rgba(0,196,216,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
 }
-.stamp.ok .s-check{color:#34D399;font-size:1.1rem;line-height:1;}
-.stamp.ok .s-num{color:rgba(52,211,153,0.5);font-size:0.55rem;font-weight:700;margin-top:1px;}
+.fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
+.fcs.ok .fcs-n{color:rgba(0,196,216,0.4);font-size:0.5rem;font-weight:700;}
 /* marco 6 — vazio */
-.stamp.m6-empty{
-  border-color:rgba(0,196,216,0.3);border-style:dashed;
+.fcs.m6e{
+  border-color:rgba(0,196,216,0.35);border-style:dashed;
   background:rgba(0,196,216,0.04);
 }
-.stamp.m6-empty .s-icon{font-size:1rem;opacity:0.4;}
-.stamp.m6-empty .s-num{color:rgba(0,196,216,0.3);font-size:0.55rem;font-weight:700;}
+.fcs.m6e .fcs-icon{font-size:0.85rem;opacity:0.35;}
+.fcs.m6e .fcs-n{color:rgba(0,196,216,0.35);font-size:0.46rem;font-weight:700;text-align:center;line-height:1.2;}
 /* marco 6 — conquistado */
-.stamp.m6-ok{
+.fcs.m6ok{
   border-color:var(--pool);border-style:solid;
-  background:linear-gradient(135deg,rgba(0,196,216,0.22) 0%,rgba(0,196,216,0.08) 100%);
-  box-shadow:0 0 14px rgba(0,196,216,0.35),inset 0 1px 0 rgba(255,255,255,0.06);
+  background:linear-gradient(135deg,rgba(0,196,216,0.28) 0%,rgba(0,196,216,0.1) 100%);
+  box-shadow:0 0 14px rgba(0,196,216,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.stamp.m6-ok .s-icon{font-size:1.1rem;}
-.stamp.m6-ok .s-num{color:rgba(0,196,216,0.5);font-size:0.55rem;font-weight:700;}
+.fcs.m6ok .fcs-icon{font-size:1rem;}
+.fcs.m6ok .fcs-n{color:rgba(0,196,216,0.6);font-size:0.46rem;font-weight:700;text-align:center;line-height:1.2;}
 /* marco 12 — vazio */
-.stamp.m12-empty{
-  border-color:rgba(245,158,11,0.3);border-style:dashed;
+.fcs.m12e{
+  border-color:rgba(245,158,11,0.35);border-style:dashed;
   background:rgba(245,158,11,0.03);
 }
-.stamp.m12-empty .s-icon{font-size:1rem;opacity:0.4;}
-.stamp.m12-empty .s-num{color:rgba(245,158,11,0.3);font-size:0.55rem;font-weight:700;}
+.fcs.m12e .fcs-icon{font-size:0.85rem;opacity:0.35;}
+.fcs.m12e .fcs-n{color:rgba(245,158,11,0.4);font-size:0.46rem;font-weight:700;text-align:center;line-height:1.2;}
 /* marco 12 — conquistado */
-.stamp.m12-ok{
+.fcs.m12ok{
   border-color:#F59E0B;border-style:solid;
-  background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(245,158,11,0.08) 100%);
-  box-shadow:0 0 16px rgba(245,158,11,0.4),inset 0 1px 0 rgba(255,255,255,0.06);
+  background:linear-gradient(135deg,rgba(245,158,11,0.28) 0%,rgba(245,158,11,0.08) 100%);
+  box-shadow:0 0 16px rgba(245,158,11,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.stamp.m12-ok .s-icon{font-size:1.1rem;}
-.stamp.m12-ok .s-num{color:rgba(245,158,11,0.5);font-size:0.55rem;font-weight:700;}
-/* separador entre fases */
-.fidel-separator{display:flex;align-items:center;gap:0.5rem;margin:0.65rem 0;font-size:0.72rem;color:var(--text-2);}
-.fidel-separator::before,.fidel-separator::after{content:'';flex:1;height:1px;background:var(--border);}
+.fcs.m12ok .fcs-icon{font-size:1rem;}
+.fcs.m12ok .fcs-n{color:rgba(245,158,11,0.6);font-size:0.46rem;font-weight:700;text-align:center;line-height:1.2;}
+/* rodapé do cartão */
+.fc-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:0.9rem;position:relative;z-index:1;}
+.fc-cliente{font-size:0.7rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.12em;}
+.fc-cliente strong{display:block;font-size:0.82rem;color:rgba(205,234,242,0.85);font-weight:700;letter-spacing:0.04em;margin-top:0.1rem;}
+.fc-progress-col{text-align:right;}
+.fc-pct{font-size:1.5rem;font-weight:900;color:var(--pool);line-height:1;text-shadow:0 0 12px rgba(0,196,216,0.4);}
+.fc-pct-label{font-size:0.58rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.1em;}
+/* legenda abaixo do cartão */
+.fc-legend{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;}
+.fc-leg-item{display:flex;align-items:center;gap:0.4rem;font-size:0.74rem;color:var(--text-2);}
+.fc-leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
 /* barra de progresso */
-.fidel-bar-wrap{margin:0.75rem 0 0.5rem;}
-.fidel-bar-labels{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-2);margin-bottom:0.3rem;}
-.fidel-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
-.fidel-bar-fill{height:100%;background:linear-gradient(90deg,var(--pos),var(--pool));border-radius:4px;transition:width 0.6s ease;}
+.fidel-bar-wrap{width:100%;max-width:480px;margin:0 auto;}
+.fidel-bar-labels{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-2);margin-bottom:0.4rem;}
+.fidel-bar{height:7px;background:rgba(0,196,216,0.1);border-radius:4px;overflow:hidden;}
+.fidel-bar-fill{height:100%;background:linear-gradient(90deg,#10B981,var(--pool));border-radius:4px;transition:width 0.8s cubic-bezier(.22,.61,.36,1);}
 /* pill de prêmio */
-.premio-pill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border-radius:8px;font-size:0.86rem;margin-top:0.5rem;}
-.premio-pill.next{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#FCD34D;}
-.premio-pill.earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34D399;}
+.premio-pill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border-radius:8px;font-size:0.86rem;width:100%;max-width:480px;}
+.premio-pill.next{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;}
+.premio-pill.earned{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#34D399;}
 
 /* ===== INDICAÇÕES ===== */
 .ref-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;}
@@ -571,60 +601,123 @@ async function loadFidelidade(data){
   try{
     const {data:res,error}=await sb.rpc('portal_servnet_fidelidade',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
     if(error) throw error;
-    renderFidelidade(res?.streak||0);
+    renderFidelidade(res?.streak||0, data?.nome);
   }catch(e){
     document.getElementById('fidelContent').innerHTML='<div class="muted">Dados de fidelidade indisponíveis.</div>';
   }
 }
 
-function renderFidelidade(streak){
-  // Primeira fase: 6 meses → 50% off
-  const fase1 = [];
-  for(let i=1;i<=6;i++){
-    const ok=i<=streak;
-    fase1.push(`<div class="stamp ${ok?'ok':''}" title="Mês ${i}">${ok?'✅':'⬜'}</div>`);
-  }
-  // Segunda fase: mais 6 → 1 mês grátis
-  const fase2 = [];
-  for(let i=7;i<=12;i++){
-    const ok=i<=streak;
-    const isPremio=i===12;
-    fase2.push(`<div class="stamp ${ok?(isPremio?'premio-ok':'ok'):'premio-empty'}" title="Mês ${i}">${ok?(isPremio?'🏅':'✅'):'⬜'}</div>`);
+function renderFidelidade(streak, nomeCliente){
+  // Gera os 12 selos
+  const selos = [];
+  for(let i=1;i<=12;i++){
+    const conquistado = i <= streak;
+    const isM6  = i === 6;
+    const isM12 = i === 12;
+
+    if(isM6){
+      const cls = conquistado ? 'fcs m6ok' : 'fcs m6e';
+      selos.push(`<div class="${cls}" title="${conquistado?'50% OFF conquistado!':'Meta: 50% de desconto'}">
+        <span class="fcs-icon">${conquistado?'🎁':'🎁'}</span>
+        <span class="fcs-n">50%${conquistado?'\nOFF':'\nOFF'}</span>
+      </div>`);
+    } else if(isM12){
+      const cls = conquistado ? 'fcs m12ok' : 'fcs m12e';
+      selos.push(`<div class="${cls}" title="${conquistado?'1 mês grátis conquistado!':'Meta: 1 mês grátis'}">
+        <span class="fcs-icon">${conquistado?'🏅':'🏅'}</span>
+        <span class="fcs-n">MÊS${conquistado?'\nGRÁTIS':'\nGRÁTIS'}</span>
+      </div>`);
+    } else if(conquistado){
+      selos.push(`<div class="fcs ok" title="Mês ${i} — pago em dia ✓">
+        <span class="fcs-check">✓</span>
+        <span class="fcs-n">${i}</span>
+      </div>`);
+    } else {
+      selos.push(`<div class="fcs empty" title="Mês ${i} — aguardando">
+        <span class="fcs-n">${i}</span>
+      </div>`);
+    }
   }
 
-  let pct, faltam, proximoPremio, cicloAtual;
-  if(streak>=12){
-    pct=100; faltam=0; proximoPremio='1 mês grátis 🎉'; cicloAtual=12;
-  } else if(streak>=6){
-    pct=((streak-6)/6)*100; faltam=12-streak; proximoPremio='1 mês grátis'; cicloAtual=streak;
+  // Progresso e próximo prêmio
+  let pct, faltam, proximoPremio;
+  if(streak >= 12){
+    pct = 100; faltam = 0; proximoPremio = '1 mês grátis 🎉';
+  } else if(streak >= 6){
+    pct = ((streak-6)/6)*100; faltam = 12-streak; proximoPremio = '1 mês grátis';
   } else {
-    pct=(streak/6)*100; faltam=6-streak; proximoPremio='50% de desconto'; cicloAtual=streak;
+    pct = (streak/6)*100; faltam = 6-streak; proximoPremio = '50% de desconto';
   }
+
+  const pctTotal = Math.round((streak/12)*100);
+  const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
 
   document.getElementById('fidelContent').innerHTML=`
-    <p class="muted" style="margin-bottom:1rem">Pague antes do vencimento e acumule recompensas! Cada ✅ = 1 mês pago em dia.</p>
-    <div class="stamps-wrap">
-      <div class="stamps-section">
-        <div class="stamps-label">Fase 1 — 6 meses → 🎁 50% de desconto</div>
-        <div class="stamps-grid">${fase1.join('')}</div>
+    <div class="fc-wrap">
+
+      <!-- Cartão físico -->
+      <div class="fc">
+        <div class="fc-top">
+          <div class="fc-brand">SERV<span>NET</span></div>
+          <div class="fc-title-col">
+            <div class="fc-title">Programa</div>
+            <div class="fc-subtitle">Cartão Fidelidade</div>
+          </div>
+        </div>
+
+        <!-- Grade 12 selos -->
+        <div class="fc-stamps">${selos.join('')}</div>
+
+        <div class="fc-footer">
+          <div class="fc-cliente">
+            Cliente
+            <strong>${nome}</strong>
+          </div>
+          <div class="fc-progress-col">
+            <div class="fc-pct">${streak}<small style="font-size:0.9rem;opacity:0.7">/12</small></div>
+            <div class="fc-pct-label">${streak===1?'mês em dia':'meses em dia'}</div>
+          </div>
+        </div>
       </div>
-      <div class="stamps-section" style="margin-top:0.75rem">
-        <div class="stamps-label">Fase 2 — mais 6 meses → 🏅 1 mês grátis</div>
-        <div class="stamps-grid">${fase2.join('')}</div>
+
+      <!-- Legenda -->
+      <div class="fc-legend">
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.6);border:1.5px solid var(--pool)"></div>
+          Pago em dia
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.15);border:1.5px dashed rgba(0,196,216,0.35)"></div>
+          Aguardando
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.2);border:1.5px solid var(--pool)">🎁</div>
+          6 meses → 50% OFF
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(245,158,11,0.2);border:1.5px solid #F59E0B">🏅</div>
+          12 meses → Grátis
+        </div>
       </div>
+
+      <!-- Barra de progresso -->
+      <div class="fidel-bar-wrap">
+        <div class="fidel-bar-labels">
+          <span>Progresso total</span>
+          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
+        </div>
+        <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
+      </div>
+
+      <!-- Pill do prêmio -->
+      ${faltam>0
+        ?`<div class="premio-pill next">🎁 Próximo prêmio: <strong>${proximoPremio}</strong> — pague em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
+        :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou <strong>${proximoPremio}</strong> — Fale com o suporte para resgatar!</div>`
+      }
+
     </div>
-    <div class="fidel-bar-wrap">
-      <div class="fidel-bar-labels">
-        <span>${streak} ${streak===1?'mês':'meses'} em dia</span>
-        <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'}`:'🎉 Prêmio disponível!'}</span>
-      </div>
-      <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
-    </div>
-    ${faltam>0
-      ?`<div class="premio-pill next">🎁 Próximo prêmio: <strong>${proximoPremio}</strong> — pague em dia por mais ${faltam} ${faltam===1?'mês':'meses'}</div>`
-      :`<div class="premio-pill earned">🎉 Parabéns! Você ganhou: <strong>${proximoPremio}</strong> — Fale com o suporte para resgatar!</div>`
-    }
-    <button class="rules-toggle" onclick="toggleRules('fidelRules',this)">
+
+    <button class="rules-toggle" onclick="toggleRules('fidelRules',this)" style="margin-top:1rem">
       <em class="arrow">▶</em> Ver regras do programa
     </button>
     <div class="rules-box" id="fidelRules">
