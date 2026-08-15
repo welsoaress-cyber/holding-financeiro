@@ -1048,7 +1048,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.9.3";
+const APP_VERSION = "1.9.4";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7606,13 +7606,14 @@ function modalNotificacoes(){
   });
 }
 
-// Gera o próximo código de cliente: CLI-0001, CLI-0042, etc.
+// Gera código de cliente: 6 dígitos aleatórios únicos (ex: 483920).
 function gerarCodigoCli(){
-  const numeros = state.cliClientes
-    .map(c => { const m = (c.codigo||"").match(/^CLI-(\d+)$/); return m ? parseInt(m[1]) : 0; })
-    .filter(n => n > 0);
-  const prox = numeros.length ? Math.max(...numeros) + 1 : 1;
-  return `CLI-${String(prox).padStart(4,"0")}`;
+  const usados = new Set(state.cliClientes.map(c => (c.codigo||"")));
+  let codigo;
+  do {
+    codigo = String(Math.floor(100000 + Math.random() * 900000));
+  } while(usados.has(codigo));
+  return codigo;
 }
 // Exibe "[CLI-0001] Wellington" — usado em dropdowns para diferenciar homônimos
 function cliLabel(c){ return c.codigo ? `[${c.codigo}] ${cliNome(c)}` : cliNome(c); }
@@ -8463,7 +8464,7 @@ function modalCliCliente(existing){
       <div class="field-row">
         <div class="field" style="flex:0 0 148px;">
           <label>Código do cliente</label>
-          <input type="text" name="codigo" value="${esc(c.codigo||codigoNovo)}" ${isEdit?"readonly":""} style="${isEdit?"opacity:.55; background:var(--surface-2,var(--surface));":""}" placeholder="CLI-0001">
+          <input type="text" name="codigo" value="${esc(c.codigo||codigoNovo)}" ${isEdit?"readonly":""} style="opacity:.7; background:var(--surface-2,var(--surface));" placeholder="483920" readonly>
         </div>
         <div class="field">
           <label>Tipo de pessoa</label>
@@ -8568,6 +8569,31 @@ function modalCliCliente(existing){
   if(cliCepInput){
     cliCepInput.addEventListener("input", function(){ let v=this.value.replace(/\D/g,"").slice(0,8); if(v.length>5) v=v.slice(0,5)+"-"+v.slice(5); this.value=v; });
     cliCepInput.addEventListener("blur", ()=> buscarCep(cliCepInput.value, cliForm));
+  }
+
+  // Verificação de CPF/CNPJ duplicado ao sair do campo
+  const cliCpfField = document.querySelector('#formCliCliente input[name="cpfCnpj"]');
+  if(cliCpfField){
+    const cliCpfWarn = document.createElement("div");
+    cliCpfWarn.id = "cliCpfWarn";
+    cliCpfWarn.style.cssText = "display:none; font-size:12px; color:var(--warn,#e6a817); margin-top:4px; font-weight:600;";
+    cliCpfField.parentNode.appendChild(cliCpfWarn);
+    cliCpfField.addEventListener("blur", function(){
+      const v = this.value.replace(/\D/g,"");
+      if(v.length < 11){ cliCpfWarn.style.display="none"; this.style.borderColor=""; return; }
+      const dup = state.cliClientes.find(c => c.id !== (existing?.id) && (c.cpfCnpj||"").replace(/\D/g,"") === v);
+      if(dup){
+        cliCpfWarn.textContent = `⚠️ CPF já cadastrado para: ${cliNome(dup)} (${dup.codigo||"sem código"})`;
+        cliCpfWarn.style.display = "block";
+        this.style.outline = "2px solid var(--warn,#e6a817)";
+      } else {
+        cliCpfWarn.style.display = "none";
+        this.style.outline = "";
+      }
+    });
+    cliCpfField.addEventListener("input", function(){
+      cliCpfWarn.style.display="none"; this.style.outline="";
+    });
   }
 
   // Habilita/desabilita o select de plano junto com o checkbox do negócio
