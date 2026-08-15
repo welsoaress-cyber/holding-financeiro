@@ -1155,6 +1155,9 @@ function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ •••••
 function fmtDateBR(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
 function fmtDataHora(isoComHora){ if(!isoComHora) return "—"; return new Date(isoComHora).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+function brToISO(br){ if(!br) return ""; const p=br.split("/"); if(p.length!==3||p[2].length!==4) return ""; return `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
+function applyDateMask(input){ if(!input) return; input.setAttribute("inputmode","numeric"); input.setAttribute("maxlength","10"); input.addEventListener("input",function(){ let v=this.value.replace(/\D/g,"").slice(0,8); if(v.length>=5) v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4); else if(v.length>=3) v=v.slice(0,2)+"/"+v.slice(2); this.value=v; }); }
+async function buscarCep(cepVal, form){ const n=cepVal.replace(/\D/g,""); if(n.length!==8) return; try{ const r=await fetch(`https://viacep.com.br/ws/${n}/json/`); const d=await r.json(); if(d.erro) return; const set=(name,val)=>{ const el=form.querySelector(`[name="${name}"]`); if(el&&val) el.value=val; }; set("logradouro",d.logradouro); set("bairro",d.bairro); set("cidade",d.localidade); set("complemento",d.complemento); const uf=form.querySelector('[name="uf"]'); if(uf&&d.uf) uf.value=d.uf; }catch(e){} }
 function contaById(id){ return state.contas.find(c => c.id === id); }
 function cartaoById(id){ return state.cartoes.find(c => c.id === id); }
 function negocioByNome(nome){ return state.negocios.find(n => n.nome === nome); }
@@ -1951,6 +1954,9 @@ async function doLogin(email, password){
     if(error){ showToast(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message, "error"); return false; }
     state.user = data.user;
     state.perfilAtivo = null; state.perfilEscolhido = false;
+    // Ao logar, sempre vai para a primeira tela (Visão Geral) — limpa qualquer navegação salva
+    try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+    state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
@@ -2034,6 +2040,8 @@ async function doAuthMembro(email, password, codPerfil, codHolding){
     state.user = data.user;
     const link = await vincularPerfil(codPerfil, codHolding);
     if(!link.ok){ showToast(link.msg, "error"); return false; }
+    try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+    state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
@@ -2595,7 +2603,8 @@ function sidebarConteudo(){
   }
   if(podeVerModulo("cadastro")){
     grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
-      navSubmenuCadastros(),
+      navItem("cadastro_hub","🗂️","Central de Cadastros"),
+      master ? navItem("usuarios","👤","Usuários") : "",
       master ? navItem("logs_auditoria",ic("logs"),"Logs de Auditoria") : "",
     ].join("")));
   }
@@ -6649,7 +6658,7 @@ let logsFiltro = { tabela:"", acao:"", autor:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
-const CLI_GENEROS = ["Masculino","Feminino","Outro","Pessoa Jurídica","Não informado"];
+const CLI_GENEROS = ["Feminino","Masculino","Não informado","Outro","Pessoa Jurídica"];
 const CLI_ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const CLI_TIPOS_CONEXAO = ["Fibra Óptica","Cabo","Rádio","4G/5G","Satélite","ADSL"];
 // ---- Orçamento -> OS (Fase 2: venda amarrada a estoque/cliente/financeiro) ----
@@ -7314,14 +7323,12 @@ function viewCliDetalhe(){
 
   return `
     <div class="page-header">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_lista">← Voltar</button>
-        <div>
-          <div class="page-title">${esc(cliNome(c))}</div>
-          <div class="page-sub">Cadastrado em ${fmtDateBR(c.dataCadastro)} · <span class="status-pill ${statusClass}">${c.status||"—"}</span></div>
-        </div>
+      <div>
+        <button class="btn btn-ghost btn-sm" style="margin-bottom:8px;" data-action="nav" data-view="cli_lista">← Voltar</button>
+        <div class="page-title">${esc(cliNome(c))}</div>
+        <div class="page-sub" style="margin-top:4px;">Cadastrado em ${fmtDateBR(c.dataCadastro)} · <span class="status-pill ${statusClass}">${c.status||"—"}</span></div>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-ghost" data-action="cli-add-contrato" data-id="${c.id}">+ Vincular negócio</button>
         <button class="btn btn-primary" data-action="cli-edit" data-id="${c.id}">✎ Editar cadastro</button>
       </div>
@@ -7329,9 +7336,9 @@ function viewCliDetalhe(){
 
     <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?4:3},1fr); margin-bottom:16px;">
       ${podeVerValores()?`<div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>`:""}
-      <div class="kpi-card"><div class="kpi-label">Negócios vinculados</div><div class="kpi-value">${(c.contratos||[]).length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Cidade</div><div class="kpi-value" style="font-size:16px;">${esc(c.cidade||"—")}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:16px;"><span class="status-pill ${statusClass} " style="font-size:13px;">${c.status}</span></div></div>
+      <div class="kpi-card"><div class="kpi-label">Negócios</div><div class="kpi-value">${(c.contratos||[]).length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cidade</div><div class="kpi-value" style="font-size:15px;">${esc(c.cidade||"—")}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:15px;"><span class="status-pill ${statusClass}" style="font-size:12px;">${c.status}</span></div></div>
     </div>
 
     <div class="two-col">
@@ -7339,30 +7346,30 @@ function viewCliDetalhe(){
         <div class="panel">
           <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
           <div class="panel-body" style="padding-top:10px;">
-            <div style="display:grid; gap:6px; font-size:12.5px;">
+            <div style="display:grid; gap:8px; font-size:13px;">
               ${[
                 ["Tipo","tipoPessoa"],["CPF/CNPJ","cpfCnpj"],["RG","rg"],["Data nascimento","dataNascimento"],
                 ["E-mail","email"],["Telefone","telefone"],["WhatsApp","whatsapp"],["Gênero","genero"],
-              ].map(([label, field]) => c[field] ? `<div style="display:flex; gap:8px;"><span style="color:var(--ink-3); min-width:130px;">${label}:</span><strong>${field==='dataNascimento'?fmtDateBR(c[field]):esc(c[field])}</strong></div>` : "").filter(Boolean).join("")}
+              ].map(([label, field]) => c[field] ? `<div style="display:flex; gap:8px; align-items:baseline; flex-wrap:wrap;"><span style="color:var(--ink-3); min-width:130px; flex-shrink:0;">${label}:</span><strong>${field==='dataNascimento'?fmtDateBR(c[field]):esc(c[field])}</strong></div>` : "").filter(Boolean).join("")}
             </div>
           </div>
         </div>
+
         <div class="panel" style="margin-top:12px;">
           <div class="panel-head"><div class="panel-title">📍 Endereço</div></div>
-          <div class="panel-body" style="padding-top:10px; font-size:12.5px;">
+          <div class="panel-body" style="padding-top:10px; font-size:13px; line-height:1.6;">
             ${c.logradouro ? `<div>${esc(c.logradouro)}, ${esc(c.numero||"S/N")}${c.complemento?` — ${esc(c.complemento)}`:""}</div>` : ""}
-            ${c.bairro ? `<div>${esc(c.bairro)}</div>` : ""}
+            ${c.bairro ? `<div style="color:var(--ink-3);">${esc(c.bairro)}</div>` : ""}
             ${c.cidade ? `<div>${esc(c.cidade)}${c.uf?` — ${esc(c.uf)}`:""}</div>` : ""}
-            ${c.cep ? `<div>CEP: ${esc(c.cep)}</div>` : ""}
+            ${c.cep ? `<div style="color:var(--ink-3); font-size:12px;">CEP ${esc(c.cep)}</div>` : ""}
             ${!c.logradouro && !c.cidade ? `<span style="color:var(--ink-4);">Endereço não informado</span>` : ""}
           </div>
         </div>
-        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px;">${esc(c.observacoes)}</div></div>` : ""}
+
+        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px; line-height:1.6;">${esc(c.observacoes)}</div></div>` : ""}
       </div>
       <div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <div style="font-weight:700; font-size:13.5px;">🤝 Negócios & Contratos</div>
-        </div>
+        <div style="font-weight:700; font-size:13.5px; margin-bottom:8px;">🤝 Negócios & Contratos</div>
         ${contratosHTML || `<div class="panel"><div class="panel-body">${emptyState("Nenhum negócio vinculado ainda. Clique em \"+ Vincular negócio\".")}</div></div>`}
       </div>
     </div>
@@ -7456,7 +7463,7 @@ function modalCliCliente(existing){
           </select>
         </div>
         <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
-        <div class="field"><label>Cadastrado em</label><input type="date" name="dataCadastro" value="${c.dataCadastro||todayISO()}"></div>
+        <div class="field"><label>Cadastrado em</label><input type="text" id="cliDataCadastro" name="dataCadastro" value="${c.dataCadastro ? fmtDateBR(c.dataCadastro) : fmtDateBR(todayISO())}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
       </div>
       <div class="field" id="cliNomePFWrap">
         <label>Nome completo *</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Nome completo">
@@ -7472,7 +7479,7 @@ function modalCliCliente(existing){
         <div class="field" id="cliRgWrap"><label>RG</label><input type="text" name="rg" value="${esc(c.rg||"")}" placeholder="00.000.000-0"></div>
       </div>
       <div class="field-row">
-        <div class="field" id="cliNascimentoWrap"><label>Data de nascimento</label><input type="date" name="dataNascimento" value="${c.dataNascimento||""}"></div>
+        <div class="field" id="cliNascimentoWrap"><label>Data de nascimento</label><input type="text" id="cliDataNascimento" name="dataNascimento" value="${c.dataNascimento ? fmtDateBR(c.dataNascimento) : ""}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
         <div class="field" id="cliGeneroWrap"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
       </div>
 
@@ -7485,7 +7492,7 @@ function modalCliCliente(existing){
 
       <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Endereço</div>
       <div class="field-row">
-        <div class="field"><label>CEP</label><input type="text" name="cep" value="${esc(c.cep||"")}" placeholder="00000-000"></div>
+        <div class="field"><label>CEP</label><input type="text" id="cliCepInput" name="cep" value="${esc(c.cep||"")}" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="off"></div>
         <div class="field"><label>UF</label><select name="uf">${ufOpts}</select></div>
       </div>
       <div class="field-row">
@@ -7532,6 +7539,18 @@ function modalCliCliente(existing){
   tipoPessoa.addEventListener("change", atualizarTipo);
   atualizarTipo();
 
+  // Máscara DD/MM/AAAA nas datas do cliente
+  applyDateMask(document.getElementById("cliDataCadastro"));
+  applyDateMask(document.getElementById("cliDataNascimento"));
+
+  // Auto-preenchimento de endereço pelo CEP
+  const cliCepInput = document.getElementById("cliCepInput");
+  const cliForm = document.getElementById("formCliCliente");
+  if(cliCepInput){
+    cliCepInput.addEventListener("input", function(){ let v=this.value.replace(/\D/g,"").slice(0,8); if(v.length>5) v=v.slice(0,5)+"-"+v.slice(5); this.value=v; });
+    cliCepInput.addEventListener("blur", ()=> buscarCep(cliCepInput.value, cliForm));
+  }
+
   // Habilita/desabilita o select de plano junto com o checkbox do negócio
   document.querySelectorAll(".cli-neg-chk").forEach(chk => {
     chk.addEventListener("change", () => {
@@ -7553,7 +7572,7 @@ function modalCliCliente(existing){
       nomeFantasia: (fd.get("nomeFantasia")||"").trim(),
       cpfCnpj: (fd.get("cpfCnpj")||"").trim(),
       rg: (fd.get("rg")||"").trim(),
-      dataNascimento: fd.get("dataNascimento"),
+      dataNascimento: brToISO(fd.get("dataNascimento")),
       genero: fd.get("genero"),
       email: (fd.get("email")||"").trim(),
       telefone: (fd.get("telefone")||"").trim(),
@@ -7566,7 +7585,7 @@ function modalCliCliente(existing){
       cidade: (fd.get("cidade")||"").trim(),
       uf: fd.get("uf"),
       status: fd.get("status"),
-      dataCadastro: fd.get("dataCadastro") || todayISO(),
+      dataCadastro: brToISO(fd.get("dataCadastro")) || todayISO(),
       observacoes: (fd.get("observacoes")||"").trim(),
     };
 
@@ -9312,7 +9331,7 @@ function modalRhFuncionario(existing){
         <div class="field"><label>RG</label><input type="text" name="rg" value="${esc(f.rg)}" placeholder="00.000.000-0"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Data de nascimento</label><input type="date" name="dataNascimento" value="${f.dataNascimento||""}"></div>
+        <div class="field"><label>Data de nascimento</label><input type="text" id="rhDataNascimento" name="dataNascimento" value="${f.dataNascimento ? fmtDateBR(f.dataNascimento) : ""}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
         <div class="field"><label>Gênero</label><select name="genero">${generoOpts}</select></div>
       </div>
       <div class="field-row">
@@ -9326,7 +9345,7 @@ function modalRhFuncionario(existing){
         <div class="field"><label>Cargo</label><select name="cargoId"><option value="">— Selecione —</option>${cargoOpts}</select></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Data de admissão *</label><input required type="date" name="dataAdmissao" value="${f.dataAdmissao||todayISO()}"></div>
+        <div class="field"><label>Data de admissão *</label><input type="text" id="rhDataAdmissao" required name="dataAdmissao" value="${f.dataAdmissao ? fmtDateBR(f.dataAdmissao) : fmtDateBR(todayISO())}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
         <div class="field"><label>Tipo de contrato</label><select name="tipoContrato">${contratoOpts}</select></div>
       </div>
       <div class="field-row">
@@ -9338,7 +9357,7 @@ function modalRhFuncionario(existing){
       <div id="rhDesligamentoWrap" style="display:${f.status==='Desligado'?'block':'none'};">
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Desligamento</div>
         <div class="field-row">
-          <div class="field"><label>Data do desligamento</label><input type="date" name="dataDemissao" value="${f.dataDemissao||""}"></div>
+          <div class="field"><label>Data do desligamento</label><input type="text" id="rhDataDemissao" name="dataDemissao" value="${f.dataDemissao ? fmtDateBR(f.dataDemissao) : ""}" placeholder="DD/MM/AAAA" autocomplete="off"></div>
           <div class="field"><label>Tipo</label><select name="tipoDesligamento"><option value="">— Selecione —</option>${desligamentoOpts}</select></div>
         </div>
         <div class="field"><label>Motivo / observações</label><textarea name="motivoDesligamento" rows="2" style="resize:none;">${esc(f.motivoDesligamento||"")}</textarea></div>
@@ -9346,7 +9365,7 @@ function modalRhFuncionario(existing){
 
       <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Endereço</div>
       <div class="field-row">
-        <div class="field"><label>CEP</label><input type="text" name="cep" value="${esc(f.cep||"")}" placeholder="00000-000"></div>
+        <div class="field"><label>CEP</label><input type="text" id="rhCepInput" name="cep" value="${esc(f.cep||"")}" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="off"></div>
         <div class="field"><label>UF</label><select name="uf">${ufOpts}</select></div>
       </div>
       <div class="field-row">
@@ -9369,17 +9388,30 @@ function modalRhFuncionario(existing){
     document.getElementById("rhDesligamentoWrap").style.display = e.target.value === "Desligado" ? "block" : "none";
   });
 
+  // Máscara DD/MM/AAAA nas datas do funcionário
+  applyDateMask(document.getElementById("rhDataNascimento"));
+  applyDateMask(document.getElementById("rhDataAdmissao"));
+  applyDateMask(document.getElementById("rhDataDemissao"));
+
+  // Auto-preenchimento de endereço pelo CEP (RH)
+  const rhCepInput = document.getElementById("rhCepInput");
+  const rhForm = document.getElementById("formRhFuncionario");
+  if(rhCepInput){
+    rhCepInput.addEventListener("input", function(){ let v=this.value.replace(/\D/g,"").slice(0,8); if(v.length>5) v=v.slice(0,5)+"-"+v.slice(5); this.value=v; });
+    rhCepInput.addEventListener("blur", ()=> buscarCep(rhCepInput.value, rhForm));
+  }
+
   document.getElementById("formRhFuncionario").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const data = {
       nome: fd.get("nome").trim(), cpf: fd.get("cpf").trim(), rg: fd.get("rg").trim(),
-      dataNascimento: fd.get("dataNascimento"), genero: fd.get("genero"),
+      dataNascimento: brToISO(fd.get("dataNascimento")), genero: fd.get("genero"),
       email: fd.get("email").trim(), telefone: fd.get("telefone").trim(),
       negocio: fd.get("negocio"), cargoId: fd.get("cargoId"),
-      dataAdmissao: fd.get("dataAdmissao"), tipoContrato: fd.get("tipoContrato"),
+      dataAdmissao: brToISO(fd.get("dataAdmissao")) || todayISO(), tipoContrato: fd.get("tipoContrato"),
       salario: parseFloat(fd.get("salario"))||0, status: fd.get("status"), pix: fd.get("pix").trim(),
-      dataDemissao: fd.get("status")==="Desligado" ? fd.get("dataDemissao") : "",
+      dataDemissao: fd.get("status")==="Desligado" ? brToISO(fd.get("dataDemissao")) : "",
       tipoDesligamento: fd.get("status")==="Desligado" ? fd.get("tipoDesligamento") : "",
       motivoDesligamento: fd.get("status")==="Desligado" ? fd.get("motivoDesligamento").trim() : "",
       cep: fd.get("cep").trim(), logradouro: fd.get("logradouro").trim(), numero: fd.get("numero").trim(),
