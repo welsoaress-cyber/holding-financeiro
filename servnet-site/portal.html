@@ -215,6 +215,32 @@ a{color:inherit;}
 .premio-pill.next{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;}
 .premio-pill.earned{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#34D399;}
 
+/* ===== HISTÓRICO DE PAGAMENTOS (fidelidade) ===== */
+.fh-wrap{margin-top:1.5rem;width:100%;}
+.fh-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.16em;color:rgba(0,196,216,0.6);margin-bottom:0.7rem;display:flex;align-items:center;gap:0.5rem;}
+.fh-title::before{content:'';display:block;width:14px;height:1.5px;background:rgba(0,196,216,0.4);}
+.fh-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.fh-table th{padding:0.4rem 0.7rem;text-align:left;color:var(--text-2);font-weight:600;font-size:0.72rem;border-bottom:1px solid var(--border);white-space:nowrap;}
+.fh-table td{padding:0.55rem 0.7rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+/* linha em atraso — fundo levemente laranja */
+.fh-table tr.atraso td{background:rgba(245,158,11,0.06);}
+.fh-table tr.atraso td:first-child{border-left:3px solid rgba(245,158,11,0.6);}
+/* linha vencida — fundo levemente vermelho */
+.fh-table tr.vencido td{background:rgba(239,68,68,0.05);}
+.fh-table tr.vencido td:first-child{border-left:3px solid rgba(239,68,68,0.5);}
+/* células */
+.fh-mes{font-weight:600;color:var(--text);}
+.fh-data{color:var(--text-2);white-space:nowrap;}
+.fh-status{white-space:nowrap;}
+/* pills de status */
+.fh-pill{display:inline-flex;align-items:center;gap:0.3rem;padding:0.18rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.fh-pill.emdia   {background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#34D399;}
+.fh-pill.atraso  {background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FCD34D;}
+.fh-pill.vencido {background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#F87171;}
+.fh-pill.aberto  {background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);color:#94A3B8;}
+.fh-badge-streak{display:inline-block;margin-left:0.3rem;font-size:0.65rem;background:rgba(0,196,216,0.12);border:1px solid rgba(0,196,216,0.25);color:var(--pool);border-radius:4px;padding:0.05rem 0.35rem;vertical-align:middle;}
+.fh-empty{text-align:center;padding:1.5rem 0;color:var(--text-2);font-size:0.84rem;}
+
 /* ===== INDICAÇÕES ===== */
 .ref-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;}
 .ref-earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:6px;padding:0.35rem 0.75rem;font-size:0.82rem;color:#34D399;font-weight:700;}
@@ -430,6 +456,7 @@ const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 let session = null;
+let faturasList = []; // compartilhado entre faturamento e fidelidade
 
 // CPF mask
 document.getElementById('cpf').addEventListener('input', e => {
@@ -548,6 +575,7 @@ async function loadFaturas(data){
     const {data:res,error}=await sb.rpc('portal_servnet_faturas',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
     if(error) throw error;
     const fat=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
+    faturasList = fat; // disponibiliza para renderFidelidade (que roda depois, em loadFidelidade)
     renderNextFatura(fat);
     renderHist(fat);
   }catch(e){
@@ -606,6 +634,90 @@ async function loadFidelidade(data){
     // Mesmo com erro no RPC, exibe o cartão com streak 0
     renderFidelidade(0, data?.nome);
   }
+}
+
+function renderHistoricoFidelidade(){
+  const today = new Date().toISOString().slice(0,10);
+
+  if(!faturasList.length){
+    return `<div class="fh-wrap">
+      <div class="fh-title">Histórico de Pagamentos</div>
+      <div class="fh-empty">Nenhuma fatura registrada ainda.<br>Seu histórico aparecerá aqui após o primeiro vencimento.</div>
+    </div>`;
+  }
+
+  // Ordena do mais antigo pro mais recente
+  const lista = [...faturasList].sort((a,b)=> a.vencimento > b.vencimento ? 1 : -1);
+
+  let streakRunning = 0; // marca o streak atual a partir do mês mais recente
+  // Calcula quais faturas contribuem pro streak (do mais recente pro mais antigo)
+  const streakSet = new Set();
+  let broken = false;
+  for(const f of [...lista].reverse()){
+    const st = (f.status||'').toLowerCase();
+    if(st === 'pendente' && f.vencimento >= today){ continue; } // mês atual no prazo, ignora
+    if(st === 'pago' && f.data_pagamento && f.data_pagamento <= f.vencimento){
+      if(!broken) streakSet.add(f.id);
+    } else {
+      broken = true;
+    }
+  }
+
+  const rows = lista.map((f,i)=>{
+    const st = (f.status||'').toLowerCase();
+    const pago   = st === 'pago';
+    const emDia  = pago && f.data_pagamento && f.data_pagamento <= f.vencimento;
+    const atraso = pago && f.data_pagamento && f.data_pagamento > f.vencimento;
+    const vencido= !pago && f.vencimento < today;
+    const emAberto = !pago && f.vencimento >= today;
+
+    let rowClass = '';
+    let pill = '';
+    if(emDia){
+      pill = `<span class="fh-pill emdia">✓ Pago em dia</span>${streakSet.has(f.id)?'<span class="fh-badge-streak">streak</span>':''}`;
+    } else if(atraso){
+      rowClass = 'atraso';
+      const diasAtraso = Math.round((new Date(f.data_pagamento)-new Date(f.vencimento))/(1000*60*60*24));
+      pill = `<span class="fh-pill atraso">⚠ Pago com ${diasAtraso}d de atraso</span>`;
+    } else if(vencido){
+      rowClass = 'vencido';
+      const diasVencido = Math.round((new Date(today)-new Date(f.vencimento))/(1000*60*60*24));
+      pill = `<span class="fh-pill vencido">✗ Vencida há ${diasVencido}d</span>`;
+    } else {
+      pill = `<span class="fh-pill aberto">Em aberto</span>`;
+    }
+
+    return `<tr class="${rowClass}">
+      <td class="fh-mes">${f.mes_referencia||'—'}</td>
+      <td class="fh-data">${fmtDate(f.vencimento)}</td>
+      <td class="fh-data">${f.data_pagamento ? fmtDate(f.data_pagamento) : '—'}</td>
+      <td class="fh-status">${pill}</td>
+    </tr>`;
+  }).join('');
+
+  const temAtraso = lista.some(f=>{
+    const st=(f.status||'').toLowerCase();
+    return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
+  });
+
+  return `<div class="fh-wrap">
+    <div class="fh-title">Histórico de Pagamentos</div>
+    ${temAtraso?`<p style="font-size:0.78rem;color:#FCD34D;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:0.5rem 0.8rem;margin-bottom:0.75rem">
+      ⚠ Pagamentos em atraso zeraram o contador de fidelidade. Pague em dia para reconquistar os selos!</p>`:''}
+    <div style="overflow-x:auto">
+      <table class="fh-table">
+        <thead>
+          <tr>
+            <th>Mês de referência</th>
+            <th>Vencimento</th>
+            <th>Data pagamento</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 function renderFidelidade(streak, nomeCliente){
@@ -717,6 +829,8 @@ function renderFidelidade(streak, nomeCliente){
       }
 
     </div>
+
+    ${renderHistoricoFidelidade()}
 
     <button class="rules-toggle" onclick="toggleRules('fidelRules',this)" style="margin-top:1rem">
       <em class="arrow">▶</em> Ver regras do programa
