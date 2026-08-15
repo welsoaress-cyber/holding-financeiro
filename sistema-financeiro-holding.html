@@ -1018,7 +1018,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.6";
+const APP_VERSION = "1.7.7";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2620,13 +2620,18 @@ function renderApp(){
           if(primeira){ state.view = primeira; state.moduloAtivo = moduloDaView(primeira) || ""; }
         }
       }
-      // Trava o filtro de negócio para a view atual (impede ver dados de outros negócios)
-      const negDaView = negocioDaViewSubmenu(state.view);
-      if(negDaView){
-        filtroNegocioTravado = true;
-        cliFiltro.negocio      = negDaView;
-        lancFilter.negocio     = negDaView;
-        cliPlanosFiltro.negocio = negDaView;
+      // Trava o filtro de negócio para a view atual (impede ver dados de outros negócios).
+      // Só aplica se o filtro ainda não estiver travado — quando o usuário navega via
+      // nav-negocio (ex: Porto Odonto > Clientes), filtroNegocioTravado já é true com o
+      // negócio correto; sobrescrever aqui causaria "Provedor" aparecer em vez de Porto Odonto.
+      if(!filtroNegocioTravado){
+        const negDaView = negocioDaViewSubmenu(state.view);
+        if(negDaView){
+          filtroNegocioTravado = true;
+          cliFiltro.negocio      = negDaView;
+          lancFilter.negocio     = negDaView;
+          cliPlanosFiltro.negocio = negDaView;
+        }
       }
     }
   }
