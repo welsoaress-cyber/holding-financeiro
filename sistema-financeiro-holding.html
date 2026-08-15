@@ -900,7 +900,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.5.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5231,39 +5231,43 @@ function modalPerfil(existing){
         <div class="field">
           <label>Acesso por módulo (menu)</label>
           <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead style="background:var(--surface-2)">
-                <tr>
-                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Módulo</th>
-                  <th style="${thStyle}">Ver</th>
-                  <th style="${thStyle}">Criar</th>
-                  <th style="${thStyle}">Editar</th>
-                  <th style="${thStyle}">Excluir</th>
-                </tr>
-              </thead>
-              <tbody>${linhasModulo}</tbody>
-            </table>
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+              <table style="width:100%;min-width:480px;border-collapse:collapse;font-size:13px;">
+                <thead style="background:var(--surface-2)">
+                  <tr>
+                    <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Módulo</th>
+                    <th style="${thStyle}">Ver</th>
+                    <th style="${thStyle}">Criar</th>
+                    <th style="${thStyle}">Editar</th>
+                    <th style="${thStyle}">Excluir</th>
+                  </tr>
+                </thead>
+                <tbody>${linhasModulo}</tbody>
+              </table>
+            </div>
           </div>
-          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão.</div>
+          <div class="field-help">Sem "Ver", o módulo inteiro some do menu pra esse usuário. RH começa fechado por padrão. Arraste a tabela pros lados pra ver todas as colunas.</div>
         </div>
 
         <!-- NEGÓCIOS -->
         <div class="field">
           <label>Acesso por negócio (Financeiro)</label>
           <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead style="background:var(--surface-2)">
-                <tr>
-                  <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Negócio</th>
-                  <th style="${thStyle}">Ver</th>
-                  <th style="${thStyle}">Editar</th>
-                  <th style="${thStyle}">Excluir</th>
-                </tr>
-              </thead>
-              <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</td></tr>`}</tbody>
-            </table>
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+              <table style="width:100%;min-width:420px;border-collapse:collapse;font-size:13px;">
+                <thead style="background:var(--surface-2)">
+                  <tr>
+                    <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">Negócio</th>
+                    <th style="${thStyle}">Ver</th>
+                    <th style="${thStyle}">Editar</th>
+                    <th style="${thStyle}">Excluir</th>
+                  </tr>
+                </thead>
+                <tbody>${linhasNegocio || `<tr><td colspan="4" style="text-align:center;color:var(--ink-4);padding:14px;">Nenhum negócio cadastrado ainda.</td></tr>`}</tbody>
+              </table>
+            </div>
           </div>
-          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível.</div>
+          <div class="field-help">Define quais negócios ela enxerga nos lançamentos financeiros. Sem "Ver", o negócio fica invisível. Arraste a tabela pros lados pra ver todas as colunas.</div>
         </div>
 
       </div>
