@@ -868,15 +868,27 @@ function renderHistoricoFidelidade(fatContrato){
     </tr>`;
   }).join('');
 
-  const temAtraso = lista.some(f=>{
+  // Aviso de atraso. Um atraso antigo NÃO zera os selos atuais — ele apenas
+  // interrompe a contagem naquele ponto, e os selos válidos são os posteriores.
+  // Dizer "zerou o contador" para quem já reconquistou 8 selos é mentira.
+  const atrasos = lista.filter(f=>{
     const st=(f.status||'').toLowerCase();
     return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
   });
+  const ultimoAtraso = atrasos[atrasos.length-1];       // lista está em ordem cronológica
+  const contandoDeNovo = streakSet.size > 0;
+  let avisoAtraso = '';
+  if(ultimoAtraso){
+    const mes = fmtMesRef(ultimoAtraso.mes_referencia) || fmtDate(ultimoAtraso.vencimento);
+    avisoAtraso = contandoDeNovo
+      ? `O atraso em <strong>${esc(mes)}</strong> interrompeu a contagem. Seus selos atuais são os pagamentos em dia <strong>depois</strong> dessa data — siga em dia que o prêmio vem.`
+      : `O atraso em <strong>${esc(mes)}</strong> zerou o contador. Pague em dia a partir da próxima fatura para começar a acumular selos de novo.`;
+  }
 
   return `<div class="fh-wrap">
     <div class="fh-title">Histórico de Pagamentos</div>
-    ${temAtraso?`<p style="font-size:0.78rem;color:#FCD34D;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:0.5rem 0.8rem;margin-bottom:0.75rem">
-      ⚠ Pagamentos em atraso zeraram o contador de fidelidade. Pague em dia para reconquistar os selos!</p>`:''}
+    ${avisoAtraso?`<p style="font-size:0.78rem;color:#FCD34D;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:0.5rem 0.8rem;margin-bottom:0.75rem">
+      ⚠ ${avisoAtraso}</p>`:''}
     <div style="overflow-x:auto">
       <table class="fh-table">
         <thead>
@@ -936,14 +948,18 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
     <span class="fcs-n">13ª\nGRÁTIS</span>
   </div>`);
 
-  // Progresso e próximo prêmio
-  let pct, faltam, proximoPremio;
+  // Progresso e próximo prêmio.
+  // A barra mede o cartão inteiro (0→12), não a fase atual: medindo por fase
+  // ela zerava ao bater 6 selos e o cliente via o progresso sumir justo na
+  // hora em que ganhou o primeiro prêmio.
+  let faltam, proximoPremio;
+  const pct = (streak / 12) * 100;
   if(streak >= 12){
-    pct = 100; faltam = 0; proximoPremio = '13ª fatura 100% grátis 🎉';
+    faltam = 0;            proximoPremio = '13ª fatura 100% grátis 🎉';
   } else if(streak >= 6){
-    pct = ((streak-6)/6)*100; faltam = 12-streak; proximoPremio = '13ª fatura 100% grátis';
+    faltam = 12 - streak;  proximoPremio = '13ª fatura 100% grátis';
   } else {
-    pct = (streak/6)*100; faltam = 6-streak; proximoPremio = '50% OFF na 7ª fatura';
+    faltam = 6 - streak;   proximoPremio = '50% OFF na 7ª fatura';
   }
 
   const pctTotal = Math.round((streak/12)*100);
@@ -1001,7 +1017,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
       <div class="fidel-bar-wrap">
         <div class="fidel-bar-labels">
           <span>Progresso total</span>
-          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'mês':'meses'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
+          <span>${faltam>0?`Faltam ${faltam} ${faltam===1?'fatura':'faturas'} para o próximo prêmio`:'🎉 Prêmio disponível!'}</span>
         </div>
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
       </div>
