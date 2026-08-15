@@ -364,20 +364,22 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.6</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v2.7</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
-      <!-- Plano -->
-      <div class="card" id="planCard">
-        <div class="card-lbl">Meu Plano</div>
-        <div id="planContent" class="loading-center"><span class="spin"></span></div>
-      </div>
-
-      <!-- Próxima Fatura -->
-      <div class="card glow" id="invCard">
-        <div class="card-lbl">Próxima Fatura</div>
-        <div id="invContent" class="loading-center"><span class="spin"></span></div>
+      <!-- Planos + Próximas Faturas — um par de cartões por contrato ativo.
+           display:contents deixa os cartões injetados caírem direto na
+           grade de 2 colunas do .cards -->
+      <div id="contratosSlot" style="display:contents">
+        <div class="card">
+          <div class="card-lbl">Meu Plano</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
+        <div class="card glow">
+          <div class="card-lbl">Próxima Fatura</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
       </div>
 
       <!-- Promoções -->
@@ -395,9 +397,10 @@ a{color:inherit;}
               <li><strong>12 meses</strong> em dia → <span class="promo-prize green">13ª fatura 100% grátis</span> 🎉</li>
               <li>Cada mês pago até o vencimento = 1 selo ✅</li>
               <li>Atraso zera o contador — recomece do zero</li>
+              <li><strong>Cada contrato tem seu próprio cartão</strong> e seus próprios prêmios</li>
               <li>Prêmio aplicado automaticamente na fatura seguinte (7ª ou 13ª)</li>
             </ul>
-            <a class="promo-link" href="#fidelCard">Ver meu progresso ↓</a>
+            <a class="promo-link" href="#" onclick="irParaFidelidade(event)">Ver meu progresso ↓</a>
           </div>
 
           <!-- Indique e Ganhe -->
@@ -418,10 +421,12 @@ a{color:inherit;}
         </div>
       </div>
 
-      <!-- Fidelidade -->
-      <div class="card span2" id="fidelCard">
-        <div class="card-lbl">🏆 Fidelidade</div>
-        <div id="fidelContent" class="loading-center"><span class="spin"></span></div>
+      <!-- Fidelidade — um cartão por contrato ativo -->
+      <div id="fidelSlot" style="display:contents">
+        <div class="card span2" id="fidelCard">
+          <div class="card-lbl">🏆 Fidelidade</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
       </div>
 
       <!-- Indique e Ganhe -->
@@ -463,7 +468,24 @@ const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 let session = null;
-let faturasList = []; // compartilhado entre faturamento e fidelidade
+let faturasList = [];        // todas as faturas do cliente, de todos os contratos
+let contratos = [];          // contratos ativos de Provedor
+let faturasPorContrato = {}; // chave do contrato → faturas daquele contrato
+
+// chave estável para montar ids de DOM por contrato
+function ctKey(ct, i){
+  const raw = ct && ct.contrato_id ? String(ct.contrato_id) : `idx${i}`;
+  return raw.replace(/[^A-Za-z0-9_-]/g,'');
+}
+function esc(s){
+  return String(s??'').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+// nome curto do contrato, para rotular cartões quando há mais de um
+function ctNome(ct, i){
+  return (ct && ct.plano && ct.plano.nome) ? ct.plano.nome : `Contrato ${i+1}`;
+}
 
 // CPF mask
 document.getElementById('cpf').addEventListener('input', e => {
@@ -486,11 +508,19 @@ document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
 });
 
-async function solicitarUpgrade(tipo){
+async function solicitarUpgrade(tipo, key){
   if(!session) return;
-  const btn = document.getElementById('upgradeBtn');
-  const msg = document.getElementById('upgradeMsg');
+  const btn = document.getElementById(key?`upgradeBtn-${key}`:'upgradeBtn');
+  const msg = document.getElementById(key?`upgradeMsg-${key}`:'upgradeMsg');
   if(!btn || !msg) return;
+
+  // com mais de um contrato, o chamado precisa dizer de qual deles se trata
+  const i  = contratos.findIndex((ct,n)=>ctKey(ct,n)===key);
+  const ct = i>=0 ? contratos[i] : null;
+  const descricao = (ct && contratos.length>1)
+    ? `Contrato: ${ctNome(ct,i)}${ct.diaVencimento?` (vencimento dia ${ct.diaVencimento})`:''}`
+    : '';
+
   btn.disabled = true;
   btn.textContent = '⏳ Enviando...';
   msg.style.display = 'none';
@@ -499,7 +529,7 @@ async function solicitarUpgrade(tipo){
       p_cliente_id: session.cliente_id,
       p_master_id:  session.master_id,
       p_tipo:       tipo,
-      p_descricao:  ''
+      p_descricao:  descricao
     });
     if(error) throw error;
     if(!res?.ok) throw new Error(res?.msg||'Erro ao enviar.');
@@ -562,9 +592,22 @@ async function enterDash(data){
   const first=nome.split(' ')[0];
   document.getElementById('dashNome').textContent=first;
   document.getElementById('dashTitle').textContent=`Olá, ${first}! 👋`;
-  renderPlano(data);
+
+  // A RPC nova devolve `contratos`. Se vier de uma versão antiga do banco,
+  // cai no formato legado de contrato único.
+  contratos = (Array.isArray(data.contratos) && data.contratos.length)
+    ? data.contratos
+    : [{
+        contrato_id:   null,
+        plano:         data.plano,
+        diaVencimento: data.diaVencimento,
+        dataContrato:  data.data_adesao,
+        status:        data.status
+      }];
+
+  renderContratos();
   await loadFaturas(data);
-  loadFidelidade(data);
+  loadFidelidades();
   loadIndicacoes(data);
 }
 
@@ -581,6 +624,16 @@ function fmtVal(v){
   return 'R$ '+Number(v||0).toFixed(2).replace('.',',');
 }
 
+const MESES_ABREV=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+// "2026-08" → "Ago/2026"
+function fmtMesRef(m){
+  if(!m) return null;
+  const [y,mm]=String(m).split('-');
+  const nome=MESES_ABREV[Number(mm)-1];
+  if(!nome||!y) return m;
+  return nome.charAt(0).toUpperCase()+nome.slice(1)+'/'+y;
+}
+
 function fmtDateBR(iso){
   if(!iso) return null;
   // aceita YYYY-MM-DD ou DD/MM/YYYY
@@ -592,92 +645,179 @@ function fmtDateBR(iso){
   return `${d}/${m}/${y}`;
 }
 
-function renderPlano(data){
-  const p=data.plano;
-  const st=data.status||'Ativo';
-  const dv=data.diaVencimento;
-  const adesao=data.data_adesao ? fmtDateBR(data.data_adesao) : null;
-  let html='';
+// Monta o miolo do cartão de plano de UM contrato
+function planoHTML(ct, i){
+  const key=ctKey(ct,i);
+  const p=ct.plano;
+  const st=ct.status||'Ativo';
+  const dv=ct.diaVencimento;
+  const adesao=ct.dataContrato ? fmtDateBR(ct.dataContrato) : null;
   if(p){
     const vel=p.velocidade||p.nome||'';
     const spd=vel.match(/\d+/)?.[0]||'';
     const unit=vel.toLowerCase().includes('gbps')?'Gbps':'Mbps';
-    html=`
-      <div class="plan-speed">${spd}<span> ${unit}</span></div>
-      <div class="plan-name">${p.nome||'Fibra Óptica'}</div>
-      <div class="plan-detail">📡 ${p.tecnologia||'Fibra Óptica'}</div>
-      ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${dv}</div>`:''}
+    return `
+      <div class="plan-speed">${esc(spd)}<span> ${unit}</span></div>
+      <div class="plan-name">${esc(p.nome||'Fibra Óptica')}</div>
+      <div class="plan-detail">📡 ${esc(p.tecnologia||'Fibra Óptica')}</div>
+      ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${esc(dv)}</div>`:''}
       ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
-      <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${st}</span></div>
+      <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${esc(st)}</span></div>
       ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}
-      <button class="upgrade-btn" id="upgradeBtn" onclick="solicitarUpgrade('upgrade')">⚡ Solicitar Upgrade de Plano</button>
-      <div id="upgradeMsg" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
-  }else{
-    html=`
-      <span class="badge ${badgeClass(st)}">${st}</span>
-      ${dv?`<div class="plan-detail" style="margin-top:0.5rem">📅 Vencimento todo dia ${dv}</div>`:''}
-      ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
-      <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>
-      <button class="upgrade-btn" id="upgradeBtn" onclick="solicitarUpgrade('suporte')" style="background:rgba(0,196,216,0.15);color:var(--pool);">💬 Falar com Suporte</button>
-      <div id="upgradeMsg" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
+      <button class="upgrade-btn" id="upgradeBtn-${key}" onclick="solicitarUpgrade('upgrade','${key}')">⚡ Solicitar Upgrade de Plano</button>
+      <div id="upgradeMsg-${key}" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
   }
-  document.getElementById('planContent').innerHTML=html;
+  return `
+    <span class="badge ${badgeClass(st)}">${esc(st)}</span>
+    ${dv?`<div class="plan-detail" style="margin-top:0.5rem">📅 Vencimento todo dia ${esc(dv)}</div>`:''}
+    ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
+    <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>
+    <button class="upgrade-btn" id="upgradeBtn-${key}" onclick="solicitarUpgrade('suporte','${key}')" style="background:rgba(0,196,216,0.15);color:var(--pool);">💬 Falar com Suporte</button>
+    <div id="upgradeMsg-${key}" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
+}
+
+// Um par de cartões (plano + próxima fatura) para cada contrato ativo
+function renderContratos(){
+  const multi = contratos.length > 1;
+  document.getElementById('contratosSlot').innerHTML = contratos.map((ct,i)=>{
+    const key=ctKey(ct,i);
+    const sufixo = multi ? ` — ${esc(ctNome(ct,i))}` : '';
+    return `
+      <div class="card">
+        <div class="card-lbl">Meu Plano${sufixo}</div>
+        <div id="plan-${key}">${planoHTML(ct,i)}</div>
+      </div>
+      <div class="card glow">
+        <div class="card-lbl">Próxima Fatura${sufixo}</div>
+        <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
+      </div>`;
+  }).join('');
 }
 
 async function loadFaturas(data){
   try{
     const {data:res,error}=await sb.rpc('portal_servnet_faturas',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
     if(error) throw error;
-    const fat=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
-    faturasList = fat; // disponibiliza para renderFidelidade (que roda depois, em loadFidelidade)
-    renderNextFatura(fat);
+    faturasList=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
+    agruparFaturas();
+    contratos.forEach((ct,i)=>renderNextFatura(ctKey(ct,i), faturasPorContrato[ctKey(ct,i)]||[]));
   }catch(e){
-    document.getElementById('invContent').innerHTML=`<div class="muted">Erro ao carregar fatura. Fale com o suporte.</div>`;
+    faturasList=[]; agruparFaturas();
+    contratos.forEach((ct,i)=>{
+      const el=document.getElementById('inv-'+ctKey(ct,i));
+      if(el) el.innerHTML=`<div class="muted">Erro ao carregar fatura. Fale com o suporte.</div>`;
+    });
     console.error(e);
   }
 }
 
-function renderNextFatura(fat){
-  const pending=fat.filter(f=>(f.status||'').toLowerCase()!=='pago');
-  const f=pending[0]||fat[0];
+// Distribui as faturas entre os contratos. Com um contrato só (ou quando o
+// lançamento não traz contratoId), tudo cai no primeiro.
+function agruparFaturas(){
+  faturasPorContrato={};
+  contratos.forEach((ct,i)=>{ faturasPorContrato[ctKey(ct,i)]=[]; });
+  const soUm = contratos.length===1;
+  const primeira = contratos.length ? ctKey(contratos[0],0) : null;
+  for(const f of faturasList){
+    let key=null;
+    if(!soUm && f.contrato_id){
+      const i=contratos.findIndex(ct=>String(ct.contrato_id)===String(f.contrato_id));
+      if(i>=0) key=ctKey(contratos[i],i);
+    }else{
+      key=primeira;
+    }
+    if(key && faturasPorContrato[key]) faturasPorContrato[key].push(f);
+  }
+}
+
+function renderNextFatura(key, fat){
+  const el=document.getElementById('inv-'+key);
+  if(!el) return;
+  el.classList.remove('loading-center');
+  // A cobrança automática provisiona 5 anos de mensalidades, então "próxima
+  // fatura" é a primeira em aberto a vencer de hoje em diante. Se todas as
+  // pendentes já venceram, mostra a mais antiga em atraso.
+  const hoje=new Date().toISOString().slice(0,10);
+  const abertas=fat.filter(f=>(f.status||'').toLowerCase()!=='pago')
+                   .sort((a,b)=>a.vencimento<b.vencimento?-1:1);
+  const f=abertas.find(x=>x.vencimento>=hoje)||abertas[0]||fat[0];
   if(!f){
-    document.getElementById('invContent').innerHTML=`<div class="muted">Nenhuma cobrança registrada ainda.<br>Seu primeiro boleto chegará em breve.</div>`;
+    el.innerHTML=`<div class="muted">Nenhuma cobrança registrada ainda.<br>Seu primeiro boleto chegará em breve.</div>`;
     return;
   }
   const st=f.status||'Pendente';
-  document.getElementById('invContent').innerHTML=`
-    <div class="inv-month">${f.mes_referencia||'Fatura atual'}</div>
+  el.innerHTML=`
+    <div class="inv-month">${esc(fmtMesRef(f.mes_referencia)||'Fatura atual')}</div>
     <div class="inv-due">Vencimento: ${fmtDate(f.vencimento)}</div>
     <div class="inv-val">${fmtVal(f.valor)}</div>
-    <span class="badge ${badgeClass(st)}">${st}</span>
-    ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${f.link_boleto}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
+    <span class="badge ${badgeClass(st)}">${esc(st)}</span>
+    ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
   `;
 }
 
 // ===== FIDELIDADE =====
-async function loadFidelidade(data){
-  try{
-    const {data:res,error}=await sb.rpc('portal_servnet_fidelidade',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
-    if(error) throw error;
-    renderFidelidade(res?.streak||0, data?.nome);
-  }catch(e){
-    // Mesmo com erro no RPC, exibe o cartão com streak 0
-    renderFidelidade(0, data?.nome);
+// Um cartão por contrato: cada contrato tem a sua própria série de faturas,
+// logo o seu próprio streak e os seus próprios prêmios (7ª e 13ª).
+
+// Conta faturas consecutivas pagas em dia, do vencimento mais recente para trás.
+function calcStreak(fat){
+  const hoje=new Date().toISOString().slice(0,10);
+  const desc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?1:-1);
+  let streak=0;
+  for(const f of desc){
+    const st=(f.status||'').toLowerCase();
+    // ainda no prazo: não vale selo, mas também não quebra a sequência
+    if(st!=='pago' && f.vencimento>=hoje) continue;
+    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento) streak++;
+    else break;  // atraso ou vencida: zera
   }
+  return streak;
 }
 
-function renderHistoricoFidelidade(){
-  const today = new Date().toISOString().slice(0,10);
+// O cartão de fidelidade agora é um por contrato, então o link da promoção
+// rola até o primeiro deles em vez de apontar para um id fixo.
+function irParaFidelidade(ev){
+  if(ev) ev.preventDefault();
+  const alvo=document.querySelector('[id^="fidelCard-"]');
+  if(alvo) alvo.scrollIntoView({behavior:'smooth',block:'start'});
+}
 
-  if(!faturasList.length){
+function loadFidelidades(){
+  const multi=contratos.length>1;
+  document.getElementById('fidelSlot').innerHTML=contratos.map((ct,i)=>{
+    const key=ctKey(ct,i);
+    const sufixo=multi?` — ${esc(ctNome(ct,i))}`:'';
+    return `<div class="card span2" id="fidelCard-${key}">
+      <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
+      <div id="fidel-${key}"></div>
+    </div>`;
+  }).join('');
+  contratos.forEach((ct,i)=>{
+    const key=ctKey(ct,i);
+    const fat=faturasPorContrato[key]||[];
+    renderFidelidade(calcStreak(fat), session?.nome, ct, i, fat);
+  });
+}
+
+function renderHistoricoFidelidade(fatContrato){
+  const today = new Date().toISOString().slice(0,10);
+  const fonte = fatContrato || faturasList;
+
+  // A cobrança automática provisiona anos de mensalidades à frente; o
+  // histórico só olha o que já venceu (ou já foi pago).
+  const passadas = fonte.filter(f =>
+    f.vencimento <= today || (f.status||'').toLowerCase()==='pago'
+  );
+
+  if(!passadas.length){
     return `<div class="fh-wrap">
       <div class="fh-title">Histórico de Pagamentos</div>
-      <div class="fh-empty">Nenhuma fatura registrada ainda.<br>Seu histórico aparecerá aqui após o primeiro vencimento.</div>
+      <div class="fh-empty">Nenhuma fatura vencida ainda.<br>Seu histórico aparecerá aqui após o primeiro vencimento.</div>
     </div>`;
   }
 
   // Ordena do mais recente pro mais antigo, limita a 12 meses
-  const lista = [...faturasList]
+  const lista = [...passadas]
     .sort((a,b)=> b.vencimento > a.vencimento ? 1 : -1)
     .slice(0,12)
     .reverse(); // volta a ordem cronológica para a tabela
@@ -721,7 +861,7 @@ function renderHistoricoFidelidade(){
     }
 
     return `<tr class="${rowClass}">
-      <td class="fh-mes">${f.mes_referencia||'—'}</td>
+      <td class="fh-mes">${esc(fmtMesRef(f.mes_referencia)||'—')}</td>
       <td class="fh-data">${fmtDate(f.vencimento)}</td>
       <td class="fh-data">${f.data_pagamento ? fmtDate(f.data_pagamento) : '—'}</td>
       <td class="fh-status">${pill}</td>
@@ -753,7 +893,16 @@ function renderHistoricoFidelidade(){
   </div>`;
 }
 
-function renderFidelidade(streak, nomeCliente){
+function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
+  const key = ctKey(ct||{}, idx||0);
+  const alvo = document.getElementById('fidel-'+key) || document.getElementById('fidelContent');
+  if(!alvo) return;
+
+  // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
+  // dia) fica com o cartão cheio — o streak real segue guardado para a
+  // regra do prêmio, mas a tela não mostra "17/12".
+  const streak = Math.min(streakReal, 12);
+
   // Grade de 14 slots = 12 faturas pagas + 2 slots de prêmio.
   // Os prêmios NÃO consomem selo: são as faturas 7ª e 13ª.
   //   meses 1..6 em dia  → 7ª fatura com 50% OFF
@@ -800,7 +949,7 @@ function renderFidelidade(streak, nomeCliente){
   const pctTotal = Math.round((streak/12)*100);
   const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
 
-  document.getElementById('fidelContent').innerHTML=`
+  alvo.innerHTML=`
     <div class="fc-wrap">
 
       <!-- Cartão físico -->
@@ -809,7 +958,7 @@ function renderFidelidade(streak, nomeCliente){
           <div class="fc-brand">SERV<span>NET</span></div>
           <div class="fc-title-col">
             <div class="fc-title">Programa</div>
-            <div class="fc-subtitle">Cartão Fidelidade</div>
+            <div class="fc-subtitle">${contratos.length>1 ? esc(ctNome(ct||{}, idx||0)) : 'Cartão Fidelidade'}</div>
           </div>
         </div>
 
@@ -873,18 +1022,19 @@ function renderFidelidade(streak, nomeCliente){
 
     </div>
 
-    ${renderHistoricoFidelidade()}
+    ${renderHistoricoFidelidade(fatContrato)}
 
-    <button class="rules-toggle" onclick="toggleRules('fidelRules',this)" style="margin-top:1rem">
+    <button class="rules-toggle" onclick="toggleRules('fidelRules-${key}',this)" style="margin-top:1rem">
       <em class="arrow">▶</em> Ver regras do programa
     </button>
-    <div class="rules-box" id="fidelRules">
+    <div class="rules-box" id="fidelRules-${key}">
       <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
       <ol>
         <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 selo ✅.</li>
         <li>Pagou as <strong>6 primeiras faturas em dia</strong>? A <strong>7ª fatura sai com 50% de desconto</strong>.</li>
         <li>Seguiu em dia até a <strong>12ª fatura</strong>? A <strong>13ª fatura é 100% grátis</strong>.</li>
         <li>Os prêmios <strong>não consomem selo</strong>: os meses 7 e 13 continuam contando normalmente no cartão.</li>
+        <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
         <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
         <li>Os prêmios são aplicados <strong>automaticamente</strong> na fatura correspondente (7ª ou 13ª).</li>
