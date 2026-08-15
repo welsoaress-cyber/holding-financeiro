@@ -982,15 +982,15 @@ const RH_STATUS_FERIAS = ["Programada","Em andamento","Concluída","Cancelada"];
 const RH_TIPOS_DESLIGAMENTO = ["Pedido de demissão","Demissão sem justa causa","Demissão com justa causa","Término de contrato","Acordo (distrato)"];
 
 const MODULOS_CATALOGO = [
-  { id:"visaogeral", ico:"🧭", nome:"Visão Geral", desc:"Painel executivo consolidado da holding", ativo:true },
-  { id:"cadastro",  ico:"🗂️", nome:"Cadastro",   desc:"Central de cadastros do projeto", ativo:true },
-  { id:"financeiro", ico:"💰", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
-  { id:"estoque",    ico:"📦", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
-  { id:"clientes",  ico:"👥", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
-  { id:"rh",        ico:"🏢", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
-  { id:"comprasvendas", ico:"🔄", nome:"Compra e Venda", desc:"Itens comprados e revendidos (OLX etc.)", ativo:true },
-  { id:"projetos",  ico:"📋", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
-  { id:"bi",        ico:"📊", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
+  { id:"visaogeral", ico:"", nome:"Visão Geral", desc:"Painel executivo consolidado da holding", ativo:true },
+  { id:"cadastro",  ico:"", nome:"Cadastro",   desc:"Central de cadastros do projeto", ativo:true },
+  { id:"financeiro", ico:"", nome:"Financeiro", desc:"Contas, lançamentos, cartões", ativo:true },
+  { id:"estoque",    ico:"", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
+  { id:"clientes",  ico:"", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
+  { id:"rh",        ico:"", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
+  { id:"comprasvendas", ico:"", nome:"Compra e Venda", desc:"Itens comprados e revendidos (OLX etc.)", ativo:true },
+  { id:"projetos",  ico:"", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
+  { id:"bi",        ico:"", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
 ];
 
 // ---- Central de Cadastros — atalhos pra criar qualquer tipo de registro do projeto,
@@ -1001,26 +1001,26 @@ const MODULOS_CATALOGO = [
 // (Estoque/Clientes/RH), configurado na tela de usuário.
 const CADASTRO_TIPOS = [
   { grupo: "Financeiro", itens: [
-    { id:"negocio",    ico:"🏢", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true, destino:{modulo:"financeiro", view:"negocios"} },
+    { id:"negocio",    ico:"", nome:"Negócio",         desc:"Uma empresa/marca da holding", soMaster:true, destino:{modulo:"financeiro", view:"negocios"} },
     { id:"conta",      ico:"▢",  nome:"Conta Bancária",  desc:"Conta corrente, pagamento ou poupança", soMaster:true, destino:{modulo:"financeiro", view:"contas"} },
-    { id:"cartao",     ico:"💳", nome:"Cartão de Crédito", desc:"Vinculado a uma conta de pagamento", soMaster:true, destino:{modulo:"financeiro", view:"cartoes"} },
-    { id:"categoria",  ico:"🏷️", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true, destino:{modulo:"financeiro", view:"categorias"} },
-    { id:"conta_receber", ico:"📥", nome:"Conta a Receber", desc:"Uma receita a entrar na conta", soMaster:false, destino:{modulo:"financeiro", view:"receitas"} },
-    { id:"conta_pagar",   ico:"📤", nome:"Conta a Pagar",   desc:"Uma despesa avulsa (fora do cartão)", soMaster:false, destino:{modulo:"financeiro", view:"despesas"} },
+    { id:"cartao",     ico:"CC", nome:"Cartão de Crédito", desc:"Vinculado a uma conta de pagamento", soMaster:true, destino:{modulo:"financeiro", view:"cartoes"} },
+    { id:"categoria",  ico:"", nome:"Categoria",       desc:"Categoria de receita/despesa", soMaster:true, destino:{modulo:"financeiro", view:"categorias"} },
+    { id:"conta_receber", ico:"", nome:"Conta a Receber", desc:"Uma receita a entrar na conta", soMaster:false, destino:{modulo:"financeiro", view:"receitas"} },
+    { id:"conta_pagar",   ico:"", nome:"Conta a Pagar",   desc:"Uma despesa avulsa (fora do cartão)", soMaster:false, destino:{modulo:"financeiro", view:"despesas"} },
     { id:"transferencia", ico:"⇄",  nome:"Transferência",  desc:"Transferência entre contas", soMaster:false, destino:{modulo:"financeiro", view:"transferencias"} },
   ]},
   { grupo: "Estoque", itens: [
-    { id:"produto",     ico:"📦", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_produtos"} },
-    { id:"fornecedor",  ico:"🏭", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_fornecedores"} },
+    { id:"produto",     ico:"", nome:"Produto",     desc:"Equipamento, ONU, cabo, insumo...", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_produtos"} },
+    { id:"fornecedor",  ico:"", nome:"Fornecedor",  desc:"Fornecedor de equipamentos/insumos", soMaster:false, requerModulo:"estoque", destino:{modulo:"estoque", view:"est_fornecedores"} },
   ]},
   { grupo: "Clientes", itens: [
-    { id:"cliente",  ico:"👥", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_lista"} },
-    { id:"plano",    ico:"📋", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_planos"} },
-    { id:"tecnico",  ico:"🧰", nome:"Técnico", desc:"Quem atende os chamados em campo", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_tecnicos"} },
+    { id:"cliente",  ico:"", nome:"Cliente", desc:"Pessoa física ou jurídica, com contrato por negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_lista"} },
+    { id:"plano",    ico:"", nome:"Plano",   desc:"Plano de serviço vinculado a um negócio", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_planos"} },
+    { id:"tecnico",  ico:"", nome:"Técnico", desc:"Quem atende os chamados em campo", soMaster:false, requerModulo:"clientes", destino:{modulo:"clientes", view:"cli_tecnicos"} },
   ]},
   { grupo: "RH", itens: [
-    { id:"funcionario", ico:"🧑‍💼", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_funcionarios"} },
-    { id:"cargo",       ico:"🏷️", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_cargos"} },
+    { id:"funcionario", ico:"‍", nome:"Funcionário", desc:"Vinculado a um negócio e um cargo", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_funcionarios"} },
+    { id:"cargo",       ico:"", nome:"Cargo",        desc:"Cargo e faixa salarial por negócio", soMaster:false, requerModulo:"rh", destino:{modulo:"rh", view:"rh_cargos"} },
   ]},
 ];
 
@@ -1126,8 +1126,8 @@ function bulkBarraAcoesHTML(contexto){
   const sel = bulkSet(contexto);
   const total = state[cfg.arr].length;
   return `<div style="display:flex; gap:8px;">
-    ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">🗑 Excluir selecionados (${sel.size})</button>` : ""}
-    ${total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora">🧹 Limpar tudo (${total})</button>` : ""}
+    ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">× Excluir selecionados (${sel.size})</button>` : ""}
+    ${total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora"> Limpar tudo (${total})</button>` : ""}
   </div>`;
 }
 async function bulkExecutarExclusao(contexto, ids){
@@ -1361,7 +1361,7 @@ function faturasAgrupadas(cartaoId){
 }
 function autoBaixarAgendados(){
   // "Agendado" = debito/credito automatico agendado no banco: quando a data chega, vira "Pago" sozinho.
-  // "Provisionado" fica parado ate baixa manual (botao 💲). Inativados sao ignorados.
+  // "Provisionado" fica parado ate baixa manual (botao ). Inativados sao ignorados.
   const hojeISO = todayISO();
   let alterou = [];
   for(const l of state.lancamentos){
@@ -1392,7 +1392,7 @@ function attachCalculadora(inputId){
   const btn = document.createElement("button");
   btn.type = "button";
   btn.title = "Calculadora";
-  btn.textContent = "🧮";
+  btn.textContent = "";
   btn.style.cssText = "position:absolute; right:2px; top:50%; transform:translateY(-50%); border:none; background:transparent; cursor:pointer; font-size:15px; padding:6px 8px; border-radius:var(--r-sm);";
   wrap.appendChild(btn);
   const pop = document.createElement("div");
@@ -1934,7 +1934,7 @@ function seedNegocios(){
 // ============================================================
 // AUTENTICAÇÃO
 // ============================================================
-// Se a pessoa abriu um link de convite (gerado pelo 🔗 em Usuários ou em
+// Se a pessoa abriu um link de convite (gerado pelo em Usuários ou em
 // Técnicos, com os códigos já embutidos na URL), pula direto pra tela de
 // login certa — sem precisar clicar em "É da equipe?"/"É técnico?" e sem
 // precisar digitar/colar nenhum código.
@@ -2248,7 +2248,7 @@ function campoValorProtegido(label, name, valor, unlocked, opts){
   return `<div class="field"><label>${label}</label>
     <input type="text" value="R$ ••••••" disabled style="background:var(--surface-2); color:var(--ink-4); cursor:not-allowed;">
     <input type="hidden" name="${name}" value="${valor}">
-    <div class="field-help">🔒 Desbloqueie para ver ou alterar este valor.</div>
+    <div class="field-help">Desbloqueie para ver ou alterar este valor.</div>
   </div>`;
 }
 function emptyState(msg){ return `<div class="empty-state">${esc(msg)}</div>`; }
@@ -2319,10 +2319,10 @@ function renderApp(){
       ${sidebarConteudo()}
 
       <div class="sidebar-footer">
-        <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair">🚪<span class="label"> Sair</span></button>
+        <button class="sidebar-lock-btn btn-logout" data-action="logout" style="margin-top:4px;" title="Sair"><span class="label">Sair</span></button>
         <div class="footer-detail" style="margin-top:8px; word-break:break-all;">
           ${esc(state.user.email)}<br>
-          ${state.storageOK ? (horaSalvo ? `Último salvamento: ${horaSalvo}` : "Dados salvos automaticamente") : "⚠ falha ao salvar"}
+          ${state.storageOK ? (horaSalvo ? `Último salvamento: ${horaSalvo}` : "Dados salvos automaticamente") : "falha ao salvar"}
         </div>
       </div>
     </aside>
@@ -2332,19 +2332,19 @@ function renderApp(){
   <nav class="mob-bottom-nav">
     <div class="mob-bottom-nav-inner">
       <button class="mob-nav-btn ${state.view==='dashboard'||state.view==='lancamentos'||state.view==='receitas'||state.view==='despesas'?'active':''}" data-action="nav" data-view="dashboard">
-        <span class="ico">💰</span><span class="lbl">Financeiro</span>
+        <span class="ico"></span><span class="lbl">Financeiro</span>
       </button>
       ${podeVerModulo("estoque") ? `<button class="mob-nav-btn ${state.view.startsWith('est_')?'active':''}" data-action="abrir-modulo" data-id="estoque">
-        <span class="ico">📦</span><span class="lbl">Estoque</span>
+        <span class="ico"></span><span class="lbl">Estoque</span>
       </button>` : ""}
       ${podeVerModulo("clientes") ? `<button class="mob-nav-btn ${state.view.startsWith('cli_')?'active':''}" data-action="abrir-modulo" data-id="clientes">
-        <span class="ico">👥</span><span class="lbl">Clientes</span>
+        <span class="ico"></span><span class="lbl">Clientes</span>
       </button>` : ""}
       ${podeVerModulo("rh") ? `<button class="mob-nav-btn ${state.view.startsWith('rh_')?'active':''}" data-action="abrir-modulo" data-id="rh">
-        <span class="ico">🏢</span><span class="lbl">RH</span>
+        <span class="ico"></span><span class="lbl">RH</span>
       </button>` : ""}
       <button class="mob-nav-btn" id="mobMenuBtn2">
-        <span class="ico">☰</span><span class="lbl">Menu</span>
+        <span class="ico">&#9776;</span><span class="lbl">Menu</span>
       </button>
     </div>
   </nav>
@@ -2352,7 +2352,7 @@ function renderApp(){
   <div class="fab-wrap" id="fabWrap">
     <div class="fab-menu" id="fabMenu">
       <div class="fab-menu-item" data-action="fab-nova" data-tipo="Transferência"><span class="ico" style="background:var(--ink-4);">↕</span>Transferência</div>
-      <div class="fab-menu-item" data-action="fab-nova-cartao"><span class="ico" style="background:#6366F1;">💳</span>Despesa no cartão</div>
+      <div class="fab-menu-item" data-action="fab-nova-cartao"><span class="ico" style="background:#6366F1;">CC</span>Despesa no cartão</div>
       <div class="fab-menu-item" data-action="fab-nova" data-tipo="Despesa"><span class="ico" style="background:var(--neg);">−</span>Despesa</div>
       <div class="fab-menu-item" data-action="fab-nova" data-tipo="Receita"><span class="ico" style="background:var(--pos);">+</span>Receita</div>
     </div>
@@ -2531,7 +2531,7 @@ function sidebarConteudo(){
   // pra liberar só esse grupo — que já entra com o filtro travado nesse
   // negócio. Piloto: só "Provedor" (ServNet) por enquanto.
   if(master || podeVerNegocio("Provedor")){
-    grupos.push(navGrupo("neg_provedor", "🌐", "Provedor", ["cli_lista","lancamentos","receitas","despesas","transferencias","cli_chamados","cli_planos","cli_tecnicos"], [
+    grupos.push(navGrupo("neg_provedor", "", "Provedor", ["cli_lista","lancamentos","receitas","despesas","transferencias","cli_chamados","cli_planos","cli_tecnicos"], [
       navItemNegocio("cli_lista",ic("clientes"),"Clientes","Provedor"),
       navItemNegocio("lancamentos",ic("lancamentos"),"Lançamentos","Provedor"),
       navItemNegocio("receitas",ic("receber"),"Contas a Receber","Provedor"),
@@ -2609,8 +2609,8 @@ function sidebarConteudo(){
   }
   if(podeVerModulo("cadastro")){
     grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
-      navItem("cadastro_hub","🗂️","Central de Cadastros"),
-      master ? navItem("usuarios","👤","Usuários") : "",
+      navItem("cadastro_hub","","Central de Cadastros"),
+      master ? navItem("usuarios","","Usuários") : "",
       master ? navItem("logs_auditoria",ic("logs"),"Logs de Auditoria") : "",
     ].join("")));
   }
@@ -2627,12 +2627,12 @@ function navSubmenuAjustes(){
   const cabecalhoAtivo = dentroDoSubmenu && !aberto;
   const subItens = [
     navItem("ajustes","∿","Ajustes de Saldo"),
-    navItem("categorias","🏷️","Categorias"),
-    navItem("negocios","🏢","Negócios"),
+    navItem("categorias","","Categorias"),
+    navItem("negocios","","Negócios"),
   ].join("");
   return `
     <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-ajustes-menu" data-aberto="${aberto}" style="cursor:pointer;">
-      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">⚙️</span><span class="label">Ajustes</span></span>
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico"></span><span class="label">Ajustes</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
@@ -2645,12 +2645,12 @@ function navSubmenuCadastros(){
   const aberto = state.cadastrosMenuFechado ? false : (state.cadastrosMenuAberto || dentroDoSubmenu);
   const cabecalhoAtivo = dentroDoSubmenu && !aberto;
   const subItens = [
-    navItem("cadastro_hub","🗂️","Central de Cadastros"),
-    master ? navItem("usuarios","👤","Usuários") : "",
+    navItem("cadastro_hub","","Central de Cadastros"),
+    master ? navItem("usuarios","","Usuários") : "",
   ].join("");
   return `
     <div class="nav-item ${cabecalhoAtivo ? 'active' : ''}" data-action="toggle-cadastros-menu" data-aberto="${aberto}" style="cursor:pointer;">
-      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">🗂️</span><span class="label">Cadastros</span></span>
+      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico"></span><span class="label">Cadastros</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${subItens}</div>` : ""}
@@ -2752,7 +2752,7 @@ function renderLogin(){
   `, "Painel de Gestão", "Gestão financeira <em>centralizada</em> para sua holding.", "Contas, lançamentos, estoque, clientes e equipe — tudo em um só lugar.");
 }
 function renderLoginMembro(){
-  // Se veio de um link de convite (🔗 em Usuários), os códigos já estão na
+  // Se veio de um link de convite (em Usuários), os códigos já estão na
   // URL — não precisa mostrar/pedir de novo, só e-mail e senha.
   const convite = codigosConviteDaURL();
   return authShell(`
@@ -2773,7 +2773,7 @@ function renderLoginMembro(){
   `, "Acesso da Equipe", "Seu acesso, <em>do seu jeito</em>.", "Entre com seu próprio e-mail e senha — sem dividir login com ninguém.");
 }
 function renderLoginTecnico(){
-  // Se veio de um link de convite (🔗 em Técnicos, com os códigos já
+  // Se veio de um link de convite (em Técnicos, com os códigos já
   // embutidos no ?tec=...&holding=...), não precisa mostrar/pedir de novo.
   const convite = codigosConviteTecnicoDaURL();
   return authShell(`
@@ -2850,7 +2850,7 @@ function wireAuthForm(){
 // ============================================================
 function renderSeletorPerfil(){
   const membros = state.perfis.map(p => `
-    <button class="btn btn-ghost" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-perfil" data-id="${p.id}">👤 ${esc(p.nome)}</button>
+    <button class="btn btn-ghost" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-perfil" data-id="${p.id}">${esc(p.nome)}</button>
   `).join("");
   return `
     <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg);">
@@ -2858,7 +2858,7 @@ function renderSeletorPerfil(){
         <h2 style="font-family:var(--font-ui); margin-bottom:6px;">Quem está usando?</h2>
         <div style="color:var(--ink-3); font-size:12.5px; margin-bottom:24px;">${esc(state.user.email)}</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          <button class="btn btn-primary" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-master">👑 Master (acesso completo)</button>
+          <button class="btn btn-primary" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-master"> Master (acesso completo)</button>
           ${membros}
         </div>
       </div>
@@ -2867,7 +2867,7 @@ function renderSeletorPerfil(){
 }
 function modalSenhaPerfil(perfil){
   openModal(`
-    <div class="modal-head"><div class="modal-title">👤 ${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formSenhaPerfil"><div class="modal-body">
       <div class="field"><label>Senha</label><input required type="password" name="senha" autocomplete="off" placeholder="Digite sua senha"></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Entrar</button></div></form>
@@ -2890,7 +2890,7 @@ function modalSenhaPerfil(perfil){
 }
 function modalSenhaMaster(){
   openModal(`
-    <div class="modal-head"><div class="modal-title">👑 Master</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Master</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formSenhaMaster"><div class="modal-body">
       <div class="field"><label>Senha do Master</label><input required type="password" name="senha" autocomplete="off" placeholder="Digite a senha"></div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Entrar</button></div></form>
@@ -3195,11 +3195,11 @@ function viewVgExecutivo(){
         <div>${!isMesAtual ? `<span style="font-size:10.5px; color:var(--ink-4); cursor:pointer; text-decoration:underline;" data-action="mes-hoje">voltar pro mês atual</span>` : `<span style="font-size:10.5px; color:var(--ink-4);">mês atual</span>`}</div>
       </div>
       <button class="icon-btn" data-action="mes-next" style="font-size:14px; padding:5px 10px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
-      <button class="icon-btn" data-action="toggle-executivo-oculto" title="${oculto?'Mostrar valores':'Ocultar valores'}" style="font-size:16px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); margin-left:6px;">${oculto?'🙈':'👁️'}</button>
+      <button class="icon-btn" data-action="toggle-executivo-oculto" title="${oculto?'Mostrar valores':'Ocultar valores'}" style="font-size:16px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); margin-left:6px;">${oculto?'···':'···'}</button>
     </div>`;
 
   const patrimonioHTML = `
-    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">💰 Patrimônio</div></div><div class="panel-body">
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Patrimônio</div></div><div class="panel-body">
       <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;">
         ${master ? vgKpiCard("Saldo atual", vv(saldoAtualMes), isMesAtual?"Realizado até hoje":"Realizado até o fim do mês", saldoAtualMes>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : ""}
         ${master ? vgKpiCard("Saldo previsto (fim do mês)", vv(saldoFinalPrevisto), "Com o que ainda falta entrar/sair", saldoFinalPrevisto>=0?"pos":"neg") : ""}
@@ -3207,7 +3207,7 @@ function viewVgExecutivo(){
         ${vgKpiCard("Despesa do mês", vv(despesaPrevistaMes), `Já pago: ${vv(despesaRealizadaMes)}`, "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
       </div>
     </div></div>
-    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📈 Evolução vs mês anterior</div></div><div class="panel-body">
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Evolução vs mês anterior</div></div><div class="panel-body">
       ${vgBarraEvolucao("Receita (realizada)", receitaRealizadaMes, receitaRealizadaMesAnt, true)}
       ${vgBarraEvolucao("Despesa (realizada)", despesaRealizadaMes, despesaRealizadaMesAnt, false)}
       ${vgBarraEvolucao("Resultado (realizado)", resultadoRealizadoMes, resultadoRealizadoMesAnt, true)}
@@ -3223,10 +3223,10 @@ function viewVgExecutivo(){
     const aPagarNeg = lancDoNeg.filter(l=>l.tipo==="Despesa" && l.status!=="Pago" && l.data>=inicioMesISO && l.data<=fimMesISO).reduce((s,l)=>s+Number(l.valor),0);
     const clientesAtivosNeg = podeVerModulo("clientes") ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===n.nome && ct.status==="Ativo")).length : null;
     const margem = receitaMesNeg>0 ? Math.round(((receitaMesNeg-despesaMesNeg)/receitaMesNeg)*100) : null;
-    const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"⚪" }
-      : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"🟢" }
-      : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"🟡" }
-      : { rotulo:"Crítico", cor:"var(--neg)", ponto:"🔴" };
+    const status = margem===null ? { rotulo:"Sem receita no mês", cor:"var(--ink-4)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" }
+      : margem>=80 ? { rotulo:"Estável", cor:"var(--pos)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:4px;"></span>" }
+      : margem>=40 ? { rotulo:"Atenção", cor:"#D97706", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" }
+      : { rotulo:"Crítico", cor:"var(--neg)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" };
     if(isMesAtual && margem!==null && margem<40){
       alertas.push({
         tipo:"margem", negocio:n.nome,
@@ -3302,13 +3302,13 @@ function viewVgExecutivo(){
     const menorPico = pontos.reduce((a,b)=>b.valor<a.valor?b:a);
     const varTotal = vgVarPct(ultimo.valor, primeiro.valor);
     return `<div class="panel" style="margin-bottom:16px;">
-      <div class="panel-head"><div class="panel-title">📈 Evolução do saldo — últimos 12 meses</div></div>
+      <div class="panel-head"><div class="panel-title">Evolução do saldo — últimos 12 meses</div></div>
       <div class="panel-body">
-        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no 👁️ pra ver o gráfico</div>` : svgLinhaSaldo(pontos, 140)}
+        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no ️ pra ver o gráfico</div>` : svgLinhaSaldo(pontos, 140)}
         <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          <div>📌 Maior saldo: <strong style="color:var(--ink);">${vv(maiorPico.valor)}</strong> (${maiorPico.label})</div>
-          <div>📌 Menor saldo: <strong style="color:var(--ink);">${vv(menorPico.valor)}</strong> (${menorPico.label})</div>
-          <div>📌 Variação em 12 meses: <strong style="color:${varTotal.pct>=0?'var(--pos)':'var(--neg)'};">${varTotal.texto}</strong></div>
+          <div>· Maior saldo: <strong style="color:var(--ink);">${vv(maiorPico.valor)}</strong> (${maiorPico.label})</div>
+          <div>· Menor saldo: <strong style="color:var(--ink);">${vv(menorPico.valor)}</strong> (${menorPico.label})</div>
+          <div>· Variação em 12 meses: <strong style="color:${varTotal.pct>=0?'var(--pos)':'var(--neg)'};">${varTotal.texto}</strong></div>
         </div>
       </div>
     </div>`;
@@ -3328,11 +3328,11 @@ function viewVgExecutivo(){
     }
     const mesesPositivos = pontos.filter(p=>p.a>=p.b).length;
     return `<div class="panel" style="margin-bottom:16px;">
-      <div class="panel-head"><div class="panel-title">📊 Receita vs Despesa — últimos 12 meses</div></div>
+      <div class="panel-head"><div class="panel-title">Receita vs Despesa — últimos 12 meses</div></div>
       <div class="panel-body">
-        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no 👁️ pra ver o gráfico</div>` : graficoColunasParesHTML(pontos, "var(--pos)", "var(--neg)", "Receita", "Despesa", 110)}
+        ${oculto ? `<div style="padding:30px 0; text-align:center; color:var(--ink-4); font-size:13px;">Valores ocultos — clique no ️ pra ver o gráfico</div>` : graficoColunasParesHTML(pontos, "var(--pos)", "var(--neg)", "Receita", "Despesa", 110)}
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          📌 <strong style="color:var(--ink);">${mesesPositivos} de 12</strong> meses fecharam com receita ≥ despesa (realizado)
+          · <strong style="color:var(--ink);">${mesesPositivos} de 12</strong> meses fecharam com receita ≥ despesa (realizado)
         </div>
       </div>
     </div>`;
@@ -3355,13 +3355,13 @@ function viewVgExecutivo(){
     const pctTop2 = (top2 && totalReceita>0) ? Math.round(((top1.receitaMesNeg+top2.receitaMesNeg)/totalReceita)*100) : null;
     const menor = comReceita[comReceita.length-1];
     return `<div class="panel" style="margin-bottom:16px;">
-      <div class="panel-head"><div class="panel-title">📊 Receita por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-head"><div class="panel-title">Receita por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
       <div class="panel-body">
         ${barras}
         <div style="display:flex; flex-direction:column; gap:4px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          <div>📌 <strong style="color:var(--ink);">${esc(top1.n.nome)}</strong> representa ${oculto?"—":pctTop1+"%"} da receita total do período</div>
-          ${top2 ? `<div>📌 <strong style="color:var(--ink);">${esc(top1.n.nome)} + ${esc(top2.n.nome)}</strong> juntos = ${oculto?"—":pctTop2+"%"}</div>` : ""}
-          ${comReceita.length>1 ? `<div>📌 <strong style="color:var(--ink);">${esc(menor.n.nome)}</strong>: menor faturamento do período</div>` : ""}
+          <div>· <strong style="color:var(--ink);">${esc(top1.n.nome)}</strong> representa ${oculto?"—":pctTop1+"%"} da receita total do período</div>
+          ${top2 ? `<div>· <strong style="color:var(--ink);">${esc(top1.n.nome)} + ${esc(top2.n.nome)}</strong> juntos = ${oculto?"—":pctTop2+"%"}</div>` : ""}
+          ${comReceita.length>1 ? `<div>· <strong style="color:var(--ink);">${esc(menor.n.nome)}</strong>: menor faturamento do período</div>` : ""}
         </div>
       </div>
     </div>`;
@@ -3377,12 +3377,12 @@ function viewVgExecutivo(){
     }).join("");
     const critico = comMargem.filter(l=>l.margem<40);
     return `<div class="panel" style="margin-bottom:16px;">
-      <div class="panel-head"><div class="panel-title">💼 Margem por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-head"><div class="panel-title"> Margem por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
       <div class="panel-body">
         ${barras}
         <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          <div>📌 Média do holding: <strong style="color:var(--ink);">${media}%</strong></div>
-          ${critico.length ? `<div style="color:var(--neg);">🔴 ${critico.map(l=>esc(l.n.nome)).join(", ")}: margem crítica (abaixo de 40%)</div>` : `<div style="color:var(--pos);">🟢 Nenhum negócio em margem crítica</div>`}
+          <div>· Média do holding: <strong style="color:var(--ink);">${media}%</strong></div>
+          ${critico.length ? `<div style="color:var(--neg);"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span> ${critico.map(l=>esc(l.n.nome)).join(", ")}: margem crítica (abaixo de 40%)</div>` : `<div style="color:var(--pos);"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:4px;"></span> Nenhum negócio em margem crítica</div>`}
         </div>
       </div>
     </div>`;
@@ -3408,15 +3408,15 @@ function viewVgExecutivo(){
     const maior = listaCategoriasDespesa[0];
     const pctMaior = total>0 ? Math.round((maior.valor/total)*100) : 0;
     return `<div class="panel" style="margin:0;">
-      <div class="panel-head"><div class="panel-title">🧾 Despesas por categoria — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-head"><div class="panel-title">Despesas por categoria — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
       <div class="panel-body">
         ${barras}
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          📌 <strong style="color:var(--ink);">${esc(maior.nome)}</strong> é a maior despesa do período (${oculto?"—":pctMaior+"%"} do total)
+          · <strong style="color:var(--ink);">${esc(maior.nome)}</strong> é a maior despesa do período (${oculto?"—":pctMaior+"%"} do total)
         </div>
       </div>
     </div>`;
-  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🧾 Despesas por categoria</div></div><div class="panel-body">${emptyState("Nenhuma despesa paga nesse mês.")}</div></div>`;
+  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Despesas por categoria</div></div><div class="panel-body">${emptyState("Nenhuma despesa paga nesse mês.")}</div></div>`;
 
   // ---- Curva ABC de negócios por receita — classifica pelo % ACUMULADO
   // antes de somar o próprio item (senão um negócio sozinho responsável por
@@ -3439,16 +3439,16 @@ function viewVgExecutivo(){
     }).join("");
     const classeA = linhasAbc.filter(l=>l.classe==="A");
     return `<div class="panel" style="margin:0;">
-      <div class="panel-head"><div class="panel-title">🔠 Curva ABC — negócios por receita</div></div>
+      <div class="panel-head"><div class="panel-title"> Curva ABC — negócios por receita</div></div>
       <div class="panel-body">
         ${barras}
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-          📌 <strong style="color:var(--ink);">${classeA.length} negócio(s) classe A</strong> (${classeA.map(l=>esc(l.n.nome)).join(", ")}) já respondem pelos primeiros ~80% da receita
+          · <strong style="color:var(--ink);">${classeA.length} negócio(s) classe A</strong> (${classeA.map(l=>esc(l.n.nome)).join(", ")}) já respondem pelos primeiros ~80% da receita
         </div>
         <div class="field-help" style="margin-top:6px;">A = essencial (até 80% acumulado) · B = relevante (até 95%) · C = complementar (resto)</div>
       </div>
     </div>`;
-  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🔠 Curva ABC — negócios por receita</div></div><div class="panel-body">${emptyState("Nenhum negócio com receita nesse mês.")}</div></div>`;
+  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Curva ABC — negócios por receita</div></div><div class="panel-body">${emptyState("Nenhum negócio com receita nesse mês.")}</div></div>`;
 
   // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não
   // muda com o mês, é o valor recorrente atual; os lançamentos não guardam
@@ -3468,7 +3468,7 @@ function viewVgExecutivo(){
       const tip = `<div>${esc(cliNome(x.c))}</div><div class="tip-val">${fmtBRL(x.mrr)}/mês</div><div>${esc(x.negs.join(", ")||"—")}</div>`;
       return graficoBarraHTML(`${i+1}. ${cliNome(x.c)}`, (x.mrr/maxMrr)*100, cor, vv(x.mrr), tip, cor);
     }).join("");
-    return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🏆 Top clientes — receita recorrente (MRR)</div></div><div class="panel-body">
+    return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Top clientes — receita recorrente (MRR)</div></div><div class="panel-body">
       ${barras}
       <div class="field-help" style="margin-top:10px;">Baseado no valor do plano dos contratos ativos — é o que está contratado, não necessariamente o que já foi pago esse mês.</div>
     </div></div>`;
@@ -3481,12 +3481,12 @@ function viewVgExecutivo(){
   const inadimplenciaHTML = (master && isMesAtual) ? (() => {
     const hojeISO = todayISO();
     const vencidos = lancVis(l=>l.tipo==="Receita" && l.status!=="Pago" && !l.inativo && l.data < hojeISO);
-    if(!vencidos.length) return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">⏰ Inadimplência</div></div><div class="panel-body">${emptyState("Nada vencido. Tudo em dia! 🎉")}</div></div>`;
+    if(!vencidos.length) return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">⏰ Inadimplência</div></div><div class="panel-body">${emptyState("Nada vencido. Tudo em dia! ")}</div></div>`;
     const hoje = new Date(hojeISO+"T00:00:00");
     const buckets = [
-      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"🟡" },
-      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"🟠" },
-      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"🔴" },
+      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" },
+      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:4px;"></span>" },
+      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" },
     ].map(b => {
       const itens = vencidos.filter(l => { const dias = Math.floor((hoje-new Date(l.data+"T00:00:00"))/86400000); return dias>=b.min && dias<=b.max; });
       return { ...b, count: itens.length, valor: itens.reduce((s,l)=>s+Number(l.valor),0) };
@@ -3522,17 +3522,17 @@ function viewVgExecutivo(){
   }
 
   const alertasHTML = alertas.length ? `
-    <div class="panel" style="margin:0; border-color:var(--neg);"><div class="panel-head"><div class="panel-title" style="color:var(--neg);">🔴 Alertas</div></div><div class="panel-body">
-      ${alertas.map(a => `<div style="font-size:13px; padding:5px 0; display:flex; gap:8px;"><span>⚠</span><span>${esc(a.texto)}</span></div>`).join("")}
+    <div class="panel" style="margin:0; border-color:var(--neg);"><div class="panel-head"><div class="panel-title" style="color:var(--neg);"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span> Alertas</div></div><div class="panel-body">
+      ${alertas.map(a => `<div style="font-size:13px; padding:5px 0; display:flex; gap:8px;"><span></span><span>${esc(a.texto)}</span></div>`).join("")}
     </div></div>
-    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📌 Ações recomendadas</div></div><div class="panel-body">
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">· Ações recomendadas</div></div><div class="panel-body">
       ${alertas.map((a,i) => `<div style="font-size:13px; padding:5px 0;">${i+1}. ${esc(a.acao)}</div>`).join("")}
     </div></div>
-  ` : `<div class="panel" style="margin:0;"><div class="panel-body">${emptyState(isMesAtual ? "Nada precisando de atenção agora. 🎉" : "Alertas operacionais só valem pro mês atual.")}</div></div>`;
+  ` : `<div class="panel" style="margin:0;"><div class="panel-body">${emptyState(isMesAtual ? "Nada precisando de atenção agora. " : "Alertas operacionais só valem pro mês atual.")}</div></div>`;
 
   return `
     <div class="page-header">
-      <div><div class="page-title">🎯 Executivo</div><div class="page-sub">${isMesAtual ? `Posição hoje, ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `Vendo ${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div><div class="page-title">Executivo</div><div class="page-sub">${isMesAtual ? `Posição hoje, ${fmtDateBR(todayISO())} · ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `Vendo ${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
       ${seletorMesHTML}
     </div>
     <div class="two-col" style="margin-bottom:16px;">${patrimonioHTML}</div>
@@ -3540,7 +3540,7 @@ function viewVgExecutivo(){
     ${graficoRecDespMesHTML}
     <div class="two-col" style="margin-bottom:16px;">${graficoReceitaHTML}${graficoDespesaCategoriaHTML}</div>
     <div class="two-col" style="margin-bottom:16px;">${graficoMargemHTML}${graficoAbcHTML}</div>
-    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">💼 Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title"> Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
     ${(topClientesHTML || inadimplenciaHTML) ? `<div class="two-col" style="margin-bottom:16px;">${topClientesHTML}${inadimplenciaHTML}</div>` : ""}
     <div class="two-col">${alertasHTML}</div>
   `;
@@ -3559,7 +3559,7 @@ function viewVgSintetico(){
     const aReceber = semNegocio.filter(l=>l.tipo==="Receita" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
     const aPagar = semNegocio.filter(l=>l.tipo==="Despesa" && l.status!=="Pago").reduce((s,l)=>s+Number(l.valor),0);
     return `<div style="margin-bottom:22px;">
-      <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px;">🗂️ Sem negócio definido</div>
+      <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin-bottom:10px;"> Sem negócio definido</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));">
         ${vgKpiCard("A receber", fmtBRL(aReceber), "Pendente/agendado", "pos", {modulo:"financeiro", view:"receitas", label:"Contas a Receber"})}
         ${vgKpiCard("A pagar", fmtBRL(aPagar), "Pendente/agendado", "neg", {modulo:"financeiro", view:"despesas", label:"Contas a Pagar"})}
@@ -3650,7 +3650,7 @@ function viewCadastroHub(){
   return `
     <div class="page-header">
       <div><div class="page-title">Central de Cadastros</div><div class="page-sub">Escolha o que você quer cadastrar — cada um já pergunta o negócio quando fizer sentido, e vai direto pro módulo dele.</div></div>
-      <button class="btn btn-primary" data-action="importar-abrir">📥 Importar dados</button>
+      <button class="btn btn-primary" data-action="importar-abrir"> Importar dados</button>
     </div>
     ${gruposHTML || emptyState("Nenhum tipo de cadastro disponível para o seu perfil.")}
   `;
@@ -3831,7 +3831,7 @@ function modalImportarDados(){
 function renderImportFase1(){
   const opts = Object.entries(IMPORT_ENTIDADES).map(([id,e]) => `<option value="${id}" ${importState.entidade===id?"selected":""}>${esc(e.nome)}</option>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">📥 Importar dados</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Importar dados</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field"><label>O que você quer importar?</label><select id="importEntidade">${opts}</select></div>
       <div class="field"><label>Arquivo (CSV ou Excel .xlsx)</label><input type="file" id="importArquivo" accept=".csv,.xlsx,.xls"></div>
@@ -3899,7 +3899,7 @@ function renderImportFase2(){
       <td style="color:var(--ink-4); font-size:11.5px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(importState.rows.slice(0,2).map(r=>r[i]).filter(Boolean).join(" · "))}</td>
     </tr>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">📥 Importar ${esc(cfg.nome)} — mapear colunas</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Importar ${esc(cfg.nome)} — mapear colunas</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">${importState.rows.length} linha(s) encontrada(s). Escolha qual campo do sistema cada coluna preenche — campos marcados com * são obrigatórios.</div>
       <div style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--r);">
@@ -3974,15 +3974,15 @@ function viewDashboard(){
   const listaItemHTML = (l, tipo) => `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
       <div style="min-width:0;">
-        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.cartaoId ? `<span title="Despesa de cartão de crédito" style="margin-right:4px;">💳</span>` : ""}${esc(l.descricao)||"—"}</div>
+        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.cartaoId ? `<span style="font-size:10px;color:var(--ink-3);background:var(--surface-2);border-radius:3px;padding:1px 4px;margin-right:4px;">CC</span>` : ""}${esc(l.descricao)||"—"}</div>
         <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
       </div>
       <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
         <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'var(--pos)':'var(--neg)'};">${fmtBRL(l.valor)}</span>
-        ${tipo==='receber' && waLinkCobranca(l) ? `<a class="icon-btn" href="${waLinkCobranca(l)}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366; font-size:14px;">📱</a>` : ""}
+        ${tipo==='receber' && waLinkCobranca(l) ? `<a class="icon-btn" href="${waLinkCobranca(l)}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366; font-size:14px;">WA</a>` : ""}
         ${l.cartaoId
-          ? (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos); font-size:14px;">💳</button>` : "")
-          : (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;">💲</button>` : "")}
+          ? (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos); font-size:14px;">CC</button>` : "")
+          : (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa" style="color:var(--pos); font-size:14px;"></button>` : "")}
       </div>
     </div>`;
 
@@ -3995,22 +3995,22 @@ function viewDashboard(){
     <div style="border-top:1px solid var(--border); padding:8px 0;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px;">
         <div>
-          <div style="font-weight:600;">💳 ${esc(c.nome)} <span style="font-size:11px; color:var(--ink-4);">final ${esc(c.ultimosDigitos)}</span></div>
+          <div style="font-weight:600;">${esc(c.nome)} <span style="font-size:11px; color:var(--ink-4);">final ${esc(c.ultimosDigitos)}</span></div>
           <div style="font-size:11px; color:var(--ink-4);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'} · Limite disp. ${fmtBRL(Number(c.limite||0)-faturaEmAberto(c.id))}</div>
         </div>
         <span style="font-family:var(--font-mono); font-weight:700; color:var(--neg);">${fmtBRL(f.total)}</span>
       </div>
       <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">💰 Pagar total</button>
-        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Pague só o mínimo, sem precisar escolher compras">💳 Pagar mínimo</button>
+        <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}"> Pagar total</button>
+        <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Pague só o mínimo, sem precisar escolher compras">Pagar mínimo</button>
         <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Digite qualquer valor, sem precisar escolher compras">✏ Pagar parcial</button>
-        <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">🔍 Detalhes</button>
+        <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
       </div>
     </div>`).join("");
 
   const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0) + totalFaturasMes;
   const totalReceberMes = receberMes.reduce((s,l) => s+Number(l.valor), 0);
-  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada em aberto. 🎉</div>`;
+  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada em aberto. </div>`;
   const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada a receber neste mês.</div>`;
 
   const barRow = (c, nested) => {
@@ -4063,14 +4063,14 @@ function viewDashboard(){
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:0;">
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
-          <div class="panel-title">📥 A Receber — ${NOMES_MESES[mv.mes]}</div>
+          <div class="panel-title"> A Receber — ${NOMES_MESES[mv.mes]}</div>
           <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--pos);">${fmtBRL(totalReceberMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${receberHTML}</div>
       </div>
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
-          <div class="panel-title">📤 A Pagar — ${NOMES_MESES[mv.mes]}</div>
+          <div class="panel-title"> A Pagar — ${NOMES_MESES[mv.mes]}</div>
           <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--neg);">${fmtBRL(totalPagarMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${pagarHTML}</div>
@@ -4141,7 +4141,7 @@ function viewRelFluxoCaixa(){
 
   return `
     <div class="page-header">
-      <div><div class="page-title">💵 Fluxo de Caixa</div><div class="page-sub">Entradas e saídas realizadas (pagas) mês a mês — termina em ${isMesAtual?"o mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}.</div></div>
+      <div><div class="page-title"> Fluxo de Caixa</div><div class="page-sub">Entradas e saídas realizadas (pagas) mês a mês — termina em ${isMesAtual?"o mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}.</div></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <select id="relFluxoPeriodoSelect" style="font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border);">
           <option value="3" ${relFluxoPeriodo===3?"selected":""}>Últimos 3 meses</option>
@@ -4200,7 +4200,7 @@ function viewRelDre(){
 
   return `
     <div class="page-header">
-      <div><div class="page-title">📑 DRE — Demonstração de Resultado</div><div class="page-sub">${isMesAtual?"Mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}${relDreNegocio?` · ${relDreNegocio}`:" · todos os negócios"} — simplificado (sem deduções fiscais rastreadas à parte)</div></div>
+      <div><div class="page-title">DRE — Demonstração de Resultado</div><div class="page-sub">${isMesAtual?"Mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}${relDreNegocio?` · ${relDreNegocio}`:" · todos os negócios"} — simplificado (sem deduções fiscais rastreadas à parte)</div></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <select id="relDreNegocioSelect" style="font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border);">
           <option value="">Todos os negócios</option>
@@ -4236,9 +4236,9 @@ function viewContas(){
     const inativa = c.ativa === false;
     const negTag = c.negocio
       ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)}; margin-left:6px;"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>`
-      : `<span class="tag" style="background:var(--muted-bg); color:var(--muted); margin-left:6px;">🌐 Todos os negócios</span>`;
+      : `<span class="tag" style="background:var(--muted-bg); color:var(--muted); margin-left:6px;"> Todos os negócios</span>`;
     const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
-    const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋📦</button>`;
+    const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
       ${bulkCheckboxCellHTML("contas", c.id)}
       <td style="${nested ? 'padding-left:26px;' : ''}">${nomeCell}</td>
@@ -4247,13 +4247,13 @@ function viewContas(){
       <td class="num ${receberDesbloqueado()?'':'masked-value'}">${maskBRL(sp, receberDesbloqueado())}</td>
       <td style="text-align:center;">${nc > 0 ? `<span class="status-pill status-pendente">${nc}</span>` : "—"}</td>
       <td style="text-align:center;"><span class="status-pill ${inativa ? 'status-agendado' : 'status-pago'}" style="cursor:pointer;" data-action="toggle-ativa" data-id="${c.id}" title="Clique para ${inativa?'ativar':'inativar'}">${inativa ? "Inativa" : "Ativa"}</span></td>
-      <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="conta-lancar-rendimento" data-id="${c.id}" title="Lançar rendimento (CDI/caixinha)" style="color:var(--pos);">📈</button><button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions">${novaCaixinhaBtn}<button class="icon-btn" data-action="conta-lancar-rendimento" data-id="${c.id}" title="Lançar rendimento (CDI/caixinha)" style="color:var(--pos);"></button><button class="icon-btn" data-action="edit-conta" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-conta" data-id="${c.id}" title="Excluir">×</button></div></td>
     </tr>`;
   };
   const todasContas = [...contasRaiz(), ...state.contas.filter(c=>c.parentId)];
   const rows = contasRaiz().map(c => rowHTML(c,false) + caixinhasDe(c.id).map(cx=>rowHTML(cx,true)).join("")).join("");
   return `
-    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋📦" para criar caixinhas dentro de uma conta, e "📈" pra lançar rendimento (CDI de dia útil, por exemplo).</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("contas")}<button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div></div>
+    <div class="page-header"><div><div class="page-title">Contas Bancárias</div><div class="page-sub">Saldo Atual soma só lançamentos Pagos. Use "＋" para criar caixinhas dentro de uma conta, e "" pra lançar rendimento (CDI de dia útil, por exemplo).</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("contas")}<button class="btn btn-primary" data-action="new-conta">+ Nova conta</button></div></div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;"><table><thead><tr>${bulkCheckboxHeaderHTML("contas", todasContas.map(c=>c.id))}<th>Conta</th><th class="num">Saldo Inicial</th><th class="num">Saldo Atual</th><th class="num">Saldo Projetado</th><th style="text-align:center;">Não conc.</th><th style="text-align:center;">Status</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="8">${emptyState("Nenhuma conta cadastrada.")}</td></tr>`}</tbody></table></div></div>
   `;
 }
@@ -4290,7 +4290,7 @@ function viewCartoes(){
             <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" data-action="bulk-toggle" data-contexto="cartoes" data-id="${c.id}" ${bulkSet("cartoes").has(c.id)?"checked":""} title="Selecionar"><span class="tag-dot" style="background:${cor};"></span><strong>${esc(c.nome)}</strong><span class="status-pill ${inativo?'status-agendado':'status-pago'}" style="cursor:pointer;" data-action="toggle-cartao-ativo" data-id="${c.id}">${inativo?"Inativo":"Ativo"}</span>${negTag}</div>
             <div style="font-size:12px; color:var(--ink-4); margin-top:3px;">${esc(c.bandeira)} · final ${esc(c.ultimosDigitos)} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento} · paga com ${contaLabel(contaById(c.contaPagamentoId))}</div>
           </div>
-          <div class="row-actions"><button class="btn btn-primary btn-sm" data-action="new-compra-cartao" data-id="${c.id}">+ Compra</button><button class="icon-btn" data-action="edit-cartao" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-cartao" data-id="${c.id}" title="Excluir">🗑</button></div>
+          <div class="row-actions"><button class="btn btn-primary btn-sm" data-action="new-compra-cartao" data-id="${c.id}">+ Compra</button><button class="icon-btn" data-action="edit-cartao" data-id="${c.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-cartao" data-id="${c.id}" title="Excluir">×</button></div>
         </div>
       </div>
       <div class="panel-body" style="padding-top:14px;">
@@ -4322,9 +4322,9 @@ const LANC_VIEW_CONFIG = {
   transferencias:  { titulo: "Transferências",         sub: "Só transferências entre contas.",                                     tipo: "Transferência",  novoLabel: "+ Nova transferência", tipoPreset: "Transferência" },
 };
 const CATEGORIA_FILTRO_LABELS = {
-  receber: "📥 Contas a Receber",
-  pagar: "📤 Contas a Pagar",
-  cartao: "💳 Cartão de Crédito",
+  receber: " Contas a Receber",
+  pagar: " Contas a Pagar",
+  cartao: "Cartão de Crédito",
   transferencia: "⇄ Transferências",
 };
 function viewLancamentos(){
@@ -4384,7 +4384,7 @@ function viewLancamentos(){
     const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
     let contaTxt;
     if(cartao){
-      contaTxt = `💳 ${esc(cartao.nome)} <span style="color:var(--ink-4); font-size:11px;">final ${esc(cartao.ultimosDigitos)}</span>${l.dataCompra && l.dataCompra !== l.data ? `<div style="font-size:11px;color:var(--ink-4)">compra em ${fmtDateBR(l.dataCompra)}</div>` : ""}`;
+      contaTxt = `${esc(cartao.nome)} <span style="color:var(--ink-4); font-size:11px;">final ${esc(cartao.ultimosDigitos)}</span>${l.dataCompra && l.dataCompra !== l.data ? `<div style="font-size:11px;color:var(--ink-4)">compra em ${fmtDateBR(l.dataCompra)}</div>` : ""}`;
     }else if(l.tipo === "Transferência"){
       contaTxt = `${origem ? contaLabel(origem) : "—"} → ${destino ? contaLabel(destino) : "—"}`;
     }else{
@@ -4393,11 +4393,11 @@ function viewLancamentos(){
     const sinal = l.tipo === "Despesa" ? "−" : (l.tipo === "Receita" ? "+" : "⇄");
     const unlocked = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
-    // OBS: o emoji 💳 fica reservado pra despesa de cartão de verdade
+    // OBS: o emoji fica reservado pra despesa de cartão de verdade
     // (l.cartaoId) — "Parcelado" sozinho não quer dizer cartão (dá pra
     // parcelar uma despesa direto, sem cartão nenhum, ex: financiamento).
-    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'📅':'🔁'}</span>` : "";
-    const cartaoBadge = l.cartaoId ? ` <span title="Despesa de cartão de crédito — pagamento é pela fatura" style="font-size:11px;">💳</span>` : "";
+    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'P':'R'}</span>` : "";
+    const cartaoBadge = l.cartaoId ? ` <span style="font-size:10px;color:var(--ink-3);background:var(--surface-2);border-radius:3px;padding:1px 4px;margin-right:4px;">CC</span>` : "";
     const podeEditar = podeEditarNegocio(l.negocio);
     const podeExcluir = podeExcluirNegocio(l.negocio);
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
@@ -4430,7 +4430,7 @@ function viewLancamentos(){
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span></td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">📱</a>` : ""}${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);">💲</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">💳</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">🗑</button>` : ""}</div></td>
+      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="icon-btn" data-action="baixar-titulo" data-id="${l.id}" title="Dar baixa (marcar como pago)" style="color:var(--pos);"></button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -4446,7 +4446,7 @@ function viewLancamentos(){
     <div class="page-header">
       <div><div class="page-title">${cfg.titulo}</div><div class="page-sub">${cfg.sub}</div></div>
       <div style="display:flex; gap:8px;">
-        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="excluir-selecionados">🗑 Excluir selecionados (${lancSelecionados.size})</button>` : ""}
+        ${lancSelecionados.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="excluir-selecionados">× Excluir selecionados (${lancSelecionados.size})</button>` : ""}
         <button class="btn btn-primary" data-action="new-lanc" data-tipo-preset="${cfg.tipoPreset||''}">${cfg.novoLabel}</button>
       </div>
     </div>
@@ -4458,8 +4458,8 @@ function viewLancamentos(){
       <select data-action="filter-status"><option value="">Todos os status</option>${statusOptions}</select>
       <select data-action="filter-conta"><option value="">Todas as contas</option>${contaOptions}</select>
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
-      <select data-action="filter-catnome"><option value="">🏷️ Todas as categorias</option>${catNomeOptions}</select>
-      <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"🏷️ Selecione uma categoria"}</option>${subcatNomeOptions}</select>
+      <select data-action="filter-catnome"><option value="">Todas as categorias</option>${catNomeOptions}</select>
+      <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"Selecione uma categoria"}</option>${subcatNomeOptions}</select>
       <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3);">De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}"> até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}"></span>
       ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body"><table><thead><tr>
@@ -4480,7 +4480,7 @@ function viewAjustes(){
       <td>${esc(conta?.nome || "Conta removida")}</td>
       <td class="num ${receberDesbloqueado()?'':'masked-value'}" style="font-weight:600; color:${receberDesbloqueado() ? (a.valor>=0?'var(--pos)':'var(--neg)') : 'inherit'};">${maskBRL(a.valor, receberDesbloqueado())}</td>
       <td>${esc(a.motivo)}</td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="edit-ajuste" data-id="${a.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-ajuste" data-id="${a.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
   return `
@@ -4497,12 +4497,12 @@ function viewCategorias(){
     const subRows = (cat.subcategorias||[]).map(sub => `
       <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 18px 9px 30px; border-top:1px solid var(--border);">
         <span style="font-size:12.5px; color:var(--ink-3);">↳ ${esc(sub.nome)}</span>
-        <div class="row-actions"><button class="icon-btn" data-action="edit-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Excluir">🗑</button></div>
+        <div class="row-actions"><button class="icon-btn" data-action="edit-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-subcategoria" data-cat="${cat.id}" data-sub="${sub.id}" title="Excluir">×</button></div>
       </div>`).join("");
     return `<div class="panel" style="margin-bottom:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px;">
         <span style="display:flex; align-items:center; gap:8px;"><input type="checkbox" data-action="bulk-toggle" data-contexto="categorias" data-id="${cat.id}" ${bulkSet("categorias").has(cat.id)?"checked":""} title="Selecionar"><strong style="font-size:13.5px;">${esc(cat.nome)}</strong></span>
-        <div class="row-actions"><button class="icon-btn" data-action="add-subcategoria" data-cat="${cat.id}" title="Nova subcategoria">+ subcat.</button><button class="icon-btn" data-action="edit-categoria" data-cat="${cat.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-categoria" data-cat="${cat.id}" title="Excluir">🗑</button></div>
+        <div class="row-actions"><button class="icon-btn" data-action="add-subcategoria" data-cat="${cat.id}" title="Nova subcategoria">+ subcat.</button><button class="icon-btn" data-action="edit-categoria" data-cat="${cat.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-categoria" data-cat="${cat.id}" title="Excluir">×</button></div>
       </div>
       ${subRows}
     </div>`;
@@ -4519,7 +4519,7 @@ function viewCategorias(){
 function viewNegocios(){
   const rows = state.negocios.map(n => {
     const emUso = state.lancamentos.filter(l => l.negocio === n.nome).length;
-    return `<tr>${bulkCheckboxCellHTML("negocios", n.id)}<td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">🗑</button></div></td></tr>`;
+    return `<tr>${bulkCheckboxCellHTML("negocios", n.id)}<td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">×</button></div></td></tr>`;
   }).join("");
   return `
     <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("negocios")}<button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div></div>
@@ -4534,7 +4534,7 @@ function viewUsuarios(){
   const rows = state.perfis.map(p => {
     let resumo;
     if(p.tipo === "master"){
-      resumo = `<span class="status-pill status-pago">👑 Master — acesso completo</span>`;
+      resumo = `<span class="status-pill status-pago"> Master — acesso completo</span>`;
     }else{
       const entradasNeg = Object.entries(p.permissoes || {}).filter(([,perm]) => perm.ver || perm.editar || perm.excluir);
       const negTags = entradasNeg.map(([neg,perm]) => `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3); margin:2px 4px 2px 0;">${esc(neg)}: ${[perm.ver&&'Ver',perm.editar&&'Editar',perm.excluir&&'Excluir'].filter(Boolean).join('/')}</span>`).join("");
@@ -4546,14 +4546,14 @@ function viewUsuarios(){
       <td><strong>${esc(p.nome)}</strong></td>
       <td>${resumo}</td>
       <td><div class="row-actions">
-        ${p.tipo !== "master" ? `<button class="icon-btn" data-action="perfil-app-codigo" data-id="${p.id}" title="Código de acesso próprio (e-mail e senha individuais)" style="color:var(--accent);">🔗</button>` : ""}
-        <button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">🗑</button>
+        ${p.tipo !== "master" ? `<button class="icon-btn" data-action="perfil-app-codigo" data-id="${p.id}" title="Código de acesso próprio (e-mail e senha individuais)" style="color:var(--accent);">↗</button>` : ""}
+        <button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo. Clique em 🔗 pra gerar um acesso com e-mail e senha próprios pra essa pessoa (em vez de dividir seu login).</div></div>
+      <div><div class="page-title">Usuários</div><div class="page-sub">Crie um login pra cada pessoa da equipe e escolha o que cada uma pode ver, editar ou excluir — por negócio. O Master (você) sempre vê tudo. Clique em pra gerar um acesso com e-mail e senha próprios pra essa pessoa (em vez de dividir seu login).</div></div>
       <button class="btn btn-primary" data-action="new-perfil">+ Novo usuário</button>
     </div>
     <div class="panel"><div class="panel-body" style="padding-top:14px;">
@@ -4570,11 +4570,11 @@ function viewUsuarios(){
 // ============================================================
 function badgeAcaoLog(acao){
   if(acao === "criar") return `<span class="status-pill status-pago">+ Criado</span>`;
-  if(acao === "excluir") return `<span class="status-pill" style="background:var(--neg-bg); color:var(--neg);">🗑 Excluído</span>`;
+  if(acao === "excluir") return `<span class="status-pill" style="background:var(--neg-bg); color:var(--neg);">× Excluído</span>`;
   return `<span class="status-pill status-agendado">✎ Editado</span>`;
 }
 function badgeAutorLog(tipo){
-  const label = tipo === "master" ? "👑 Master" : tipo === "tecnico" ? "🧰 Técnico" : tipo === "cliente" ? "👤 Cliente" : "🙋 Membro";
+  const label = tipo === "master" ? " Master" : tipo === "tecnico" ? " Técnico" : tipo === "cliente" ? "Cliente" : "Membro";
   return `<span class="tag" style="background:var(--muted-bg); color:var(--ink-3);">${label}</span>`;
 }
 function valorLegivel(v){
@@ -4608,7 +4608,7 @@ function viewLogsAuditoria(){
     <td>${badgeAcaoLog(l.acao)}</td>
     <td>${esc(LOG_TABELA_LABEL[l.tabela]||l.tabela)}</td>
     <td>${esc(l.descricao||"—")}</td>
-    <td><button class="icon-btn" data-action="ver-log-detalhe" data-id="${l.id}" title="Ver detalhes">👁</button></td>
+    <td><button class="icon-btn" data-action="ver-log-detalhe" data-id="${l.id}" title="Ver detalhes"></button></td>
   </tr>`).join("");
 
   return `
@@ -4669,8 +4669,8 @@ function closeModal(){ const el = document.getElementById("modalOverlay"); if(el
 // ============================================================
 function modalSenha(kind){
   const cfg = kind === "pagar"
-    ? { titulo: "🔒 Ver contas a pagar", senha: SENHA_PAGAR, campo: "pagarUnlocked", toast: "Contas a pagar desbloqueadas." }
-    : { titulo: "🔒 Ver contas a receber / saldo", senha: SENHA_RECEBER, campo: "receberUnlocked", toast: "Contas a receber e saldo desbloqueados." };
+    ? { titulo: "Ver contas a pagar", senha: SENHA_PAGAR, campo: "pagarUnlocked", toast: "Contas a pagar desbloqueadas." }
+    : { titulo: "Ver contas a receber / saldo", senha: SENHA_RECEBER, campo: "receberUnlocked", toast: "Contas a receber e saldo desbloqueados." };
   openModal(`
     <div class="modal-head"><div class="modal-title">${cfg.titulo}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formSenha"><div class="modal-body">
@@ -4708,7 +4708,7 @@ function modalConta(existing){
         <div class="field"><label>Instituição</label><input required type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div>
         <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
       </div>
-      <div class="field"><label>Negócio</label><select name="negocio"><option value="">🌐 Todos os negócios</option>${negOpts}</select>
+      <div class="field"><label>Negócio</label><select name="negocio"><option value=""> Todos os negócios</option>${negOpts}</select>
         <div class="field-help">Deixe em "Todos os negócios" se essa conta é compartilhada — só escolha uma se ela for exclusiva de um negócio.</div>
       </div>
       <div class="field-row">
@@ -4856,14 +4856,14 @@ function modalLancamento(existing, tipoPreset, prefill){
       </div>
       <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
       <div class="field-row"><div class="field"><label>Status</label><select name="status" id="lancStatus">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Já conciliado com o extrato</label></div></div>
-      <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (botão 💲 em Lançamentos). Agendado = já agendado no banco para débito/crédito automático — vira "Pago" sozinho na data.</div>
+      <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (botão  em Lançamentos). Agendado = já agendado no banco para débito/crédito automático — vira "Pago" sozinho na data.</div>
       ${!isEdit ? `
       <div class="field">
         <label>Repetição</label>
         <select name="repeticao" id="lancRepeticao">
           <option value="nenhuma">Não se repete</option>
-          <option value="recorrente">🔁 Recorrente / despesa fixa</option>
-          <option value="parcelado">💳 Parcelado</option>
+          <option value="recorrente">Recorrente / despesa fixa</option>
+          <option value="parcelado">Parcelado</option>
         </select>
       </div>
       <div id="repeticaoRecorrenteWrap" class="field" style="display:none;">
@@ -5253,14 +5253,14 @@ function modalNegocio(existing){
    MODAL — USUÁRIO com permissões por módulo (todos os menus) e por negócio
 ========================================================================= */
 const MODULOS_GRUPOS = [
-  { id:"visao",         icon:"🧭", label:"Visão",           acoes:["ver"] },
-  { id:"financeiro",    icon:"💰", label:"Financeiro",       acoes:["ver","criar","editar","excluir"],
+  { id:"visao",         icon:"", label:"Visão",           acoes:["ver"] },
+  { id:"financeiro",    icon:"", label:"Financeiro",       acoes:["ver","criar","editar","excluir"],
     help:"Com 'Criar', ela terá acesso automático a todas as categorias e subcategorias." },
-  { id:"estoque",       icon:"📦", label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
-  { id:"clientes",      icon:"👥", label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
-  { id:"rh",            icon:"🏢", label:"RH",               acoes:["ver","criar","editar","excluir"] },
-  { id:"comprasvendas", icon:"🔄", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
-  { id:"cadastro",      icon:"🗂️", label:"Cadastro",         acoes:["ver"] },
+  { id:"estoque",       icon:"", label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
+  { id:"clientes",      icon:"", label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
+  { id:"rh",            icon:"", label:"RH",               acoes:["ver","criar","editar","excluir"] },
+  { id:"comprasvendas", icon:"", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
+  { id:"cadastro",      icon:"", label:"Cadastro",         acoes:["ver"] },
 ];
 const ACOES_LABEL = { ver:"Ver", criar:"Criar", editar:"Editar", excluir:"Excluir" };
 
@@ -5293,7 +5293,7 @@ function modalPerfil(existing){
   const linhasNegocio = state.negocios.map((n, i) => {
     const perm = (p.permissoes||{})[n.nome] || { ver:false, editar:false, excluir:false };
     const cor = n.cor || "var(--accent)";
-    const pills = [["ver_"+n.id,perm.ver,"👁 Ver"],["editar_"+n.id,perm.editar,"✏️ Editar"],["excluir_"+n.id,perm.excluir,"🗑 Excluir"]]
+    const pills = [["ver_"+n.id,perm.ver,"Ver"],["editar_"+n.id,perm.editar,"✏️ Editar"],["excluir_"+n.id,perm.excluir,"× Excluir"]]
       .map(([nome,marcado,rotulo]) => pillCheckbox(nome, marcado, rotulo)).join("");
     return `
       <div style="padding:11px 14px; ${i < state.negocios.length-1 ? "border-bottom:1px solid var(--border);" : ""}">
@@ -5328,7 +5328,7 @@ function modalPerfil(existing){
       </div>
 
       <div id="perfilMasterAviso" class="field-help" style="display:${p.tipo==="master"?"block":"none"};margin-bottom:10px;">
-        ✅ Esse usuário verá e editará absolutamente tudo — igual a você. Nada mais para configurar.
+         Esse usuário verá e editará absolutamente tudo — igual a você. Nada mais para configurar.
       </div>
 
       <div id="perfilPermissoesWrap" style="display:${p.tipo==="master"?"none":"block"}">
@@ -5406,12 +5406,12 @@ function modalCodigoPerfil(perfil){
     <div class="field"><label>${esc(label)}</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="${campoId}" value="${esc(valor)}" readonly style="font-family:var(--font-mono); font-size:12.5px;">
-        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">📋 Copiar</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">Copiar</button>
       </div>
     </div>`;
   const link = `${location.origin}${location.pathname}?perfil=${encodeURIComponent(perfil.id)}&holding=${encodeURIComponent(state.user?.id||"")}`;
   openModal(`
-    <div class="modal-head"><div class="modal-title">🔗 Acesso próprio — ${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Acesso próprio — ${esc(perfil.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:14px;">Passe esse link pra essa pessoa (WhatsApp, por exemplo). Ela abre, escolhe um e-mail e senha PRÓPRIOS (não os seus) e pronto — a conta dela é criada na hora, já com as permissões que você definiu aqui em Usuários. Ela não vai mais precisar da tela "Quem está usando?".</div>
       ${campoCopiavel("Link de acesso", link, "linkPerfilConvite")}
@@ -5489,7 +5489,7 @@ function modalCompraCartao(cartaoIdPreset){
   const cartaoOpts = state.cartoes.map(c => `<option value="${c.id}" ${cartaoInicial.id===c.id?"selected":""}>${esc(c.nome)} (final ${esc(c.ultimosDigitos)})${c.ativo===false?" — inativo":""}</option>`).join("");
 
   openModal(`
-    <div class="modal-head"><div class="modal-title">💳 Nova compra no cartão</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Nova compra no cartão</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCompraCartao"><div class="modal-body">
       <div class="field"><label>Cartão</label><select name="cartaoId" id="compraCartaoSelect">${cartaoOpts}</select></div>
       <div class="field-row"><div class="field"><label>Data da compra</label><input required type="date" name="dataCompra" id="compraDataInput" value="${todayISO()}"></div><div class="field"><label>Valor (R$) <span class="field-help" id="compraValorHint" style="display:inline;"></span></label><input id="campo_valor" required type="number" step="0.01" min="0.01" name="valor" value="0"></div></div>
@@ -5522,8 +5522,8 @@ function modalCompraCartao(cartaoIdPreset){
         <label>Repetição</label>
         <select name="repeticao" id="compraRepeticao">
           <option value="nenhuma">Compra única (à vista)</option>
-          <option value="parcelado">💳 Parcelado (ex: 12x)</option>
-          <option value="recorrente">🔁 Recorrente (ex: assinatura cobrada no cartão)</option>
+          <option value="parcelado">Parcelado (ex: 12x)</option>
+          <option value="recorrente">Recorrente (ex: assinatura cobrada no cartão)</option>
         </select>
       </div>
       <div id="compraParceladoWrap" class="field" style="display:none;">
@@ -5542,7 +5542,7 @@ function modalCompraCartao(cartaoIdPreset){
         <select name="frequencia"><option value="Mensal" selected>Mês</option><option value="Bimestral">Bimestre</option><option value="Trimestral">Trimestre</option><option value="Semestral">Semestre</option><option value="Anual">Ano</option></select>
         <div class="field-help">É fixo, então geramos automaticamente os próximos ${HORIZONTE_ANOS} anos de faturas.</div>
       </div>
-      <div class="field-help" style="margin-top:4px;">Toda compra entra como "Provisionado" — dá baixa manual (💲 em Lançamentos) quando pagar a fatura.</div>
+      <div class="field-help" style="margin-top:4px;">Toda compra entra como "Provisionado" — dá baixa manual ( em Lançamentos) quando pagar a fatura.</div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Adicionar compra</button></div></form>
   `);
 
@@ -5697,7 +5697,7 @@ function modalBaixa(l){
   const unlockedValor = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
   const contaOpts = contasParaSelecao(l.contaOrigem).map(c => `<option value="${c.id}" ${l.contaOrigem===c.id?"selected":""}>${contaLabel(c)}${c.ativa===false?" (inativa)":""}</option>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">💲 Dar baixa no título</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Dar baixa no título</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixa"><div class="modal-body">
       <div class="field-help" style="margin-bottom:12px; font-size:13px;"><strong>${esc(l.descricao)}</strong><br>${l.tipo} de ${maskBRL(l.valor, unlockedValor)} — hoje em ${contaLabel(contaAtual)}</div>
       <div class="field-row"><div class="field"><label>Data da baixa</label><input required type="date" name="data" value="${todayISO()}"></div><div class="field"><label>Conta</label><select name="contaOrigem">${contaOpts}</select></div></div>
@@ -5764,7 +5764,7 @@ function modalPagarFatura(cartaoId, dataVencimento){
       <span class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono);">${maskBRL(l.valor, unlockedValor)}</span>
     </div>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">💳 Pagar fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Pagar fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPagarFatura"><div class="modal-body">
       <div class="field-help" style="margin-bottom:6px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} lançamento${itens.length===1?'':'s'}</div>
       <div style="max-height:180px; overflow-y:auto; margin-bottom:10px;">${itensHTML}</div>
@@ -5809,7 +5809,7 @@ function modalPagarFaturaValor(cartaoId, dataVencimento, totalFatura, valorSuger
   if(!itens.length){ showToast("Essa fatura já está paga.", "error"); return; }
   const contaOpts = contasParaSelecao(cartao.contaPagamentoId).map(c => `<option value="${c.id}" ${cartao.contaPagamentoId===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">💳 ${esc(titulo)} — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">${esc(titulo)} — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formPagarValor"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">Total da fatura: <strong>${fmtBRL(totalFatura)}</strong></div>
       <div class="field"><label>Valor a pagar</label><input required type="number" step="0.01" min="0.01" max="${totalFatura}" name="valorPago" value="${valorSugerido}" id="valorPagoLivre">
@@ -5861,14 +5861,14 @@ function modalDetalheFatura(cartaoId, dataVencimento){
         <div class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-weight:700; font-size:13.5px; white-space:nowrap;">${maskBRL(l.valor, unlockedValor)}</div>
       </div>
       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:7px; font-size:11px; color:var(--ink-3);">
-        <span>📅 ${fmtDateBR(l.dataCompra || l.data)}</span>
-        ${l.negocio ? `<span>🏢 ${esc(l.negocio)}</span>` : ""}
+        <span>${fmtDateBR(l.dataCompra || l.data)}</span>
+        ${l.negocio ? `<span> ${esc(l.negocio)}</span>` : ""}
         <span class="status-pill ${statusClass}" style="font-size:10px;">${esc(l.status)}</span>
       </div>
     </div>`;
   }).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">📋 Detalhe da fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Detalhe da fatura — ${esc(cartao.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">Vencimento em <strong>${fmtDateBR(dataVencimento)}</strong> · ${itens.length} compra${itens.length===1?'':'s'} · ordenado por data da compra</div>
       <div style="max-height:340px; overflow-y:auto;">${rows}</div>
@@ -6213,7 +6213,7 @@ document.addEventListener("click", async e => {
   else if(action === "baixar-titulo"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalBaixa(l); }
   else if(action === "ver-fatura-item"){
     // Despesa de cartão não se baixa sozinha — quem baixa é a fatura inteira
-    // (ou uma parte dela). Em vez de um 💲 que faria pouco sentido isolado,
+    // (ou uma parte dela). Em vez de um  que faria pouco sentido isolado,
     // isso abre o mesmo detalhe/opções de pagamento que aparecem no bloco
     // da fatura no Dashboard.
     const l = state.lancamentos.find(x=>x.id===id);
@@ -6794,12 +6794,12 @@ function viewCliMensagens(){
     <div class="panel" style="margin-bottom:12px;"><div class="panel-body">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
         <strong style="font-size:13.5px;">${esc(m.nome)}</strong>
-        <div class="row-actions"><button class="icon-btn" data-action="msg-modelo-editar" data-id="${m.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="msg-modelo-excluir" data-id="${m.id}" title="Excluir">🗑</button></div>
+        <div class="row-actions"><button class="icon-btn" data-action="msg-modelo-editar" data-id="${m.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="msg-modelo-excluir" data-id="${m.id}" title="Excluir">×</button></div>
       </div>
       <div style="font-size:12.5px; color:var(--ink-3); white-space:pre-line; margin-top:6px; line-height:1.6;">${esc(m.texto)}</div>
     </div></div>`).join("");
   return `
-    <div class="page-header"><div><div class="page-title">💬 Modelos de mensagem</div><div class="page-sub">Textos prontos pra usar no envio em massa pelo WhatsApp.</div></div><button class="btn btn-primary" data-action="msg-modelo-novo">+ Novo modelo</button></div>
+    <div class="page-header"><div><div class="page-title">Modelos de mensagem</div><div class="page-sub">Textos prontos pra usar no envio em massa pelo WhatsApp.</div></div><button class="btn btn-primary" data-action="msg-modelo-novo">+ Novo modelo</button></div>
     ${rows || emptyState("Nenhum modelo cadastrado ainda.")}
   `;
 }
@@ -6879,7 +6879,7 @@ function renderAutoEnvioModal(){
   closeModal(); // openModal() empilha — sem isso, cada atualização de progresso abriria um modal novo por cima
   const pct = st.total ? Math.round((Math.min(st.feito,st.total)/st.total)*100) : 0;
   openModal(`
-    <div class="modal-head"><div class="modal-title">⚡ Envio automático</div>${!st.emAndamento ? `<button class="modal-close" data-action="envio-auto-fechar">✕</button>` : ""}</div>
+    <div class="modal-head"><div class="modal-title">Envio automático</div>${!st.emAndamento ? `<button class="modal-close" data-action="envio-auto-fechar">✕</button>` : ""}</div>
     <div class="modal-body">
       <div style="font-size:14px; margin-bottom:10px;">${st.emAndamento ? `Enviando ${Math.min(st.feito+1,st.total)} de ${st.total}...` : `Concluído: ${st.sucesso.length} enviado(s), ${st.falha.length} falharam, de ${st.total}.`}</div>
       <div style="height:6px; background:var(--muted-bg); border-radius:4px; overflow:hidden; margin-bottom:12px;">
@@ -6917,13 +6917,13 @@ function dadosCobrancaCliente(clienteId, mapa){
   return { data: proximo.data, dias, vencido: dias>0, totalAberto: abertos.reduce((s,l)=>s+Number(l.valor),0), qtd: abertos.length };
 }
 function statusCobranca(dados){
-  if(!dados) return { rotulo: "Sem cobrança em aberto", cor: "var(--ink-4)", ponto: "⚪" };
-  if(dados.dias > 0) return { rotulo: `Vencido há ${dados.dias} dia${dados.dias===1?"":"s"}`, cor: "var(--neg)", ponto: "🔴" };
-  if(dados.dias === 0) return { rotulo: "Vence hoje", cor: "#D97706", ponto: "🟡" };
+  if(!dados) return { rotulo: "Sem cobrança em aberto", cor: "var(--ink-4)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" };
+  if(dados.dias > 0) return { rotulo: `Vencido há ${dados.dias} dia${dados.dias===1?"":"s"}`, cor: "var(--neg)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span>" };
+  if(dados.dias === 0) return { rotulo: "Vence hoje", cor: "#D97706", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" };
   const faltam = -dados.dias;
   return faltam<=5
-    ? { rotulo: `Vence em ${faltam} dia${faltam===1?"":"s"}`, cor: "#D97706", ponto: "🟡" }
-    : { rotulo: `Vence em ${faltam} dias`, cor: "var(--ink-4)", ponto: "⚪" };
+    ? { rotulo: `Vence em ${faltam} dia${faltam===1?"":"s"}`, cor: "#D97706", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;"></span>" }
+    : { rotulo: `Vence em ${faltam} dias`, cor: "var(--ink-4)", ponto: "<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-4);margin-right:4px;"></span>" };
 }
 // Já mandei ESSE modelo pra essa pessoa antes? (pega o mais recente) — é o
 // que evita cobrar/avisar a mesma coisa duas vezes sem perceber.
@@ -6994,7 +6994,7 @@ function viewCliEnvioMassa(){
   }).join("");
   const qtdSelecionados = Array.from(sel).length;
   return `
-    <div class="page-header"><div><div class="page-title">📤 Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
+    <div class="page-header"><div><div class="page-title"> Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-body">
       <div class="field-row">
         <div class="field"><label>Negócio</label><select id="envioNegocioSelect"><option value="">Todos os negócios</option>${negOptions}</select></div>
@@ -7008,9 +7008,9 @@ function viewCliEnvioMassa(){
       <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div class="panel-title">Contatos (${lista.length}) — ${qtdSelecionados} selecionado(s)</div>
         <div style="display:flex; gap:8px;">
-          ${idsVencidos.length ? `<button class="btn btn-ghost btn-sm" data-action="envio-selecionar-vencidos" title="Marca só quem está com pagamento vencido">🔴 Selecionar vencidos (${idsVencidos.length})</button>` : ""}
-          <button class="btn btn-ghost btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Abre o WhatsApp um contato de cada vez — você clica em Enviar lá dentro">📤 Enviar manual</button>
-          <button class="btn btn-primary btn-sm" data-action="envio-iniciar-auto" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Envia sozinho pra todos os selecionados, sem precisar abrir o WhatsApp (precisa do WhatsApp automático configurado)">⚡ Enviar automático</button>
+          ${idsVencidos.length ? `<button class="btn btn-ghost btn-sm" data-action="envio-selecionar-vencidos" title="Marca só quem está com pagamento vencido"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;"></span> Selecionar vencidos (${idsVencidos.length})</button>` : ""}
+          <button class="btn btn-ghost btn-sm" data-action="envio-iniciar" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Abre o WhatsApp um contato de cada vez — você clica em Enviar lá dentro"> Enviar manual</button>
+          <button class="btn btn-primary btn-sm" data-action="envio-iniciar-auto" ${(qtdSelecionados>0 && modeloAtual)?"":"disabled"} title="Envia sozinho pra todos os selecionados, sem precisar abrir o WhatsApp (precisa do WhatsApp automático configurado)">Enviar automático</button>
         </div>
       </div>
       <div class="panel-body">
@@ -7018,7 +7018,7 @@ function viewCliEnvioMassa(){
           <label class="checkbox-row"><input type="checkbox" data-action="bulk-toggle-all" data-contexto="envio_massa" data-ids="${idsVisiveis.join(",")}" ${idsVisiveis.length>0 && idsVisiveis.every(id=>sel.has(id))?"checked":""}> Selecionar todos os visíveis</label>
           <label class="checkbox-row" style="font-size:12px; color:var(--ink-3);"><input type="checkbox" data-action="envio-toggle-ocultar-enviados" ${envioMassaOcultarEnviados?"checked":""}> Ocultar quem já recebeu esse modelo</label>
         </div>
-        ${semWhatsapp>0 ? `<div class="field-help" style="color:var(--neg); margin-bottom:8px;">⚠ ${semWhatsapp} cliente(s) sem WhatsApp/telefone cadastrado não aparecem aqui — atualize o cadastro deles pra poder cobrar/avisar.</div>` : ""}
+        ${semWhatsapp>0 ? `<div class="field-help" style="color:var(--neg); margin-bottom:8px;">${semWhatsapp} cliente(s) sem WhatsApp/telefone cadastrado não aparecem aqui — atualize o cadastro deles pra poder cobrar/avisar.</div>` : ""}
         ${linhas || emptyState("Nenhum cliente encontrado com esse filtro.")}
       </div>
     </div>
@@ -7044,7 +7044,7 @@ function renderFilaEnvioMassa(){
   const total = fila.itens.length;
   if(fila.indice >= total){
     openModal(`
-      <div class="modal-head"><div class="modal-title">📤 Envio concluído</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
+      <div class="modal-head"><div class="modal-title"> Envio concluído</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
       <div class="modal-body">
         <div style="font-size:14px;">✔ Enviado(s): <strong>${fila.enviados.size}</strong> · Pulado(s): <strong>${fila.pulados.size}</strong> · Total: ${total}</div>
       </div>
@@ -7054,11 +7054,11 @@ function renderFilaEnvioMassa(){
   }
   const atual = fila.itens[fila.indice];
   openModal(`
-    <div class="modal-head"><div class="modal-title">📤 Enviando ${fila.indice+1} de ${total}</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Enviando ${fila.indice+1} de ${total}</div><button class="modal-close" data-action="envio-fila-fechar">✕</button></div>
     <div class="modal-body">
       <div style="font-size:15px; font-weight:700;">${esc(atual.nome)}</div>
       <div class="field-help" style="margin-top:6px;">Clique em "Abrir WhatsApp", confira a mensagem e mande por lá (o WhatsApp abre com o texto pronto — quem envia de verdade é você, com um clique em "Enviar" lá dentro). Depois volte aqui e avance pro próximo.</div>
-      <a href="${atual.link}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;">📱 Abrir WhatsApp de ${esc(atual.nome)}</a>
+      <a href="${atual.link}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;">Abrir WhatsApp de ${esc(atual.nome)}</a>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-action="envio-fila-pular">Pular este</button>
@@ -7140,7 +7140,7 @@ function viewCliDashboard(){
     </div>
 
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">👥 Novos clientes — últimos 30 dias</div><span style="font-size:12px;color:var(--ink-3);">${novos30} cadastros</span></div>
+      <div class="panel-head"><div class="panel-title"> Novos clientes — últimos 30 dias</div><span style="font-size:12px;color:var(--ink-3);">${novos30} cadastros</span></div>
       <div class="panel-body" style="padding-top:6px;">
         ${novosRows ? `<table><thead><tr><th>Nome</th><th>Cadastrado em</th><th>Negócios</th><th>Cidade</th></tr></thead><tbody>${novosRows}</tbody></table>` : emptyState("Nenhum cadastro nos últimos 30 dias.")}
       </div>
@@ -7181,7 +7181,7 @@ function viewCliLeads(){
 
     <!-- Cabeçalho -->
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem">
-      <span style="font-size:1.5rem">🎯</span>
+      <span style="font-size:1.5rem"></span>
       <div>
         <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:var(--text-primary)">Leads do Site</h2>
         <p style="margin:0;font-size:0.8rem;color:var(--text-muted)">Contatos capturados pelo site servnet.net.br</p>
@@ -7207,7 +7207,7 @@ function viewCliLeads(){
     <!-- Filtros -->
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.2rem">
       <input type="text"
-        placeholder="🔍 Buscar por nome, telefone, plano…"
+        placeholder="Buscar por nome, telefone, plano…"
         value="${(leadsFiltro.texto||"").replace(/"/g,"&quot;")}"
         data-action="leads-filtro-texto"
         style="flex:1;min-width:180px;max-width:340px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem;outline:none"
@@ -7260,7 +7260,7 @@ function viewCliLeads(){
                   <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center">
                     <button data-action="lead-wa" data-id="${l.id}"
                       title="Contatar no WhatsApp"
-                      style="width:100%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">📱 WhatsApp</button>
+                      style="width:100%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#4ADE80;white-space:nowrap">WhatsApp</button>
                     ${l.status!=="Contatado"?`<button data-action="lead-status" data-id="${l.id}" data-status="Contatado"
                       style="width:100%;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.75rem;color:#FCD34D;white-space:nowrap">✓ Contatado</button>`:""}
                     ${l.status!=="Convertido"?`<button data-action="lead-status" data-id="${l.id}" data-status="Convertido"
@@ -7308,7 +7308,7 @@ function viewCliLista(){
       <td><span class="status-pill ${statusClass}">${esc(c.status||"—")}</span></td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
-        <button class="icon-btn danger" data-action="cli-del" data-id="${c.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="cli-del" data-id="${c.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -7357,7 +7357,7 @@ function viewCliDetalhe(){
               Plano: <strong>${esc(plano?.nome||ct.planoId||"—")}</strong> ${plano&&podeVerValores()?`· ${fmtBRL(plano.valor)}/mês`:""}
               ${ct.dataContrato?`· Desde ${fmtDateBR(ct.dataContrato)}`:""}
               ${ct.diaVencimento?`· Vence dia ${ct.diaVencimento}`:""}
-              ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">🔁 cobrança automática</span>`:""}
+              ${ct.cobrancaAutomatica?` · <span style="color:var(--pos);">cobrança automática</span>`:""}
             </div>
             ${ct.observacoes?`<div style="font-size:11.5px;color:var(--ink-4);margin-top:3px;">${esc(ct.observacoes)}</div>`:""}
             ${ct.tipoConexao?`<div style="font-size:11.5px;color:var(--ink-4);">Conexão: ${esc(ct.tipoConexao)}</div>`:""}
@@ -7366,7 +7366,7 @@ function viewCliDetalhe(){
           <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
             <span class="status-pill ${ctStatusClass}">${ct.status}</span>
             <button class="icon-btn" data-action="cli-edit-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Editar contrato">✎</button>
-            <button class="icon-btn danger" data-action="cli-del-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Remover">🗑</button>
+            <button class="icon-btn danger" data-action="cli-del-contrato" data-id="${c.id}" data-cid="${ct.id}" title="Remover">×</button>
           </div>
         </div>
       </div>
@@ -7396,7 +7396,7 @@ function viewCliDetalhe(){
     <div class="two-col">
       <div>
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
+          <div class="panel-head"><div class="panel-title">Dados cadastrais</div></div>
           <div class="panel-body" style="padding-top:10px;">
             <div style="display:grid; gap:8px; font-size:13px;">
               ${[
@@ -7408,7 +7408,7 @@ function viewCliDetalhe(){
         </div>
 
         <div class="panel" style="margin-top:12px;">
-          <div class="panel-head"><div class="panel-title">📍 Endereço</div></div>
+          <div class="panel-head"><div class="panel-title">Endereço</div></div>
           <div class="panel-body" style="padding-top:10px; font-size:13px; line-height:1.6;">
             ${c.logradouro ? `<div>${esc(c.logradouro)}, ${esc(c.numero||"S/N")}${c.complemento?` — ${esc(c.complemento)}`:""}</div>` : ""}
             ${c.bairro ? `<div style="color:var(--ink-3);">${esc(c.bairro)}</div>` : ""}
@@ -7418,10 +7418,10 @@ function viewCliDetalhe(){
           </div>
         </div>
 
-        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px; line-height:1.6;">${esc(c.observacoes)}</div></div>` : ""}
+        ${c.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px; line-height:1.6;">${esc(c.observacoes)}</div></div>` : ""}
       </div>
       <div>
-        <div style="font-weight:700; font-size:13.5px; margin-bottom:8px;">🤝 Negócios & Contratos</div>
+        <div style="font-weight:700; font-size:13.5px; margin-bottom:8px;">Negócios & Contratos</div>
         ${contratosHTML || `<div class="panel"><div class="panel-body">${emptyState("Nenhum negócio vinculado ainda. Clique em \"+ Vincular negócio\".")}</div></div>`}
       </div>
     </div>
@@ -7444,7 +7444,7 @@ function viewCliPlanos(){
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-edit-plano" data-id="${p.id}" title="Editar">✎</button>
         <button class="icon-btn" data-action="cli-duplicar-plano" data-id="${p.id}" title="Duplicar">⧉</button>
-        <button class="icon-btn danger" data-action="cli-del-plano" data-id="${p.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="cli-del-plano" data-id="${p.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -7867,8 +7867,8 @@ function viewCliOrcamentos(){
       <td><div class="row-actions">
         ${podeEditar ? `<button class="btn btn-primary btn-sm" data-action="orc-aprovar" data-id="${o.id}">Aprovar → OS</button>` : ""}
         ${podeEditar ? `<button class="icon-btn" data-action="orc-recusar" data-id="${o.id}" title="Recusar">✕</button>` : ""}
-        <button class="icon-btn" data-action="orc-edit" data-id="${o.id}" title="${podeEditar?'Editar':'Ver'}">${podeEditar?"✎":"🔍"}</button>
-        <button class="icon-btn danger" data-action="orc-del" data-id="${o.id}" title="Excluir">🗑</button>
+        <button class="icon-btn" data-action="orc-edit" data-id="${o.id}" title="${podeEditar?'Editar':'Ver'}">${podeEditar?"✎":"Ver"}</button>
+        <button class="icon-btn danger" data-action="orc-del" data-id="${o.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -7903,7 +7903,7 @@ function viewCliOSLista(){
       <td class="num" style="color:var(--ink-3);">${fmtBRL(custo)}</td>
       <td class="num" style="font-weight:700; color:${margem>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(margem)}</td>`:""}
       <td><span class="status-pill ${statusClass}">${os.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="os-detalhe" data-id="${os.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="os-del" data-id="${os.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="os-detalhe" data-id="${os.id}" title="Ver">Ver</button><button class="icon-btn danger" data-action="os-del" data-id="${os.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
   return `
@@ -7948,8 +7948,8 @@ function viewCliOSDetalhe(){
         <div><div class="page-title">${esc(os.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${os.negocio?` · ${esc(os.negocio)}`:""} · <span class="status-pill ${statusClass}">${os.status}</span></div></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        ${(os.status!=="Cancelada" && os.status!=="Concluída") ? `<button class="btn btn-ghost" data-action="os-baixar-estoque" data-id="${os.id}">📦 Dar baixa de estoque</button>` : ""}
-        ${!lanc ? `<button class="btn btn-ghost" data-action="os-gerar-receita" data-id="${os.id}">💵 Gerar conta a receber</button>` : ""}
+        ${(os.status!=="Cancelada" && os.status!=="Concluída") ? `<button class="btn btn-ghost" data-action="os-baixar-estoque" data-id="${os.id}"> Dar baixa de estoque</button>` : ""}
+        ${!lanc ? `<button class="btn btn-ghost" data-action="os-gerar-receita" data-id="${os.id}"> Gerar conta a receber</button>` : ""}
         ${(os.status!=="Concluída" && os.status!=="Cancelada") ? `<button class="btn btn-primary" data-action="os-concluir" data-id="${os.id}">✓ Concluir OS</button>` : ""}
       </div>
     </div>
@@ -7960,10 +7960,10 @@ function viewCliOSDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Conta a receber</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:"— não gerada —"}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>
     </div>
     <div class="two-col">
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">🛒 Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Valor unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Valor unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
-    ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
+    ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
   `;
 }
 
@@ -7985,7 +7985,7 @@ function modalCliOrcamento(existing, modoOS){
       <td style="width:80px;"><input type="number" min="0.01" step="0.01" class="orc-item-qtd" value="${it?it.quantidade:1}" ${podeEditar?"":"disabled"}></td>
       <td style="width:110px;"><input type="number" min="0" step="0.01" class="orc-item-valor" value="${it?it.valorUnitario:0}" ${podeEditar?"":"disabled"}></td>
       <td class="num orc-item-total" style="width:100px;">${fmtBRL((it?Number(it.quantidade):1)*(it?Number(it.valorUnitario):0))}</td>
-      <td>${podeEditar?`<button type="button" class="icon-btn danger orc-item-del" title="Remover">🗑</button>`:""}</td>
+      <td>${podeEditar?`<button type="button" class="icon-btn danger orc-item-del" title="Remover">×</button>`:""}</td>
     </tr>`;
   const itensIniciais = (o.itens&&o.itens.length) ? o.itens : [{produtoId:"",descricao:"",quantidade:1,valorUnitario:0}];
 
@@ -8145,10 +8145,10 @@ function modalOSBaixaEstoque(osId){
       <td style="min-width:220px;"><select class="baixa-item-produto"><option value="">— Selecione —</option>${state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)} (saldo: ${estSaldoAtual(p.id)} ${esc(p.unidade||"un")})</option>`).join("")}</select></td>
       <td style="width:100px;"><input type="number" min="0.001" step="0.001" class="baixa-item-qtd" value="1"></td>
       <td class="num baixa-item-custo" style="width:110px; color:var(--ink-3);">—</td>
-      <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">🗑</button></td>
+      <td><button type="button" class="icon-btn danger baixa-item-del" title="Remover">×</button></td>
     </tr>`;
   openModal(`
-    <div class="modal-head"><div class="modal-title">📦 Dar baixa de estoque — ${esc(os.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Dar baixa de estoque — ${esc(os.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaOS"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado na instalação de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong> — o custo usa o Custo Médio Real do produto agora.</div>
       <div style="border:1px solid var(--border); border-radius:var(--r);">
@@ -8258,17 +8258,17 @@ function viewCliTecnicos(){
       ${podeVerValores()?`<td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>`:""}
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
-        <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">🔗</button>
-        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);">💲</button>` : ""}
+        <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">↗</button>
+        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);"></button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
-        <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em 💲 pra lançar o pagamento em Contas a Pagar.</div></div>
+      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em  pra lançar o pagamento em Contas a Pagar.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
     ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
@@ -8290,12 +8290,12 @@ function modalCodigoTecnico(tecnico){
     <div class="field"><label>${esc(label)}</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="${campoId}" value="${esc(valor)}" readonly style="font-family:var(--font-mono); font-size:12.5px;">
-        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">📋 Copiar</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="${campoId}">Copiar</button>
       </div>
     </div>`;
   const link = `${location.origin}${location.pathname}?tec=${encodeURIComponent(tecnico.id)}&holding=${encodeURIComponent(state.user?.id||"")}`;
   openModal(`
-    <div class="modal-head"><div class="modal-title">🔗 App do Técnico — ${esc(tecnico.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">App do Técnico — ${esc(tecnico.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:14px;">Passe esse link pro técnico (WhatsApp, por exemplo). Ele abre, escolhe um e-mail e senha PRÓPRIOS (não os seus) e pronto — a conta dele é criada na hora, já vinculada só aos chamados que você atribuir a ele.</div>
       ${campoCopiavel("Link de acesso", link, "linkTecConvite")}
@@ -8408,7 +8408,7 @@ function viewCliChamados(){
       <td>${c.dataAgendada?fmtDateBR(c.dataAgendada):"—"}</td>
       <td><span class="status-pill ${c.prioridade==="Urgente"||c.prioridade==="Alta"?"status-pendente":"status-agendado"}">${c.prioridade}</span></td>
       <td><span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">🔍</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">Ver</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
@@ -8441,7 +8441,7 @@ function viewCliChamadoDetalhe(){
   const itensBaixadosHTML = itensBaixados.length ? itensBaixados.map(m => {
     const p = estProdutoById(m.produtoId);
     return `<tr><td>${esc(p?p.nome:"— produto removido —")}</td><td class="num">${m.qtd}</td>${podeVerValores()?`<td class="num">${fmtBRL(m.custoUnitario)}</td><td class="num" style="font-weight:600;">${fmtBRL(m.qtd*Number(m.custoUnitario||0))}</td>`:""}
-      <td class="num"><button class="icon-btn" data-action="cham-mat-editar" data-id="${m.id}" title="Editar item">✎</button><button class="icon-btn danger" data-action="cham-mat-excluir" data-id="${m.id}" title="Excluir item">🗑</button></td></tr>`;
+      <td class="num"><button class="icon-btn" data-action="cham-mat-editar" data-id="${m.id}" title="Editar item">✎</button><button class="icon-btn danger" data-action="cham-mat-excluir" data-id="${m.id}" title="Excluir item">×</button></td></tr>`;
   }).join("") : `<tr><td colspan="5">${emptyState("Nenhum material registrado ainda.")}</td></tr>`;
 
   const podeIniciar = c.status==="Aberto" || c.status==="Agendado";
@@ -8457,8 +8457,8 @@ function viewCliChamadoDetalhe(){
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         ${podeIniciar ? `<button class="btn btn-ghost" data-action="cham-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
-        ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
-        ${(!lanc && Number(c.valorCobranca)>0 && podeVerValores()) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}">💵 Gerar cobrança</button>` : ""}
+        ${podeRegistrarMateriais ? `<button class="btn btn-ghost" data-action="cham-materiais" data-id="${c.id}"> Registrar materiais usados</button>` : ""}
+        ${(!lanc && Number(c.valorCobranca)>0 && podeVerValores()) ? `<button class="btn btn-ghost" data-action="cham-gerar-cobranca" data-id="${c.id}"> Gerar cobrança</button>` : ""}
         <button class="btn btn-ghost" data-action="cham-edit" data-id="${c.id}">✎ Editar</button>
         ${podeConcluir ? `<button class="btn btn-ghost" data-action="cham-prorrogar" data-id="${c.id}">⏸ Não concluiu</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" data-action="cham-concluir" data-id="${c.id}">✓ Concluir</button>` : ""}
@@ -8472,16 +8472,16 @@ function viewCliChamadoDetalhe(){
       <div class="kpi-card"><div class="kpi-label">Cobrança</div><div class="kpi-value" style="font-size:14px;">${lanc?`<span class="status-pill ${lanc.status==='Pago'?'status-pago':'status-pendente'}">${lanc.status}</span>`:(Number(c.valorCobranca)>0?fmtBRL(c.valorCobranca)+" — não gerada":"—")}</div>${lanc?`<div class="kpi-note">dê baixa em Lançamentos quando o cliente pagar</div>`:""}</div>`:""}
     </div>
     <div class="two-col">
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📋 Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Detalhes</div></div><div class="panel-body" style="font-size:13px; line-height:1.7;">
         <div><strong>Tipo:</strong> ${esc(c.tipo)}</div>
         <div><strong>Prioridade:</strong> ${esc(c.prioridade)}</div>
         <div><strong>Motivo:</strong> ${esc(c.motivo||"—")}</div>
         <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
         ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
       </div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">📦 Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
-    ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">📝 Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
+    ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
   `;
 }
 
@@ -8570,10 +8570,10 @@ function modalChamadoMateriais(chamadoId){
         <label style="display:block; font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:4px;">Custo estimado</label>
         <div class="baixa-item-custo" style="font-size:13px; color:var(--ink-3); padding:8px 0;">—</div>
       </div>` : ""}
-      <button type="button" class="icon-btn danger baixa-item-del" title="Remover" style="margin-bottom:4px;">🗑</button>
+      <button type="button" class="icon-btn danger baixa-item-del" title="Remover" style="margin-bottom:4px;">×</button>
     </div>`;
   openModal(`
-    <div class="modal-head"><div class="modal-title">📦 Materiais usados — ${esc(cham.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Materiais usados — ${esc(cham.numero)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formBaixaChamado"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Informe o que foi realmente usado no atendimento de <strong>${cliente?esc(cliNome(cliente)):"—"}</strong>${mostraCusto ? " — o custo usa o Custo Médio Real do produto agora." : ""}</div>
       <div id="baixaItensBody">${linhaHTML()}</div>
@@ -8794,9 +8794,9 @@ function viewComprasVendas(){
       <td class="num" style="color:var(--pos);">${i.status==="Vendido"?fmtBRL(i.valorVenda):"—"}</td>
       <td class="num" style="font-weight:700; color:${margem===null?'var(--ink-4)':margem>=0?'var(--pos)':'var(--neg)'};">${margem===null?"—":fmtBRL(margem)}</td>
       <td><div class="row-actions">
-        ${i.status!=="Vendido" ? `<button class="icon-btn" data-action="cv-registrar-venda" data-id="${i.id}" title="Registrar venda" style="color:var(--pos);">💲</button>` : ""}
+        ${i.status!=="Vendido" ? `<button class="icon-btn" data-action="cv-registrar-venda" data-id="${i.id}" title="Registrar venda" style="color:var(--pos);"></button>` : ""}
         <button class="icon-btn" data-action="cv-edit" data-id="${i.id}" title="Editar">✎</button>
-        <button class="icon-btn danger" data-action="cv-del" data-id="${i.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="cv-del" data-id="${i.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -8891,7 +8891,7 @@ function modalCvVenda(item){
   if(!item) return;
   const contaOpts = state.contas.map(c=>`<option value="${c.id}" ${state.contas.find(x=>x.ativa!==false)?.id===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">💲 Registrar venda — ${esc(item.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title"> Registrar venda — ${esc(item.nome)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCvVenda"><div class="modal-body">
       <div class="field-help" style="margin-bottom:10px;">Comprado por <strong>${fmtBRL(item.valorCompra)}</strong> em ${fmtDateBR(item.dataCompra)}.</div>
       <div class="field-row">
@@ -9018,7 +9018,7 @@ function viewRhDashboard(){
 
   const aniversariantesHTML = aniversariantes.length ? aniversariantes.map(f => `
     <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;">
-      <div style="cursor:pointer; color:var(--accent); font-weight:600;" data-action="rh-detalhe" data-id="${f.id}">🎂 ${esc(f.nome)}</div>
+      <div style="cursor:pointer; color:var(--accent); font-weight:600;" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</div>
       <div style="color:var(--ink-3);">${fmtDateBR(f.dataNascimento)}${rhIdade(f.dataNascimento)!=null?` · completa ${rhIdade(f.dataNascimento)+1} anos`:""}</div>
     </div>`).join("") : emptyState("Nenhum aniversariante este mês.");
 
@@ -9045,11 +9045,11 @@ function viewRhDashboard(){
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;">
-        <div class="panel-head"><div class="panel-title">🏖️ Férias vencendo (60 dias)</div><span style="font-size:12px;color:var(--ink-3);">${feriasVencendo.length} alerta(s)</span></div>
+        <div class="panel-head"><div class="panel-title">️ Férias vencendo (60 dias)</div><span style="font-size:12px;color:var(--ink-3);">${feriasVencendo.length} alerta(s)</span></div>
         <div class="panel-body" style="padding-top:6px;">${feriasHTML}</div>
       </div>
       <div class="panel" style="margin:0;">
-        <div class="panel-head"><div class="panel-title">🎂 Aniversariantes do mês</div></div>
+        <div class="panel-head"><div class="panel-title">Aniversariantes do mês</div></div>
         <div class="panel-body" style="padding-top:6px;">${aniversariantesHTML}</div>
       </div>
     </div>
@@ -9080,7 +9080,7 @@ function viewRhFuncionarios(){
       <td><span class="status-pill ${statusClass}">${esc(f.status||"—")}</span></td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="rh-detalhe" data-id="${f.id}" title="Ver/Editar">✎</button>
-        <button class="icon-btn danger" data-action="rh-del-funcionario" data-id="${f.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="rh-del-funcionario" data-id="${f.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -9125,7 +9125,7 @@ function viewRhFuncionarioDetalhe(){
       <td class="num" style="color:var(--neg);">${p.descontos?'-'+fmtBRL(p.descontos):"—"}</td>
       <td class="num" style="font-weight:700;">${fmtBRL(p.valorLiquido)}</td>
       <td><span class="status-pill ${p.status==='Pago'?'status-pago':'status-pendente'}">${p.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">×</button></div></td>
     </tr>`).join("") : `<tr><td colspan="7">${emptyState("Nenhum pagamento lançado ainda.")}</td></tr>`;
 
   const feriasHist = state.rhFerias.filter(x=>x.funcionarioId===f.id).sort((a,b)=>(b.periodoAquisitivoInicio||"").localeCompare(a.periodoAquisitivoInicio||""));
@@ -9135,7 +9135,7 @@ function viewRhFuncionarioDetalhe(){
       <td>${v.dataInicioGozo?`${fmtDateBR(v.dataInicioGozo)} — ${fmtDateBR(v.dataFimGozo)}`:"—"}</td>
       <td class="num">${v.diasGozados||0}/${v.diasDireito||30}</td>
       <td><span class="status-pill ${v.status==='Concluída'?'status-pago':v.status==='Cancelada'?'status-agendado':'status-pendente'}">${v.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">×</button></div></td>
     </tr>`).join("") : `<tr><td colspan="5">${emptyState("Nenhuma férias registrada ainda.")}</td></tr>`;
 
   return `
@@ -9164,7 +9164,7 @@ function viewRhFuncionarioDetalhe(){
     <div class="two-col">
       <div>
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">📋 Dados cadastrais</div></div>
+          <div class="panel-head"><div class="panel-title">Dados cadastrais</div></div>
           <div class="panel-body" style="padding-top:10px;">
             <div style="display:grid; gap:6px; font-size:12.5px;">
               ${[["CPF","cpf"],["RG","rg"],["Data nascimento","dataNascimento"],["Gênero","genero"],["E-mail","email"],["Telefone","telefone"],["Tipo de contrato","tipoContrato"],["PIX","pix"]]
@@ -9173,7 +9173,7 @@ function viewRhFuncionarioDetalhe(){
           </div>
         </div>
         <div class="panel" style="margin-top:12px;">
-          <div class="panel-head"><div class="panel-title">📍 Endereço</div></div>
+          <div class="panel-head"><div class="panel-title">Endereço</div></div>
           <div class="panel-body" style="padding-top:10px; font-size:12.5px;">
             ${f.logradouro ? `<div>${esc(f.logradouro)}, ${esc(f.numero||"S/N")}${f.complemento?` — ${esc(f.complemento)}`:""}</div>` : ""}
             ${f.bairro ? `<div>${esc(f.bairro)}</div>` : ""}
@@ -9182,20 +9182,20 @@ function viewRhFuncionarioDetalhe(){
             ${!f.logradouro && !f.cidade ? `<span style="color:var(--ink-4);">Endereço não informado</span>` : ""}
           </div>
         </div>
-        ${f.status === "Desligado" ? `<div class="panel" style="margin-top:12px; border-left:3px solid var(--neg);"><div class="panel-head"><div class="panel-title">🚪 Desligamento</div></div><div class="panel-body" style="padding-top:10px; font-size:12.5px;">
+        ${f.status === "Desligado" ? `<div class="panel" style="margin-top:12px; border-left:3px solid var(--neg);"><div class="panel-head"><div class="panel-title">Desligamento</div></div><div class="panel-body" style="padding-top:10px; font-size:12.5px;">
           <div>Data: <strong>${fmtDateBR(f.dataDemissao)}</strong></div>
           ${f.tipoDesligamento?`<div>Tipo: <strong>${esc(f.tipoDesligamento)}</strong></div>`:""}
           ${f.motivoDesligamento?`<div style="margin-top:4px; color:var(--ink-3);">${esc(f.motivoDesligamento)}</div>`:""}
         </div></div>` : ""}
-        ${f.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">📝 Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px;">${esc(f.observacoes)}</div></div>` : ""}
+        ${f.observacoes ? `<div class="panel" style="margin-top:12px;"><div class="panel-head"><div class="panel-title">Observações</div></div><div class="panel-body" style="font-size:13px; padding-top:10px;">${esc(f.observacoes)}</div></div>` : ""}
       </div>
       <div>
         <div class="panel" style="margin-bottom:12px;">
-          <div class="panel-head"><div class="panel-title">💵 Folha de pagamento</div></div>
+          <div class="panel-head"><div class="panel-title"> Folha de pagamento</div></div>
           <div class="panel-body"><table><thead><tr><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Status</th><th></th></tr></thead><tbody>${folhaHTML}</tbody></table></div>
         </div>
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">🏖️ Férias</div></div>
+          <div class="panel-head"><div class="panel-title">️ Férias</div></div>
           <div class="panel-body"><table><thead><tr><th>Período aquisitivo</th><th>Período de gozo</th><th class="num">Dias</th><th>Status</th><th></th></tr></thead><tbody>${feriasHTML}</tbody></table></div>
         </div>
       </div>
@@ -9217,7 +9217,7 @@ function viewRhCargos(){
       <td style="text-align:center;">${qtd}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="rh-edit-cargo" data-id="${c.id}" title="Editar">✎</button>
-        <button class="icon-btn danger" data-action="rh-del-cargo" data-id="${c.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="rh-del-cargo" data-id="${c.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -9253,7 +9253,7 @@ function viewRhFolha(){
       <td class="num" style="font-weight:700;">${fmtBRL(p.valorLiquido)}</td>
       <td>${fmtDateBR(p.dataPagamento)}</td>
       <td><span class="status-pill ${p.status==='Pago'?'status-pago':'status-pendente'}" ${p.status!=='Pago'?`style="cursor:pointer;" data-action="rh-marcar-pago" data-id="${p.id}" title="Marcar como pago"`:""}>${p.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-folha" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-folha" data-id="${p.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
 
@@ -9299,7 +9299,7 @@ function viewRhFerias(){
       <td>${v.dataInicioGozo?`${fmtDateBR(v.dataInicioGozo)} — ${fmtDateBR(v.dataFimGozo)}`:"—"}</td>
       <td class="num">${v.diasGozados||0}/${v.diasDireito||30}</td>
       <td><span class="status-pill ${v.status==='Concluída'?'status-pago':v.status==='Cancelada'?'status-agendado':'status-pendente'}">${v.status}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="rh-edit-ferias" data-id="${v.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="rh-del-ferias" data-id="${v.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
   const funcOpts = state.rhFuncionarios.map(f=>`<option value="${f.id}" ${rhFeriasFiltro.funcionario===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
@@ -9340,18 +9340,18 @@ function viewRhAlertas(){
     <td><div class="row-actions"><button class="btn btn-primary btn-sm" data-action="rh-nova-ferias" data-id="${f.id}">+ Férias</button></div></td>
   </tr>`).join("");
   const aniversRows = aniversariantes.map(f => `<tr>
-    <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">🎂 ${esc(f.nome)}</td>
+    <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="rh-detalhe" data-id="${f.id}">${esc(f.nome)}</td>
     <td>${esc(f.negocio||"—")}</td>
     <td>${fmtDateBR(f.dataNascimento)}</td>
   </tr>`).join("");
   return `
-    <div class="page-header"><div><div class="page-title">🔔 Alertas de RH</div><div class="page-sub">Férias vencendo e aniversariantes do mês</div></div></div>
+    <div class="page-header"><div><div class="page-title">Alertas de RH</div><div class="page-sub">Férias vencendo e aniversariantes do mês</div></div></div>
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">🏖️ Férias vencendo/vencidas — ${feriasAlertas.length} alerta(s)</div></div>
+      <div class="panel-head"><div class="panel-title">️ Férias vencendo/vencidas — ${feriasAlertas.length} alerta(s)</div></div>
       <div class="panel-body">${feriasAlertas.length ? `<table><thead><tr><th>Funcionário</th><th>Negócio</th><th>Vencimento</th><th class="num">Prazo</th><th></th></tr></thead><tbody>${feriasRows}</tbody></table>` : emptyState("Ninguém com férias vencendo. ✓")}</div>
     </div>
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">🎂 Aniversariantes do mês</div></div>
+      <div class="panel-head"><div class="panel-title">Aniversariantes do mês</div></div>
       <div class="panel-body">${aniversariantes.length ? `<table><thead><tr><th>Funcionário</th><th>Negócio</th><th>Data</th></tr></thead><tbody>${aniversRows}</tbody></table>` : emptyState("Ninguém faz aniversário este mês.")}</div>
     </div>
   `;
@@ -9789,7 +9789,7 @@ function viewEstDashboard(){
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;">
-        <div class="panel-head"><div class="panel-title">🔔 Alertas — estoque abaixo do mínimo</div></div>
+        <div class="panel-head"><div class="panel-title">Alertas — estoque abaixo do mínimo</div></div>
         <div class="panel-body" style="padding-top:6px;">
           ${alertas.length ? `<table><thead><tr><th>Produto</th><th class="num">Saldo</th><th class="num">Mínimo</th><th></th></tr></thead><tbody>${alertaRows}</tbody></table>` : emptyState("Nenhum alerta. Estoque em dia. ✓")}
         </div>
@@ -9839,7 +9839,7 @@ function viewEstProdutos(){
         <button class="icon-btn" data-action="est-registrar-entrada" data-id="${p.id}" title="Registrar entrada" style="color:var(--pos);">▲</button>
         <button class="icon-btn" data-action="est-registrar-saida" data-id="${p.id}" title="Registrar saída" style="color:var(--neg);">▼</button>
         <button class="icon-btn" data-action="est-edit-produto" data-id="${p.id}" title="Editar">✎</button>
-        <button class="icon-btn danger" data-action="est-del-produto" data-id="${p.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="est-del-produto" data-id="${p.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -9892,7 +9892,7 @@ function viewEstMovimentos(){
       <td>${esc(m.motivo||"—")}</td>
       <td style="color:var(--ink-3); font-size:11.5px;">${esc(m.responsavel||"—")}</td>
       <td>${esc(m.notaFiscal||"—")}</td>
-      <td><div class="row-actions"><button class="icon-btn danger" data-action="est-del-mov" data-id="${m.id}" title="Remover">🗑</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn danger" data-action="est-del-mov" data-id="${m.id}" title="Remover">×</button></div></td>
     </tr>`;
   }).join("");
 
@@ -9935,7 +9935,7 @@ function viewEstFornecedores(){
       <td style="text-align:center;">${produtos} produto(s)</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="est-edit-fornecedor" data-id="${f.id}" title="Editar">✎</button>
-        <button class="icon-btn danger" data-action="est-del-fornecedor" data-id="${f.id}" title="Excluir">🗑</button>
+        <button class="icon-btn danger" data-action="est-del-fornecedor" data-id="${f.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -9971,7 +9971,7 @@ function viewEstAlertas(){
   }).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">🔔 Alertas de Estoque</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
+      <div><div class="page-title">Alertas de Estoque</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
     </div>
     ${alertas.length ? `
     <div class="panel"><div class="panel-body">
@@ -10150,8 +10150,8 @@ function viewEstCompras(){
       <td class="num" style="color:var(--ink-3);">${fmtBRL(totalDespesas)}</td>
       <td class="num" style="font-weight:700;">${fmtBRL(totalItens+totalDespesas)}</td>
       <td><div class="row-actions">
-        <button class="icon-btn" data-action="est-ver-compra" data-id="${c.id}" title="Ver detalhes">🔍</button>
-        <button class="icon-btn danger" data-action="est-del-compra" data-id="${c.id}" title="Excluir">🗑</button>
+        <button class="icon-btn" data-action="est-ver-compra" data-id="${c.id}" title="Ver detalhes">Ver</button>
+        <button class="icon-btn danger" data-action="est-del-compra" data-id="${c.id}" title="Excluir">×</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -10182,14 +10182,14 @@ function modalEstCompra(){
       <td class="num compra-item-total" style="width:100px;">${fmtBRL(0)}</td>
       <td class="num compra-item-rateio" style="width:100px; color:var(--ink-3);">—</td>
       <td class="num compra-item-custofinal" style="width:110px; font-weight:700;">—</td>
-      <td><button type="button" class="icon-btn danger compra-item-del" title="Remover item">🗑</button></td>
+      <td><button type="button" class="icon-btn danger compra-item-del" title="Remover item">×</button></td>
     </tr>`;
 
   if(!state.estFornecedores.length){ showToast("Cadastre um fornecedor primeiro.", "error"); return; }
   if(!state.estProdutos.length){ showToast("Cadastre ao menos um produto primeiro.", "error"); return; }
 
   openModal(`
-    <div class="modal-head"><div class="modal-title">📄 Nova compra — Nota Fiscal</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Nova compra — Nota Fiscal</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formEstCompra"><div class="modal-body">
       <div class="field-row">
         <div class="field"><label>Número da nota *</label><input required type="text" name="numeroNota" placeholder="Ex: 12345"></div>
@@ -10344,7 +10344,7 @@ function modalDetalheCompra(compraId){
     </tr>`;
   }).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">📋 Compra — Nota ${esc(c.numeroNota)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Compra — Nota ${esc(c.numeroNota)}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <div class="modal-body">
       <div class="field-help" style="margin-bottom:10px; font-size:13px;">${fmtDateBR(c.data)} · Fornecedor: <strong>${esc(fornecedor?.nome||"—")}</strong>${c.negocio?` · ${esc(c.negocio)}`:""} · base do rateio: ${EST_BASE_RATEIO.find(o=>o.v===c.baseRateio)?.l||c.baseRateio}</div>
       <div><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor unit.</th><th class="num">Total</th><th class="num">Rateio</th><th class="num">Custo final</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -10380,8 +10380,8 @@ function renderAppTecnico(){
   app.innerHTML = `
     <div style="min-height:100vh; background:var(--bg); display:flex; flex-direction:column;">
       <div style="background:var(--brand); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10;">
-        <div style="font-weight:700; font-size:14px;">🧰 ${esc(nomeUsuarioAtual())}</div>
-        <button class="sidebar-lock-btn" data-action="tec-app-logout" style="padding:6px 10px; font-size:12px;">🚪 Sair</button>
+        <div style="font-weight:700; font-size:14px;"> ${esc(nomeUsuarioAtual())}</div>
+        <button class="sidebar-lock-btn" data-action="tec-app-logout" style="padding:6px 10px; font-size:12px;">Sair</button>
       </div>
       <div style="flex:1;">${tecnicoView === "detalhe" && tecnicoChamadoAtualId ? viewTecnicoChamadoDetalhe() : viewTecnicoLista()}</div>
     </div>
@@ -10428,8 +10428,8 @@ function viewTecnicoChamadoDetalhe(){
           <span class="status-pill ${chamadoStatusClass(c.status)}">${esc(c.status)}</span>
         </div>
         <div style="margin-top:10px; font-size:13.5px; line-height:1.8;">
-          <div>📞 ${cliente&&cliente.telefone?`<a href="tel:${esc(cliente.telefone)}" style="color:var(--ink); text-decoration:none;">${esc(cliente.telefone)}</a>`:"—"}</div>
-          <div>📍 ${esc(endereco||"Endereço não informado")}</div>
+          <div>${cliente&&cliente.telefone?`<a href="tel:${esc(cliente.telefone)}" style="color:var(--ink); text-decoration:none;">${esc(cliente.telefone)}</a>`:"—"}</div>
+          <div>${esc(endereco||"Endereço não informado")}</div>
         </div>
         <hr style="margin:14px 0; border:none; border-top:1px solid var(--border);">
         <div style="font-size:13.5px; line-height:1.9;">
@@ -10446,7 +10446,7 @@ function viewTecnicoChamadoDetalhe(){
       </div></div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${podeIniciar ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-iniciar" data-id="${c.id}">▶ Iniciar atendimento</button>` : ""}
-        ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}">📦 Registrar materiais usados</button>` : ""}
+        ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center;" data-action="tec-app-materiais" data-id="${c.id}"> Registrar materiais usados</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-primary" style="justify-content:center;" data-action="tec-app-concluir" data-id="${c.id}">✓ Concluir atendimento</button>` : ""}
         ${podeConcluir ? `<button class="btn btn-ghost" style="justify-content:center; color:var(--neg);" data-action="tec-app-prorrogar" data-id="${c.id}">⏸ Não consegui concluir</button>` : ""}
       </div>
