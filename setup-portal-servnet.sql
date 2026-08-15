@@ -61,11 +61,17 @@ BEGIN
 
   v_dados := v_cli.dados;
 
-  -- pega contrato ativo
+  -- pega contrato ativo do negócio "Provedor"
   SELECT c INTO v_ct
   FROM jsonb_array_elements(COALESCE(v_dados->'contratos', '[]'::jsonb)) c
   WHERE c->>'status' = 'Ativo'
+    AND lower(c->>'negocio') = 'provedor'
   LIMIT 1;
+
+  -- se não achou contrato ativo de Provedor, cliente não pertence a este portal
+  IF NOT FOUND THEN
+    RETURN json_build_object('ok', false, 'msg', 'Nenhum contrato ativo encontrado para este portal.');
+  END IF;
 
   -- busca plano se houver contrato ativo
   IF v_ct IS NOT NULL AND (v_ct->>'planoId') IS NOT NULL THEN
@@ -145,10 +151,12 @@ GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(uuid, uuid) TO anon;
 -- ----------------------------------------------------------------
 -- 5. FUNÇÃO PARA SOLICITAR UPGRADE / SUPORTE VIA PORTAL
 --    Insere um chamado direto em cli_chamados do painel de controle
+--    Nota: IDs do admin são text (prefixo cli_xxx / cham_xxx),
+--          por isso p_cliente_id e p_master_id são text aqui.
 -- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.portal_servnet_solicitar(
-  p_cliente_id uuid,
-  p_master_id  uuid,
+  p_cliente_id text,
+  p_master_id  text,
   p_tipo       text,        -- 'upgrade' | 'suporte'
   p_descricao  text DEFAULT ''
 )
@@ -158,7 +166,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_id      uuid := gen_random_uuid();
+  v_id      text;
   v_numero  text;
   v_nome    text;
   v_negocio text;
@@ -175,15 +183,16 @@ BEGIN
     )
   INTO v_nome, v_negocio
   FROM cli_clientes
-  WHERE id = p_cliente_id AND user_id = p_master_id
+  WHERE id::text = p_cliente_id AND user_id::text = p_master_id
   LIMIT 1;
 
   IF NOT FOUND THEN
     RETURN json_build_object('ok', false, 'msg', 'Cliente não identificado.');
   END IF;
 
-  -- número único para o chamado
-  v_numero := 'PT-' || to_char(now(), 'YYYYMMDD') || '-' || UPPER(LEFT(v_id::text, 4));
+  -- IDs em formato text compatível com o padrão do admin
+  v_id     := 'cham_' || to_char(now(), 'YYYYMMDDHH24MISS') || '_' || LEFT(md5(random()::text), 4);
+  v_numero := 'PT-' || to_char(now(), 'YYYYMMDD') || '-' || UPPER(LEFT(md5(random()::text), 4));
 
   -- tipo e motivo conforme solicitação
   IF p_tipo = 'upgrade' THEN
@@ -201,16 +210,16 @@ BEGIN
     v_id,
     p_master_id,
     jsonb_build_object(
-      'clienteId',    p_cliente_id::text,
-      'negocio',      v_negocio,
-      'tipo',         v_tipo_chamado,
-      'prioridade',   'Normal',
-      'motivo',       v_motivo,
-      'tecnicoId',    '',
-      'dataAgendada', '',
-      'status',       'Aberto',
-      'valorCobranca',0,
-      'observacoes',  '',
+      'clienteId',     p_cliente_id,
+      'negocio',       v_negocio,
+      'tipo',          v_tipo_chamado,
+      'prioridade',    'Normal',
+      'motivo',        v_motivo,
+      'tecnicoId',     '',
+      'dataAgendada',  '',
+      'status',        'Aberto',
+      'valorCobranca', 0,
+      'observacoes',   '',
       'numero',        v_numero,
       'dataCadastro',  to_char(now(), 'YYYY-MM-DD'),
       'lancadoPor',    'Portal — ' || COALESCE(v_nome, 'Cliente'),
@@ -223,4 +232,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.portal_servnet_solicitar(uuid, uuid, text, text) TO anon;
+GRANT EXECUTE ON FUNCTION public.portal_servnet_solicitar(text, text, text, text) TO anon;
