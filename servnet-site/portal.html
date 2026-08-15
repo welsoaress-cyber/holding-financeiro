@@ -603,7 +603,8 @@ async function loadFidelidade(data){
     if(error) throw error;
     renderFidelidade(res?.streak||0, data?.nome);
   }catch(e){
-    document.getElementById('fidelContent').innerHTML='<div class="muted">Dados de fidelidade indisponíveis.</div>';
+    // Mesmo com erro no RPC, exibe o cartão com streak 0
+    renderFidelidade(0, data?.nome);
   }
 }
 
@@ -750,7 +751,8 @@ async function loadIndicacoes(data){
     if(error) throw error;
     renderIndicacoes(res,data,codigo);
   }catch(e){
-    document.getElementById('refContent').innerHTML='<div class="muted">Dados de indicações indisponíveis.</div>';
+    // Mesmo com erro no RPC, exibe a seção com 0 indicações
+    renderIndicacoes(null, data, codigo);
   }
 }
 
