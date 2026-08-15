@@ -211,9 +211,10 @@ BEGIN
       'status',       'Aberto',
       'valorCobranca',0,
       'observacoes',  '',
-      'numero',       v_numero,
-      'dataCadastro', to_char(now(), 'YYYY-MM-DD'),
-      'lancadoPor',   'Portal — ' || COALESCE(v_nome, 'Cliente')
+      'numero',        v_numero,
+      'dataCadastro',  to_char(now(), 'YYYY-MM-DD'),
+      'lancadoPor',    'Portal — ' || COALESCE(v_nome, 'Cliente'),
+      'administrativo', true
     ),
     now()
   );
