@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.4";
+const APP_VERSION = "1.6.5";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1274,6 +1274,13 @@ function permissaoSubmenuNeg(negNome, view, acao){
   const s = perm.submenus[view];
   if(!s || typeof s !== "object") return false;
   return !!s[acao];
+}
+// Retorna o nome do negócio que "dono" de uma view de sub-menu (ex: "cli_lista" → "Provedor")
+function negocioDaViewSubmenu(view){
+  for(const [neg, subs] of Object.entries(NEGOCIOS_SUBMENUS)){
+    if(subs.some(s => s.view === view)) return neg;
+  }
+  return null;
 }
 function podeEditarNegocio(negocio){ return permissaoNegocio(negocio, "editar"); }
 function podeExcluirNegocio(negocio){ return permissaoNegocio(negocio, "excluir"); }
@@ -2507,6 +2514,14 @@ function renderApp(){
       if(!acessiveis.has(state.view)){
         const primeira = [...acessiveis][0];
         if(primeira){ state.view = primeira; state.moduloAtivo = moduloDaView(primeira) || ""; }
+      }
+      // Trava o filtro de negócio para a view atual (impede ver dados de outros negócios)
+      const negDaView = negocioDaViewSubmenu(state.view);
+      if(negDaView){
+        filtroNegocioTravado = true;
+        cliFiltro.negocio      = negDaView;
+        lancFilter.negocio     = negDaView;
+        cliPlanosFiltro.negocio = negDaView;
       }
     }
   }
@@ -5466,21 +5481,18 @@ function modalPerfil(existing){
 
     let bodyHtml;
     if(subs.length){
-      // Negócio COM sub-menus: uma linha por tela com [Incluir][Editar][Excluir]
+      // Negócio COM sub-menus: uma linha por tela com [Visualizar][Incluir][Editar][Excluir]
       const rows = subs.map(s => {
         const sp = savedSubs[s.view] || {};
-        const verChk = neverSaved ? true : (typeof sp === "object" ? !!sp.ver : !!sp);
+        const spVer     = neverSaved ? true  : (typeof sp === "object" ? !!sp.ver    : !!sp);
         const spCriar   = typeof sp === "object" ? !!sp.criar   : false;
         const spEditar  = typeof sp === "object" ? !!sp.editar  : false;
         const spExcluir = typeof sp === "object" ? !!sp.excluir : false;
-        const actId = `subact_${n.id}_${s.view}`;
         return `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;border-bottom:1px solid var(--border);">
-            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;flex:0 0 auto;min-width:130px;">
-              <input type="checkbox" name="psub_ver_${n.id}_${s.view}" ${verChk?"checked":""} style="margin:0;" data-subact="${actId}">
-              <span style="font-size:12.5px;font-weight:500;">${esc(s.label)}</span>
-            </label>
-            <div id="${actId}" style="display:${verChk?"flex":"none"};gap:4px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:500;flex:0 0 auto;min-width:130px;">${esc(s.label)}</span>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              ${smPill(`psub_${n.id}_${s.view}_ver`,    spVer,    "Visualizar")}
               ${smPill(`psub_${n.id}_${s.view}_criar`,  spCriar,  "Incluir")}
               ${smPill(`psub_${n.id}_${s.view}_editar`, spEditar, "Editar")}
               ${smPill(`psub_${n.id}_${s.view}_excluir`,spExcluir,"Excluir")}
@@ -5584,11 +5596,6 @@ function modalPerfil(existing){
         lbl.style.color      = chk.checked ? "var(--accent)" : "var(--ink-3)";
       }
     }
-    // Toggle de visibilidade de sub-menu → mostra/oculta seus pills de ação
-    if(chk.dataset.subact){
-      const actDiv = document.getElementById(chk.dataset.subact);
-      if(actDiv) actDiv.style.display = chk.checked ? "flex" : "none";
-    }
   });
 
   document.getElementById("formPerfil").addEventListener("submit", async e => {
@@ -5607,9 +5614,9 @@ function modalPerfil(existing){
       if(subs.length){
         // Negócio COM sub-menus: salva ações por tela
         const submenus = Object.fromEntries(subs.map(s => [s.view, {
-          ver:    fd.get(`psub_ver_${n.id}_${s.view}`) === "on",
-          criar:  fd.get(`psub_${n.id}_${s.view}_criar`)  === "on",
-          editar: fd.get(`psub_${n.id}_${s.view}_editar`) === "on",
+          ver:    fd.get(`psub_${n.id}_${s.view}_ver`)     === "on",
+          criar:  fd.get(`psub_${n.id}_${s.view}_criar`)   === "on",
+          editar: fd.get(`psub_${n.id}_${s.view}_editar`)  === "on",
           excluir:fd.get(`psub_${n.id}_${s.view}_excluir`) === "on",
         }]));
         // Agrega para uso em funções como permissaoNegocio()
