@@ -89,6 +89,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   color-scheme:dark;}
 .janela input:focus-visible{outline:2px solid var(--pool);outline-offset:1px;}
 .janela-sep{color:var(--text-2);}
+.janela-out{font-family:var(--mono);font-size:0.76rem;color:var(--pool);
+  background:rgba(0,196,216,0.08);border:1px solid var(--hair);border-radius:6px;
+  padding:0.32rem 0.6rem;white-space:nowrap;}
 .janela-nota{font-size:0.72rem;color:var(--text-2);flex:1;min-width:14ch;}
 .ledger{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:0.5rem;}
 .fx{font-family:var(--mono);background:var(--chrome-2);border:1.5px solid var(--hair);
@@ -154,10 +157,10 @@ BODY = '''
     <div class="panel-h">Histórico de faturas</div>
     <p class="panel-sub">Cada clique alterna entre <strong>pago em dia</strong> → <strong>pago com atraso</strong> → <strong>em aberto</strong>. O cartão abaixo recalcula na hora, com o mesmo código que roda no portal.</p>
     <div class="janela">
-      <label>Primeira fatura <input type="month" id="mesIni" onchange="moverJanela('ini',this.value)"></label>
+      <label>Cliente desde <input type="date" id="dtInicio" onchange="setCadastro(this.value)"></label>
       <span class="janela-sep">→</span>
-      <label>Última fatura <input type="month" id="mesFim" onchange="moverJanela('fim',this.value)"></label>
-      <span class="janela-nota">sempre 20 faturas — mexer numa ponta arrasta a outra. O cadastro é o mês anterior à 1ª fatura; o cartão vale 12 meses a partir daí, e as faturas fora dele ficam esmaecidas.</span>
+      <span class="janela-out" id="periodoOut">—</span>
+      <span class="janela-nota">O cliente só paga a partir do mês seguinte ao cadastro. O cartão cobre as 12 faturas contadas daí.</span>
     </div>
     <div class="ledger" id="ledger"></div>
     <div class="toolbar">
@@ -193,10 +196,11 @@ const PLANOS = {
 };
 let planoAtual = 'prata';
 
-const N = 20;                       // a janela do simulador é sempre de 20 faturas
+const N = 12;                       // o razão é exatamente o cartão vigente
 const CICLO = ['emdia','atraso','aberto'];
 let estados = [];
-let mesInicio = null;               // 'AAAA-MM' da primeira fatura da janela
+let dtCadastro = null;              // 'AAAA-MM-DD' — data de início do cliente
+let mesInicio = null;               // 'AAAA-MM' da 1ª fatura do cartão vigente
 
 const hojeISO = () => new Date().toISOString().slice(0,10);
 const mesAtual = () => {
@@ -220,15 +224,16 @@ function vencimentoDe(i){
 }
 const ehFutura = i => vencimentoDe(i) > hojeISO();
 
-// Arrastar uma ponta move a outra: a janela nunca deixa de ter 20 faturas.
-function moverJanela(ponta, valor){
-  if(!valor) return;
-  setJanela(ponta === 'ini' ? valor : addMeses(valor, -(N-1)));
-}
-function setJanela(ini){
-  mesInicio = ini;
-  document.getElementById('mesIni').value = mesInicio;
-  document.getElementById('mesFim').value = addMeses(mesInicio, N-1);
+// A data de início manda em tudo: periodoCartao() diz qual cartão está
+// vigente hoje, e o razão passa a ser exatamente as 12 faturas dele.
+function setCadastro(dt){
+  if(!dt) return;
+  dtCadastro = dt;
+  document.getElementById('dtInicio').value = dt;
+  const per = periodoCartao({dataContrato: dt});
+  mesInicio = per ? per.ini : addMeses(dt.slice(0,7), 1);
+  document.getElementById('periodoOut').textContent =
+    per ? `cartão ${per.ciclo}: ${fmtMesRef(per.ini)} → ${fmtMesRef(per.fim)}` : '—';
   atualizar();
 }
 
@@ -252,8 +257,6 @@ function renderLedger(periodo){
     const venc = vencimentoDe(i);
     const futura = venc > hojeISO();
     const mes = venc.slice(0,7);
-    // O cartão só conta as faturas do seu período de validade. Marcar as de
-    // fora evita a dúvida de "por que mexi nessa e o cartão não mudou?".
     const fora = periodo && (mes < periodo.ini || mes > periodo.fim);
     const rotulo = futura ? 'a vencer'
                  : st === 'emdia'  ? 'em dia'
@@ -318,12 +321,9 @@ function renderReadout(streak, ganhos, periodo){
 
 function atualizar(){
   const p = PLANOS[planoAtual];
-  // O cliente só paga a partir do mês seguinte ao cadastro, então a 1ª
-  // fatura da janela corresponde a um cadastro no mês anterior. É daí que
-  // o cartão tira o seu período de validade.
   contratos = [{
     contrato_id:'sim', status:'Ativo', diaVencimento:String(p.dia),
-    dataContrato: addMeses(mesInicio, -1) + '-15',
+    dataContrato: dtCadastro,
     plano:{nome:p.nome, valor:String(p.valor), velocidade:p.velocidade, tecnologia:'Fibra Óptica'}
   }];
   faturasList = montarFaturas();
@@ -365,12 +365,12 @@ function setPlano(q){
 }
 
 estados = Array.from({length:N}, () => 'emdia');
-// Janela padrão: as 12 faturas do cartão vigente já venceram (dá para
-// preencher o cartão inteiro), e as 8 seguintes são o próximo cartão.
-mesInicio = addMeses(mesAtual(), -11);
 planoAtual = 'prata';
 document.getElementById('btnPrata').classList.add('on');
-setJanela(mesInicio);
+// Padrão: cliente de 12 meses atrás — as 12 faturas do cartão já venceram,
+// então dá para preencher o cartão inteiro clicando.
+const d0 = new Date();
+setCadastro(`${d0.getFullYear()-1}-${String(d0.getMonth()+1).padStart(2,'0')}-10`);
 preset('doze');
 '''
 
