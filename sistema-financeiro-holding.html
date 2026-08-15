@@ -69,7 +69,7 @@
     --shadow-xl: 0 20px 48px rgba(0,0,0,.18), 0 4px 12px rgba(0,0,0,.08);
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
   body {
     background: var(--bg);
     color: var(--ink);
@@ -77,11 +77,13 @@
     font-size: 13.5px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ---- Module Bar ---- */
-  #app { display: flex; flex-direction: column; min-height: 100vh; }
-  #appBody { display: flex; flex: 1; min-height: 0; }
+  #app { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+  #appBody { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
   .modbar {
     background: var(--brand);
@@ -244,9 +246,7 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: calc(100vh - 44px);
-    position: sticky;
-    top: 0;
+    height: 100%;
     border-right: 1px solid rgba(255,255,255,.05);
   }
   .brand-sub {
@@ -318,7 +318,7 @@
   .footer-detail { font-size: 10.5px; color: rgba(255,255,255,.25); padding: 6px 4px 0; line-height: 1.6; }
 
   /* ---- Main content area ---- */
-  .main { flex: 1; min-width: 0; padding: 24px 28px 60px; overflow-x: hidden; }
+  .main { flex: 1; min-width: 0; padding: 24px 28px 60px; overflow-x: hidden; overflow-y: auto; }
   .page-header {
     display: flex; align-items: flex-end; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.6";
+const APP_VERSION = "2.0.7";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
