@@ -1026,7 +1026,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.0";
+const APP_VERSION = "1.8.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8438,7 +8438,9 @@ function modalCliContrato(clienteId, existing){
   const c = cliClienteById(clienteId);
   if(!c) return;
   const isEdit = !!existing;
-  const ct = existing || { negocio: state.negocios[0]?.nome||"", planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:true };
+  // Padrão de negócio: usa o negócio travado no filtro (contexto atual) ou o primeiro da lista
+  const negPadrao = (filtroNegocioTravado && cliFiltro.negocio) ? cliFiltro.negocio : (state.negocios[0]?.nome||"");
+  const ct = existing || { negocio: negPadrao, planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:true };
   const fmtPlano = p => `${esc(p.nome)}${p.velocidade?` — ${esc(p.velocidade)}`:""}${podeVerValores()?` — ${fmtBRL(p.valor)}` : ""}`;
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
