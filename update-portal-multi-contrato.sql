@@ -30,7 +30,60 @@
 
 
 -- ----------------------------------------------------------------
--- 1. LOGIN — devolve todos os contratos ativos de Provedor
+-- 0. CONTRATOS — a lista de contratos ativos de Provedor de um cliente
+--
+-- Existe separada do login porque o portal guarda a sessão e, ao
+-- recarregar, precisa reconsultar: um contrato criado depois do login não
+-- apareceria nunca. Recebe os ids que o cliente já tem em mãos, mesma
+-- exposição de portal_servnet_faturas.
+-- ----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.portal_servnet_contratos(
+  p_cliente_id text,
+  p_master_id  text
+)
+RETURNS json
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT json_agg(to_jsonb(x) - 'ord' ORDER BY x.ord, x.contrato_id)
+  FROM (
+    SELECT
+      c->>'id'                  AS contrato_id,
+      c->>'status'              AS status,
+      c->>'diaVencimento'       AS "diaVencimento",
+      c->>'dataContrato'        AS "dataContrato",
+      c->>'enderecoInstalacao'  AS "enderecoInstalacao",
+      c->>'observacoes'         AS observacoes,
+      COALESCE(NULLIF(c->>'diaVencimento','')::int, 99) AS ord,
+      CASE
+        WHEN pl.id IS NOT NULL THEN json_build_object(
+          'nome',       pl.dados->>'nome',
+          'valor',      pl.dados->>'valor',
+          'velocidade', pl.dados->>'velocidade',
+          'tecnologia', pl.dados->>'tecnologia'
+        )
+        ELSE NULL
+      END AS plano
+    -- CROSS JOIN LATERAL, e não vírgula: com vírgula o LEFT JOIN seguinte
+    -- não enxerga `cl` no seu ON.
+    FROM cli_clientes cl
+    CROSS JOIN LATERAL jsonb_array_elements(COALESCE(cl.dados->'contratos','[]'::jsonb)) c
+    LEFT JOIN cli_planos pl
+      ON pl.id::text = c->>'planoId'
+     AND pl.user_id  = cl.user_id
+    WHERE cl.id::text      = p_cliente_id
+      AND cl.user_id::text = p_master_id
+      AND c->>'status' = 'Ativo'
+      AND lower(c->>'negocio') = 'provedor'
+  ) x;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.portal_servnet_contratos(text, text) TO anon;
+
+
+-- ----------------------------------------------------------------
+-- 1. LOGIN — autentica e devolve os contratos ativos de Provedor
 -- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.portal_servnet_login(
   p_cpf        text,
@@ -65,35 +118,8 @@ BEGIN
 
   v_dados := v_cli.dados;
 
-  -- TODOS os contratos ativos de Provedor, cada um com o seu plano.
-  -- Ordena pelo dia de vencimento só pra dar uma ordem estável na tela.
-  SELECT json_agg(to_jsonb(x) - 'ord' ORDER BY x.ord, x.contrato_id)
-  INTO v_contratos
-  FROM (
-    SELECT
-      c->>'id'                  AS contrato_id,
-      c->>'status'              AS status,
-      c->>'diaVencimento'       AS "diaVencimento",
-      c->>'dataContrato'        AS "dataContrato",
-      c->>'enderecoInstalacao'  AS "enderecoInstalacao",
-      c->>'observacoes'         AS observacoes,
-      COALESCE(NULLIF(c->>'diaVencimento','')::int, 99) AS ord,
-      CASE
-        WHEN pl.id IS NOT NULL THEN json_build_object(
-          'nome',       pl.dados->>'nome',
-          'valor',      pl.dados->>'valor',
-          'velocidade', pl.dados->>'velocidade',
-          'tecnologia', pl.dados->>'tecnologia'
-        )
-        ELSE NULL
-      END AS plano
-    FROM jsonb_array_elements(COALESCE(v_dados->'contratos', '[]'::jsonb)) c
-    LEFT JOIN cli_planos pl
-      ON pl.id::text = c->>'planoId'
-     AND pl.user_id  = v_cli.user_id
-    WHERE c->>'status' = 'Ativo'
-      AND lower(c->>'negocio') = 'provedor'
-  ) x;
+  -- Mesma montagem usada pelo portal ao recarregar — uma fonte só.
+  v_contratos := public.portal_servnet_contratos(v_cli.id::text, v_cli.user_id::text);
 
   -- nenhum contrato ativo de Provedor = cliente não pertence a este portal
   IF v_contratos IS NULL THEN

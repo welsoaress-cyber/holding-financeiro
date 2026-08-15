@@ -404,7 +404,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.0</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.1</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -1397,9 +1397,8 @@ function abrirChamado(){
   const btn  = document.getElementById('ticketBtn');
   const ok   = document.getElementById('ticketOk');
   if(!tipo){ alert('Selecione o tipo de problema.'); return; }
-  const nome   = session?.nome ? session.nome.split(' ')[0] : 'Cliente';
-  const codigo = session?.codigo ? ` (Cód. ${session.codigo})` : '';
-  let msg = `Olá! Sou ${nome}${codigo}, cliente da Servnet, e preciso de suporte.\n\n*Motivo:* ${tipo}`;
+  const nome = session?.nome ? session.nome.split(' ')[0] : 'Cliente';
+  let msg = `Olá! Sou ${nome}, cliente da Servnet, e preciso de suporte.\n\n*Tipo:* ${tipo}`;
   if(desc) msg += `\n*Detalhes:* ${desc}`;
   btn.disabled = true;
   ok.style.display = 'block';
@@ -1420,10 +1419,36 @@ function showRefMsg(text,type){
   if(type==='ok') setTimeout(()=>el.style.display='none',5000);
 }
 
-// Restore session
-window.addEventListener('DOMContentLoaded',()=>{
+// Restore session.
+// A sessão guardada é a foto do momento do login. Contrato criado, alterado
+// ou cancelado depois disso não apareceria nunca — por isso reconsultamos a
+// lista de contratos a cada carregamento, antes de montar a tela.
+window.addEventListener('DOMContentLoaded', async ()=>{
   const s=sessionStorage.getItem('sn_sess');
-  if(s){ try{ session=JSON.parse(s); enterDash(session); }catch{ sessionStorage.removeItem('sn_sess'); } }
+  if(!s) return;
+  try{ session=JSON.parse(s); }
+  catch{ sessionStorage.removeItem('sn_sess'); return; }
+
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_contratos',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id
+    });
+    if(!error && Array.isArray(res)){
+      if(!res.length){                       // não é mais cliente do portal
+        sessionStorage.removeItem('sn_sess');
+        location.reload();
+        return;
+      }
+      session.contratos = res;
+      sessionStorage.setItem('sn_sess', JSON.stringify(session));
+    }
+  }catch(e){
+    // servidor fora do ar: segue com a lista guardada em vez de travar
+    console.error(e);
+  }
+
+  enterDash(session);
 });
 </script>
 </body>
