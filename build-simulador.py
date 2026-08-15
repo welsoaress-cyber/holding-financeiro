@@ -41,7 +41,8 @@ CSS_CARTAO = '\n'.join([
 FUNCOES = [
     'function esc(s)', 'function ctKey(ct, i)', 'function ctNome(ct, i)',
     'function fmtDate(d)', 'function fmtVal(v)', 'function fmtMesRef(m)',
-    'function calcStreak(fat)', 'function renderHistoricoFidelidade(fatContrato)',
+    'function calcStreak(fat)', 'function premiosGanhos(fat)',
+    'function renderHistoricoFidelidade(fatContrato)',
     'function renderFidelidade(', 'function toggleRules(id,btn)',
 ]
 JS_CARTAO = '\n\n'.join(
@@ -219,19 +220,25 @@ function renderLedger(){
   }).join('');
 }
 
-function renderReadout(streak){
+function renderReadout(streak, ganhos){
   const p = PLANOS[planoAtual];
   const desconto = p.valor / 2;
+  // Prêmio conquistado é evento: conta mesmo que um atraso posterior tenha
+  // zerado os selos. O painel tem que dizer o mesmo que o cartão.
+  const meia   = ganhos.some(g => g.tipo === 'meia');
+  const gratis = ganhos.some(g => g.tipo === 'gratis');
+  const economia = (meia ? desconto : 0) + (gratis ? p.valor : 0);
+
   let premio, nota, cls;
-  if(streak >= 12){
-    premio = fmtVal(p.valor); cls = 'green'; nota = 'a 13ª fatura sai zerada';
-  } else if(streak >= 6){
-    premio = fmtVal(desconto); cls = 'gold'; nota = '50% OFF liberado na 7ª fatura';
+  if(gratis){
+    premio = fmtVal(p.valor); cls = 'green'; nota = '13ª fatura zerada';
+  } else if(meia){
+    premio = fmtVal(desconto); cls = 'gold';
+    nota = streak >= 6 ? '50% OFF liberado na 7ª fatura' : '50% OFF já aplicado antes do atraso';
   } else {
     premio = '—'; cls = 'dim';
     nota = `faltam ${6-streak} ${6-streak===1?'fatura':'faturas'} em dia`;
   }
-  const economia = streak>=12 ? desconto + p.valor : streak>=6 ? desconto : 0;
 
   document.getElementById('readout').innerHTML = `
     <div class="ro">
@@ -265,7 +272,7 @@ function atualizar(){
   faturasList = montarFaturas();
   const streak = calcStreak(faturasList);
   renderLedger();
-  renderReadout(streak);
+  renderReadout(streak, premiosGanhos(faturasList));
   renderFidelidade(streak, session.nome, contratos[0], 0, faturasList);
 }
 

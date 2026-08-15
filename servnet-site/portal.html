@@ -774,6 +774,33 @@ function calcStreak(fat){
   return streak;
 }
 
+// Prêmios são EVENTOS, não consequência do contador atual.
+// Quem pagou 6 faturas em dia já recebeu 50% OFF na 7ª — isso aconteceu, e um
+// atraso meses depois não desfaz um desconto concedido. O contador zerado
+// governa o PRÓXIMO prêmio, não os passados. Por isso este percurso vai do
+// mais antigo para o mais recente e registra cada prêmio conquistado.
+function premiosGanhos(fat){
+  const hoje=new Date().toISOString().slice(0,10);
+  const asc=[...fat].sort((a,b)=>a.vencimento<b.vencimento?-1:1);
+  const ganhos=[];
+  let n=0;
+  for(let i=0;i<asc.length;i++){
+    const f=asc[i];
+    const st=(f.status||'').toLowerCase();
+    if(st!=='pago' && f.vencimento>=hoje) continue;   // ainda no prazo
+    if(st==='pago' && f.data_pagamento && f.data_pagamento<=f.vencimento){
+      n++;
+      // o prêmio cai na fatura seguinte: 6 em dia → 7ª, 12 em dia → 13ª
+      const premiada=asc[i+1];
+      if(n===6)  ganhos.push({tipo:'meia',   mes:premiada?premiada.mes_referencia:null});
+      if(n===12) ganhos.push({tipo:'gratis', mes:premiada?premiada.mes_referencia:null});
+    }else{
+      n=0;  // atraso encerra a sequência e começa outra
+    }
+  }
+  return ganhos;
+}
+
 // O cartão de fidelidade agora é um por contrato, então o link da promoção
 // rola até o primeiro deles em vez de apontar para um id fixo.
 function irParaFidelidade(ev){
@@ -915,6 +942,12 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   // regra do prêmio, mas a tela não mostra "17/12".
   const streak = Math.min(streakReal, 12);
 
+  // Prêmios já conquistados no passado. Ficam acesos mesmo depois de um
+  // atraso: o desconto foi aplicado de verdade naquela fatura.
+  const ganhos = premiosGanhos(fatContrato || []);
+  const ganhouMeia   = ganhos.some(g => g.tipo === 'meia');
+  const ganhouGratis = ganhos.some(g => g.tipo === 'gratis');
+
   // Grade de 14 slots = 12 faturas pagas + 2 slots de prêmio.
   // Os prêmios NÃO consomem selo: são as faturas 7ª e 13ª.
   //   meses 1..6 em dia  → 7ª fatura com 50% OFF
@@ -931,8 +964,9 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   // Ciclo 1 — faturas 1 a 6
   for(let i=1;i<=6;i++) selos.push(selo(i));
 
-  // Prêmio 1 — 7ª fatura com 50% OFF
-  const premio1 = streak >= 6;
+  // Prêmio 1 — 7ª fatura com 50% OFF. Aceso pelo ciclo atual OU por já ter
+  // sido conquistado antes.
+  const premio1 = streak >= 6 || ganhouMeia;
   selos.push(`<div class="fcs ${premio1?'m6ok':'m6e'}" title="${premio1?'7ª fatura com 50% OFF conquistada! 🎁':'Pague as 6 primeiras faturas em dia → 7ª fatura com 50% OFF'}">
     <span class="fcs-icon">🎁</span>
     <span class="fcs-n">7ª\n50% OFF</span>
@@ -942,7 +976,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
   for(let i=7;i<=12;i++) selos.push(selo(i));
 
   // Prêmio 2 — 13ª fatura grátis
-  const premio2 = streak >= 12;
+  const premio2 = streak >= 12 || ganhouGratis;
   selos.push(`<div class="fcs ${premio2?'m12ok':'m12e'}" title="${premio2?'13ª fatura 100% GRÁTIS conquistada! 🎉':'Pague 12 faturas em dia → 13ª fatura 100% grátis'}">
     <span class="fcs-icon">🏅</span>
     <span class="fcs-n">13ª\nGRÁTIS</span>
@@ -1022,12 +1056,18 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
         <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
       </div>
 
-      <!-- Prêmio já conquistado (aplicado na 7ª / 13ª fatura) -->
-      ${premio2
-        ?`<div class="premio-pill earned">🏅 Parabéns! Suas 12 faturas foram pagas em dia — a <strong>13ª fatura é 100% grátis</strong>, aplicada automaticamente.</div>`
-        :premio1
-          ?`<div class="premio-pill earned">🎁 Parabéns! Você pagou 6 faturas em dia — a <strong>7ª fatura sai com 50% OFF</strong>, aplicado automaticamente.</div>`
-          :''
+      <!-- Prêmios já conquistados. Ficam listados mesmo depois de um atraso:
+           o desconto foi aplicado naquela fatura e não se desfaz. -->
+      ${ganhos.length
+        ?`<div class="premio-pill earned">
+            🏆 <strong>${ganhos.length===1?'Prêmio conquistado':'Prêmios conquistados'}:</strong>
+            ${ganhos.map(g=>{
+              const rotulo = g.tipo==='meia' ? '🎁 50% de desconto' : '🏅 fatura 100% grátis';
+              const onde = g.mes ? ` na fatura de <strong>${esc(fmtMesRef(g.mes))}</strong>` : '';
+              return rotulo + onde;
+            }).join(' &nbsp;·&nbsp; ')}
+          </div>`
+        :''
       }
 
       <!-- Próximo prêmio -->
@@ -1052,6 +1092,7 @@ function renderFidelidade(streakReal, nomeCliente, ct, idx, fatContrato){
         <li>Os prêmios <strong>não consomem selo</strong>: os meses 7 e 13 continuam contando normalmente no cartão.</li>
         <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
         <li><strong>Qualquer pagamento em atraso</strong> zera o contador — é preciso recomeçar do zero.</li>
+        <li>Zerar o contador <strong>não tira prêmio já conquistado</strong>. Se você completou 6 faturas em dia, o desconto da 7ª foi aplicado e continua valendo — o contador zerado vale para o próximo prêmio.</li>
         <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
         <li>Os prêmios são aplicados <strong>automaticamente</strong> na fatura correspondente (7ª ou 13ª).</li>
         <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
