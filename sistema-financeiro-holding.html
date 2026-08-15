@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.7.1";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7685,8 +7685,7 @@ function viewCliDetalhe(){
     const negCor = negocioByNome(ct.negocio)?.cor || "var(--border)";
     const ctStatusClass = ct.status==="Ativo"?"status-pago":ct.status==="Cancelado"?"status-pendente":"status-agendado";
     const metaChips = [
-      ct.dataContrato  ? `<span>Cliente desde <strong>${fmtDateBR(ct.dataContrato)}</strong></span>` : "",
-      ct.diaVencimento ? `<span>Vence dia <strong>${ct.diaVencimento}</strong></span>` : "",
+      ct.dataContrato   ? `<span>Cliente desde <strong>${fmtDateBR(ct.dataContrato)}</strong></span>` : "",
       ct.cobrancaAutomatica ? `<span style="color:var(--pos);">● cobrança automática</span>` : "",
     ].filter(Boolean).join(`<span style="color:var(--border);margin:0 4px;">·</span>`);
     return `<div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;">
@@ -7694,9 +7693,10 @@ function viewCliDetalhe(){
       <div style="flex:1;padding:14px 16px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
           <div style="flex:1;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
               <span style="font-weight:700;font-size:15px;">${esc(ct.negocio)}</span>
               <span class="status-pill ${ctStatusClass}">${ct.status}</span>
+              ${ct.diaVencimento ? `<span style="font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);">Vence dia ${ct.diaVencimento}</span>` : ""}
             </div>
             <div style="font-size:13px;margin-bottom:4px;">
               ${plano
@@ -7761,10 +7761,9 @@ function viewCliDetalhe(){
       </div>
     </div>
 
-    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?3:2},1fr);margin-bottom:20px;">
+    <div class="kpi-grid" style="grid-template-columns:repeat(${podeVerValores()?2:1},1fr);margin-bottom:20px;">
       ${podeVerValores() ? `<div class="kpi-card"><div class="kpi-label">MRR mensal</div><div class="kpi-value pos">${fmtBRL(mrr)}</div></div>` : ""}
       <div class="kpi-card"><div class="kpi-label">Contratos ativos</div><div class="kpi-value">${(c.contratos||[]).filter(ct=>ct.status==="Ativo").length} / ${(c.contratos||[]).length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Dia de vencimento</div><div class="kpi-value" style="font-size:16px;">${(c.contratos||[]).find(ct=>ct.diaVencimento)?.diaVencimento || "—"}</div></div>
     </div>
 
     <div class="panel">
