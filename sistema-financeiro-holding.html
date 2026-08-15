@@ -467,7 +467,14 @@
     width: 500px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
     box-shadow: var(--shadow-xl);
     border: 1px solid var(--border);
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb,var(--ink) 18%,transparent) transparent;
   }
+  .modal::-webkit-scrollbar { width: 5px; }
+  .modal::-webkit-scrollbar-track { background: transparent; }
+  .modal::-webkit-scrollbar-thumb { background: color-mix(in srgb,var(--ink) 18%,transparent); border-radius: 999px; }
+  .modal::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb,var(--ink) 32%,transparent); }
   .modal.modal-wide { width: 640px; }
   .modal-head {
     display: flex; align-items: center; justify-content: space-between;
@@ -524,6 +531,7 @@
     max-width: 360px;
   }
   .toast.error { background: var(--neg); }
+  .toast.warn  { background: #b45309; }
   @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .empty-state { padding: 36px 20px; text-align: center; color: var(--ink-4); font-size: 13px; }
   .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; width: 100%; color: var(--ink-4); font-family: var(--font-mono); font-size: 13px; }
@@ -1018,7 +1026,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.9";
+const APP_VERSION = "1.8.0";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1523,13 +1531,13 @@ function subcategoriasDe(nomeCategoria){
 function showToast(msg, type){
   const wrap = document.getElementById("toastWrap");
   const el = document.createElement("div");
-  el.className = "toast" + (type === "error" ? " error" : "");
+  el.className = "toast" + (type === "error" ? " error" : type === "warn" ? " warn" : "");
   el.textContent = msg;
   el.style.cursor = "pointer";
   el.title = "Clique para fechar";
   el.addEventListener("click", () => el.remove());
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), type === "error" ? 12000 : 3200);
+  setTimeout(() => el.remove(), type === "error" ? 12000 : type === "warn" ? 7000 : 3200);
 }
 function dividirValor(total, qtd){
   const totalCentavos = Math.round(Number(total) * 100);
@@ -8356,6 +8364,21 @@ function modalCliCliente(existing){
       state.view = "cli_detalhe";
       renderApp(); showToast("Cliente atualizado.");
     }else{
+      // Verificar duplicata antes de cadastrar
+      const cpfNorm = (data.cpfCnpj||"").replace(/\D/g,"");
+      const nomeNorm = (data.nome||"").toLowerCase().trim();
+      const negNomes = negociosMarcados.map(n => n.nome);
+      const duplicata = state.cliClientes.find(c => {
+        const mesmoNeg = negNomes.length === 0 || (c.contratos||[]).some(ct => negNomes.includes(ct.negocio));
+        if(!mesmoNeg) return false;
+        if(cpfNorm && cpfNorm.length >= 11 && (c.cpfCnpj||"").replace(/\D/g,"") === cpfNorm) return true;
+        if(!cpfNorm && (c.nome||"").toLowerCase().trim() === nomeNorm) return true;
+        return false;
+      });
+      if(duplicata){
+        showToast(`⚠️ Já existe um cliente com ${cpfNorm && cpfNorm.length >= 11 ? "este CPF/CNPJ" : "este nome"} cadastrado neste negócio.`, "warn");
+        return;
+      }
       const novoId = uid("cli");
       state.cliClientes.push({ id:novoId, ...data });
       await saveCliClientes(); closeModal();
