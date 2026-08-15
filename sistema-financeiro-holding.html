@@ -953,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.7.1";
+const APP_VERSION = "1.7.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7048,6 +7048,19 @@ const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
+// Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
+// Não altera o cadastro, apenas o que é exibido.
+function clienteStatusEfetivo(c){
+  if(!c) return "—";
+  if(c.status === "Cancelado") return "Cancelado";
+  const hoje = todayISO();
+  const emAtraso = state.lancamentos.some(l =>
+    l.clienteId === c.id && l.tipo === "Receita" &&
+    l.status !== "Pago" && !l.inativo && l.data < hoje
+  );
+  return emAtraso ? "Inadimplente" : (c.status || "Ativo");
+}
+function statusClassCli(st){ return st==="Ativo"?"status-pago":st==="Inadimplente"||st==="Cancelado"?"status-pendente":"status-agendado"; }
 // Gera o próximo código de cliente: CLI-0001, CLI-0042, etc.
 function gerarCodigoCli(){
   const numeros = state.cliClientes
@@ -7410,7 +7423,7 @@ function cliDataRecente(dias){ const d = new Date(); d.setDate(d.getDate()-dias)
 // ---- VIEW: DASHBOARD CLIENTES ----
 function viewCliDashboard(){
   const total = state.cliClientes.length;
-  const ativos = state.cliClientes.filter(c => c.status === "Ativo").length;
+  const ativos = state.cliClientes.filter(c => clienteStatusEfetivo(c) === "Ativo").length;
   const inativos = total - ativos;
   const novos30 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(30)).length;
   const novos60 = state.cliClientes.filter(c => c.dataCadastro >= cliDataRecente(60) && c.dataCadastro < cliDataRecente(30)).length;
@@ -7428,7 +7441,7 @@ function viewCliDashboard(){
     return { n, total: clientes.length, ativos, mrr };
   }).filter(r => r.total > 0);
 
-  const inadimplentes = state.cliClientes.filter(c => c.status === "Inadimplente").length;
+  const inadimplentes = state.cliClientes.filter(c => clienteStatusEfetivo(c) === "Inadimplente").length;
   const mrrTotal = state.cliClientes.reduce((s,c) => {
     return s + (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((ss,ct) => {
       const p = cliPlanoById(ct.planoId);
@@ -7621,7 +7634,7 @@ function viewCliLeads(){
 function viewCliLista(){
   let lista = [...state.cliClientes].sort((a,b)=>cliNome(a).localeCompare(cliNome(b)));
   if(cliFiltro.negocio) lista = lista.filter(c => (c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio));
-  if(cliFiltro.status) lista = lista.filter(c => c.status === cliFiltro.status);
+  if(cliFiltro.status) lista = lista.filter(c => clienteStatusEfetivo(c) === cliFiltro.status);
   if(cliFiltro.plano) lista = lista.filter(c => (c.contratos||[]).some(ct=>ct.planoId===cliFiltro.plano));
   if(cliFiltro.texto){
     const t = cliFiltro.texto.toLowerCase();
@@ -7629,7 +7642,8 @@ function viewCliLista(){
   }
   const rows = lista.map(c => {
     const negocios = (c.contratos||[]).map(ct=>`<span class="status-pill status-agendado" style="margin:1px;">${esc(ct.negocio)}</span>`).join("");
-    const statusClass = c.status==="Ativo"?"status-pago":c.status==="Inadimplente"||c.status==="Cancelado"?"status-pendente":"status-agendado";
+    const stEfetivo = clienteStatusEfetivo(c);
+    const statusClass = statusClassCli(stEfetivo);
     const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
     return `<tr>
       ${bulkCheckboxCellHTML("cli_clientes", c.id)}
@@ -7640,7 +7654,7 @@ function viewCliLista(){
       <td>${esc(c.telefone||"—")}</td>
       <td>${fmtDateBR(c.dataCadastro)}</td>
       ${podeVerValores()?`<td>${mrr>0?fmtBRL(mrr):"—"}</td>`:""}
-      <td><span class="status-pill ${statusClass}">${esc(c.status||"—")}</span></td>
+      <td><span class="status-pill ${statusClass}">${esc(stEfetivo)}</span></td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
         <button class="icon-btn danger" data-action="cli-del" data-id="${c.id}" title="Excluir">×</button>
@@ -7677,7 +7691,8 @@ function viewCliDetalhe(){
   const c = cliClienteById(cliViewDetalheId);
   if(!c) return `<div>${emptyState("Cliente não encontrado.")}</div>`;
   const negociosVinculados = state.negocios.filter(n=>(c.contratos||[]).some(ct=>ct.negocio===n.nome));
-  const statusClass = c.status==="Ativo"?"status-pago":c.status==="Inadimplente"||c.status==="Cancelado"?"status-pendente":"status-agendado";
+  const stEfetivo = clienteStatusEfetivo(c);
+  const statusClass = statusClassCli(stEfetivo);
   const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId);return s+(p?Number(p.valor||0):0);},0);
 
   const contratosHTML = (c.contratos||[]).map(ct=>{
@@ -7747,7 +7762,7 @@ function viewCliDetalhe(){
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
           ${c.codigo ? `<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);letter-spacing:.04em;">${esc(c.codigo)}</span>` : ""}
           <h2 style="margin:0;font-size:22px;font-weight:700;line-height:1.2;">${esc(cliNome(c))}</h2>
-          <span class="status-pill ${statusClass}">${c.status||"—"}</span>
+          <span class="status-pill ${statusClass}">${stEfetivo}</span>
         </div>
         <div style="font-size:12px;color:var(--ink-4);margin-bottom:6px;">Cadastrado em ${fmtDateBR(c.dataCadastro)}</div>
         ${chips1.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:5px;">${chips1.join(sep)}</div>` : ""}
