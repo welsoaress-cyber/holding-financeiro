@@ -1026,7 +1026,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.2";
+const APP_VERSION = "1.8.3";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2747,7 +2747,9 @@ function navItem(view, icon, label){
 // destino já entra travado nesse negócio, e o seletor de negócio some de
 // lá (ver filtroNegocioTravado).
 function navItemNegocio(view, icon, label, negocio){
-  const active = state.view === view && filtroNegocioTravado && cliFiltro.negocio === negocio ? "active" : "";
+  // Views de detalhe (cli_detalhe, cli_chamado_detalhe…) herdam o destaque da view-pai
+  const viewEfetiva = VIEWS_FALLBACK_RESTAURACAO[state.view] || state.view;
+  const active = (viewEfetiva === view || state.view === view) && filtroNegocioTravado && cliFiltro.negocio === negocio ? "active" : "";
   return `<div class="nav-item ${active}" data-action="nav-negocio" data-view="${view}" data-negocio="${esc(negocio)}">
     <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${label}</span></span>
   </div>`;
@@ -2775,9 +2777,11 @@ let sidebarGruposFechados = new Set();
 let drawerAbertoAntes = false;
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const eGrupoNegocio = id.startsWith("neg_");
+  // Views de detalhe herdam o pertencimento da view-pai (cli_detalhe → cli_lista, etc.)
+  const viewEfetiva = VIEWS_FALLBACK_RESTAURACAO[state.view] || state.view;
   const contemViewAtual = eGrupoNegocio
-    ? (viewsDoGrupo.includes(state.view) && filtroNegocioTravado && cliFiltro.negocio === nome)
-    : viewsDoGrupo.includes(state.view);
+    ? ((viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)) && filtroNegocioTravado && cliFiltro.negocio === nome)
+    : (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva));
   const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
   return `
     <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
@@ -8046,7 +8050,7 @@ function viewCliDetalhe(){
   return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
       <div>
-        <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" data-action="nav" data-view="cli_lista">← Voltar</button>
+        <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" ${filtroNegocioTravado && cliFiltro.negocio ? `data-action="nav-negocio" data-view="cli_lista" data-negocio="${esc(cliFiltro.negocio)}"` : `data-action="nav" data-view="cli_lista"`}>← Voltar</button>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
           ${c.codigo ? `<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);letter-spacing:.04em;">${esc(c.codigo)}</span>` : ""}
           <h2 style="margin:0;font-size:22px;font-weight:700;line-height:1.2;">${esc(cliNome(c))}</h2>
@@ -8671,7 +8675,7 @@ function viewCliOSDetalhe(){
   return `
     <div class="page-header">
       <div style="display:flex; align-items:center; gap:12px;">
-        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_os_lista">← Voltar</button>
+        <button class="btn btn-ghost btn-sm" ${filtroNegocioTravado && cliFiltro.negocio ? `data-action="nav-negocio" data-view="cli_os_lista" data-negocio="${esc(cliFiltro.negocio)}"` : `data-action="nav" data-view="cli_os_lista"`}>← Voltar</button>
         <div><div class="page-title">${esc(os.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${os.negocio?` · ${esc(os.negocio)}`:""} · <span class="status-pill ${statusClass}">${os.status}</span></div></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -9179,7 +9183,7 @@ function viewCliChamadoDetalhe(){
   return `
     <div class="page-header">
       <div style="display:flex; align-items:center; gap:12px;">
-        <button class="btn btn-ghost btn-sm" data-action="nav" data-view="cli_chamados">← Voltar</button>
+        <button class="btn btn-ghost btn-sm" ${filtroNegocioTravado && cliFiltro.negocio ? `data-action="nav-negocio" data-view="cli_chamados" data-negocio="${esc(cliFiltro.negocio)}"` : `data-action="nav" data-view="cli_chamados"`}>← Voltar</button>
         <div><div class="page-title">${esc(c.numero)}</div><div class="page-sub">${cliente?esc(cliNome(cliente)):"— cliente removido —"}${c.negocio?` · ${esc(c.negocio)}`:""} · <span class="status-pill ${chamadoStatusClass(c.status)}">${c.status}</span></div></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
