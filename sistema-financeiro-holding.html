@@ -1029,7 +1029,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.8.6";
+const APP_VERSION = "1.8.7";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2544,9 +2544,19 @@ function renderApp(){
   if(!state.user){ app.innerHTML = renderLogin(); wireAuthForm(); document.getElementById("modbarWrap").innerHTML = ""; return; }
   if(state.modoTecnico){ renderAppTecnico(); return; }
   if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
-  // Só restaura navegação salva se não viemos de um login/seleção de perfil
-  // que já definiu "welcome" — senão o localStorage sobrescreve a tela de boas-vindas.
-  if(!navegacaoRestaurada){ navegacaoRestaurada = true; if(state.view !== "welcome") restaurarNavegacaoSalva(); }
+
+  // Splash de boas-vindas — tela cheia, sem sidebar, 5 segundos,
+  // versículo aleatório. Avança automaticamente ou ao clicar/teclar.
+  if(state.view === "welcome"){
+    clearTimeout(window._splashTimer);
+    document.getElementById("modbarWrap").innerHTML = "";
+    app.innerHTML = viewBoasVindasSplash();
+    // Avança após 5 s e restaura a última navegação salva
+    window._splashTimer = setTimeout(() => avancarDoSplash(), 5000);
+    return;
+  }
+
+  if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
 
   const horaSalvo = state.ultimoSalvamento ? state.ultimoSalvamento.toLocaleTimeString("pt-BR") : null;
   const master = ehMaster();
@@ -2947,8 +2957,7 @@ function renderView(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
   const main = document.getElementById("mainArea");
   if(!main) return;
-  if(state.view === "welcome") main.innerHTML = viewBoasVindas();
-  else if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
+  if(state.view === "vg_executivo") main.innerHTML = viewVgExecutivo();
   else if(state.view.startsWith("negocio_")) main.innerHTML = viewNegocioTudo(state.view.slice(8));
   else if(state.view === "vg_sintetico") main.innerHTML = viewVgSintetico();
   else if(state.view === "vg_analitico") main.innerHTML = viewVgAnalitico();
@@ -3601,74 +3610,101 @@ const VERSICULOS_BOAS_VINDAS = [
   { ref:"Efésios 3:20",       texto:"Ora, àquele que é poderoso para fazer infinitamente mais do que tudo o que pedimos ou pensamos, conforme o seu poder que opera em nós." },
 ];
 
-function viewBoasVindas(){
+// Avança do splash para o app real (restaurando última navegação ou dashboard)
+function avancarDoSplash(){
+  clearTimeout(window._splashTimer);
+  window._splashTimer = null;
+  if(state.view !== "welcome") return; // usuário já navegou de outra forma
+  if(!navegacaoRestaurada){ navegacaoRestaurada = true; restaurarNavegacaoSalva(); }
+  else { state.view = "dashboard"; }
+  renderApp();
+}
+
+// Splash full-screen: sem sidebar, versículo ALEATÓRIO, 5 segundos.
+// Clicar/teclar qualquer lugar avança imediatamente.
+function viewBoasVindasSplash(){
   const hoje = new Date();
   const hora = hoje.getHours();
   const nomePerfil = state.perfilAtivo ? state.perfilAtivo.nome : "Master";
   const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
   const emoji    = hora < 12 ? "🌅" : hora < 18 ? "☀️" : "🌙";
 
-  // Versículo do dia — muda a cada dia com base na data
-  const diaAno = Math.floor((hoje - new Date(hoje.getFullYear(),0,0)) / 86400000);
-  const v = VERSICULOS_BOAS_VINDAS[(hoje.getFullYear() * 366 + diaAno) % VERSICULOS_BOAS_VINDAS.length];
+  // Versículo ALEATÓRIO a cada login
+  const v = VERSICULOS_BOAS_VINDAS[Math.floor(Math.random() * VERSICULOS_BOAS_VINDAS.length)];
 
   const diasSemana = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
   const meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const dataFormatada = `${diasSemana[hoje.getDay()]}, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
-  // Quick links — apenas módulos que o usuário pode ver
-  const links = [
-    { view:"vg_executivo", label:"Visão Geral",       icon:"📊", modulo:null },
-    { view:"dashboard",    label:"Financeiro",         icon:"💰", modulo:"financeiro" },
-    { view:"cli_lista",    label:"Clientes",            icon:"👥", modulo:"clientes" },
-    { view:"receitas",     label:"Contas a Receber",   icon:"📥", modulo:"financeiro" },
-    { view:"despesas",     label:"Contas a Pagar",     icon:"📤", modulo:"financeiro" },
-    { view:"est_produtos", label:"Estoque",             icon:"📦", modulo:"estoque" },
-    { view:"rh_dashboard", label:"RH",                  icon:"🧑‍💼", modulo:"rh" },
-  ].filter(l => !l.modulo || ehMaster() || podeVerModulo(l.modulo));
-
-  const btnLinks = links.map(l =>
-    `<button class="btn btn-ghost" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--r-lg);min-width:90px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;" data-action="nav" data-view="${l.view}">
-      <span style="font-size:22px;">${l.icon}</span>${esc(l.label)}
-    </button>`
-  ).join("");
-
   return `
-    <div style="min-height:80vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;">
-      <div style="max-width:560px;width:100%;">
+  <style>
+    @keyframes splashIn   { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes splashProg { from { width:0%; } to { width:100%; } }
+    .splash-wrap {
+      position:fixed; inset:0; z-index:9998; cursor:pointer;
+      background:
+        radial-gradient(ellipse 80% 70% at 18% 60%, rgba(0,196,216,.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 78% 28%, rgba(0,196,216,.07) 0%, transparent 55%),
+        #030F18;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:40px 24px; text-align:center; color:#fff;
+    }
+    .splash-inner { max-width:540px; width:100%; animation:splashIn .7s cubic-bezier(.22,1,.36,1) forwards; }
+    .splash-date { font-size:12.5px; color:rgba(255,255,255,.4); letter-spacing:.04em; margin-bottom:10px; }
+    .splash-greeting { font-size:34px; font-weight:800; color:#C5E8F2; line-height:1.15; margin-bottom:36px; }
+    .splash-greeting em { font-style:normal; color:#00C4D8; text-shadow:0 0 28px rgba(0,196,216,.4); }
+    .splash-card {
+      background:rgba(3,15,24,.72); border:1px solid rgba(0,196,216,.18);
+      border-radius:20px; padding:36px 40px; position:relative; overflow:hidden;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      box-shadow:0 8px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(0,196,216,.07) inset;
+      text-align:left;
+    }
+    .splash-card-label {
+      font-size:10.5px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.14em; color:#00C4D8; opacity:.65; margin-bottom:18px;
+    }
+    .splash-quote-open {
+      position:absolute; top:-16px; left:14px;
+      font-size:120px; line-height:1; color:#00C4D8; opacity:.06;
+      font-family:Georgia,serif; user-select:none; pointer-events:none;
+    }
+    .splash-quote-close {
+      position:absolute; bottom:-40px; right:14px;
+      font-size:120px; line-height:1; color:#00C4D8; opacity:.06;
+      font-family:Georgia,serif; user-select:none; pointer-events:none;
+    }
+    .splash-verse { font-size:16px; line-height:1.78; color:#C5E8F2; font-style:italic; margin:0 0 22px; position:relative; z-index:1; }
+    .splash-ref { display:flex; align-items:center; gap:10px; }
+    .splash-ref-bar { width:28px; height:2px; background:#00C4D8; border-radius:999px; flex-shrink:0; }
+    .splash-ref-txt { font-size:13px; font-weight:700; color:#00C4D8; }
+    .splash-hint { margin-top:24px; font-size:12px; color:rgba(255,255,255,.25); letter-spacing:.03em; }
+    .splash-prog-wrap { position:fixed; bottom:0; left:0; right:0; height:3px; background:rgba(255,255,255,.06); }
+    .splash-prog { height:100%; background:#00C4D8; border-radius:0 2px 2px 0; animation:splashProg 5s linear forwards; }
+  </style>
+  <div class="splash-wrap" id="splashWrap">
+    <div class="splash-inner">
+      <div class="splash-date">${dataFormatada}</div>
+      <div class="splash-greeting">${saudacao}, <em>${esc(nomePerfil)}</em>! ${emoji}</div>
 
-        <!-- Data e saudação -->
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-size:13px;color:var(--ink-3);margin-bottom:8px;">${dataFormatada}</div>
-          <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.2;">
-            ${saudacao}, ${esc(nomePerfil)}! ${emoji}
-          </h1>
+      <div class="splash-card">
+        <div class="splash-quote-open">"</div>
+        <div class="splash-quote-close">"</div>
+        <div class="splash-card-label">Palavra do dia</div>
+        <p class="splash-verse">${esc(v.texto)}</p>
+        <div class="splash-ref">
+          <span class="splash-ref-bar"></span>
+          <span class="splash-ref-txt">${esc(v.ref)}</span>
         </div>
-
-        <!-- Versículo do dia -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;">
-          <!-- Aspas decorativas -->
-          <div style="position:absolute;top:-10px;left:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
-          <div style="position:absolute;bottom:-30px;right:16px;font-size:100px;line-height:1;color:var(--accent);opacity:.08;font-family:Georgia,serif;user-select:none;">"</div>
-
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:14px;opacity:.7;">Versículo do dia</div>
-
-          <p style="font-size:15.5px;line-height:1.75;color:var(--ink);font-style:italic;margin:0 0 20px;position:relative;z-index:1;">${esc(v.texto)}</p>
-
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="display:inline-block;width:24px;height:2px;background:var(--accent);border-radius:999px;"></span>
-            <span style="font-size:13px;font-weight:700;color:var(--accent);">${esc(v.ref)}</span>
-          </div>
-        </div>
-
-        <!-- Acesso rápido -->
-        <div style="text-align:center;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:14px;">Acesso rápido</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">${btnLinks}</div>
-        </div>
-
       </div>
+
+      <div class="splash-hint">Clique em qualquer lugar para continuar</div>
     </div>
+
+    <!-- Barra de progresso 5 s -->
+    <div class="splash-prog-wrap"><div class="splash-prog" id="splashProg"></div></div>
+  </div>
   `;
 }
 
@@ -6633,6 +6669,9 @@ function modalEscopoEdicaoSerie(existing, data){
 // EVENT DELEGATION
 // ============================================================
 document.addEventListener("click", async e => {
+  // Clique em qualquer lugar do splash avança imediatamente
+  if(state.view === "welcome" && e.target.closest("#splashWrap")){ avancarDoSplash(); return; }
+
   const el = e.target.closest("[data-action]");
   if(!el) return;
   const action = el.dataset.action;
@@ -7375,6 +7414,10 @@ function debounceBusca(chave, fn){
   clearTimeout(buscaDebounceTimers[chave]);
   buscaDebounceTimers[chave] = setTimeout(fn, BUSCA_DEBOUNCE_MS);
 }
+// Qualquer tecla avança o splash
+document.addEventListener("keydown", e => {
+  if(state.view === "welcome"){ avancarDoSplash(); }
+});
 document.addEventListener("input", e => {
   if(e.target.dataset.action === "est-filtro-texto"){ estFiltroTexto = e.target.value; debounceBusca("est-filtro-texto", renderView); }
   if(e.target.dataset.action === "cli-filtro-texto"){ cliFiltro.texto = e.target.value; debounceBusca("cli-filtro-texto", renderView); }
