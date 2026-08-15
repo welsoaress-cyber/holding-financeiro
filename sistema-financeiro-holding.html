@@ -727,13 +727,16 @@
   tbody tr:hover { background: transparent; }
 }
 
-/* ---- Tela de login (split-screen) — visual puxado do site (fundo quase
-   preto + brilho radial teal + badge piscando), não mais um azul-marinho
-   genérico. ---- */
-.auth-shell { display: flex; justify-content: center; min-height: 100vh; background: #fff; }
+/* ---- Tela de login — fundo escuro unificado, formulário como card flutuante ---- */
+.auth-shell {
+  display: flex; justify-content: center; min-height: 100vh;
+  background: radial-gradient(ellipse 70% 60% at 20% 65%, rgba(0,196,216,.13) 0%, transparent 65%),
+              radial-gradient(ellipse 40% 40% at 80% 20%, rgba(0,196,216,.06) 0%, transparent 60%),
+              #030F18;
+}
 .auth-hero {
-  flex: 1 1 46%; max-width: 620px; position: relative; overflow: hidden;
-  background: radial-gradient(ellipse 65% 55% at 22% 60%, rgba(0,196,216,.16) 0%, transparent 70%), #030F18;
+  flex: 1 1 46%; max-width: 580px; position: relative; overflow: hidden;
+  background: transparent;
   color: #fff; display: flex; flex-direction: column; padding: 40px 48px;
 }
 .auth-hero-net { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -754,8 +757,45 @@
 .auth-hero-title em { font-style: normal; color: var(--accent); text-shadow: 0 0 30px rgba(0,196,216,.45); }
 .auth-hero-sub { color: #6C97A6; font-size: 14px; line-height: 1.6; max-width: 340px; margin-bottom: auto; position: relative; z-index: 1; }
 .auth-hero-foot { font-size: 11.5px; color: rgba(255,255,255,.28); position: relative; z-index: 1; }
-.auth-form-side { flex: 1 1 54%; max-width: 620px; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
-.auth-form-card { width: 340px; max-width: 100%; min-width: 0; }
+
+/* Lado direito — formulário sobre fundo escuro, card destacado */
+.auth-form-side {
+  flex: 1 1 54%; max-width: 560px; min-width: 0;
+  display: flex; align-items: center; justify-content: center; padding: 40px 32px;
+  border-left: 1px solid rgba(255,255,255,.07);
+}
+.auth-form-card {
+  width: 340px; max-width: 100%; min-width: 0;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 18px;
+  padding: 36px 32px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+/* Sobrescreve cores de texto/fundo do card para funcionar no escuro */
+.auth-form-card h2 { color: #C5E8F2; }
+.auth-form-card > div[style*="color:var(--ink-3)"],
+.auth-form-card > div[style*="color: var(--ink-3)"] { color: rgba(255,255,255,.48) !important; }
+.auth-form-card label { color: rgba(255,255,255,.72); }
+.auth-form-card .field-help { color: rgba(255,255,255,.4); }
+.auth-form-card input[type="email"],
+.auth-form-card input[type="password"],
+.auth-form-card input[type="text"] {
+  background: rgba(255,255,255,.08) !important;
+  border-color: rgba(255,255,255,.14) !important;
+  color: #fff !important;
+}
+.auth-form-card input::placeholder { color: rgba(255,255,255,.32) !important; }
+.auth-form-card input:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,196,216,.18);
+}
+.auth-form-card a[style*="color:var(--accent)"],
+.auth-form-card a[data-action] { color: var(--accent) !important; }
+.auth-form-card > div:last-child { color: rgba(255,255,255,.45) !important; }
+
 @media (max-width: 899px) {
   .auth-shell { flex-direction: column; justify-content: flex-start; }
   .auth-hero {
@@ -765,7 +805,11 @@
   .auth-hero-net { opacity: .6; }
   .auth-hero-title, .auth-hero-sub, .auth-hero-foot { display: none; }
   .auth-hero-tag { margin: 10px 0 0; }
-  .auth-form-side { max-width: none; align-items: flex-start; padding: 28px 18px; }
+  .auth-form-side {
+    max-width: none; align-items: flex-start; padding: 24px 16px;
+    border-left: none; border-top: 1px solid rgba(255,255,255,.07);
+  }
+  .auth-form-card { background: transparent; border: none; padding: 0; backdrop-filter: none; border-radius: 0; }
 }
 
 </style>
@@ -909,7 +953,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "1.6.1";
+const APP_VERSION = "1.6.2";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1212,12 +1256,24 @@ function podeVerSubmenuNeg(negNome, view){
   if(!state.perfilAtivo) return false;
   const perm = (state.perfilAtivo.permissoes || {})[negNome];
   if(!perm || !perm.ver) return false;
-  // Se não há submenus definidos para esse negócio, libera tudo
   const subs = NEGOCIOS_SUBMENUS[negNome];
   if(!subs) return true;
-  // Se nunca foi configurado, libera tudo
-  if(!perm.submenus) return true;
-  return !!perm.submenus[view];
+  if(!perm.submenus) return true;  // nunca configurado → libera tudo
+  const s = perm.submenus[view];
+  if(s === undefined) return true;  // sub-menu não configurado → libera
+  if(typeof s === "object") return !!s.ver;  // novo formato { ver, criar, editar, excluir }
+  return !!s;  // formato antigo booleano
+}
+// Verifica ação específica em um sub-menu (ex: criar dentro de Clientes do Provedor)
+function permissaoSubmenuNeg(negNome, view, acao){
+  if(ehMaster()) return true;
+  if(!state.perfilAtivo) return false;
+  const perm = (state.perfilAtivo.permissoes || {})[negNome];
+  if(!perm || !perm.ver) return false;
+  if(!perm.submenus) return !!(perm[acao]);  // fallback ao nível do negócio
+  const s = perm.submenus[view];
+  if(!s || typeof s !== "object") return false;
+  return !!s[acao];
 }
 function podeEditarNegocio(negocio){ return permissaoNegocio(negocio, "editar"); }
 function podeExcluirNegocio(negocio){ return permissaoNegocio(negocio, "excluir"); }
@@ -5353,7 +5409,7 @@ function modalPerfil(existing){
     return (p.permissoes || {})[n.nome] || { ver:false, criar:false, editar:false, excluir:false };
   };
 
-  // Pill checkbox estilizado
+  // Pill checkbox estilizado (tamanho normal — para negócios sem sub-menus)
   const pill = (name, checked, label, accent) => {
     const ac = accent ? "var(--accent)" : "var(--border)";
     const bg = accent ? "color-mix(in srgb,var(--accent) 8%,var(--surface))" : "transparent";
@@ -5361,27 +5417,59 @@ function modalPerfil(existing){
     return `<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:5px 11px;border:1px solid ${ac};border-radius:999px;cursor:pointer;user-select:none;background:${bg};color:${cl};transition:all .15s;">
       <input type="checkbox" name="${name}" ${checked?"checked":""} style="margin:0;">${esc(label)}</label>`;
   };
+  // Pill menor — usado nas ações por sub-menu
+  const smPill = (name, checked, label) => {
+    const ac = checked ? "var(--accent)" : "var(--border)";
+    const bg = checked ? "color-mix(in srgb,var(--accent) 8%,var(--surface))" : "transparent";
+    const cl = checked ? "var(--accent)" : "var(--ink-3)";
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:3px 8px;border:1px solid ${ac};border-radius:999px;cursor:pointer;user-select:none;background:${bg};color:${cl};transition:all .15s;white-space:nowrap;">
+      <input type="checkbox" name="${name}" ${checked?"checked":""} style="margin:0;">${esc(label)}</label>`;
+  };
 
-  // Card de cada negócio: toggle Ver → expande ações e sub-menus
+  // Card de cada negócio
   const cardsNegocio = state.negocios.map(n => {
     const cor = n.cor || "var(--accent)";
     const perm = getPermNeg(n);
     const negId = `neg_${n.id}`;
     const subId = `negsub_${n.id}`;
-    // Sub-menus deste negócio (se existirem)
     const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
-    const savedSubs = (p.permissoes || {})[n.nome]?.submenus || {};
-    const submenuHtml = subs.length ? `
-      <div style="width:100%;border-top:1px dashed var(--border);margin-top:8px;padding-top:8px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-4);margin-bottom:6px;font-weight:600;">Telas disponíveis</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          ${subs.map(s => {
-            // por padrão, se nunca foi salvo, libera tudo
-            const chk = (Object.keys(savedSubs).length === 0) ? true : !!savedSubs[s.view];
-            return pill(`psub_${n.id}_${s.view}`, chk, s.label, chk);
-          }).join("")}
-        </div>
-      </div>` : "";
+    const savedSubs = (perm.submenus) || {};
+    // "nunca configurado" → padrão: tela visível, sem ações
+    const neverSaved = Object.keys(savedSubs).length === 0;
+
+    let bodyHtml;
+    if(subs.length){
+      // Negócio COM sub-menus: uma linha por tela com [Incluir][Editar][Excluir]
+      const rows = subs.map(s => {
+        const sp = savedSubs[s.view] || {};
+        const verChk = neverSaved ? true : (typeof sp === "object" ? !!sp.ver : !!sp);
+        const spCriar   = typeof sp === "object" ? !!sp.criar   : false;
+        const spEditar  = typeof sp === "object" ? !!sp.editar  : false;
+        const spExcluir = typeof sp === "object" ? !!sp.excluir : false;
+        const actId = `subact_${n.id}_${s.view}`;
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;border-bottom:1px solid var(--border);">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;flex:0 0 auto;min-width:130px;">
+              <input type="checkbox" name="psub_ver_${n.id}_${s.view}" ${verChk?"checked":""} style="margin:0;" data-subact="${actId}">
+              <span style="font-size:12.5px;font-weight:500;">${esc(s.label)}</span>
+            </label>
+            <div id="${actId}" style="display:${verChk?"flex":"none"};gap:4px;flex-wrap:wrap;">
+              ${smPill(`psub_${n.id}_${s.view}_criar`,  spCriar,  "Incluir")}
+              ${smPill(`psub_${n.id}_${s.view}_editar`, spEditar, "Editar")}
+              ${smPill(`psub_${n.id}_${s.view}_excluir`,spExcluir,"Excluir")}
+            </div>
+          </div>`;
+      }).join("");
+      bodyHtml = `<div id="${subId}" style="display:${perm.ver?"block":"none"};border-top:1px solid var(--border);background:var(--surface);" data-has-subs="1">${rows}</div>`;
+    } else {
+      // Negócio SEM sub-menus: pills globais
+      bodyHtml = `<div id="${subId}" style="display:${perm.ver?"flex":"none"};flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface);">
+        ${pill(`pcri_${n.id}`, !!perm.criar,   "Incluir",  !!perm.criar)}
+        ${pill(`ped_${n.id}`,  !!perm.editar,  "Editar",   !!perm.editar)}
+        ${pill(`pex_${n.id}`,  !!perm.excluir, "Excluir",  !!perm.excluir)}
+      </div>`;
+    }
+
     return `
       <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:color-mix(in srgb,${cor} 7%,var(--surface));">
@@ -5393,12 +5481,7 @@ function modalPerfil(existing){
             <input type="checkbox" name="pver_${n.id}" id="${negId}" ${perm.ver?"checked":""} style="margin:0;" data-ver-toggle="${subId}">
           </label>
         </div>
-        <div id="${subId}" style="display:${perm.ver?"flex":"none"};flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface);">
-          ${pill(`pcri_${n.id}`, !!perm.criar,   "Incluir",  !!perm.criar)}
-          ${pill(`ped_${n.id}`,  !!perm.editar,  "Editar",   !!perm.editar)}
-          ${pill(`pex_${n.id}`,  !!perm.excluir, "Excluir",  !!perm.excluir)}
-          ${submenuHtml}
-        </div>
+        ${bodyHtml}
       </div>`;
   }).join("");
 
@@ -5457,17 +5540,27 @@ function modalPerfil(existing){
     masterAviso.style.display    = isMaster ? "block" : "none";
   });
 
-  // Toggle acesso por negócio (sem texto, apenas visual)
+  // Toggles do modal de permissões
   document.getElementById("formPerfil").addEventListener("change", e => {
     const chk = e.target;
-    if(!chk.dataset.verToggle) return;
-    const sub = document.getElementById(chk.dataset.verToggle);
-    const lbl = document.querySelector(`[data-ver-label="${chk.id}"]`);
-    if(sub) sub.style.display = chk.checked ? "flex" : "none";
-    if(lbl){
-      lbl.style.border     = chk.checked ? "1px solid var(--accent)" : "1px solid var(--border)";
-      lbl.style.background = chk.checked ? "color-mix(in srgb,var(--accent) 10%,var(--surface))" : "transparent";
-      lbl.style.color      = chk.checked ? "var(--accent)" : "var(--ink-3)";
+    // Toggle de negócio (Sem acesso / Com acesso)
+    if(chk.dataset.verToggle){
+      const sub = document.getElementById(chk.dataset.verToggle);
+      const lbl = document.querySelector(`[data-ver-label="${chk.id}"]`);
+      if(sub){
+        const hasSubs = sub.dataset.hasSubs === "1";
+        sub.style.display = chk.checked ? (hasSubs ? "block" : "flex") : "none";
+      }
+      if(lbl){
+        lbl.style.border     = chk.checked ? "1px solid var(--accent)" : "1px solid var(--border)";
+        lbl.style.background = chk.checked ? "color-mix(in srgb,var(--accent) 10%,var(--surface))" : "transparent";
+        lbl.style.color      = chk.checked ? "var(--accent)" : "var(--ink-3)";
+      }
+    }
+    // Toggle de visibilidade de sub-menu → mostra/oculta seus pills de ação
+    if(chk.dataset.subact){
+      const actDiv = document.getElementById(chk.dataset.subact);
+      if(actDiv) actDiv.style.display = chk.checked ? "flex" : "none";
     }
   });
 
@@ -5479,20 +5572,32 @@ function modalPerfil(existing){
     const tipo  = fd.get("tipo") === "master" ? "master" : "membro";
     if(!nome || !senha) return;
     if(state.perfis.some(x => x.nome === nome && (!isEdit || x !== existing))){ showToast("Já existe um usuário com esse nome.", "error"); return; }
-    // Salva no modelo simples: permissoes[nome] = {ver, criar, editar, excluir, submenus}
+    // Salva permissoes[nome] = {ver, criar, editar, excluir, [submenus]}
     const permissoes = {};
     state.negocios.forEach(n => {
       const subs = NEGOCIOS_SUBMENUS[n.nome] || [];
-      const submenus = subs.length
-        ? Object.fromEntries(subs.map(s => [s.view, fd.get(`psub_${n.id}_${s.view}`) === "on"]))
-        : undefined;
-      permissoes[n.nome] = {
-        ver:    fd.get(`pver_${n.id}`) === "on",
-        criar:  fd.get(`pcri_${n.id}`) === "on",
-        editar: fd.get(`ped_${n.id}`)  === "on",
-        excluir:fd.get(`pex_${n.id}`)  === "on",
-        ...(submenus !== undefined ? { submenus } : {}),
-      };
+      const ver = fd.get(`pver_${n.id}`) === "on";
+      if(subs.length){
+        // Negócio COM sub-menus: salva ações por tela
+        const submenus = Object.fromEntries(subs.map(s => [s.view, {
+          ver:    fd.get(`psub_ver_${n.id}_${s.view}`) === "on",
+          criar:  fd.get(`psub_${n.id}_${s.view}_criar`)  === "on",
+          editar: fd.get(`psub_${n.id}_${s.view}_editar`) === "on",
+          excluir:fd.get(`psub_${n.id}_${s.view}_excluir`) === "on",
+        }]));
+        // Agrega para uso em funções como permissaoNegocio()
+        const anyCriar   = Object.values(submenus).some(s => s.criar);
+        const anyEditar  = Object.values(submenus).some(s => s.editar);
+        const anyExcluir = Object.values(submenus).some(s => s.excluir);
+        permissoes[n.nome] = { ver, criar: anyCriar, editar: anyEditar, excluir: anyExcluir, submenus };
+      } else {
+        permissoes[n.nome] = {
+          ver,
+          criar:  fd.get(`pcri_${n.id}`) === "on",
+          editar: fd.get(`ped_${n.id}`)  === "on",
+          excluir:fd.get(`pex_${n.id}`)  === "on",
+        };
+      }
     });
     const data = { nome, senha, tipo, permissoes, categoriasPermitidas:{}, modulos:{}, negModulos:null };
     if(isEdit){ Object.assign(existing, data); }
