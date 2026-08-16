@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.18";
+const APP_VERSION = "2.0.19";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5036,7 +5036,7 @@ function viewLancamentos(){
     const podeExcluir = podeExcluirNegocio(l.negocio);
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
     const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar && !l.inativo;
-    const linkCobranca = !l.inativo ? waLinkCobranca(l) : null;
+    const linkCobranca = !l.inativo && l.status !== "Pago" ? waLinkCobranca(l) : null;
     const marcado = lancSelecionados.has(l.id);
     const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
