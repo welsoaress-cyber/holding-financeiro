@@ -61,12 +61,16 @@ serve(async (req) => {
       return new Response('lancamento nao encontrado', { status: 200 })
     }
 
+    const dataPag = new Date().toLocaleDateString('pt-BR')
+
     // Mescla status Pago mantendo todos os outros campos do JSONB
     const dadosAtualizados = {
       ...(lanc.dados || {}),
       status: 'Pago',
       pix_id: String(pag.id),
-      data_pagamento: new Date().toISOString().split('T')[0]
+      data_pagamento: new Date().toISOString().split('T')[0],
+      forma_pagamento: 'Pix',
+      obs_pagamento: `Recebido via Pix pelo portal em ${dataPag}`
     }
 
     const { error: upErr } = await sb
