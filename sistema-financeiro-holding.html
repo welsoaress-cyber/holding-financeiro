@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.13";
+const APP_VERSION = "2.0.14";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5539,6 +5539,22 @@ function modalLancamento(existing, tipoPreset, prefill){
         </div>
       </div>
       <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
+      ${podeVerModulo("clientes") ? `
+      <div id="lancClienteWrap" class="field" style="display:${l.tipo==='Receita'?'block':'none'}">
+        <label>Cliente <span class="field-help" style="display:inline;">— opcional</span></label>
+        <select name="clienteId" id="lancClienteSelect">
+          <option value="">— Sem vínculo —</option>
+          ${cliAtivos().sort((a,b)=>cliNome(a).localeCompare(cliNome(b))).map(c=>`<option value="${c.id}" ${(l.clienteId||"")===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("")}
+          <option value="__novo__">+ Novo cliente</option>
+        </select>
+        <div id="novoClienteLancRow" style="display:none; margin-top:8px; padding:12px; background:var(--muted-bg); border-radius:var(--r);">
+          <div class="field-row" style="margin-bottom:8px;">
+            <div class="field" style="margin-bottom:0;"><label>Nome</label><input type="text" id="novoClienteLancNome" placeholder="Nome do cliente"></div>
+            <div class="field" style="margin-bottom:0;"><label>Telefone / WhatsApp</label><input type="text" id="novoClienteLancTel" placeholder="(11) 99999-9999"></div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="novoClienteLancBtn" style="width:100%; justify-content:center;">+ Criar cliente e vincular</button>
+        </div>
+      </div>` : ""}
       <div class="field-row"><div class="field"><label>Status</label><select name="status" id="lancStatus">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Já conciliado com o extrato</label></div></div>
       <div class="field-help" style="margin-top:-8px; margin-bottom:14px;">Provisionado = você vai pagar/receber, mas a baixa é manual (botão  em Lançamentos). Agendado = já agendado no banco para débito/crédito automático — vira "Pago" sozinho na data.</div>
       ${!isEdit ? `
@@ -5572,9 +5588,12 @@ function modalLancamento(existing, tipoPreset, prefill){
 
   document.getElementById("lancTipo")?.addEventListener("change", e => {
     const isTransf = e.target.value === "Transferência";
+    const isReceita = e.target.value === "Receita";
     document.getElementById("lancDestinoWrap").style.display = isTransf ? "block" : "none";
     document.getElementById("lancNegocioWrap").style.display = isTransf ? "none" : "block";
     document.getElementById("lancCategoriaWrap").style.display = isTransf ? "none" : "block";
+    const clienteWrap = document.getElementById("lancClienteWrap");
+    if(clienteWrap) clienteWrap.style.display = isReceita ? "block" : "none";
     // Atualiza label do campo de data conforme o tipo selecionado
     const lbl = document.getElementById("lancDataLabel");
     if(lbl) lbl.textContent = isTransf ? "Data" : "Vencimento";
@@ -5687,6 +5706,48 @@ function modalLancamento(existing, tipoPreset, prefill){
   wireContaInline("lancContaOrigemSelect", "novaContaOrigemRow", "novaContaOrigemNome", "novaContaOrigemInstituicao", "novaContaOrigemBtn");
   wireContaInline("lancContaDestinoSelect", "novaContaDestinoRow", "novaContaDestinoNome", "novaContaDestinoInstituicao", "novaContaDestinoBtn");
 
+  // ---- Cliente inline (só para Receitas) ----
+  const lancClienteSelect = document.getElementById("lancClienteSelect");
+  const novoClienteLancRow = document.getElementById("novoClienteLancRow");
+  if(lancClienteSelect && novoClienteLancRow){
+    lancClienteSelect.addEventListener("change", () => {
+      novoClienteLancRow.style.display = lancClienteSelect.value === "__novo__" ? "block" : "none";
+      if(lancClienteSelect.value === "__novo__") document.getElementById("novoClienteLancNome").focus();
+    });
+    document.getElementById("novoClienteLancBtn").addEventListener("click", async () => {
+      const nomeInput = document.getElementById("novoClienteLancNome");
+      const telInput  = document.getElementById("novoClienteLancTel");
+      const nome = nomeInput.value.trim();
+      if(!nome){ nomeInput.focus(); showToast("Informe o nome do cliente.", "error"); return; }
+      // Verifica duplicata por nome (case-insensitive)
+      const dup = cliAtivos().find(c => cliNome(c).toLowerCase() === nome.toLowerCase());
+      if(dup){
+        showToast(`Já existe: "${cliNome(dup)}" (cód. ${dup.codigo||"—"}) — selecionado automaticamente.`, "warn");
+        lancClienteSelect.value = dup.id;
+        novoClienteLancRow.style.display = "none";
+        return;
+      }
+      const tel = telInput.value.trim();
+      const novoId = uid("cli");
+      const novoCli = {
+        id: novoId, codigo: gerarCodigoCli(), nome, tipoPessoa: "PF",
+        cpfCnpj: "", rg: "", dataNascimento: "", genero: "Não informado",
+        email: "", telefone: tel, whatsapp: tel,
+        logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "SP", cep: "",
+        status: "Ativo", dataCadastro: todayISO(), observacoes: "", contratos: []
+      };
+      state.cliClientes.push(novoCli);
+      await saveCliClientes();
+      // Reconstrói o select e seleciona o novo cliente
+      const ordenados = cliAtivos().sort((a,b) => cliNome(a).localeCompare(cliNome(b)));
+      lancClienteSelect.innerHTML = `<option value="">— Sem vínculo —</option>${ordenados.map(c=>`<option value="${c.id}">${esc(cliLabel(c))}</option>`).join("")}<option value="__novo__">+ Novo cliente</option>`;
+      lancClienteSelect.value = novoId;
+      novoClienteLancRow.style.display = "none";
+      nomeInput.value = ""; telInput.value = "";
+      showToast(`Cliente "${nome}" criado e vinculado.`);
+    });
+  }
+
   // ---- Repetição + divisão total/parcela ----
   const repSelect = document.getElementById("lancRepeticao");
   if(repSelect){
@@ -5731,6 +5792,12 @@ function modalLancamento(existing, tipoPreset, prefill){
     if(fd.get("contaOrigem") === "__nova__" || fd.get("contaDestino") === "__nova__"){
       showToast("Finalize a criação da conta antes de salvar.", "error"); return;
     }
+    if(tipo === "Receita" && lancClienteSelect && lancClienteSelect.value === "__novo__"){
+      showToast("Finalize a criação do cliente antes de salvar.", "error"); return;
+    }
+    const clienteIdSalvo = tipo === "Receita" && lancClienteSelect && lancClienteSelect.value !== "__novo__"
+      ? (lancClienteSelect.value || "")
+      : (isEdit ? (existing.clienteId||"") : "");
     const data = {
       data: fd.get("data"), tipo,
       negocio: tipo === "Transferência" ? "" : (fd.get("negocio")||""),
@@ -5740,6 +5807,7 @@ function modalLancamento(existing, tipoPreset, prefill){
       contaDestino: tipo === "Transferência" ? fd.get("contaDestino") : "",
       valor: parseFloat(fd.get("valor"))||0,
       descricao: fd.get("descricao").trim(),
+      clienteId: clienteIdSalvo,
       status: fd.get("status"),
       conciliado: fd.get("conciliado") === "on",
       lancadoPor: isEdit ? existing.lancadoPor : (state.perfilAtivo ? state.perfilAtivo.nome : "Master"),
