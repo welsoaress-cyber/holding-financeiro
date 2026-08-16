@@ -187,8 +187,9 @@ serve(async (req) => {
     const telefone = normalizarTelefone(telRaw)
 
     if (!telefone) {
-      console.log(`⚠️ ${nome}: telefone inválido (${telRaw}) — campos disponíveis: ${Object.keys(cliDados || {}).join(', ')}`)
-      resultados.push({ cliente: nome, numero: telRaw || '-', status: 'pulado', motivo: `telefone inválido: "${telRaw}"` })
+      const campos = Object.keys(cliDados || {}).join(', ')
+      console.log(`⚠️ ${nome}: telefone inválido (${telRaw}) — campos disponíveis: ${campos}`)
+      resultados.push({ cliente: nome, numero: telRaw || '-', status: 'pulado', motivo: `telefone vazio — campos: ${campos}` })
       continue
     }
 
