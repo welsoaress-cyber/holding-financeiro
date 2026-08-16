@@ -290,3 +290,42 @@ GRANT EXECUTE ON FUNCTION public.portal_servnet_faturas(text, text) TO anon;
 -- ----------------------------------------------------------------
 DROP FUNCTION IF EXISTS public.portal_servnet_fidelidade(text, text);
 DROP FUNCTION IF EXISTS public.portal_servnet_fidelidade(uuid, uuid);
+
+
+-- ----------------------------------------------------------------
+-- 4. ATUALIZAR CONTATO — cliente atualiza e-mail e telefone pelo portal
+-- ----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.portal_servnet_atualizar_contato(
+  p_cliente_id text,
+  p_master_id  text,
+  p_email      text,
+  p_telefone   text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Garante que o cliente pertence a este master (segurança)
+  IF NOT EXISTS (
+    SELECT 1 FROM cli_clientes
+    WHERE id::text      = p_cliente_id
+      AND user_id::text = p_master_id
+  ) THEN
+    RETURN json_build_object('ok', false, 'msg', 'Cliente não encontrado.');
+  END IF;
+
+  -- Atualiza somente email e telefone — nenhum outro campo é tocado
+  UPDATE cli_clientes
+  SET dados = dados
+    || jsonb_build_object('email',    p_email)
+    || jsonb_build_object('telefone', p_telefone)
+  WHERE id::text      = p_cliente_id
+    AND user_id::text = p_master_id;
+
+  RETURN json_build_object('ok', true, 'msg', 'Dados atualizados com sucesso!');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.portal_servnet_atualizar_contato(text, text, text, text) TO anon;
