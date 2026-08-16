@@ -316,11 +316,12 @@ BEGIN
     RETURN json_build_object('ok', false, 'msg', 'Cliente não encontrado.');
   END IF;
 
-  -- Atualiza somente email e telefone — nenhum outro campo é tocado
+  -- Atualiza email, telefone e whatsapp (admin pode exibir qualquer dos dois)
   UPDATE cli_clientes
   SET dados = dados
     || jsonb_build_object('email',    p_email)
     || jsonb_build_object('telefone', p_telefone)
+    || jsonb_build_object('whatsapp', p_telefone)
   WHERE id::text      = p_cliente_id
     AND user_id::text = p_master_id;
 
