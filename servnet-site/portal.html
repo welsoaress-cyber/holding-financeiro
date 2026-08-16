@@ -1624,7 +1624,7 @@ async function gerarPixPortal(lancId, valor, mesRef, contratoId, btn){
     });
     const d = await res.json();
     if (!d.ok) { alert('Erro ao gerar Pix: ' + (d.msg||'')); return; }
-    abrirModalPix(d.copia_cola || d.qr_code || '', parseFloat(valor));
+    abrirModalPix(d.copia_cola || d.qr_code || '', parseFloat(valor), lancId);
   } catch(e) {
     alert('Erro de conexão. Tente novamente.');
   } finally {
@@ -1633,11 +1633,11 @@ async function gerarPixPortal(lancId, valor, mesRef, contratoId, btn){
   }
 }
 
-function abrirModalPix(pixStr, valor){
+function abrirModalPix(pixStr, valor, lancId){
   const ov = document.createElement('div');
   ov.className = 'pix-overlay';
   ov.innerHTML = `
-    <div class="pix-modal">
+    <div class="pix-modal" id="pixModalContent">
       <h3>💳 Pague com Pix</h3>
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(pixStr)}" alt="QR Code Pix">
       <div class="pix-val">R$ ${valor.toFixed(2).replace('.',',')}</div>
@@ -1646,10 +1646,42 @@ function abrirModalPix(pixStr, valor){
         <input class="pix-copy-input" id="pixCopiaInp" type="text" readonly value="${pixStr.replace(/"/g,'&quot;')}">
         <button class="pix-copy-btn" onclick="copiarPix()">Copiar</button>
       </div>
-      <button class="pix-close" onclick="this.closest('.pix-overlay').remove()">Fechar</button>
+      <div style="font-size:0.75rem;color:var(--text-2);display:flex;align-items:center;gap:0.4rem;">
+        <span class="spin" style="width:12px;height:12px;border-width:2px;"></span> Aguardando pagamento…
+      </div>
+      <button class="pix-close" onclick="pararPollPix();this.closest('.pix-overlay').remove()">Fechar</button>
     </div>`;
   document.body.appendChild(ov);
-  ov.addEventListener('click', e => { if(e.target===ov) ov.remove(); });
+  ov.addEventListener('click', e => { if(e.target===ov){ pararPollPix(); ov.remove(); } });
+  iniciarPollPix(lancId, ov);
+}
+
+let _pollTimer = null;
+
+function pararPollPix(){
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+function iniciarPollPix(lancId, ov){
+  pararPollPix();
+  _pollTimer = setInterval(async () => {
+    try {
+      const { data, error } = await sb.from('lancamentos').select('dados').eq('id', lancId).single();
+      if(error || !data) return;
+      if((data.dados?.status||'').toLowerCase() === 'pago'){
+        pararPollPix();
+        const modal = document.getElementById('pixModalContent');
+        if(modal){
+          modal.innerHTML = `
+            <div style="font-size:3rem;margin-bottom:0.5rem;">✅</div>
+            <h3 style="color:#34D399;font-size:1.1rem;">Pagamento confirmado!</h3>
+            <p style="color:var(--text-2);font-size:0.85rem;margin:0.5rem 0 1.5rem;">Obrigado! Seu pagamento foi recebido.</p>
+            <button class="pix-close" onclick="this.closest('.pix-overlay').remove();location.reload();">Fechar</button>
+          `;
+        }
+      }
+    } catch(e){ /* ignora */ }
+  }, 5000);
 }
 
 function copiarPix(){
