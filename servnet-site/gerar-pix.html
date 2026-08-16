@@ -175,7 +175,7 @@ async function gerarPix(){
     const data = await res.json();
 
     if(!data.ok){
-      errEl.textContent = '❌ ' + (data.msg || 'Erro ao gerar Pix.');
+      errEl.textContent = '❌ ' + (data.msg || 'Erro ao gerar Pix.') + (data.detalhe ? ' | ' + data.detalhe : '');
       errEl.classList.add('show');
       return;
     }

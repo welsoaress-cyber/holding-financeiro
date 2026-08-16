@@ -57,7 +57,7 @@ serve(async (req) => {
     if (!mpRes.ok) {
       const err = await mpRes.text()
       console.error('MP error:', err)
-      return new Response(JSON.stringify({ ok: false, msg: 'Erro ao gerar Pix' }), { status: 500 })
+      return new Response(JSON.stringify({ ok: false, msg: 'Erro ao gerar Pix', detalhe: err }), { status: 500 })
     }
 
     const pag = await mpRes.json()
