@@ -1,14 +1,3 @@
-// ================================================================
-// MERCADO PAGO WEBHOOK — ativa cliente automaticamente ao pagar
-// ================================================================
-// Fluxo:
-//   1. MP chama este endpoint com {action, data.id} quando um
-//      pagamento muda de status.
-//   2. Buscamos o pagamento na API do MP para confirmar que está "approved".
-//   3. Lemos o external_reference (= cliente_id gravado na geração do Pix).
-//   4. Marcamos a fatura como Pago e o contrato como Ativo no banco.
-// ================================================================
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -17,114 +6,84 @@ const SB_URL    = Deno.env.get('SUPABASE_URL')!
 const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 serve(async (req) => {
-  // MP envia GET com ?topic=payment&id=xxx para validar o endpoint
-  if (req.method === 'GET') {
-    return new Response('OK', { status: 200 })
-  }
-
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
-  }
+  // MP pode enviar GET para validar a URL
+  if (req.method === 'GET') return new Response('ok', { status: 200 })
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   try {
     const body = await req.json()
-    console.log('MP webhook payload:', JSON.stringify(body))
 
     // Só processa notificações de pagamento
-    const topic  = body.topic  || body.type
-    const pagId  = body.data?.id || body.id
-    if (topic !== 'payment' || !pagId) {
+    if (body.type !== 'payment' || !body.data?.id) {
       return new Response('ignored', { status: 200 })
     }
 
-    // 1. Busca dados do pagamento no MP
-    const mpRes = await fetch(
-      `https://api.mercadopago.com/v1/payments/${pagId}`,
-      { headers: { Authorization: `Bearer ${MP_TOKEN}` } }
-    )
-    if (!mpRes.ok) {
-      console.error('MP API error:', mpRes.status)
-      return new Response('mp error', { status: 200 })
-    }
-    const pag = await mpRes.json()
-    console.log('Pagamento MP:', pag.id, pag.status, pag.external_reference)
+    const paymentId = String(body.data.id)
 
-    // Só age se foi aprovado
+    // Busca detalhes do pagamento no MP
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${MP_TOKEN}` }
+    })
+
+    if (!mpRes.ok) {
+      console.error('Erro ao buscar pagamento MP:', await mpRes.text())
+      return new Response('erro mp', { status: 500 })
+    }
+
+    const pag = await mpRes.json()
+
+    // Só processa aprovados
     if (pag.status !== 'approved') {
+      console.log(`Pagamento ${paymentId} com status ${pag.status} — ignorado`)
       return new Response('not approved', { status: 200 })
     }
 
-    // external_reference = "cli_xxx|ct_xxx|lanc_xxx" gravado na geração do Pix
+    // external_reference = "clienteId|contratoId|lancamentoId"
     const ref = pag.external_reference || ''
-    const [clienteId, contratoId, lancamentoId] = ref.split('|')
-    if (!clienteId) {
-      console.error('external_reference inválido:', ref)
-      return new Response('no reference', { status: 200 })
+    const lancamento_id = ref.split('|')[2] || null
+
+    if (!lancamento_id) {
+      console.error('lancamento_id ausente em external_reference:', ref)
+      return new Response('sem lancamento_id', { status: 200 })
     }
 
     const sb = createClient(SB_URL, SB_SECRET)
 
-    // 2. Marca lançamento (fatura) como Pago
-    if (lancamentoId) {
-      const { data: lanc } = await sb
-        .from('lancamentos')
-        .select('dados')
-        .eq('id', lancamentoId)
-        .single()
-
-      if (lanc) {
-        const novosDados = {
-          ...lanc.dados,
-          status: 'Pago',
-          dataPagamento: new Date().toISOString().split('T')[0],
-          mp_payment_id: String(pag.id)
-        }
-        await sb
-          .from('lancamentos')
-          .update({ dados: novosDados })
-          .eq('id', lancamentoId)
-        console.log('Fatura marcada como Paga:', lancamentoId)
-      }
-    }
-
-    // 3. Ativa o contrato e o cliente
-    const { data: cli } = await sb
-      .from('cli_clientes')
+    // Busca dados atuais do lançamento
+    const { data: lanc, error: fetchErr } = await sb
+      .from('lancamentos')
       .select('dados')
-      .eq('id', clienteId)
+      .eq('id', lancamento_id)
       .single()
 
-    if (!cli) {
-      console.error('Cliente não encontrado:', clienteId)
-      return new Response('cliente nao encontrado', { status: 200 })
+    if (fetchErr || !lanc) {
+      console.error('Lancamento não encontrado:', lancamento_id, fetchErr)
+      return new Response('lancamento nao encontrado', { status: 200 })
     }
 
-    const dados = cli.dados as Record<string, unknown>
-
-    // Ativa status geral do cliente
-    dados.status = 'Ativo'
-
-    // Ativa o contrato específico dentro do array
-    if (contratoId && Array.isArray(dados.contratos)) {
-      dados.contratos = (dados.contratos as Record<string, unknown>[]).map(c =>
-        c.id === contratoId ? { ...c, status: 'Ativo' } : c
-      )
+    // Mescla status Pago mantendo todos os outros campos do JSONB
+    const dadosAtualizados = {
+      ...(lanc.dados || {}),
+      status: 'Pago',
+      pix_id: String(pag.id),
+      data_pagamento: new Date().toISOString().split('T')[0]
     }
 
-    await sb
-      .from('cli_clientes')
-      .update({ dados })
-      .eq('id', clienteId)
+    const { error: upErr } = await sb
+      .from('lancamentos')
+      .update({ dados: dadosAtualizados })
+      .eq('id', lancamento_id)
 
-    console.log('Cliente ativado:', clienteId, contratoId)
+    if (upErr) {
+      console.error('Erro ao atualizar lancamento:', upErr)
+      return new Response('erro update', { status: 500 })
+    }
 
-    return new Response(JSON.stringify({ ok: true, clienteId, contratoId }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    console.log(`✅ Pagamento ${paymentId} aprovado → lancamento ${lancamento_id} = Pago`)
+    return new Response('ok', { status: 200 })
 
   } catch (err) {
-    console.error('Erro no webhook:', err)
-    return new Response('error', { status: 200 }) // sempre 200 pro MP não retentar em loop
+    console.error('Erro webhook:', err)
+    return new Response('erro interno', { status: 500 })
   }
 })
