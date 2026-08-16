@@ -1666,7 +1666,7 @@ function iniciarPollPix(lancId, ov){
   pararPollPix();
   _pollTimer = setInterval(async () => {
     try {
-      const { data, error } = await sb.rpc('portal_verificar_pix', { p_lancamento_id: lancId });
+      const { data, error } = await sb.rpc('portal_verificar_pix', { p_lancamento_id: String(lancId) });
       if(error || !data) return;
       if((data||'').toLowerCase() === 'pago'){
         pararPollPix();
