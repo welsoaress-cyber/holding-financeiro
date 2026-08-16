@@ -306,7 +306,14 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_rows int;
 BEGIN
+  -- Desativa RLS para esta transação: a policy de UPDATE é mais restritiva
+  -- que a de SELECT, então o EXISTS encontra a linha mas o UPDATE não persiste
+  -- sem esta instrução.
+  SET LOCAL row_security = off;
+
   -- Garante que o cliente pertence a este master (segurança)
   IF NOT EXISTS (
     SELECT 1 FROM cli_clientes
@@ -325,7 +332,15 @@ BEGIN
   WHERE id::text      = p_cliente_id
     AND user_id::text = p_master_id;
 
-  RETURN json_build_object('ok', true, 'msg', 'Dados atualizados com sucesso!');
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+  RETURN json_build_object(
+    'ok',  v_rows > 0,
+    'msg', CASE WHEN v_rows > 0
+                THEN 'Dados atualizados com sucesso!'
+                ELSE 'Nenhuma linha atualizada.'
+           END
+  );
 END;
 $$;
 
