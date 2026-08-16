@@ -623,8 +623,30 @@ button, input, select { font-family: inherit; font-size: inherit; }
   .plans-grid { grid-template-columns: repeat(1, 1fr); }
   .contact-layout { grid-template-columns: 1fr; gap: 2.5rem; }
 }
+/* hamburguer */
+.ham-btn{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:transparent;border:none;cursor:pointer;padding:4px;border-radius:5px;transition:background 0.15s;}
+.ham-btn:hover{background:rgba(0,196,216,0.08);}
+.ham-btn span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:transform 0.25s,opacity 0.2s;}
+.ham-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.ham-btn.open span:nth-child(2){opacity:0;}
+.ham-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* mobile nav drawer */
+.mobile-nav{display:none;position:fixed;top:62px;left:0;right:0;z-index:199;
+  background:var(--nav-bg);backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--border);
+  padding:1.25rem max(5vw,1.5rem) 1.5rem;
+  flex-direction:column;gap:0;}
+.mobile-nav.open{display:flex;}
+.mobile-nav a{display:block;padding:0.75rem 0;font-size:1rem;font-weight:500;color:var(--text-2);text-decoration:none;border-bottom:1px solid var(--border);transition:color 0.15s;}
+.mobile-nav a:last-child{border-bottom:none;}
+.mobile-nav a:hover{color:var(--pool);}
+.mobile-nav .mob-portal{color:var(--pool);font-weight:600;}
+.mobile-nav .mob-assinar{display:inline-block;margin-top:0.75rem;padding:0.65rem 1.5rem;background:var(--pool);color:#fff;border-radius:6px;font-weight:700;text-align:center;}
+
 @media (max-width: 720px) {
   .nav-links { display: none; }
+  .ham-btn { display: flex; }
   .section { padding: 4rem 1.25rem; }
 }
 @media (max-width: 560px) {
@@ -668,8 +690,21 @@ button, input, select { font-family: inherit; font-size: inherit; }
   <div class="nav-actions">
     <a href="portal.html" class="nav-portal-btn">Área do Cliente</a>
     <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+    <button class="ham-btn" id="hamBtn" aria-label="Menu" onclick="toggleMobileNav()">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
+
+<!-- MOBILE NAV DRAWER -->
+<div class="mobile-nav" id="mobileNav">
+  <a href="#planos"     onclick="closeMobileNav()">Planos</a>
+  <a href="#quem-somos" onclick="closeMobileNav()">Quem somos</a>
+  <a href="#cobertura"  onclick="closeMobileNav()">Cobertura</a>
+  <a href="#contato"    onclick="closeMobileNav()">Contato</a>
+  <a href="portal.html" class="mob-portal">Área do Cliente</a>
+  <a href="#" class="mob-assinar" onclick="closeMobileNav();openModal();return false;">Assinar agora</a>
+</div>
 
 <!-- HERO -->
 <section class="hero" id="inicio" aria-label="Banner principal">
@@ -1147,6 +1182,26 @@ let refCode = null;
     if(saved){ refCode = saved; document.getElementById('refBanner').style.display = 'block'; }
   }
 })();
+
+function toggleMobileNav(){
+  const btn = document.getElementById('hamBtn');
+  const nav = document.getElementById('mobileNav');
+  const open = nav.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open);
+}
+function closeMobileNav(){
+  document.getElementById('hamBtn').classList.remove('open');
+  document.getElementById('mobileNav').classList.remove('open');
+}
+// fecha o drawer ao clicar fora
+document.addEventListener('click', e => {
+  const nav = document.getElementById('mobileNav');
+  const btn = document.getElementById('hamBtn');
+  if(nav && nav.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)){
+    closeMobileNav();
+  }
+});
 
 function openModal(planName) {
   const ov   = document.getElementById('leadOv');
