@@ -187,7 +187,8 @@ async function gerarPix(){
     // Mostra resultado
     document.getElementById('formScreen').style.display = 'none';
     document.getElementById('resultado').style.display = 'block';
-    document.getElementById('qrImg').src = data.qr_code_url || '';
+    const pixStr = data.copia_cola || data.qr_code || '';
+    document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pixStr)}`;
     document.getElementById('copiaCola').value = data.copia_cola || data.qr_code || '';
     document.getElementById('lancamentoId').value = data.lancamento_id || '';
     document.getElementById('valorBadge').textContent = 'R$ ' + valor.toFixed(2).replace('.',',');
