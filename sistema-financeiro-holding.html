@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.12";
+const APP_VERSION = "2.0.13";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3361,7 +3361,8 @@ function wireAuthForm(){
 // SELETOR DE PERFIL ("Quem está usando?")
 // ============================================================
 function renderSeletorPerfil(){
-  const membros = state.perfis.map(p => `
+  // Usuários inativos não aparecem na lista — acesso bloqueado
+  const membros = state.perfis.filter(p => !p.inativo).map(p => `
     <button class="btn btn-ghost" style="justify-content:center; padding:14px; font-size:14px;" data-action="selecionar-perfil" data-id="${p.id}">${esc(p.nome)}</button>
   `).join("");
   return `
@@ -5193,6 +5194,7 @@ function viewNegocios(){
 // ============================================================
 function viewUsuarios(){
   const rows = state.perfis.map(p => {
+    const inativo = !!p.inativo;
     let resumo;
     if(p.tipo === "master"){
       resumo = `<span class="status-pill status-pago"> Master — acesso completo</span>`;
@@ -5208,13 +5210,17 @@ function viewUsuarios(){
       }).join("");
       resumo = (negTags || `<span style="color:var(--ink-4);font-size:12px;">Nenhum negócio com acesso</span>`);
     }
-    return `<tr>
-      <td><strong>${esc(p.nome)}</strong></td>
+    const acoes = inativo
+      ? `<button class="icon-btn" data-action="toggle-inativo-perfil" data-id="${p.id}" title="Reativar acesso" style="color:var(--pos);">↩ Reativar</button>
+         <button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">×</button>`
+      : `${p.tipo !== "master" ? `<button class="icon-btn" data-action="perfil-app-codigo" data-id="${p.id}" title="Código de acesso próprio (e-mail e senha individuais)" style="color:var(--accent);">↗</button>` : ""}
+         <button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button>
+         <button class="icon-btn" data-action="toggle-inativo-perfil" data-id="${p.id}" title="Inativar acesso" style="color:var(--ink-3);">⊘</button>
+         <button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">×</button>`;
+    return `<tr style="${inativo ? "opacity:.5; background:#FAF5F5;" : ""}">
+      <td><strong>${esc(p.nome)}</strong>${inativo ? `<span class="status-pill status-inativo" style="margin-left:8px;">Acesso bloqueado</span>` : ""}</td>
       <td>${resumo}</td>
-      <td><div class="row-actions">
-        ${p.tipo !== "master" ? `<button class="icon-btn" data-action="perfil-app-codigo" data-id="${p.id}" title="Código de acesso próprio (e-mail e senha individuais)" style="color:var(--accent);">↗</button>` : ""}
-        <button class="icon-btn" data-action="edit-perfil" data-id="${p.id}" title="Editar">✎</button><button class="icon-btn danger" data-action="del-perfil" data-id="${p.id}" title="Excluir">×</button>
-      </div></td>
+      <td><div class="row-actions">${acoes}</div></td>
     </tr>`;
   }).join("");
   return `
@@ -7139,6 +7145,19 @@ document.addEventListener("click", async e => {
     await deleteRow("perfis", id);
     if(state.perfilAtivo && state.perfilAtivo.id === id){ state.perfilAtivo = null; state.perfilEscolhido = false; }
     renderApp(); showToast("Usuário removido.");
+  }
+  else if(action === "toggle-inativo-perfil"){
+    const p = perfilById(id);
+    if(!p) return;
+    const vaInativar = !p.inativo;
+    if(vaInativar && !confirm(`Bloquear o acesso de "${p.nome}"?\nEle não vai conseguir entrar até você reativar.`)) return;
+    p.inativo = vaInativar;
+    // Se a pessoa estava logada agora, derruba a sessão dela
+    if(vaInativar && state.perfilAtivo && state.perfilAtivo.id === id){
+      state.perfilAtivo = null; state.perfilEscolhido = false;
+    }
+    await savePerfis(); renderApp();
+    showToast(vaInativar ? `Acesso de ${p.nome} bloqueado.` : `${p.nome} reativado — pode entrar de novo.`);
   }
 
   else if(action === "new-cartao") modalCartao(null);
