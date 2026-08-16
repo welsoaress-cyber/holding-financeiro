@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.14";
+const APP_VERSION = "2.0.15";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5542,17 +5542,18 @@ function modalLancamento(existing, tipoPreset, prefill){
       ${podeVerModulo("clientes") ? `
       <div id="lancClienteWrap" class="field" style="display:${l.tipo==='Receita'?'block':'none'}">
         <label>Cliente <span class="field-help" style="display:inline;">— opcional</span></label>
-        <select name="clienteId" id="lancClienteSelect">
-          <option value="">— Sem vínculo —</option>
-          ${cliAtivos().sort((a,b)=>cliNome(a).localeCompare(cliNome(b))).map(c=>`<option value="${c.id}" ${(l.clienteId||"")===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("")}
-          <option value="__novo__">+ Novo cliente</option>
-        </select>
-        <div id="novoClienteLancRow" style="display:none; margin-top:8px; padding:12px; background:var(--muted-bg); border-radius:var(--r);">
+        <div style="position:relative;">
+          <input type="text" id="lancClienteBusca" autocomplete="off" placeholder="Digite nome, código ou telefone..."
+            value="${l.clienteId && cliClienteById(l.clienteId) ? esc(cliLabel(cliClienteById(l.clienteId))) : ''}">
+          <input type="hidden" name="clienteId" id="lancClienteIdHidden" value="${esc(l.clienteId||'')}">
+          <div id="lancCliDropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:310;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:224px;overflow-y:auto;"></div>
+        </div>
+        <div id="novoClienteLancRow" style="display:none;margin-top:8px;padding:12px;background:var(--muted-bg);border-radius:var(--r);">
           <div class="field-row" style="margin-bottom:8px;">
             <div class="field" style="margin-bottom:0;"><label>Nome</label><input type="text" id="novoClienteLancNome" placeholder="Nome do cliente"></div>
             <div class="field" style="margin-bottom:0;"><label>Telefone / WhatsApp</label><input type="text" id="novoClienteLancTel" placeholder="(11) 99999-9999"></div>
           </div>
-          <button type="button" class="btn btn-ghost btn-sm" id="novoClienteLancBtn" style="width:100%; justify-content:center;">+ Criar cliente e vincular</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="novoClienteLancBtn" style="width:100%;justify-content:center;">+ Criar cliente e vincular</button>
         </div>
       </div>` : ""}
       <div class="field-row"><div class="field"><label>Status</label><select name="status" id="lancStatus">${STATUS_LANC.map(s=>`<option ${l.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div class="field" style="display:flex; align-items:flex-end;"><label class="checkbox-row"><input type="checkbox" name="conciliado" ${l.conciliado?"checked":""}> Já conciliado com o extrato</label></div></div>
@@ -5706,24 +5707,101 @@ function modalLancamento(existing, tipoPreset, prefill){
   wireContaInline("lancContaOrigemSelect", "novaContaOrigemRow", "novaContaOrigemNome", "novaContaOrigemInstituicao", "novaContaOrigemBtn");
   wireContaInline("lancContaDestinoSelect", "novaContaDestinoRow", "novaContaDestinoNome", "novaContaDestinoInstituicao", "novaContaDestinoBtn");
 
-  // ---- Cliente inline (só para Receitas) ----
-  const lancClienteSelect = document.getElementById("lancClienteSelect");
-  const novoClienteLancRow = document.getElementById("novoClienteLancRow");
-  if(lancClienteSelect && novoClienteLancRow){
-    lancClienteSelect.addEventListener("change", () => {
-      novoClienteLancRow.style.display = lancClienteSelect.value === "__novo__" ? "block" : "none";
-      if(lancClienteSelect.value === "__novo__") document.getElementById("novoClienteLancNome").focus();
+  // ---- Cliente autocomplete (só para Receitas) ----
+  const lancClienteBusca    = document.getElementById("lancClienteBusca");
+  const lancClienteIdHidden = document.getElementById("lancClienteIdHidden");
+  const lancCliDropdown     = document.getElementById("lancCliDropdown");
+  const novoClienteLancRow  = document.getElementById("novoClienteLancRow");
+  if(lancClienteBusca && lancCliDropdown){
+    function renderCliDropdown(q){
+      const qn = q.toLowerCase().trim();
+      const todos = cliAtivos().sort((a,b) => cliNome(a).localeCompare(cliNome(b)));
+      const matches = qn
+        ? todos.filter(c =>
+            cliNome(c).toLowerCase().includes(qn) ||
+            (c.codigo||"").toLowerCase().includes(qn) ||
+            (c.cpfCnpj||"").includes(qn) ||
+            (c.telefone||"").replace(/\D/g,"").includes(qn.replace(/\D/g,""))
+          ).slice(0, 8)
+        : todos.slice(0, 8);
+
+      let html = matches.map(c => {
+        const sub = [c.codigo ? `#${c.codigo}` : "", c.telefone||""].filter(Boolean).join(" · ");
+        return `<div class="lcc-opt" data-id="${c.id}"
+          style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;"
+          onmouseenter="this.style.background='var(--muted-bg)'" onmouseleave="this.style.background=''">
+          <div style="font-weight:500;">${esc(cliNome(c))}</div>
+          ${sub ? `<div style="font-size:11px;color:var(--ink-4);">${esc(sub)}</div>` : ""}
+        </div>`;
+      }).join("");
+
+      if(qn){
+        const exato = todos.some(c => cliNome(c).toLowerCase() === qn);
+        if(!exato){
+          html += `<div id="lccCriar" data-criar="${esc(q)}"
+            style="padding:9px 12px;cursor:pointer;font-size:13px;color:var(--accent);border-top:1px solid var(--border);"
+            onmouseenter="this.style.background='var(--muted-bg)'" onmouseleave="this.style.background=''">
+            + Criar &ldquo;<strong>${esc(q)}</strong>&rdquo;
+          </div>`;
+        }
+      }
+      if(!html){
+        html = `<div style="padding:12px;text-align:center;color:var(--ink-4);font-size:13px;">Nenhum cliente encontrado</div>`;
+      }
+
+      lancCliDropdown.innerHTML = html;
+
+      lancCliDropdown.querySelectorAll(".lcc-opt").forEach(el => {
+        el.addEventListener("mousedown", ev => {
+          ev.preventDefault();
+          const cli = cliClienteById(el.dataset.id);
+          if(cli){
+            lancClienteIdHidden.value = cli.id;
+            lancClienteBusca.value = cliLabel(cli);
+          }
+          fecharCliDropdown();
+        });
+      });
+      const criarBtn = document.getElementById("lccCriar");
+      if(criarBtn){
+        criarBtn.addEventListener("mousedown", ev => {
+          ev.preventDefault();
+          if(novoClienteLancRow){
+            document.getElementById("novoClienteLancNome").value = criarBtn.dataset.criar;
+            novoClienteLancRow.style.display = "block";
+            setTimeout(() => document.getElementById("novoClienteLancTel").focus(), 50);
+          }
+          fecharCliDropdown();
+        });
+      }
+    }
+
+    function abrirCliDropdown(){ lancCliDropdown.style.display = "block"; renderCliDropdown(lancClienteBusca.value); }
+    function fecharCliDropdown(){ lancCliDropdown.style.display = "none"; }
+
+    lancClienteBusca.addEventListener("focus", abrirCliDropdown);
+    lancClienteBusca.addEventListener("input", () => {
+      lancClienteIdHidden.value = ""; // limpa vínculo ao editar texto
+      if(novoClienteLancRow) novoClienteLancRow.style.display = "none";
+      abrirCliDropdown();
     });
-    document.getElementById("novoClienteLancBtn").addEventListener("click", async () => {
+    lancClienteBusca.addEventListener("blur", () => setTimeout(fecharCliDropdown, 160));
+    // Limpa campo com Escape
+    lancClienteBusca.addEventListener("keydown", e => {
+      if(e.key === "Escape"){ lancClienteBusca.value = ""; lancClienteIdHidden.value = ""; fecharCliDropdown(); }
+    });
+
+    // Criar cliente rápido
+    document.getElementById("novoClienteLancBtn")?.addEventListener("click", async () => {
       const nomeInput = document.getElementById("novoClienteLancNome");
       const telInput  = document.getElementById("novoClienteLancTel");
       const nome = nomeInput.value.trim();
       if(!nome){ nomeInput.focus(); showToast("Informe o nome do cliente.", "error"); return; }
-      // Verifica duplicata por nome (case-insensitive)
       const dup = cliAtivos().find(c => cliNome(c).toLowerCase() === nome.toLowerCase());
       if(dup){
-        showToast(`Já existe: "${cliNome(dup)}" (cód. ${dup.codigo||"—"}) — selecionado automaticamente.`, "warn");
-        lancClienteSelect.value = dup.id;
+        showToast(`Já existe: "${cliNome(dup)}" — vinculado.`, "warn");
+        lancClienteIdHidden.value = dup.id;
+        lancClienteBusca.value = cliLabel(dup);
         novoClienteLancRow.style.display = "none";
         return;
       }
@@ -5738,10 +5816,8 @@ function modalLancamento(existing, tipoPreset, prefill){
       };
       state.cliClientes.push(novoCli);
       await saveCliClientes();
-      // Reconstrói o select e seleciona o novo cliente
-      const ordenados = cliAtivos().sort((a,b) => cliNome(a).localeCompare(cliNome(b)));
-      lancClienteSelect.innerHTML = `<option value="">— Sem vínculo —</option>${ordenados.map(c=>`<option value="${c.id}">${esc(cliLabel(c))}</option>`).join("")}<option value="__novo__">+ Novo cliente</option>`;
-      lancClienteSelect.value = novoId;
+      lancClienteIdHidden.value = novoId;
+      lancClienteBusca.value = cliLabel(novoCli);
       novoClienteLancRow.style.display = "none";
       nomeInput.value = ""; telInput.value = "";
       showToast(`Cliente "${nome}" criado e vinculado.`);
@@ -5792,11 +5868,8 @@ function modalLancamento(existing, tipoPreset, prefill){
     if(fd.get("contaOrigem") === "__nova__" || fd.get("contaDestino") === "__nova__"){
       showToast("Finalize a criação da conta antes de salvar.", "error"); return;
     }
-    if(tipo === "Receita" && lancClienteSelect && lancClienteSelect.value === "__novo__"){
-      showToast("Finalize a criação do cliente antes de salvar.", "error"); return;
-    }
-    const clienteIdSalvo = tipo === "Receita" && lancClienteSelect && lancClienteSelect.value !== "__novo__"
-      ? (lancClienteSelect.value || "")
+    const clienteIdSalvo = tipo === "Receita" && lancClienteIdHidden
+      ? (lancClienteIdHidden.value || "")
       : (isEdit ? (existing.clienteId||"") : "");
     const data = {
       data: fd.get("data"), tipo,
