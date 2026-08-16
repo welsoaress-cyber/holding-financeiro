@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.17";
+const APP_VERSION = "2.0.18";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5031,7 +5031,6 @@ function viewLancamentos(){
     // OBS: o emoji fica reservado pra despesa de cartão de verdade
     // (l.cartaoId) — "Parcelado" sozinho não quer dizer cartão (dá pra
     // parcelar uma despesa direto, sem cartão nenhum, ex: financiamento).
-    const recBadge = l.recorrenciaId ? ` <span title="${l.recorrenciaTipo==='parcelado'?'Parcelado':'Recorrente'} (${l.recorrenciaIndex}/${l.recorrenciaTotal})" style="font-size:11px;">${l.recorrenciaTipo==='parcelado'?'P':'R'}</span>` : "";
     const cartaoBadge = l.cartaoId ? ` <span style="font-size:10px;color:var(--ink-3);background:var(--surface-2);border-radius:3px;padding:1px 4px;margin-right:4px;">CC</span>` : "";
     const podeEditar = podeEditarNegocio(l.negocio);
     const podeExcluir = podeExcluirNegocio(l.negocio);
@@ -5061,7 +5060,7 @@ function viewLancamentos(){
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${l.descricao ? esc(l.descricao) : `<span style="color:var(--ink-4);">—</span>`}${cartaoBadge}${recBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}${clienteBadge}</td>
+      <td>${l.descricao ? esc(l.descricao) : `<span style="color:var(--ink-4);">—</span>`}${cartaoBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}${clienteBadge}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${l.status}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
