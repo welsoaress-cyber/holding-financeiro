@@ -49,7 +49,8 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MP_TOKEN}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': lancamento_id
       },
       body: JSON.stringify({
         transaction_amount: Number(valor),
