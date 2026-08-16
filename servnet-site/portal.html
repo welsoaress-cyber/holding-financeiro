@@ -108,6 +108,19 @@ a{color:inherit;}
 .inv-val{font-size:2.2rem;font-weight:900;line-height:1;margin-bottom:0.75rem;}
 .boleto-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.25rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;margin-top:0.75rem;font-family:inherit;}
 .boleto-btn:hover{opacity:0.85;}
+.pix-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.25rem;background:transparent;color:var(--pool);border:1.5px solid var(--pool);border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;transition:opacity 0.15s;margin-top:0.5rem;font-family:inherit;width:100%;}
+.pix-btn:hover{background:rgba(0,196,216,0.08);}
+.pix-btn:disabled{opacity:0.5;cursor:default;}
+/* Modal Pix */
+.pix-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.pix-modal{background:#061520;border:1px solid rgba(0,196,216,0.2);border-radius:12px;padding:2rem 1.5rem;width:100%;max-width:360px;text-align:center;}
+.pix-modal h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;color:var(--pool);}
+.pix-modal img{width:200px;height:200px;border:3px solid var(--pool);border-radius:8px;background:#fff;padding:6px;margin-bottom:1rem;}
+.pix-val{display:inline-block;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:100px;padding:0.25rem 1rem;color:#34D399;font-size:1.05rem;font-weight:700;margin-bottom:1rem;}
+.pix-copy-wrap{display:flex;gap:0.4rem;margin-bottom:1rem;}
+.pix-copy-input{flex:1;padding:0.6rem 0.8rem;background:#091C2A;border:1px solid rgba(0,196,216,0.15);border-radius:6px;color:var(--text);font-size:0.75rem;font-family:monospace;outline:none;}
+.pix-copy-btn{padding:0.6rem 0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.pix-close{width:100%;padding:0.7rem;background:transparent;color:var(--text-2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:0.9rem;cursor:pointer;font-family:inherit;}
 
 /* history */
 .hist-list{display:flex;flex-direction:column;gap:0.65rem;}
@@ -933,6 +946,7 @@ function renderNextFatura(key, fat){
     <div class="inv-val">${fmtVal(f.valor)}</div>
     <span class="badge ${badgeClass(st)}">${esc(st)}</span>
     ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
+    ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
   `;
 }
 
@@ -1583,6 +1597,68 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   enterDash(session);
 });
+
+// ===== PIX PORTAL =====
+const FN_PIX = SB_URL + '/functions/v1/mp-gerar-pix';
+
+async function gerarPixPortal(lancId, valor, mesRef, contratoId, btn){
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando…';
+  try {
+    const res = await fetch(FN_PIX, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY
+      },
+      body: JSON.stringify({
+        cliente_id: session.cliente_id,
+        contrato_id: contratoId || null,
+        lancamento_id: lancId,
+        valor: parseFloat(valor),
+        descricao: 'Mensalidade Servnet',
+        mes_ref: mesRef
+      })
+    });
+    const d = await res.json();
+    if (!d.ok) { alert('Erro ao gerar Pix: ' + (d.msg||'')); return; }
+    abrirModalPix(d.copia_cola || d.qr_code || '', parseFloat(valor));
+  } catch(e) {
+    alert('Erro de conexão. Tente novamente.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Pagar com Pix';
+  }
+}
+
+function abrirModalPix(pixStr, valor){
+  const ov = document.createElement('div');
+  ov.className = 'pix-overlay';
+  ov.innerHTML = `
+    <div class="pix-modal">
+      <h3>💳 Pague com Pix</h3>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixStr)}" alt="QR Code Pix">
+      <div class="pix-val">R$ ${valor.toFixed(2).replace('.',',')}</div>
+      <div style="font-size:0.78rem;color:var(--text-2);margin-bottom:0.5rem;">Pix Copia e Cola</div>
+      <div class="pix-copy-wrap">
+        <input class="pix-copy-input" id="pixCopiaInp" type="text" readonly value="${pixStr.replace(/"/g,'&quot;')}">
+        <button class="pix-copy-btn" onclick="copiarPix()">Copiar</button>
+      </div>
+      <button class="pix-close" onclick="this.closest('.pix-overlay').remove()">Fechar</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if(e.target===ov) ov.remove(); });
+}
+
+function copiarPix(){
+  const el = document.getElementById('pixCopiaInp');
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const btn = document.querySelector('.pix-copy-btn');
+    btn.textContent = '✓ Copiado';
+    setTimeout(()=>btn.textContent='Copiar', 2000);
+  });
+}
 </script>
 </body>
 </html>
