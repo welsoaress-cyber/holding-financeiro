@@ -59,7 +59,7 @@ a{color:inherit;}
 .dash-body{max-width:960px;margin:0 auto;padding:2.5rem max(5vw,1.5rem);}
 .dash-greet{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--text-2);margin-bottom:0.25rem;}
 .dash-title{font-size:1.6rem;font-weight:800;margin-bottom:2rem;}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.cards{display:grid;grid-template-columns:1fr 1fr 2fr;gap:1.2rem;}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:640px){.cards{grid-template-columns:1fr;}}
 .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;position:relative;overflow:hidden;}
@@ -69,8 +69,9 @@ a{color:inherit;}
 .card-lbl::before{content:'';display:block;width:14px;height:1.5px;background:var(--pool);}
 .span2{grid-column:span 2;}
 .span3{grid-column:span 3;}
-@media(max-width:900px){.span2{grid-column:span 2;}.span3{grid-column:span 2;}}
-@media(max-width:640px){.span2,.span3{grid-column:span 1;}}
+/* card de fidelidade: na grade 1fr 1fr 2fr já ocupa 2fr; abaixo de 900px vai linha inteira */
+@media(max-width:900px){.fid-card{grid-column:span 2;}.span2{grid-column:span 2;}.span3{grid-column:span 2;}}
+@media(max-width:640px){.fid-card,.span2,.span3{grid-column:span 1;}}
 
 /* plan card */
 .plan-speed{font-family:'Courier New',monospace;font-size:2.5rem;font-weight:700;color:var(--pool);line-height:1;}
@@ -407,7 +408,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.3</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.4</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -728,7 +729,7 @@ function renderContratos(){
         <div class="card-lbl">Próxima Fatura${sufixo}</div>
         <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
       </div>
-      <div class="card" id="fidelCard-${key}">
+      <div class="card fid-card" id="fidelCard-${key}">
         <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
         <div id="fidel-${key}" class="loading-center"><span class="spin"></span></div>
       </div>`;
