@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.9";
+const APP_VERSION = "2.0.10";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1310,7 +1310,12 @@ function fmtBRL(n){ n = Number(n)||0; return n.toLocaleString("pt-BR", {style:"c
 function maskBRL(n, unlocked){ return unlocked ? fmtBRL(n) : "R$ ••••••"; }
 function fmtDateBR(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
 function fmtDataHora(isoComHora){ if(!isoComHora) return "—"; return new Date(isoComHora).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+// Retorna a data de hoje no fuso local (ex: Brasília UTC-3), não em UTC.
+// new Date().toISOString() usaria UTC e causaria dia errado após as 21h no Brasil.
+function todayISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function brToISO(br){ if(!br) return ""; const p=br.split("/"); if(p.length!==3||p[2].length!==4) return ""; return `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
 function applyDateMask(input){ if(!input) return; input.setAttribute("inputmode","numeric"); input.setAttribute("maxlength","10"); input.addEventListener("input",function(){ let v=this.value.replace(/\D/g,"").slice(0,8); if(v.length>=5) v=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4); else if(v.length>=3) v=v.slice(0,2)+"/"+v.slice(2); this.value=v; }); }
 async function buscarCep(cepVal, form){ const n=cepVal.replace(/\D/g,""); if(n.length!==8) return; try{ const r=await fetch(`https://viacep.com.br/ws/${n}/json/`); const d=await r.json(); if(d.erro) return; const set=(name,val)=>{ const el=form.querySelector(`[name="${name}"]`); if(el&&val) el.value=val; }; set("logradouro",d.logradouro); set("bairro",d.bairro); set("cidade",d.localidade); set("complemento",d.complemento); const uf=form.querySelector('[name="uf"]'); if(uf&&d.uf) uf.value=d.uf; }catch(e){} }
