@@ -1058,7 +1058,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.8";
+const APP_VERSION = "2.0.9";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7521,13 +7521,23 @@ function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
 // Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
 // Não altera o cadastro, apenas o que é exibido.
+// Dias de tolerância antes de marcar como Inadimplente.
+// Ex: 5 = só vira inadimplente se o vencimento tiver 5+ dias no passado.
+const DIAS_TOLERANCIA_INADIMPLENCIA = 5;
+
 function clienteStatusEfetivo(c){
   if(!c) return "—";
   if(c.status === "Cancelado") return "Cancelado";
-  const hoje = todayISO();
+  const hoje = new Date(todayISO() + "T00:00:00");
+  const limiteISO = (() => {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - DIAS_TOLERANCIA_INADIMPLENCIA);
+    return d.toISOString().slice(0, 10);
+  })();
+  // Só considera inadimplente se o vencimento é anterior ao limite (hoje - tolerância)
   const emAtraso = state.lancamentos.some(l =>
     l.clienteId === c.id && l.tipo === "Receita" &&
-    l.status !== "Pago" && !l.inativo && l.data < hoje
+    l.status !== "Pago" && !l.inativo && l.data <= limiteISO
   );
   return emAtraso ? "Inadimplente" : (c.status || "Ativo");
 }
