@@ -711,7 +711,7 @@ async function salvarDados(){
     session.email    = email;
     session.telefone = tel;
     sessionStorage.setItem('sn_sess', JSON.stringify(session));
-    ok.textContent='✅ Dados atualizados!'; ok.className='dados-ok ok';
+    ok.textContent='✅ Dados atualizados! (salvo: '+res.salvo+')'; ok.className='dados-ok ok';
   }catch(e){
     ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.'); ok.className='dados-ok err';
     console.error(e);

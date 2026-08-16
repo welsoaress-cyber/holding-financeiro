@@ -307,7 +307,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_rows int;
+  v_rows  int;
+  v_salvo text;
 BEGIN
   -- Desativa RLS para esta transação: a policy de UPDATE é mais restritiva
   -- que a de SELECT, então o EXISTS encontra a linha mas o UPDATE não persiste
@@ -334,12 +335,17 @@ BEGIN
 
   GET DIAGNOSTICS v_rows = ROW_COUNT;
 
+  -- Lê o valor que ficou na mesma transação — antes de qualquer reversão externa
+  SELECT dados->>'telefone' INTO v_salvo
+  FROM cli_clientes WHERE id::text = p_cliente_id;
+
   RETURN json_build_object(
-    'ok',  v_rows > 0,
-    'msg', CASE WHEN v_rows > 0
-                THEN 'Dados atualizados com sucesso!'
-                ELSE 'Nenhuma linha atualizada.'
-           END
+    'ok',    v_rows > 0,
+    'msg',   CASE WHEN v_rows > 0
+                  THEN 'Dados atualizados com sucesso!'
+                  ELSE 'Nenhuma linha atualizada.'
+             END,
+    'salvo', v_salvo   -- diagnóstico: valor gravado dentro da transação
   );
 END;
 $$;
