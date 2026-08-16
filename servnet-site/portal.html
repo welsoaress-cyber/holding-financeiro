@@ -69,6 +69,22 @@ a{color:inherit;}
 .span2{grid-column:span 2;}
 @media(max-width:640px){.span2{grid-column:span 1;}}
 
+/* status da rede card */
+.status-card{display:none;}
+.status-card.vis{display:block;}
+.status-banner{display:flex;align-items:flex-start;gap:1rem;padding:1rem 1.25rem;border-radius:8px;border:1px solid;}
+.status-icon{font-size:1.8rem;flex-shrink:0;line-height:1;}
+.status-body{}
+.status-titulo{font-size:1rem;font-weight:700;margin-bottom:0.25rem;}
+.status-desc{font-size:0.86rem;opacity:0.85;line-height:1.5;}
+.status-atualizado{font-size:0.73rem;opacity:0.55;margin-top:0.5rem;}
+/* lentidao = amber */
+.s-lentidao{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.35);color:#FCD34D;}
+/* queda = red */
+.s-queda{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.35);color:#FCA5A5;}
+/* manutencao = purple */
+.s-manutencao{background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.35);color:#C4B5FD;}
+
 /* plan card */
 .plan-speed{font-family:'Courier New',monospace;font-size:2.5rem;font-weight:700;color:var(--pool);line-height:1;}
 .plan-speed span{font-size:1rem;color:var(--text-2);font-weight:400;}
@@ -414,7 +430,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.6</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.7</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -432,6 +448,12 @@ a{color:inherit;}
           <div class="card-lbl">🏆 Fidelidade</div>
           <div class="loading-center"><span class="spin"></span></div>
         </div>
+      </div>
+
+      <!-- Status da Rede -->
+      <div class="card span2 status-card" id="statusCard">
+        <div class="card-lbl" id="statusLbl">📡 Status da Rede</div>
+        <div id="statusBanner"></div>
       </div>
 
       <!-- Promoções -->
@@ -675,6 +697,7 @@ async function enterDash(data){
   loadFidelidades();
   loadIndicacoes(data);
   preencherDados(data);
+  loadStatus();
 }
 
 function preencherDados(data){
@@ -682,6 +705,50 @@ function preencherDados(data){
   const tel   = document.getElementById('dadosTelefone');
   if(email) email.value = data.email    || '';
   if(tel)   tel.value   = data.telefone || '';
+}
+
+async function loadStatus(){
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_status');
+    if(error) return; // silencioso: não exibe erro ao cliente
+    renderStatus(data);
+  }catch{ /* sem rede: ignora */ }
+}
+
+function renderStatus(s){
+  const card   = document.getElementById('statusCard');
+  const banner = document.getElementById('statusBanner');
+  if(!card||!banner) return;
+  if(!s || s.status === 'ok'){
+    card.classList.remove('vis');
+    return;
+  }
+  const MAP = {
+    lentidao:  { cls:'s-lentidao',   icon:'🟡', label:'Lentidão na Rede'  },
+    queda:     { cls:'s-queda',      icon:'🔴', label:'Queda de Sinal'     },
+    manutencao:{ cls:'s-manutencao', icon:'🔧', label:'Manutenção Programada' }
+  };
+  const m = MAP[s.status] || { cls:'s-lentidao', icon:'⚠️', label:'Aviso' };
+
+  let atualizado = '';
+  if(s.updated_at){
+    try{
+      const d = new Date(s.updated_at);
+      atualizado = `Atualizado em ${d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+    }catch{}
+  }
+
+  banner.innerHTML = `
+    <div class="status-banner ${m.cls}">
+      <div class="status-icon">${m.icon}</div>
+      <div class="status-body">
+        <div class="status-titulo">${esc(s.titulo||m.label)}</div>
+        ${s.descricao ? `<div class="status-desc">${esc(s.descricao)}</div>` : ''}
+        ${atualizado ? `<div class="status-atualizado">${atualizado}</div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('statusLbl').textContent = `📡 Status da Rede — ${m.label}`;
+  card.classList.add('vis');
 }
 
 async function salvarDados(){
