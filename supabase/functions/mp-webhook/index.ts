@@ -64,13 +64,15 @@ serve(async (req) => {
     const dataPag = new Date().toLocaleDateString('pt-BR')
 
     // Mescla status Pago mantendo todos os outros campos do JSONB
+    const descOriginal = (lanc.dados?.descricao || 'Cobrança Servnet').replace(/ — Pago via Pix.*$/, '')
     const dadosAtualizados = {
       ...(lanc.dados || {}),
       status: 'Pago',
       pix_id: String(pag.id),
       data_pagamento: new Date().toISOString().split('T')[0],
       forma_pagamento: 'Pix',
-      obs_pagamento: `Recebido via Pix pelo portal em ${dataPag}`
+      obs_pagamento: `Recebido via Pix pelo portal em ${dataPag}`,
+      descricao: `${descOriginal} — Pago via Pix em ${dataPag}`
     }
 
     const { error: upErr } = await sb
