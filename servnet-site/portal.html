@@ -430,8 +430,15 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.7</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.8</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
+
+    <!-- Status da Rede — fora do grid, largura total, só visível quando há problema -->
+    <div class="card status-card" id="statusCard" style="margin-bottom:1.2rem">
+      <div class="card-lbl" id="statusLbl">📡 Status da Rede</div>
+      <div id="statusBanner"></div>
+    </div>
+
     <div class="cards">
 
       <!-- Plano + Próxima Fatura + Fidelidade — 3 cards por contrato, mesma linha -->
@@ -448,12 +455,6 @@ a{color:inherit;}
           <div class="card-lbl">🏆 Fidelidade</div>
           <div class="loading-center"><span class="spin"></span></div>
         </div>
-      </div>
-
-      <!-- Status da Rede -->
-      <div class="card span2 status-card" id="statusCard">
-        <div class="card-lbl" id="statusLbl">📡 Status da Rede</div>
-        <div id="statusBanner"></div>
       </div>
 
       <!-- Promoções -->
