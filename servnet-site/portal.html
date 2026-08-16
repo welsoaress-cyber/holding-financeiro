@@ -359,6 +359,16 @@ a{color:inherit;}
 .ticket-btn:disabled{opacity:0.55;cursor:default;}
 .ticket-ok{display:none;color:#34D399;font-size:0.88rem;margin-top:0.5rem;}
 
+/* meus dados */
+.dados-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;}
+@media(max-width:640px){.dados-grid{grid-template-columns:1fr;}}
+.dados-btn{padding:0.75rem 1.5rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;}
+.dados-btn:hover:not(:disabled){opacity:0.85;}
+.dados-btn:disabled{opacity:0.55;cursor:default;}
+.dados-ok{font-size:0.88rem;font-weight:600;}
+.dados-ok.ok{color:#34D399;}
+.dados-ok.err{color:#FCA5A5;}
+
 /* aviso boleto */
 .boleto-notice{display:flex;align-items:center;gap:0.55rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.22);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1.1rem;font-size:0.8rem;color:#FCD34D;}
 .boleto-notice svg{flex-shrink:0;opacity:0.85;}
@@ -404,7 +414,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.5</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.6</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
@@ -467,6 +477,27 @@ a{color:inherit;}
       <div class="card span2" id="refCard">
         <div class="card-lbl">👥 Indique e Ganhe</div>
         <div id="refContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Meus Dados -->
+      <div class="card span2" id="dadosCard">
+        <div class="card-lbl">✏️ Meus Dados</div>
+        <div class="dados-form" id="dadosForm">
+          <div class="dados-grid">
+            <div class="f-group">
+              <label class="f-label">E-mail</label>
+              <input class="f-input" type="email" id="dadosEmail" placeholder="seu@email.com" autocomplete="email">
+            </div>
+            <div class="f-group">
+              <label class="f-label">Telefone / WhatsApp</label>
+              <input class="f-input" type="tel" id="dadosTelefone" placeholder="(00) 00000-0000" autocomplete="tel">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem;flex-wrap:wrap;">
+            <button class="dados-btn" id="dadosBtn" onclick="salvarDados()">💾 Salvar alterações</button>
+            <span class="dados-ok" id="dadosOk"></span>
+          </div>
+        </div>
       </div>
 
       <!-- Suporte / Chamado -->
@@ -643,6 +674,50 @@ async function enterDash(data){
   await loadFaturas(data);
   loadFidelidades();
   loadIndicacoes(data);
+  preencherDados(data);
+}
+
+function preencherDados(data){
+  const email = document.getElementById('dadosEmail');
+  const tel   = document.getElementById('dadosTelefone');
+  if(email) email.value = data.email    || '';
+  if(tel)   tel.value   = data.telefone || '';
+}
+
+async function salvarDados(){
+  const btn = document.getElementById('dadosBtn');
+  const ok  = document.getElementById('dadosOk');
+  const email = (document.getElementById('dadosEmail')?.value||'').trim();
+  const tel   = (document.getElementById('dadosTelefone')?.value||'').trim();
+
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    ok.textContent='⚠ E-mail inválido.'; ok.className='dados-ok err'; return;
+  }
+  if(!tel){
+    ok.textContent='⚠ Informe o telefone.'; ok.className='dados-ok err'; return;
+  }
+
+  btn.disabled=true; ok.textContent='Salvando…'; ok.className='dados-ok';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_email:      email,
+      p_telefone:   tel
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao salvar.');
+    // Atualiza sessão local
+    session.email    = email;
+    session.telefone = tel;
+    sessionStorage.setItem('sn_sess', JSON.stringify(session));
+    ok.textContent='✅ Dados atualizados!'; ok.className='dados-ok ok';
+  }catch(e){
+    ok.textContent='❌ Erro ao salvar. Tente novamente.'; ok.className='dados-ok err';
+    console.error(e);
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 function badgeClass(s){
