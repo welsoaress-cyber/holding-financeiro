@@ -713,7 +713,7 @@ async function salvarDados(){
     sessionStorage.setItem('sn_sess', JSON.stringify(session));
     ok.textContent='✅ Dados atualizados!'; ok.className='dados-ok ok';
   }catch(e){
-    ok.textContent='❌ Erro ao salvar. Tente novamente.'; ok.className='dados-ok err';
+    ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.'); ok.className='dados-ok err';
     console.error(e);
   }finally{
     btn.disabled=false;

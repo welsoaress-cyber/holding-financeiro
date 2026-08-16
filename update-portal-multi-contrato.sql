@@ -306,7 +306,15 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_rows  int;
+  v_salvo text;
 BEGIN
+  -- Desativa RLS para esta transação: a policy de UPDATE é mais restritiva
+  -- que a de SELECT, então o EXISTS encontra a linha mas o UPDATE não persiste
+  -- sem esta instrução.
+  SET LOCAL row_security = off;
+
   -- Garante que o cliente pertence a este master (segurança)
   IF NOT EXISTS (
     SELECT 1 FROM cli_clientes
@@ -316,15 +324,29 @@ BEGIN
     RETURN json_build_object('ok', false, 'msg', 'Cliente não encontrado.');
   END IF;
 
-  -- Atualiza somente email e telefone — nenhum outro campo é tocado
+  -- Atualiza email, telefone e whatsapp (admin pode exibir qualquer dos dois)
   UPDATE cli_clientes
   SET dados = dados
     || jsonb_build_object('email',    p_email)
     || jsonb_build_object('telefone', p_telefone)
+    || jsonb_build_object('whatsapp', p_telefone)
   WHERE id::text      = p_cliente_id
     AND user_id::text = p_master_id;
 
-  RETURN json_build_object('ok', true, 'msg', 'Dados atualizados com sucesso!');
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+  -- Lê o valor que ficou na mesma transação — antes de qualquer reversão externa
+  SELECT dados->>'telefone' INTO v_salvo
+  FROM cli_clientes WHERE id::text = p_cliente_id;
+
+  RETURN json_build_object(
+    'ok',    v_rows > 0,
+    'msg',   CASE WHEN v_rows > 0
+                  THEN 'Dados atualizados com sucesso!'
+                  ELSE 'Nenhuma linha atualizada.'
+             END,
+    'salvo', v_salvo   -- diagnóstico: valor gravado dentro da transação
+  );
 END;
 $$;
 
