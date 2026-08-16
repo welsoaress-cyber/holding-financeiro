@@ -672,16 +672,27 @@
   thead th { padding: 9px 8px 7px; font-size: 11px; }
   tbody td { padding: 9px 8px; }
 
-  /* Filtros empilhados */
+  /* Filtros: scroll horizontal — não empilha no mobile */
   .filter-bar {
-    flex-direction: column; gap: 8px; padding: 12px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding: 10px 12px;
+    scrollbar-width: none;
   }
+  .filter-bar::-webkit-scrollbar { display: none; }
   .filter-bar select,
   .filter-bar input[type=date],
   .filter-bar input[type=text] {
-    width: 100%; font-size: 15px; min-height: 40px;
+    flex-shrink: 0;
+    width: auto;
+    min-width: 110px;
+    font-size: 14px;
+    min-height: 36px;
   }
-  .filter-bar span { flex-direction: column; align-items: flex-start; }
+  .filter-bar span { flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
 
   /* Modal full-screen no mobile */
   .modal-overlay { align-items: flex-end; padding: 0; }
@@ -721,6 +732,70 @@
 
   /* Barra de módulos escondida, aparece no drawer */
   .modbar, .modpanel { display: none !important; }
+
+  /* ---- Lançamentos: card layout no mobile ---- */
+  .lanc-table thead { display: none; }
+  .lanc-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .lanc-table td { padding: 0; }
+  /* Hide: checkbox, tipo, conta, conciliado */
+  .lanc-table td:nth-child(1),
+  .lanc-table td:nth-child(3),
+  .lanc-table td:nth-child(5),
+  .lanc-table td:nth-child(9) { display: none; }
+  /* Linha 1: Data | Status | Valor */
+  .lanc-table td:nth-child(2) { order: 1; flex: 1;          font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .lanc-table td:nth-child(8) { order: 2; flex: 0 0 auto;   padding-right: 6px; }
+  .lanc-table td:nth-child(7) { order: 3; flex: 0 0 auto;   font-size: 15px; font-weight: 700; }
+  .lanc-table tr[data-tipo="Receita"] td:nth-child(7) { color: var(--pos); }
+  .lanc-table tr[data-tipo="Despesa"] td:nth-child(7) { color: var(--neg); }
+  /* Linha 2: Descrição (largura total) */
+  .lanc-table td:nth-child(6) {
+    order: 10; flex: 0 0 100%;
+    font-size: 13px;
+    padding-top: 6px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  /* Linha 3: Negócio | Ações */
+  .lanc-table td:nth-child(4)  { order: 20; flex: 1;        padding-top: 4px; }
+  .lanc-table td:nth-child(10) { order: 21; flex: 0 0 auto; padding-top: 4px; }
+
+  /* ---- Movimentos de estoque: card layout no mobile ---- */
+  .mov-table thead { display: none; }
+  .mov-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .mov-table td { padding: 0; }
+  /* Hide: checkbox, motivo, responsável, NF */
+  .mov-table td:nth-child(1),
+  .mov-table td:nth-child(7),
+  .mov-table td:nth-child(8),
+  .mov-table td:nth-child(9) { display: none; }
+  /* Linha 1: Data | Tipo | Qtd */
+  .mov-table td:nth-child(2) { order: 1; flex: 1;          font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .mov-table td:nth-child(3) { order: 2; flex: 0 0 auto;   padding-right: 6px; font-weight: 600; }
+  .mov-table td:nth-child(5) { order: 3; flex: 0 0 auto;   font-size: 15px; font-weight: 700; }
+  /* Linha 2: Produto (largura total) */
+  .mov-table td:nth-child(4) {
+    order: 10; flex: 0 0 100%;
+    font-size: 13px;
+    padding-top: 6px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  /* Linha 3: Local | Ações */
+  .mov-table td:nth-child(6)  { order: 20; flex: 1;        font-size: 12px; color: var(--ink-3); padding-top: 4px; }
+  .mov-table td:nth-child(10) { order: 21; flex: 0 0 auto; padding-top: 4px; }
 }
 
 /* ---- Bottom Nav — aparece só no mobile como atalho rápido ---- */
@@ -1063,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.11";
+const APP_VERSION = "2.0.12";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4964,7 +5039,7 @@ function viewLancamentos(){
     const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
       const quando = l.inativadoEm ? ` em ${fmtDateBR(l.inativadoEm.slice(0,10))}` : "";
-      return `<tr style="opacity:.45; background:#FAF5F5;">
+      return `<tr data-tipo="${l.tipo}" style="opacity:.45; background:#FAF5F5;">
         <td></td>
         <td style="white-space:nowrap; text-decoration:line-through;">${fmtDateBR(l.data)}</td>
         <td style="text-decoration:line-through;">${sinal} ${esc(l.tipo)}</td>
@@ -4977,7 +5052,7 @@ function viewLancamentos(){
         <td><div class="row-actions">${ehMaster() ? `<button class="icon-btn" data-action="reativar-lanc" data-id="${l.id}" title="Reativar lançamento" style="color:var(--pos);">↩</button>` : ""}</div></td>
       </tr>`;
     }
-    return `<tr style="${marcado ? 'background:#EAF1FB;' : ''}">
+    return `<tr data-tipo="${l.tipo}" style="${marcado ? 'background:#EAF1FB;' : ''}">
       <td style="text-align:center;">${podeExcluir ? `<input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}>` : ""}</td>
       <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
@@ -5048,7 +5123,7 @@ function viewLancamentos(){
       <select data-action="filter-catnome"><option value="">Todas as categorias</option>${catNomeOptions}</select>
       <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"Selecione uma categoria"}</option>${subcatNomeOptions}</select>
 ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
-    </div><div class="panel-body"><table><thead><tr>
+    </div><div class="panel-body"><table class="lanc-table"><thead><tr>
       <th style="text-align:center;"><input type="checkbox" data-action="toggle-select-all-lanc" ${todosVisiveisSelecionados?"checked":""} title="Selecionar todos os visíveis"></th>
       <th>Data</th><th>Tipo</th><th>Negócio</th><th>Conta</th><th>Descrição</th><th class="num">Valor</th><th>Status</th><th style="text-align:center;">Conciliado</th><th></th>
     </tr></thead><tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhum lançamento encontrado com esse filtro.")}</td></tr>`}</tbody></table></div></div>
@@ -11079,7 +11154,7 @@ function viewEstMovimentos(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="est-movfiltro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr>${bulkCheckboxHeaderHTML("est_movimentos", lista.map(m=>m.id))}<th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
+        <table class="mov-table"><thead><tr>${bulkCheckboxHeaderHTML("est_movimentos", lista.map(m=>m.id))}<th>Data</th><th>Tipo</th><th>Produto</th><th class="num">Qtd</th><th>Local</th><th>Motivo</th><th>Responsável</th><th>NF</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="10">${emptyState("Nenhuma movimentação encontrada.")}</td></tr>`}</tbody></table>
       </div>
     </div>
