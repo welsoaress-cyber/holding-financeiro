@@ -1666,9 +1666,9 @@ function iniciarPollPix(lancId, ov){
   pararPollPix();
   _pollTimer = setInterval(async () => {
     try {
-      const { data, error } = await sb.from('lancamentos').select('dados').eq('id', lancId).single();
+      const { data, error } = await sb.rpc('portal_verificar_pix', { p_lancamento_id: lancId });
       if(error || !data) return;
-      if((data.dados?.status||'').toLowerCase() === 'pago'){
+      if((data||'').toLowerCase() === 'pago'){
         pararPollPix();
         const modal = document.getElementById('pixModalContent');
         if(modal){
