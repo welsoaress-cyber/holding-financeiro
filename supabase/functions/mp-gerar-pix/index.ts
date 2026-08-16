@@ -5,20 +5,30 @@ const MP_TOKEN  = Deno.env.get('MP_ACCESS_TOKEN')!
 const SB_URL    = Deno.env.get('SUPABASE_URL')!
 const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, apikey, Authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+}
+
 serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   try {
     const { cliente_id, contrato_id, valor, descricao, mes_ref } = await req.json()
-    if (!cliente_id || !valor) return new Response(JSON.stringify({ ok: false, msg: 'Faltam dados' }), { status: 400 })
+    if (!cliente_id || !valor) return new Response(JSON.stringify({ ok: false, msg: 'Faltam dados' }), { status: 400, headers: CORS })
 
     const sb = createClient(SB_URL, SB_SECRET)
 
-    // 1. Cria lançamento (fatura) no banco
-    const { data: lanc, error: lancErr } = await sb
+    // 1. Cria lançamento com UUID gerado localmente
+    const lancamento_id = crypto.randomUUID()
+
+    const { error: lancErr } = await sb
       .from('lancamentos')
       .insert({
-        user_id: null, // será preenchido depois
+        id: lancamento_id,
+        user_id: null,
         dados: {
           clienteId: cliente_id,
           contratoId: contrato_id,
@@ -30,12 +40,8 @@ serve(async (req) => {
           mes_referencia: mes_ref || new Date().toISOString().slice(0, 7)
         }
       })
-      .select('id')
-      .single()
 
-    if (lancErr || !lanc) return new Response(JSON.stringify({ ok: false, msg: 'Erro ao criar fatura' }), { status: 500 })
-
-    const lancamento_id = lanc.id
+    if (lancErr) return new Response(JSON.stringify({ ok: false, msg: 'Erro ao criar fatura', detalhe: JSON.stringify(lancErr) }), { status: 500, headers: CORS })
 
     // 2. Gera Pix no MP
     const ref = `${cliente_id}|${contrato_id}|${lancamento_id}`
@@ -43,7 +49,8 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MP_TOKEN}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': lancamento_id
       },
       body: JSON.stringify({
         transaction_amount: Number(valor),
@@ -56,8 +63,7 @@ serve(async (req) => {
 
     if (!mpRes.ok) {
       const err = await mpRes.text()
-      console.error('MP error:', err)
-      return new Response(JSON.stringify({ ok: false, msg: 'Erro ao gerar Pix', detalhe: err }), { status: 500 })
+      return new Response(JSON.stringify({ ok: false, msg: 'Erro ao gerar Pix', detalhe: err }), { status: 500, headers: CORS })
     }
 
     const pag = await mpRes.json()
@@ -72,10 +78,9 @@ serve(async (req) => {
       copia_cola: pag.point_of_interaction?.transaction_data?.copy_paste_code,
       valor,
       external_reference: ref
-    }), { status: 200 })
+    }), { status: 200, headers: CORS })
 
   } catch (err) {
-    console.error('Erro:', err)
-    return new Response(JSON.stringify({ ok: false, msg: 'Erro interno' }), { status: 500 })
+    return new Response(JSON.stringify({ ok: false, msg: 'Erro interno', detalhe: String(err) }), { status: 500, headers: CORS })
   }
 })
