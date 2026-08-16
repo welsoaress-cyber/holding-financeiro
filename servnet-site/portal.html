@@ -59,7 +59,8 @@ a{color:inherit;}
 .dash-body{max-width:960px;margin:0 auto;padding:2.5rem max(5vw,1.5rem);}
 .dash-greet{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--text-2);margin-bottom:0.25rem;}
 .dash-title{font-size:1.6rem;font-weight:800;margin-bottom:2rem;}
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem;}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:640px){.cards{grid-template-columns:1fr;}}
 .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;position:relative;overflow:hidden;}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 10%,var(--pool) 50%,transparent 90%);opacity:0.3;}
@@ -67,7 +68,9 @@ a{color:inherit;}
 .card-lbl{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.18em;color:var(--pool);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;}
 .card-lbl::before{content:'';display:block;width:14px;height:1.5px;background:var(--pool);}
 .span2{grid-column:span 2;}
-@media(max-width:640px){.span2{grid-column:span 1;}}
+.span3{grid-column:span 3;}
+@media(max-width:900px){.span2{grid-column:span 2;}.span3{grid-column:span 2;}}
+@media(max-width:640px){.span2,.span3{grid-column:span 1;}}
 
 /* plan card */
 .plan-speed{font-family:'Courier New',monospace;font-size:2.5rem;font-weight:700;color:var(--pool);line-height:1;}
@@ -404,21 +407,11 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.2</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.3</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
     <div class="cards">
 
-      <!-- Fidelidade — aparece antes dos cards de plano -->
-      <div id="fidelSlot" style="display:contents">
-        <div class="card span2" id="fidelCard">
-          <div class="card-lbl">🏆 Fidelidade</div>
-          <div class="loading-center"><span class="spin"></span></div>
-        </div>
-      </div>
-
-      <!-- Planos + Próximas Faturas — um par de cartões por contrato ativo.
-           display:contents deixa os cartões injetados caírem direto na
-           grade de 2 colunas do .cards -->
+      <!-- Plano + Próxima Fatura + Fidelidade — 3 cards por contrato, mesma linha -->
       <div id="contratosSlot" style="display:contents">
         <div class="card">
           <div class="card-lbl">Meu Plano</div>
@@ -428,10 +421,14 @@ a{color:inherit;}
           <div class="card-lbl">Próxima Fatura</div>
           <div class="loading-center"><span class="spin"></span></div>
         </div>
+        <div class="card">
+          <div class="card-lbl">🏆 Fidelidade</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
       </div>
 
       <!-- Promoções -->
-      <div class="card span2" id="promoCard">
+      <div class="card span3" id="promoCard">
         <div class="card-lbl">🎁 Promoções &amp; Benefícios</div>
         <div class="promo-grid">
 
@@ -470,13 +467,13 @@ a{color:inherit;}
       </div>
 
       <!-- Indique e Ganhe -->
-      <div class="card span2" id="refCard">
+      <div class="card span3" id="refCard">
         <div class="card-lbl">👥 Indique e Ganhe</div>
         <div id="refContent" class="loading-center"><span class="spin"></span></div>
       </div>
 
       <!-- Suporte / Chamado -->
-      <div class="card span2">
+      <div class="card span3">
         <div class="card-lbl">🎫 Abrir Chamado</div>
         <p class="sup-desc">Descreva o problema e abrimos o chamado direto pelo WhatsApp — respondemos rápido.</p>
         <div class="ticket-form" id="ticketForm">
@@ -716,7 +713,7 @@ function planoHTML(ct, i){
     <div id="upgradeMsg-${key}" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
 }
 
-// Um par de cartões (plano + próxima fatura) para cada contrato ativo
+// Três cartões por contrato (plano + próxima fatura + fidelidade) na mesma linha
 function renderContratos(){
   const multi = contratos.length > 1;
   document.getElementById('contratosSlot').innerHTML = contratos.map((ct,i)=>{
@@ -730,6 +727,10 @@ function renderContratos(){
       <div class="card glow">
         <div class="card-lbl">Próxima Fatura${sufixo}</div>
         <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
+      </div>
+      <div class="card" id="fidelCard-${key}">
+        <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
+        <div id="fidel-${key}" class="loading-center"><span class="spin"></span></div>
       </div>`;
   }).join('');
 }
@@ -888,15 +889,7 @@ function irParaFidelidade(ev){
 }
 
 function loadFidelidades(){
-  const multi=contratos.length>1;
-  document.getElementById('fidelSlot').innerHTML=contratos.map((ct,i)=>{
-    const key=ctKey(ct,i);
-    const sufixo=multi?` — ${esc(ctNome(ct,i))}`:'';
-    return `<div class="card span2" id="fidelCard-${key}">
-      <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
-      <div id="fidel-${key}"></div>
-    </div>`;
-  }).join('');
+  // Os cards já foram criados em renderContratos() — só preenche o conteúdo
   contratos.forEach((ct,i)=>{
     const key=ctKey(ct,i);
     const fat=faturasPorContrato[key]||[];
