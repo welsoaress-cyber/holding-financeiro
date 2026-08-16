@@ -151,7 +151,7 @@ serve(async (req) => {
 
   let enviados = 0
   let erros = 0
-  const resultados: Array<{ cliente: string; numero: string; status: string }> = []
+  const resultados: Array<{ cliente: string; numero: string; status: string; motivo?: string }> = []
 
   for (const lanc of todoLancamentos) {
     const dados = lanc.dados as Record<string, string>
@@ -161,7 +161,8 @@ serve(async (req) => {
     const descricao = dados?.descricao || 'Mensalidade Internet'
 
     if (!clienteId) {
-      console.log('⚠️ Lançamento sem clienteId, pulando...')
+      console.log(`⚠️ Lançamento ${lanc.id} sem clienteId — campos disponíveis: ${Object.keys(dados || {}).join(', ')}`)
+      resultados.push({ cliente: '?', numero: '-', status: 'pulado', motivo: 'sem clienteId' })
       continue
     }
 
@@ -173,7 +174,8 @@ serve(async (req) => {
       .single()
 
     if (errCli || !cliente) {
-      console.log(`⚠️ Cliente ${clienteId} não encontrado`)
+      console.log(`⚠️ Cliente ${clienteId} não encontrado: ${errCli?.message}`)
+      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: 'cliente não encontrado' })
       continue
     }
 
@@ -185,7 +187,8 @@ serve(async (req) => {
     const telefone = normalizarTelefone(telRaw)
 
     if (!telefone) {
-      console.log(`⚠️ ${nome}: telefone inválido (${telRaw}), pulando...`)
+      console.log(`⚠️ ${nome}: telefone inválido (${telRaw}) — campos disponíveis: ${Object.keys(cliDados || {}).join(', ')}`)
+      resultados.push({ cliente: nome, numero: telRaw || '-', status: 'pulado', motivo: `telefone inválido: "${telRaw}"` })
       continue
     }
 
