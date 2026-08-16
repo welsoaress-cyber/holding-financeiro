@@ -948,6 +948,28 @@ function renderNextFatura(key, fat){
     <span class="badge ${badgeClass(st)}">${esc(st)}</span>
     ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
     ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
+    ${(()=>{
+      const pagas=fat.filter(x=>(x.status||'').toLowerCase()==='pago')
+                    .sort((a,b)=>b.vencimento<a.vencimento?-1:1)
+                    .slice(0,3);
+      if(!pagas.length) return '';
+      const rows=pagas.map(p=>`
+        <tr>
+          <td class="fh-mes">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</td>
+          <td class="fh-data">${fmtDate(p.vencimento)}</td>
+          <td class="fh-data">${p.data_pagamento?fmtDate(p.data_pagamento):'—'}</td>
+          <td class="fh-status"><span class="fh-pill emdia">✓ Pago</span></td>
+        </tr>`).join('');
+      return `<div class="fh-wrap" style="margin-top:1.25rem;">
+        <div class="fh-title">Últimos pagamentos</div>
+        <table class="fh-table">
+          <thead><tr>
+            <th>Mês</th><th>Vencimento</th><th>Pago em</th><th>Situação</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    })()}
   `;
 }
 
