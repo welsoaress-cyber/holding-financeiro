@@ -16,32 +16,34 @@ serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   try {
-    const { cliente_id, contrato_id, valor, descricao, mes_ref } = await req.json()
+    const { cliente_id, contrato_id, valor, descricao, mes_ref, lancamento_id: lancamento_id_existente } = await req.json()
     if (!cliente_id || !valor) return new Response(JSON.stringify({ ok: false, msg: 'Faltam dados' }), { status: 400, headers: CORS })
 
     const sb = createClient(SB_URL, SB_SECRET)
 
-    // 1. Cria lançamento com UUID gerado localmente
-    const lancamento_id = crypto.randomUUID()
+    // 1. Usa lancamento existente (portal do cliente) ou cria novo (admin)
+    let lancamento_id = lancamento_id_existente || null
 
-    const { error: lancErr } = await sb
-      .from('lancamentos')
-      .insert({
-        id: lancamento_id,
-        user_id: null,
-        dados: {
-          clienteId: cliente_id,
-          contratoId: contrato_id,
-          tipo: 'Receita',
-          status: 'Provisionado',
-          valor: String(valor),
-          descricao: descricao || 'Cobrança Servnet',
-          data: new Date().toISOString().split('T')[0],
-          mes_referencia: mes_ref || new Date().toISOString().slice(0, 7)
-        }
-      })
-
-    if (lancErr) return new Response(JSON.stringify({ ok: false, msg: 'Erro ao criar fatura', detalhe: JSON.stringify(lancErr) }), { status: 500, headers: CORS })
+    if (!lancamento_id) {
+      lancamento_id = crypto.randomUUID()
+      const { error: lancErr } = await sb
+        .from('lancamentos')
+        .insert({
+          id: lancamento_id,
+          user_id: null,
+          dados: {
+            clienteId: cliente_id,
+            contratoId: contrato_id,
+            tipo: 'Receita',
+            status: 'Provisionado',
+            valor: String(valor),
+            descricao: descricao || 'Cobrança Servnet',
+            data: new Date().toISOString().split('T')[0],
+            mes_referencia: mes_ref || new Date().toISOString().slice(0, 7)
+          }
+        })
+      if (lancErr) return new Response(JSON.stringify({ ok: false, msg: 'Erro ao criar fatura', detalhe: JSON.stringify(lancErr) }), { status: 500, headers: CORS })
+    }
 
     // 2. Gera Pix no MP
     const ref = `${cliente_id}|${contrato_id}|${lancamento_id}`
