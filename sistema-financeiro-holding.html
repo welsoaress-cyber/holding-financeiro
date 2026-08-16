@@ -421,9 +421,14 @@
   }
   .tag-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
   .status-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
-  .status-pago { background: var(--pos-bg); color: var(--pos); }
-  .status-pendente { background: var(--warn-bg); color: var(--warn); }
-  .status-agendado { background: var(--muted-bg); color: var(--muted); }
+  .status-pago        { background: var(--pos-bg);   color: var(--pos);   }
+  .status-pendente    { background: var(--warn-bg);  color: var(--warn);  }
+  .status-agendado    { background: var(--muted-bg); color: var(--muted); }
+  /* Régua de cobrança — status automáticos por dias de atraso */
+  .status-venceu      { background: var(--warn-bg);  color: #92400e; }
+  .status-vencido     { background: #fff0e6;          color: #c04a0a; }
+  .status-inadimplente{ background: var(--neg-bg);   color: var(--neg);   }
+  .status-inativo     { background: var(--muted-bg); color: var(--muted); }
   .conc-yes { color: var(--pos); font-weight: 600; font-size: 11.5px; }
   .conc-no { color: var(--ink-4); font-size: 11.5px; }
 
@@ -1058,7 +1063,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.10";
+const APP_VERSION = "2.0.11";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7509,6 +7514,8 @@ let logsFiltro = { tabela:"", acao:"", autor:"" };
 
 // ---- Constantes ----
 const CLI_STATUS = ["Ativo","Inativo","Suspenso","Cancelado","Inadimplente","Lead"];
+// Opções de filtro: inclui os status automáticos da régua de cobrança
+const CLI_STATUS_FILTRO = ["Ativo","Venceu","Vencido","Inadimplente","Inativo","Suspenso","Cancelado","Lead"];
 const CLI_GENEROS = ["Feminino","Masculino","Não informado","Outro","Pessoa Jurídica"];
 const CLI_ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const CLI_TIPOS_CONEXAO = ["Fibra Óptica","Cabo","Rádio","4G/5G","Satélite","ADSL"];
@@ -7526,27 +7533,48 @@ function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
 // Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
 // Não altera o cadastro, apenas o que é exibido.
-// Dias de tolerância antes de marcar como Inadimplente.
-// Ex: 5 = só vira inadimplente se o vencimento tiver 5+ dias no passado.
-const DIAS_TOLERANCIA_INADIMPLENCIA = 5;
+// ── Régua de cobrança ───────────────────────────────────────────────────────
+// Status automático por dias de atraso. Ordem: maior para menor (first match).
+const INADIMPLENCIA_RULES = [
+  { diasMin: 6, status: "Inativo"      },   // cancelamento
+  { diasMin: 4, status: "Inadimplente" },   // bloqueio
+  { diasMin: 2, status: "Vencido"      },   // cobranças ativas
+  { diasMin: 1, status: "Venceu"       },   // 1ª notificação
+];
+
+// Retorna os dias de atraso do cliente (0 = em dia)
+function clienteDiasAtraso(c){
+  if(!c) return 0;
+  const hojeISO = todayISO();
+  const vencidos = state.lancamentos.filter(l =>
+    l.clienteId === c.id && l.tipo === "Receita" &&
+    l.status !== "Pago" && !l.inativo && l.data < hojeISO
+  );
+  if(!vencidos.length) return 0;
+  const dataMin = vencidos.reduce((min, l) => l.data < min ? l.data : min, vencidos[0].data);
+  const hoje = new Date();
+  const dataVenc = new Date(dataMin + "T00:00:00");
+  return Math.floor((hoje - dataVenc) / (1000 * 60 * 60 * 24));
+}
 
 function clienteStatusEfetivo(c){
   if(!c) return "—";
   if(c.status === "Cancelado") return "Cancelado";
-  const hoje = new Date(todayISO() + "T00:00:00");
-  const limiteISO = (() => {
-    const d = new Date(hoje);
-    d.setDate(d.getDate() - DIAS_TOLERANCIA_INADIMPLENCIA);
-    return d.toISOString().slice(0, 10);
-  })();
-  // Só considera inadimplente se o vencimento é anterior ao limite (hoje - tolerância)
-  const emAtraso = state.lancamentos.some(l =>
-    l.clienteId === c.id && l.tipo === "Receita" &&
-    l.status !== "Pago" && !l.inativo && l.data <= limiteISO
-  );
-  return emAtraso ? "Inadimplente" : (c.status || "Ativo");
+  const dias = clienteDiasAtraso(c);
+  if(dias > 0){
+    const rule = INADIMPLENCIA_RULES.find(r => dias >= r.diasMin);
+    if(rule) return rule.status;
+  }
+  return c.status || "Ativo";
 }
-function statusClassCli(st){ return st==="Ativo"?"status-pago":st==="Inadimplente"||st==="Cancelado"?"status-pendente":"status-agendado"; }
+function statusClassCli(st){
+  if(st === "Ativo")        return "status-pago";
+  if(st === "Venceu")       return "status-venceu";
+  if(st === "Vencido")      return "status-vencido";
+  if(st === "Inadimplente") return "status-inadimplente";
+  if(st === "Inativo" || st === "Cancelado") return "status-inativo";
+  return "status-agendado"; // Suspenso, Lead, etc.
+}
 
 // ============================================================
 // CENTRAL DE PENDÊNCIAS — calcula itens que precisam de ação
@@ -8304,6 +8332,10 @@ function viewCliLista(){
     const stEfetivo = clienteStatusEfetivo(c);
     const statusClass = statusClassCli(stEfetivo);
     const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
+    const dias = clienteDiasAtraso(c);
+    const diasBadge = dias > 0
+      ? `<span style="font-size:10px;color:var(--ink-3);font-weight:500;margin-left:4px;font-variant-numeric:tabular-nums;">${dias}d</span>`
+      : "";
     return `<tr>
       ${bulkCheckboxCellHTML("cli_clientes", c.id)}
       <td style="font-weight:600; cursor:pointer; color:var(--accent);" data-action="cli-detalhe" data-id="${c.id}">${esc(cliNome(c))}</td>
@@ -8313,7 +8345,7 @@ function viewCliLista(){
       <td>${esc(c.telefone||"—")}</td>
       <td>${fmtDateBR(c.dataCadastro)}</td>
       ${podeVerValores()?`<td>${mrr>0?fmtBRL(mrr):"—"}</td>`:""}
-      <td><span class="status-pill ${statusClass}">${esc(stEfetivo)}</span></td>
+      <td style="white-space:nowrap;"><span class="status-pill ${statusClass}">${esc(stEfetivo)}</span>${diasBadge}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="cli-detalhe" data-id="${c.id}" title="Ver/Editar">✎</button>
         <button class="icon-btn danger" data-action="cli-del" data-id="${c.id}" title="Excluir">×</button>
@@ -8321,7 +8353,7 @@ function viewCliLista(){
     </tr>`;
   }).join("");
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
-  const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
+  const statusOpts = CLI_STATUS_FILTRO.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
   const planoOpts = state.cliPlanos.map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
   const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
   return `
@@ -8421,7 +8453,7 @@ function viewCliDetalhe(){
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
           ${c.codigo ? `<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);letter-spacing:.04em;">${esc(c.codigo)}</span>` : ""}
           <h2 style="margin:0;font-size:22px;font-weight:700;line-height:1.2;">${esc(cliNome(c))}</h2>
-          <span class="status-pill ${statusClass}">${stEfetivo}</span>
+          <span class="status-pill ${statusClass}">${stEfetivo}</span>${(()=>{ const d=clienteDiasAtraso(c); return d>0?`<span style="font-size:11px;color:var(--ink-3);font-weight:500;">${d} dia${d>1?'s':''} em atraso</span>`:''; })()}
         </div>
         <div style="font-size:12px;color:var(--ink-4);margin-bottom:6px;">Cadastrado em ${fmtDateBR(c.dataCadastro)}</div>
         ${chips1.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:5px;">${chips1.join(sep)}</div>` : ""}
