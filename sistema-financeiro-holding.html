@@ -1147,7 +1147,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.47";
+const APP_VERSION = "2.0.48";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -12495,6 +12495,48 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
+
+// ---- Aviso automático de NOVA VERSÃO ----
+// De tempos em tempos (e sempre que o app volta pro primeiro plano), busca o
+// arquivo publicado no servidor e compara a versão com a que está rodando.
+// Achou uma mais nova → barra fixa "Nova versão disponível — Atualizar agora",
+// que limpa o cache do PWA e recarrega com um toque. Acabou o Ctrl+Shift+R.
+let _novaVersaoAvisada = "";
+let _ultimaChecagemVersao = 0;
+async function verificarNovaVersao(){
+  const agora = Date.now();
+  if(agora - _ultimaChecagemVersao < 5*60*1000) return; // no máximo a cada 5 min
+  _ultimaChecagemVersao = agora;
+  try{
+    const resp = await fetch(location.pathname + "?_vchk=" + agora, { cache: "no-store" });
+    if(!resp.ok) return;
+    const txt = await resp.text();
+    const m = /const APP_VERSION = "([\d.]+)"/.exec(txt);
+    if(m && m[1] !== APP_VERSION && m[1] !== _novaVersaoAvisada){
+      _novaVersaoAvisada = m[1];
+      mostrarAvisoNovaVersao(m[1]);
+    }
+  }catch(e){ /* sem rede agora — tenta na próxima */ }
+}
+function mostrarAvisoNovaVersao(v){
+  if(document.getElementById("avisoNovaVersao")) return;
+  const el = document.createElement("div");
+  el.id = "avisoNovaVersao";
+  el.style.cssText = "position:fixed; left:12px; right:12px; bottom:14px; z-index:9999; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--accent); color:#06272B; padding:12px 16px; border-radius:12px; font-size:13.5px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.3);";
+  el.innerHTML = `<span>Nova versão <strong>v${v}</strong> disponível</span>
+    <button id="btnAtualizarVersao" style="background:#fff; border:none; border-radius:8px; padding:8px 14px; font-weight:700; font-size:13px; cursor:pointer; color:#0A6570; flex-shrink:0;">Atualizar agora</button>`;
+  document.body.appendChild(el);
+  document.getElementById("btnAtualizarVersao").addEventListener("click", async function(){
+    this.textContent = "Atualizando…";
+    try{ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }catch(e){}
+    location.reload();
+  });
+}
+setTimeout(verificarNovaVersao, 20000);                    // 20s depois de abrir
+setInterval(verificarNovaVersao, 30*60*1000);              // e a cada 30 min
+document.addEventListener("visibilitychange", () => {      // e ao voltar pro app
+  if(document.visibilityState === "visible") verificarNovaVersao();
+});
 </script>
 </body>
 </html>
