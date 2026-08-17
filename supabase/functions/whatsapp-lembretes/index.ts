@@ -37,6 +37,7 @@ async function gerarLinkPix(
   descricao: string,
   dataVencimento: string, // YYYY-MM-DD
   idempotencyKey: string,
+  lancId: string,         // ID do lançamento — salvo como external_reference para o webhook
 ): Promise<string | null> {
   if (!MP_TOKEN) return null
   try {
@@ -53,6 +54,7 @@ async function gerarLinkPix(
         payment_method_id: 'pix',
         description: descricao,
         date_of_expiration: expiracao,
+        external_reference: lancId, // webhook usa isso para dar baixa automática
         payer: {
           email: 'cliente@servnet.net.br',
           first_name: nome.split(' ')[0] || nome,
@@ -434,7 +436,7 @@ serve(async (req) => {
       if (valorNum > 0) {
         const idempKey = `servnet-${lanc.id}-${hoje}`
         const descPix = `Mensalidade Servnet - ${nome}`
-        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey)
+        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey, lanc.id)
       }
     }
 
