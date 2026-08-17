@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.20";
+const APP_VERSION = "2.0.21";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1505,7 +1505,15 @@ function perfilById(id){ return state.perfis.find(p => p.id === id); }
 const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comprasvendas","cadastro"];
 
 // Sub-menus padrão usados por TODOS os negócios (modal de permissões + sidebar)
+// Submenu padrão — negócios genéricos (Casa, Pessoal, Transporte, etc.)
 const NEGOCIOS_SUBMENUS_PADRAO = [
+  { view:"lancamentos",    label:"Lançamentos" },
+  { view:"receitas",       label:"Contas a Receber" },
+  { view:"despesas",       label:"Contas a Pagar" },
+  { view:"transferencias", label:"Transferências" },
+];
+// Submenu completo — negócios com CRM (clientes, chamados, planos, técnicos)
+const NEGOCIOS_SUBMENUS_CRM = [
   { view:"cli_lista",      label:"Clientes" },
   { view:"lancamentos",    label:"Lançamentos" },
   { view:"receitas",       label:"Contas a Receber" },
@@ -1517,7 +1525,7 @@ const NEGOCIOS_SUBMENUS_PADRAO = [
 ];
 // Sub-menus por negócio — negócios não listados aqui recebem NEGOCIOS_SUBMENUS_PADRAO
 const NEGOCIOS_SUBMENUS = {
-  "Provedor": NEGOCIOS_SUBMENUS_PADRAO,
+  "Provedor": NEGOCIOS_SUBMENUS_CRM,
 };
 function modulosPadrao(){
   return {
