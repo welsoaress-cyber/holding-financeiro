@@ -27,36 +27,66 @@ function normalizarTelefone(tel: string): string | null {
 }
 
 // ----------------------------------------------------------------
-// Envia mensagem WhatsApp via Evolution API
+// Aguarda N milissegundos
 // ----------------------------------------------------------------
-async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
+function sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms))
+}
+
+// ----------------------------------------------------------------
+// Verifica se a instância Evolution API está conectada (antes de disparar)
+// ----------------------------------------------------------------
+async function verificarInstancia(): Promise<{ ok: boolean; estado: string }> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
-
-    const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
-      method: 'POST',
-      headers: {
-        'apikey': EVO_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ number: numero, text: mensagem }),
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const res = await fetch(`${EVO_URL}/instance/connectionState/${EVO_INSTANCE}`, {
+      headers: { 'apikey': EVO_KEY },
       signal: controller.signal,
     })
     clearTimeout(timeout)
-
-    if (!res.ok) {
-      const err = await res.text()
-      console.error(`❌ Erro ao enviar para ${numero}:`, err)
-      return false
-    }
-
-    console.log(`✅ Mensagem enviada para ${numero}`)
-    return true
+    if (!res.ok) return { ok: false, estado: `HTTP ${res.status}` }
+    const json = await res.json()
+    // Evolution API v1: json.instance.state | v2: json.state
+    const estado: string = json?.instance?.state ?? json?.state ?? 'desconhecido'
+    return { ok: estado === 'open', estado }
   } catch (err) {
-    console.error(`❌ Exceção ao enviar para ${numero}:`, err)
-    return false
+    return { ok: false, estado: `timeout/rede: ${err}` }
   }
+}
+
+// ----------------------------------------------------------------
+// Envia mensagem WhatsApp via Evolution API (com retry e backoff)
+// ----------------------------------------------------------------
+async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
+  const MAX = 3
+  for (let t = 1; t <= MAX; t++) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+        method: 'POST',
+        headers: { 'apikey': EVO_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: numero, text: mensagem }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (!res.ok) {
+        const err = await res.text()
+        console.error(`❌ [${t}/${MAX}] Erro HTTP ao enviar para ${numero}:`, err)
+        if (t < MAX) await sleep(1000 * t) // 1 s, depois 2 s
+        continue
+      }
+      if (t > 1) console.log(`✅ Mensagem enviada para ${numero} (tentativa ${t})`)
+      else       console.log(`✅ Mensagem enviada para ${numero}`)
+      return true
+    } catch (err) {
+      console.error(`❌ [${t}/${MAX}] Exceção ao enviar para ${numero}:`, err)
+      if (t < MAX) await sleep(1000 * t)
+    }
+  }
+  console.error(`🔴 Falha definitiva para ${numero} após ${MAX} tentativas`)
+  return false
 }
 
 // ----------------------------------------------------------------
@@ -144,6 +174,22 @@ serve(async (req) => {
   }
 
   const sb = createClient(SB_URL, SB_SECRET)
+
+  // ----------------------------------------------------------------
+  // Verifica se a Evolution API está online antes de qualquer disparo.
+  // Falha rápida: evita tentar enviar para todos os clientes quando a
+  // instância está desconectada (sessão expirada, servidor reiniciado, etc.)
+  // ----------------------------------------------------------------
+  const { ok: apiOK, estado: apiEstado } = await verificarInstancia()
+  if (!apiOK) {
+    const msg = `🔴 Evolution API OFFLINE — instância '${EVO_INSTANCE}' estado: ${apiEstado}. Acesse o painel para reconectar.`
+    console.error(msg)
+    return new Response(JSON.stringify({
+      ok: false,
+      error: `Evolution API offline (estado: ${apiEstado}). Reconecte a instância '${EVO_INSTANCE}' no painel da Evolution API e dispare novamente.`,
+    }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+  }
+  console.log(`✅ Evolution API conectada (estado: ${apiEstado})`)
 
   // Data de hoje ajustada para Brasília (UTC-3)
   const agora = new Date()
