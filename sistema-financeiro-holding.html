@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.41";
+const APP_VERSION = "2.0.42";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8171,19 +8171,26 @@ function calcularPendencias(){
       });
     });
 
-    // 2. Contratos ativos sem plano definido
+    // 2. Contratos ativos sem plano definido — agrupado numa pendência só
+    // (com dezenas de clientes importados sem plano, listar um por um
+    // entupia o sino com 90+ avisos iguais).
+    const semPlano = [];
     cliAtivos().forEach(c => {
-      (c.contratos||[]).filter(ct => ct.status==="Ativo" && (!ct.planoId || !cliPlanoById(ct.planoId))).forEach(ct => {
-        pends.push({
-          urgencia: "media",
-          tipo: "sem-plano",
-          titulo: `${cliLabel(c)} — sem plano`,
-          desc: `Contrato ${esc(ct.negocio||"ativo")} sem plano definido`,
-          clienteId: c.id,
-          action: "notif-ir-cliente"
-        });
+      (c.contratos||[]).forEach(ct => {
+        if(ct.status==="Ativo" && (!ct.planoId || !cliPlanoById(ct.planoId))) semPlano.push(ct.negocio||"—");
       });
     });
+    if(semPlano.length){
+      const porNeg = {};
+      semPlano.forEach(n => { porNeg[n] = (porNeg[n]||0)+1; });
+      pends.push({
+        urgencia: "media",
+        tipo: "sem-plano",
+        titulo: `${semPlano.length} contrato(s) ativo(s) sem plano definido`,
+        desc: `${Object.entries(porNeg).map(([n,q])=>`${n}: ${q}`).join(" · ")} — sem plano, a mensalidade automática não é gerada`,
+        action: "notif-ir-clientes"
+      });
+    }
 
     // 3. Chamados/OS em aberto há 3+ dias
     state.cliChamados.filter(ch => !["Concluído","Cancelado"].includes(ch.status)).forEach(ch => {
@@ -8337,6 +8344,8 @@ function modalNotificacoes(){
         lancFilter.clienteId = "";
         lancMesNav = { ano: new Date().getFullYear(), mes: new Date().getMonth() };
         state.view = "despesas"; state.moduloAtivo = "financeiro"; renderApp();
+      } else if(notifAction === "notif-ir-clientes"){
+        state.view = "cli_lista"; state.moduloAtivo = "clientes"; renderApp();
       }
     });
   });
