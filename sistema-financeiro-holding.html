@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.49";
+const APP_VERSION = "2.0.50";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5403,15 +5403,11 @@ function viewLancamentos(){
   // valor no topo, e as ações (Baixar/WhatsApp/Editar/Excluir) na última
   // linha, centralizadas. Inativados ficam só na tabela do desktop.
   const cardsLanc = list.filter(l => !l.inativo).map(l => {
-    const origem = contaById(l.contaOrigem);
-    const destino = contaById(l.contaDestino);
-    const cartao = l.cartaoId ? cartaoById(l.cartaoId) : null;
     const hojeStr = todayISO();
     const eVencido = l.status !== "Pago" && l.data < hojeStr && l.tipo !== "Transferência";
     const diasAtraso = eVencido ? Math.floor((Date.parse(hojeStr) - Date.parse(l.data)) / 86400000) : 0;
     const statusClass = l.status === "Pago" ? "status-pago" : eVencido ? "status-vencido" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
     const statusLabel = l.status === "Pago" ? "Pago" : eVencido ? `Vencido${diasAtraso > 1 ? ` ${diasAtraso}d` : ""}` : l.status;
-    const contaTxt = cartao ? `${esc(cartao.nome)} (final ${esc(cartao.ultimosDigitos)})` : l.tipo === "Transferência" ? `${origem?contaLabel(origem):"—"} → ${destino?contaLabel(destino):"—"}` : (origem?contaLabel(origem):"—");
     const cliVinculado = l.clienteId ? cliClienteById(l.clienteId) : null;
     const podeEditar = podeEditarNegocio(l.negocio);
     const podeExcluir = podeExcluirNegocio(l.negocio);
@@ -5420,19 +5416,19 @@ function viewLancamentos(){
     const linkCobranca = l.status !== "Pago" ? waLinkCobranca(l) : null;
     const corValor = l.tipo === "Despesa" ? "var(--neg)" : l.tipo === "Receita" ? "var(--pos)" : "var(--ink-2)";
     const temAcao = podeBaixar || podeVerFaturaDoItem || podeEditar || podeExcluir || linkCobranca;
+    const labelData = l.tipo === "Transferência" ? "Data" : "Vencimento";
     return `<div style="padding:12px ${eVencido?'8px':'2px'}; border-bottom:1px solid var(--border); ${eVencido?'background:var(--neg-bg); border-radius:8px; margin:2px 0;':''}">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-        <div style="min-width:0;">
-          <div style="font-weight:600; font-size:13.5px;">${l.descricao?esc(l.descricao):"—"}</div>
-          <div style="font-size:11px; color:var(--ink-4); margin-top:2px;">${fmtDateBR(l.data)} · ${esc(l.tipo)}${l.negocio?` · ${esc(l.negocio)}`:""}</div>
-          ${cliVinculado?`<div data-action="cli-edit" data-id="${cliVinculado.id}" style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">👤 ${esc(cliNome(cliVinculado))}</div>`:""}
-        </div>
-        <div style="flex-shrink:0; text-align:right;">
-          <div style="font-weight:700; font-size:14.5px; font-variant-numeric:tabular-nums; color:${corValor};">${maskBRL(l.valor, true)}</div>
-          <div style="margin-top:3px;"><span class="status-pill ${statusClass}">${statusLabel}</span></div>
-        </div>
+      ${cliVinculado
+        ? `<div data-action="cli-edit" data-id="${cliVinculado.id}" title="Abrir o cadastro" style="font-weight:700; font-size:14px; color:var(--accent); cursor:pointer; text-decoration:underline; text-underline-offset:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">👤 ${esc(cliNome(cliVinculado))}</div>`
+        : `<div style="font-weight:700; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.descricao?esc(l.descricao):"—"}</div>`}
+      <div style="margin-top:5px; font-size:12.5px;">
+        <strong style="font-size:15px; font-variant-numeric:tabular-nums; color:${corValor};">${maskBRL(l.valor, true)}</strong>
+        <span style="color:var(--ink-3);"> ${labelData} ${fmtDateBR(l.data)}</span>
       </div>
-      <div style="font-size:11.5px; color:var(--ink-3); margin-top:5px;">Conta: ${contaTxt}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:4px; font-size:12px; color:var(--ink-3);">
+        <span>${esc(l.tipo)}${l.negocio?` · ${esc(l.negocio)}`:""}</span>
+        <span class="status-pill ${statusClass}">${statusLabel}</span>
+      </div>
       ${temAcao?`<div style="display:flex; gap:8px; margin-top:9px; justify-content:center; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:9px;">
         ${podeBaixar?`<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}" style="min-width:100px; justify-content:center;">✓ Baixar</button>`:""}
         ${podeVerFaturaDoItem?`<button class="btn btn-ghost btn-sm" data-action="ver-fatura-item" data-id="${l.id}" style="color:var(--pos);">Fatura CC</button>`:""}
