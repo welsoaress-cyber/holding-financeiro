@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.57";
+const APP_VERSION = "2.0.58";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2523,18 +2523,19 @@ async function loadDataCliente(){
   try{
     const masterId = state.clienteAuthInfo.masterUserId;
     const clienteId = state.clienteAuthInfo.clienteId;
-    const [cliRes, chamRes, lancRes] = await Promise.all([
+    // lancamentos via fetchTudo: mesmo motivo do loadData — sem paginar, a
+    // resposta é cortada no "Max rows" da API e o cliente veria faturas faltando.
+    const [cliRes, chamRes, lancRows] = await Promise.all([
       supabaseClient.from("cli_clientes").select("id,dados").eq("user_id", masterId).eq("id", clienteId).maybeSingle(),
       supabaseClient.from("cli_chamados").select("id,dados").eq("user_id", masterId),
-      supabaseClient.from("lancamentos").select("id,dados").eq("user_id", masterId),
+      fetchTudo("lancamentos", "id,dados", masterId),
     ]);
     if(cliRes.error) throw cliRes.error;
     if(chamRes.error) throw chamRes.error;
-    if(lancRes.error) throw lancRes.error;
     state.clienteAuthInfo.nome = cliRes.data ? (cliRes.data.dados.nome || "Cliente") : "Cliente";
     state.cliClientes = cliRes.data ? [{ id: cliRes.data.id, ...cliRes.data.dados }] : [];
     state.cliChamados = (chamRes.data || []).map(r => ({ id: r.id, ...r.dados }));
-    state.lancamentos = (lancRes.data || []).map(r => ({ id: r.id, ...r.dados }));
+    state.lancamentos = (lancRows || []).map(r => ({ id: r.id, ...r.dados }));
     state.cliPlanos = []; // carregado sob demanda em viewClienteContrato, se precisar do nome do plano
     state.storageOK = true;
   }catch(e){
