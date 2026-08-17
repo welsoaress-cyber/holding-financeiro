@@ -103,19 +103,23 @@ serve(async (req) => {
   agora.setHours(agora.getHours() - 3)
   const hoje = agora.toISOString().split('T')[0]
 
-  // Datas alvo: hoje + 3 dias e hoje + 1 dia
-  const data3dias = new Date(agora)
-  data3dias.setDate(data3dias.getDate() + 3)
-  const alvo3dias = data3dias.toISOString().split('T')[0]
-
+  // Datas alvo: hoje + 1, + 2 e + 3 dias
   const data1dia = new Date(agora)
   data1dia.setDate(data1dia.getDate() + 1)
   const alvo1dia = data1dia.toISOString().split('T')[0]
 
-  console.log(`🗓️ Hoje: ${hoje} | Verificando vencimentos: ${alvo1dia} e ${alvo3dias}`)
+  const data2dias = new Date(agora)
+  data2dias.setDate(data2dias.getDate() + 2)
+  const alvo2dias = data2dias.toISOString().split('T')[0]
+
+  const data3dias = new Date(agora)
+  data3dias.setDate(data3dias.getDate() + 3)
+  const alvo3dias = data3dias.toISOString().split('T')[0]
+
+  console.log(`🗓️ Hoje: ${hoje} | Verificando vencimentos: ${alvo1dia}, ${alvo2dias} e ${alvo3dias}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas pendentes com vencimento em 1 ou 3 dias
+  // Busca faturas pendentes com vencimento em 1, 2 ou 3 dias
   // ----------------------------------------------------------------
   const { data: lancamentos, error } = await sb
     .from('lancamentos')
@@ -123,7 +127,7 @@ serve(async (req) => {
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .eq('dados->>inativo', 'false')
-    .in('dados->>data', [alvo1dia, alvo3dias])
+    .in('dados->>data', [alvo1dia, alvo2dias, alvo3dias])
 
   if (error) {
     console.error('❌ Erro ao buscar lançamentos:', error)
@@ -137,7 +141,7 @@ serve(async (req) => {
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .is('dados->>inativo', null)
-    .in('dados->>data', [alvo1dia, alvo3dias])
+    .in('dados->>data', [alvo1dia, alvo2dias, alvo3dias])
 
   const todoLancamentos = [
     ...(lancamentos || []),
@@ -212,7 +216,7 @@ serve(async (req) => {
     // Monta mensagem personalizada
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    const diasRestantes = dataVenc === alvo1dia ? 1 : 3
+    const diasRestantes = dataVenc === alvo1dia ? 1 : dataVenc === alvo2dias ? 2 : 3
 
     let mensagem: string
     if (diasRestantes === 1) {
@@ -221,9 +225,15 @@ serve(async (req) => {
         `💰 *${valorFormatado}*\n` +
         `Pix: welsoaress@gmail.com\n\n` +
         `Em caso de dúvidas, entre em contato conosco. 😊`
+    } else if (diasRestantes === 2) {
+      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
+        `Gostaria de lembrar que seu vencimento é em *2 dias* (${dataFormatada}).\n\n` +
+        `💰 *${valorFormatado}*\n` +
+        `Pix: welsoaress@gmail.com\n\n` +
+        `Em caso de dúvidas, entre em contato conosco. 😊`
     } else {
       mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Gostaria de lembrar que seu vencimento vence em *3 dias* (${dataFormatada}).\n\n` +
+        `Gostaria de lembrar que seu vencimento é em *3 dias* (${dataFormatada}).\n\n` +
         `💰 *${valorFormatado}*\n` +
         `Pix: welsoaress@gmail.com\n\n` +
         `Em caso de dúvidas, entre em contato conosco. 😊`
