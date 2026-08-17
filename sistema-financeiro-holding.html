@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.58";
+const APP_VERSION = "2.0.59";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3220,7 +3220,11 @@ let sidebarGruposFechados = new Set();
 let sidebarTudoRecolhido = false;
 // Ordem customizada de negócios (drag-and-drop → salvo em localStorage)
 let negociosOrdem = (()=>{ try{ return JSON.parse(localStorage.getItem("neg_ordem")||"null"); }catch(e){ return null; } })();
-let _dragNegId = null;
+// Ordem de TODOS os grupos do menu lateral (Visão, cada negócio, Financeiro,
+// Estoque, Clientes, RH, Cadastro) — arrastável e salva em localStorage.
+// Negócios entram como "neg_<id>"; módulos com o id fixo ("financeiro", …).
+let menuOrdem = (()=>{ try{ return JSON.parse(localStorage.getItem("menu_ordem")||"null"); }catch(e){ return null; } })();
+let _dragMenuId = null;
 // renderApp() sempre desenha o menu lateral já fechado (é uma trava de
 // segurança pra nunca deixar a rolagem travada — ver comentário lá dentro).
 // Isso é ótimo pra navegação de verdade, mas expandir/fechar um grupo do
@@ -3230,37 +3234,36 @@ let _dragNegId = null;
 // continua aberto" antes de chamar renderApp().
 let drawerAbertoAntes = false;
 
-// Drag-and-drop para reordenar negócios no menu lateral
+// Drag-and-drop para reordenar TODOS os grupos do menu lateral
 document.addEventListener("dragstart", function(e){
-  const el = e.target.closest("[data-neg-sort-id]");
+  const el = e.target.closest("[data-menu-sort-id]");
   if(!el) return;
-  _dragNegId = el.dataset.negSortId;
+  _dragMenuId = el.dataset.menuSortId;
   e.dataTransfer.effectAllowed = "move";
   requestAnimationFrame(() => { if(el) el.style.opacity = ".35"; });
 });
 document.addEventListener("dragend", function(){
-  document.querySelectorAll("[data-neg-sort-id]").forEach(el => el.style.opacity = "");
-  _dragNegId = null;
+  document.querySelectorAll("[data-menu-sort-id]").forEach(el => el.style.opacity = "");
+  _dragMenuId = null;
 });
 document.addEventListener("dragover", function(e){
-  const el = e.target.closest("[data-neg-sort-id]");
-  if(el && _dragNegId && el.dataset.negSortId !== _dragNegId){ e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+  const el = e.target.closest("[data-menu-sort-id]");
+  if(el && _dragMenuId && el.dataset.menuSortId !== _dragMenuId){ e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
 });
 document.addEventListener("drop", function(e){
-  const el = e.target.closest("[data-neg-sort-id]");
-  if(!el || !_dragNegId) return;
+  const el = e.target.closest("[data-menu-sort-id]");
+  if(!el || !_dragMenuId) return;
   e.preventDefault();
-  const targetId = el.dataset.negSortId;
-  if(targetId === _dragNegId){ _dragNegId = null; return; }
-  let ordem = negociosOrdem ? [...negociosOrdem] : state.negocios.map(n => n.id);
-  // garante que negócios novos estão na lista
-  state.negocios.forEach(n => { if(!ordem.includes(n.id)) ordem.push(n.id); });
-  const fi = ordem.indexOf(_dragNegId), ti = ordem.indexOf(targetId);
-  if(fi >= 0 && ti >= 0){ ordem.splice(fi, 1); ordem.splice(ti, 0, _dragNegId); }
-  negociosOrdem = ordem;
-  try{ localStorage.setItem("neg_ordem", JSON.stringify(ordem)); }catch(err){}
-  document.querySelectorAll("[data-neg-sort-id]").forEach(el => el.style.opacity = "");
-  _dragNegId = null;
+  const targetId = el.dataset.menuSortId;
+  if(targetId === _dragMenuId){ _dragMenuId = null; return; }
+  // Ordem atual = como os grupos estão desenhados agora (já reflete a ordem salva)
+  const ordem = Array.from(document.querySelectorAll("[data-menu-sort-id]")).map(g => g.dataset.menuSortId);
+  const fi = ordem.indexOf(_dragMenuId), ti = ordem.indexOf(targetId);
+  if(fi >= 0 && ti >= 0){ ordem.splice(fi, 1); ordem.splice(ti, 0, _dragMenuId); }
+  menuOrdem = ordem;
+  try{ localStorage.setItem("menu_ordem", JSON.stringify(ordem)); }catch(err){}
+  document.querySelectorAll("[data-menu-sort-id]").forEach(el => el.style.opacity = "");
+  _dragMenuId = null;
   renderApp();
 });
 
@@ -3274,12 +3277,9 @@ function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
     ? ((viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)) && filtroNegocioTravado && cliFiltro.negocio === nome)
     : (!filtroNegocioTravado && (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)));
   const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || (contemViewAtual && !sidebarTudoRecolhido));
-  // Handle de drag: só negócios têm, para arrastar e reordenar
-  const negId = eGrupoNegocio ? id.slice(4) : null;
-  const dragAttrs = eGrupoNegocio ? `draggable="true" data-neg-sort-id="${negId}"` : "";
-  const dragHandle = eGrupoNegocio
-    ? `<span class="neg-drag-handle" title="Segurar e arrastar para reordenar" style="color:rgba(255,255,255,.2);font-size:14px;cursor:grab;margin-right:3px;user-select:none;flex-shrink:0;">⠿</span>`
-    : "";
+  // Handle de drag: TODOS os grupos podem ser arrastados e reordenados
+  const dragAttrs = `draggable="true" data-menu-sort-id="${id}"`;
+  const dragHandle = `<span class="neg-drag-handle" title="Segurar e arrastar para reordenar" style="color:rgba(255,255,255,.2);font-size:14px;cursor:grab;margin-right:3px;user-select:none;flex-shrink:0;">⠿</span>`;
   return `
     <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;">${dragHandle}<span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
@@ -3299,11 +3299,11 @@ function sidebarConteudo(){
   const grupos = [];
 
   if(podeVerModulo("visao")){
-    grupos.push(navGrupo("visao", ic("visao"), "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
+    grupos.push({ id: "visao", html: navGrupo("visao", ic("visao"), "Visão", ["vg_executivo","vg_sintetico","vg_analitico"], [
       navItem("vg_executivo",ic("leads"),"Executiva"),
       navItem("vg_sintetico",ic("visao"),"Sintética"),
       navItem("vg_analitico",ic("fluxocaixa"),"Analítica"),
-    ].join("")));
+    ].join("")) });
   }
 
   // ---- Menus "por Negócio" — cada negócio cadastrado ganha um grupo próprio
@@ -3332,12 +3332,12 @@ function sidebarConteudo(){
     // As telas internas do Estoque (abertas pelos cartões do painel) também
     // contam como "dentro" do grupo, pra ele continuar aberto/destacado.
     if(views.includes("est_dashboard")) views.push("est_produtos","est_movimentos","est_compras","est_alertas");
-    grupos.push(navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")));
+    grupos.push({ id: `neg_${n.id}`, html: navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")) });
   });
 
   const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
   if(podeVerModulo("financeiro")){
-    grupos.push(navGrupo("financeiro", ic("financeiro"), "Financeiro", financeiroViews, [
+    grupos.push({ id: "financeiro", html: navGrupo("financeiro", ic("financeiro"), "Financeiro", financeiroViews, [
       master ? navItem("dashboard",ic("dashboard"),"Dashboard") : "",
       master ? navItem("contas",ic("contas"),"Contas") : "",
       master ? navItem("cartoes",ic("cartoes"),"Cartões de Crédito") : "",
@@ -3348,22 +3348,22 @@ function sidebarConteudo(){
       master ? navItem("rel_fluxo",ic("fluxocaixa"),"Fluxo de Caixa") : "",
       master ? navItem("rel_dre",ic("dre"),"DRE") : "",
       master ? navSubmenuAjustes() : "",
-    ].join("")));
+    ].join("")) });
   }
 
   if(podeVerModulo("estoque")){
-    grupos.push(navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
+    grupos.push({ id: "estoque", html: navGrupo("estoque", ic("estoque"), "Estoque", ["est_dashboard","est_produtos","est_compras","est_movimentos","est_fornecedores","est_alertas"], [
       navItem("est_dashboard",ic("dashboard"),"Dashboard"),
       navItem("est_produtos",ic("produtos"),"Produtos"),
       navItem("est_compras",ic("compras"),"Compras (NF)"),
       navItem("est_movimentos",ic("movimentacoes"),"Movimentações"),
       navItem("est_fornecedores",ic("fornecedores"),"Fornecedores"),
       navItem("est_alertas",ic("alertas"),"Alertas de Estoque"),
-    ].join("")));
+    ].join("")) });
   }
 
   if(podeVerModulo("clientes")){
-    grupos.push(navGrupo("clientes", ic("clientes"), "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
+    grupos.push({ id: "clientes", html: navGrupo("clientes", ic("clientes"), "Clientes", ["cli_dashboard","cli_leads","cli_lista","cli_planos","cli_orcamentos","cli_os_lista","cli_chamados","cli_tecnicos","cli_envio_massa","cli_mensagens"], [
       navItem("cli_dashboard",ic("dashboard"),"Dashboard"),
       navItem("cli_leads",ic("leads"),"Leads do Site"),
       navItem("cli_lista",ic("clientes"),"Todos os Clientes"),
@@ -3373,29 +3373,39 @@ function sidebarConteudo(){
       navItem("cli_tecnicos",ic("tecnicos"),"Técnicos"),
       navItem("cli_envio_massa",ic("enviomassa"),"Enviar mensagens"),
       navItem("cli_mensagens",ic("mensagens"),"Modelos de mensagem"),
-    ].join("")));
+    ].join("")) });
   }
 
   if(podeVerModulo("rh")){
-    grupos.push(navGrupo("rh", ic("rh"), "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
+    grupos.push({ id: "rh", html: navGrupo("rh", ic("rh"), "RH", ["rh_dashboard","rh_funcionarios","rh_cargos","rh_folha","rh_ferias","rh_alertas"], [
       navItem("rh_dashboard",ic("dashboard"),"Dashboard"),
       navItem("rh_funcionarios",ic("funcionarios"),"Funcionários"),
       navItem("rh_cargos",ic("cargos"),"Cargos"),
       navItem("rh_folha",ic("folha"),"Folha de Pagamento"),
       navItem("rh_ferias",ic("ferias"),"Férias"),
       navItem("rh_alertas",ic("alertas"),"Alertas"),
-    ].join("")));
+    ].join("")) });
   }
 
   if(podeVerModulo("cadastro")){
-    grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
+    grupos.push({ id: "cadastro", html: navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
       navItem("cadastro_hub","","Central de Cadastros"),
       master ? navItem("usuarios","","Usuários") : "",
       master ? navItem("logs_auditoria",ic("logs"),"Logs de Auditoria") : "",
-    ].join("")));
+    ].join("")) });
   }
 
-  return grupos.join("");
+  // Aplica a ordem customizada do usuário (arrastar e soltar). Grupos que
+  // não estão na lista salva mantêm a posição original em que foram montados.
+  if(menuOrdem && menuOrdem.length){
+    const comIdx = grupos.map((g, i) => ({ g, i }));
+    comIdx.sort((a, b) => {
+      const ia = menuOrdem.indexOf(a.g.id), ib = menuOrdem.indexOf(b.g.id);
+      return ((ia < 0 ? a.i + 1000 : ia) - (ib < 0 ? b.i + 1000 : ib)) || (a.i - b.i);
+    });
+    return comIdx.map(x => x.g.html).join("");
+  }
+  return grupos.map(g => g.html).join("");
 }
 const AJUSTES_SUBVIEWS = ["ajustes","categorias","negocios"];
 function navSubmenuAjustes(){
