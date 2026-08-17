@@ -462,7 +462,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.8</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.9</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
 
     <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
@@ -1037,7 +1037,7 @@ function renderNextFatura(key, fat){
         <div>
           <div style="font-size:0.88rem;font-weight:700;color:#FCA5A5;">${esc(fmtMesRef(v.mes_referencia)||v.vencimento)}</div>
           <div style="font-size:0.75rem;color:rgba(252,165,165,0.65);margin-bottom:0.4rem;">Venceu em ${fmtDate(v.vencimento)}</div>
-          <button class="pdf-btn" style="width:auto;padding:0.3rem 0.65rem;font-size:0.75rem;" id="pdfbtn-${esc(v.id)}" onclick="abrirSegundaVia('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}','${esc(v.vencimento||'')}',true,this)">📄 2ª Via</button>
+          <button class="pdf-btn" style="width:auto;padding:0.3rem 0.65rem;font-size:0.75rem;" id="pdfbtn-${esc(v.id)}" onclick="abrirSegundaVia('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}','${esc(v.vencimento||'')}',true,this)">📄 2ª via do boleto</button>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:1.15rem;font-weight:800;color:#FCA5A5;">${fmtVal(v.valor)}</div>
@@ -1059,7 +1059,7 @@ function renderNextFatura(key, fat){
       <span class="badge ${badgeClass(st)}">${esc(st)}</span>
       ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
       ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
-      <br><button class="pdf-btn" id="pdfbtn-${esc(f.id)}" onclick="abrirSegundaVia('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}','${esc(f.vencimento||'')}',${st.toLowerCase()!=='pago'},this)">📄 2ª Via / Comprovante</button>`;
+      <br><button class="pdf-btn" id="pdfbtn-${esc(f.id)}" onclick="abrirSegundaVia('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}','${esc(f.vencimento||'')}',${st.toLowerCase()!=='pago'},this)">${st.toLowerCase()!=='pago'?'📄 2ª via do boleto':'🧾 Comprovante de pagamento'}</button>`;
 
     // Demais faturas a vencer (a partir da 2ª)
     if(proximas.length > 1){
@@ -1862,7 +1862,7 @@ async function abrirSegundaVia(lancId, valor, mesRef, contratoId, vencimento, is
       imprimirFatura(lancId, valor, mesRef, vencimento, false, '');
     }
   } catch(e){ alert('Erro de conexão. Tente novamente.'); }
-  finally { btn.disabled = false; btn.textContent = '📄 2ª Via / Comprovante'; }
+  finally { btn.disabled = false; btn.textContent = isPendente ? '📄 2ª via do boleto' : '🧾 Comprovante de pagamento'; }
 }
 
 function imprimirFatura(lancId, valor, mesRef, vencimento, isPendente, pixStr){
