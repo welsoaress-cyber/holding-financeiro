@@ -426,7 +426,7 @@
   .status-agendado    { background: var(--muted-bg); color: var(--muted); }
   /* Régua de cobrança — status automáticos por dias de atraso */
   .status-venceu      { background: var(--warn-bg);  color: #92400e; }
-  .status-vencido     { background: #fff0e6;          color: #c04a0a; }
+  .status-vencido     { background: var(--neg-bg);    color: var(--neg);   }
   .status-inadimplente{ background: var(--neg-bg);   color: var(--neg);   }
   .status-inativo     { background: var(--muted-bg); color: var(--muted); }
   .conc-yes { color: var(--pos); font-weight: 600; font-size: 11.5px; }
@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.19";
+const APP_VERSION = "2.0.20";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4966,7 +4966,12 @@ function viewLancamentos(){
     else if(lancFilter.categoria === "transferencia") list = list.filter(l => l.tipo === "Transferência");
   }
   if(lancFilter.negocio) list = list.filter(l => l.negocio === lancFilter.negocio);
-  if(lancFilter.status) list = list.filter(l => l.status === lancFilter.status);
+  if(lancFilter.status === "Vencido"){
+    const _hj = todayISO();
+    list = list.filter(l => l.status !== "Pago" && !l.inativo && l.data < _hj && l.tipo !== "Transferência");
+  } else if(lancFilter.status){
+    list = list.filter(l => l.status === lancFilter.status);
+  }
   if(lancFilter.conta) list = list.filter(l => l.contaOrigem === lancFilter.conta || l.contaDestino === lancFilter.conta);
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.catNome) list = list.filter(l => l.categoria === lancFilter.catNome);
@@ -5014,7 +5019,11 @@ function viewLancamentos(){
     const destino = contaById(l.contaDestino);
     const cartao = l.cartaoId ? cartaoById(l.cartaoId) : null;
     const color = negocioCor(l.negocio);
-    const statusClass = l.status === "Pago" ? "status-pago" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
+    const hojeStr = todayISO();
+    const eVencido = l.status !== "Pago" && !l.inativo && l.data < hojeStr && l.tipo !== "Transferência";
+    const diasAtraso = eVencido ? Math.floor((Date.parse(hojeStr) - Date.parse(l.data)) / 86400000) : 0;
+    const statusClass = l.status === "Pago" ? "status-pago" : eVencido ? "status-vencido" : (l.status === "Provisionado" ? "status-pendente" : "status-agendado");
+    const statusLabel = l.status === "Pago" ? "Pago" : eVencido ? `Vencido${diasAtraso > 1 ? ` ${diasAtraso}d` : ""}` : l.status;
     let contaTxt;
     if(cartao){
       contaTxt = `${esc(cartao.nome)} <span style="color:var(--ink-4); font-size:11px;">final ${esc(cartao.ultimosDigitos)}</span>${l.dataCompra && l.dataCompra !== l.data ? `<div style="font-size:11px;color:var(--ink-4)">compra em ${fmtDateBR(l.dataCompra)}</div>` : ""}`;
@@ -5054,21 +5063,21 @@ function viewLancamentos(){
         <td><div class="row-actions">${ehMaster() ? `<button class="icon-btn" data-action="reativar-lanc" data-id="${l.id}" title="Reativar lançamento" style="color:var(--pos);">↩</button>` : ""}</div></td>
       </tr>`;
     }
-    return `<tr data-tipo="${l.tipo}" style="${marcado ? 'background:#EAF1FB;' : ''}">
+    return `<tr data-tipo="${l.tipo}" style="${marcado ? 'background:#EAF1FB;' : eVencido ? 'background:var(--neg-bg);' : ''}">
       <td style="text-align:center;">${podeExcluir ? `<input type="checkbox" data-action="toggle-select-lanc" data-id="${l.id}" ${marcado?"checked":""}>` : ""}</td>
-      <td style="white-space:nowrap;">${fmtDateBR(l.data)}</td>
+      <td style="white-space:nowrap;${eVencido ? ' color:var(--neg); font-weight:700;' : ''}">${fmtDateBR(l.data)}</td>
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
       <td>${l.descricao ? esc(l.descricao) : `<span style="color:var(--ink-4);">—</span>`}${cartaoBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}${clienteBadge}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
-      <td><span class="status-pill ${statusClass}">${l.status}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
+      <td><span class="status-pill ${statusClass}">${statusLabel}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
       <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
-  const statusOptions = STATUS_LANC.map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
+  const statusOptions = [...STATUS_LANC, "Vencido"].map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
   const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
@@ -5547,7 +5556,7 @@ function modalLancamento(existing, tipoPreset, prefill){
           <input type="text" id="lancClienteBusca" autocomplete="off" placeholder="Digite nome, código ou telefone..."
             value="${l.clienteId && cliClienteById(l.clienteId) ? esc(cliLabel(cliClienteById(l.clienteId))) : ''}">
           <input type="hidden" name="clienteId" id="lancClienteIdHidden" value="${esc(l.clienteId||'')}">
-          <div id="lancCliDropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:310;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:224px;overflow-y:auto;"></div>
+          <div id="lancCliDropdown" style="display:none;position:fixed;z-index:3100;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:224px;overflow-y:auto;"></div>
         </div>
         <div id="novoClienteLancRow" style="display:none;margin-top:8px;padding:12px;background:var(--muted-bg);border-radius:var(--r);">
           <div class="field-row" style="margin-bottom:8px;">
@@ -5777,7 +5786,14 @@ function modalLancamento(existing, tipoPreset, prefill){
       }
     }
 
-    function abrirCliDropdown(){ lancCliDropdown.style.display = "block"; renderCliDropdown(lancClienteBusca.value); }
+    function abrirCliDropdown(){
+      const rect = lancClienteBusca.getBoundingClientRect();
+      lancCliDropdown.style.top   = (rect.bottom + 2) + "px";
+      lancCliDropdown.style.left  = rect.left + "px";
+      lancCliDropdown.style.width = rect.width + "px";
+      lancCliDropdown.style.display = "block";
+      renderCliDropdown(lancClienteBusca.value);
+    }
     function fecharCliDropdown(){ lancCliDropdown.style.display = "none"; }
 
     lancClienteBusca.addEventListener("focus", abrirCliDropdown);
