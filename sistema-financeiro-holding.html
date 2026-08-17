@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.25";
+const APP_VERSION = "2.0.26";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2048,6 +2048,27 @@ async function _migrarResiduosLegados(){
     localStorage.setItem("mig_residuos_v1", "1");
   }catch(e){ console.warn("[migrarResiduosLegados]", e); }
 }
+// Migração: apaga o módulo Compra e Venda POR COMPLETO — itens, lançamentos
+// gerados por ele, a categoria "Compra e Venda" e qualquer negócio com esse nome.
+async function _migrarComprasVendasLegado(){
+  if(localStorage.getItem("mig_cv_v1")) return;
+  try{
+    const cvIds = state.comprasVendas.map(i => i.id);
+    if(cvIds.length){ await deleteRows("compras_vendas", cvIds); state.comprasVendas = []; }
+
+    const ehNomeCV = s => ["compra e venda","compra/venda","compras e vendas"].includes(String(s||"").trim().toLowerCase());
+    const lancIds = state.lancamentos.filter(l => l.categoria === "Compra e Venda" || ehNomeCV(l.negocio)).map(l => l.id);
+    if(lancIds.length){ await deleteRows("lancamentos", lancIds); state.lancamentos = state.lancamentos.filter(l => !lancIds.includes(l.id)); }
+
+    const cat = state.categorias.find(c => c.nome === "Compra e Venda");
+    if(cat){ await deleteRow("categorias", cat.id); state.categorias = state.categorias.filter(c => c.id !== cat.id); }
+
+    const negCV = state.negocios.filter(n => ehNomeCV(n.nome));
+    for(const n of negCV){ await deleteRow("negocios", n.id); state.negocios = state.negocios.filter(x => x.id !== n.id); }
+
+    localStorage.setItem("mig_cv_v1", "1");
+  }catch(e){ console.warn("[migrarComprasVendasLegado]", e); }
+}
 
 async function loadData(){
   if(!state.user) return;
@@ -2156,6 +2177,7 @@ async function loadData(){
       }
     }
     await _migrarResiduosLegados();
+    await _migrarComprasVendasLegado();
 
     // Leads do site (tabela sem user_id — lê todos os registros autenticados)
     try{
@@ -3176,9 +3198,6 @@ function sidebarConteudo(){
     ].join("")));
   }
 
-  if(podeVerModulo("comprasvendas")){
-    grupos.push(navGrupo("comprasvendas", ic("comprasvendas"), "Compra e Venda", ["cv_lista"], navItem("cv_lista",ic("comprasvendas"),"Itens")));
-  }
   if(podeVerModulo("cadastro")){
     grupos.push(navGrupo("cadastro", ic("cadastro"), "Cadastro", ["cadastro_hub","usuarios","logs_auditoria"], [
       navItem("cadastro_hub","","Central de Cadastros"),
@@ -6268,7 +6287,6 @@ const MODULOS_GRUPOS = [
   { id:"estoque",       label:"Estoque",          acoes:["ver","criar","editar","excluir"] },
   { id:"clientes",      label:"Clientes",         acoes:["ver","criar","editar","excluir"] },
   { id:"rh",            label:"RH",               acoes:["ver","criar","editar","excluir"] },
-  { id:"comprasvendas", label:"Compra e Venda",   acoes:["ver","criar","editar","excluir"] },
   { id:"cadastro",      label:"Cadastro",         acoes:["ver"] },
 ];
 const ACOES_LABEL = { ver:"Ver", criar:"Incluir", editar:"Editar", excluir:"Excluir" };
