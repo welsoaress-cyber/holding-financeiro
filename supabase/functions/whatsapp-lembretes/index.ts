@@ -116,18 +116,20 @@ serve(async (req) => {
   data3dias.setDate(data3dias.getDate() + 3)
   const alvo3dias = data3dias.toISOString().split('T')[0]
 
-  console.log(`🗓️ Hoje: ${hoje} | Verificando vencimentos: ${alvo1dia}, ${alvo2dias} e ${alvo3dias}`)
+  console.log(`🗓️ Hoje: ${hoje} | Verificando vencimentos: ${hoje}, ${alvo1dia}, ${alvo2dias} e ${alvo3dias}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas pendentes com vencimento em 1, 2 ou 3 dias
+  // Busca faturas vencidas HOJE (acesso bloqueado) + vencendo em 1, 2 ou 3 dias
   // ----------------------------------------------------------------
+  const todasDatas = [hoje, alvo1dia, alvo2dias, alvo3dias]
+
   const { data: lancamentos, error } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .eq('dados->>inativo', 'false')
-    .in('dados->>data', [alvo1dia, alvo2dias, alvo3dias])
+    .in('dados->>data', todasDatas)
 
   if (error) {
     console.error('❌ Erro ao buscar lançamentos:', error)
@@ -135,13 +137,13 @@ serve(async (req) => {
   }
 
   // Filtra também lançamentos onde inativo não está definido (null/undefined = ativo)
-  const { data: lancamentosNull, error: errNull } = await sb
+  const { data: lancamentosNull } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .is('dados->>inativo', null)
-    .in('dados->>data', [alvo1dia, alvo2dias, alvo3dias])
+    .in('dados->>data', todasDatas)
 
   const todoLancamentos = [
     ...(lancamentos || []),
@@ -154,7 +156,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       enviados: 0,
-      msg: 'Nenhuma fatura a vencer hoje.'
+      msg: 'Nenhuma fatura a notificar hoje.'
     }), { status: 200 })
   }
 
@@ -216,10 +218,16 @@ serve(async (req) => {
     // Monta mensagem personalizada
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    const diasRestantes = dataVenc === alvo1dia ? 1 : dataVenc === alvo2dias ? 2 : 3
+    const diasRestantes = dataVenc === hoje ? 0 : dataVenc === alvo1dia ? 1 : dataVenc === alvo2dias ? 2 : 3
 
     let mensagem: string
-    if (diasRestantes === 1) {
+    if (diasRestantes === 0) {
+      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
+        `Não identificamos o seu pagamento, com isso infelizmente seu acesso foi temporariamente bloqueado.\n\n` +
+        `💰 *${valorFormatado}*\n` +
+        `Pix: welsoaress@gmail.com\n\n` +
+        `Em caso de dúvidas, entre em contato conosco.`
+    } else if (diasRestantes === 1) {
       mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
         `Gostaria de lembrar que seu vencimento é *amanhã* (${dataFormatada}).\n\n` +
         `💰 *${valorFormatado}*\n` +
