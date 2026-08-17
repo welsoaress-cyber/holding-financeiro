@@ -1138,13 +1138,14 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.26";
+const APP_VERSION = "2.0.27";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
   estProdutos: [], estMovimentos: [], estFornecedores: [], estCompras: [],
   cliClientes: [], cliPlanos: [], cliOrcamentos: [], cliOS: [], cliTecnicos: [], cliChamados: [], cliMensagensModelo: [], cliMensagensEnviadas: [],
   siteLeads: [],
+  negocioSubmenusCfg: {},
   comprasVendas: [],
   rhFuncionarios: [], rhCargos: [], rhFolha: [], rhFerias: [],
   logsAuditoria: [],
@@ -1462,7 +1463,7 @@ function podeVerSubmenuNeg(negNome, view){
   if(!state.perfilAtivo) return false;
   const perm = (state.perfilAtivo.permissoes || {})[negNome];
   if(!perm || !perm.ver) return false;
-  const subs = NEGOCIOS_SUBMENUS[negNome] || NEGOCIOS_SUBMENUS_PADRAO;
+  const subs = submenusDoNegocio(negNome);
   if(!subs) return true;
   if(!perm.submenus) return true;  // nunca configurado → libera tudo
   const s = perm.submenus[view];
@@ -1487,8 +1488,10 @@ function permissaoSubmenuNeg(negNome, view, acao){
 // Retorna o nome do negócio "dono" de uma view de sub-menu (ex: "cli_lista" → "Provedor")
 // Views de detalhe herdam do pai via VIEWS_FALLBACK_RESTAURACAO
 function negocioDaViewSubmenu(view){
-  for(const [neg, subs] of Object.entries(NEGOCIOS_SUBMENUS)){
-    if(subs.some(s => s.view === view)) return neg;
+  // Em modo negócio, o dono é o negócio travado (se a view estiver no menu dele)
+  if(filtroNegocioTravado && cliFiltro.negocio && submenusDoNegocio(cliFiltro.negocio).some(s => s.view === view)) return cliFiltro.negocio;
+  for(const n of state.negocios){
+    if(submenusDoNegocio(n.nome).some(s => s.view === view)) return n.nome;
   }
   // Fallback: view de detalhe → tenta a view-pai
   const pai = VIEWS_FALLBACK_RESTAURACAO[view];
@@ -1538,12 +1541,25 @@ const NEGOCIOS_SUBMENUS_PADRAO = [
 const NEGOCIOS_SUBMENUS = {
   "Provedor": [
     ...NEGOCIOS_SUBMENUS_PADRAO,
-    { view:"est_produtos",   label:"Estoque — Produtos" },
-    { view:"est_movimentos", label:"Estoque — Movimentações" },
-    { view:"est_compras",    label:"Estoque — Compras (NF)" },
-    { view:"est_alertas",    label:"Estoque — Alertas" },
+    { view:"est_dashboard", label:"Estoque" },
   ],
+  "Servidor": NEGOCIOS_SUBMENUS_PADRAO.filter(s => s.view !== "transferencias"),
 };
+// Catálogo COMPLETO de submenus que um negócio pode ter (mostrado no cadastro
+// de negócio pra escolher o que entra no menu daquele negócio).
+const NEGOCIO_SUBMENUS_CATALOGO = [
+  ...NEGOCIOS_SUBMENUS_PADRAO,
+  { view:"est_dashboard", label:"Estoque" },
+];
+// Submenus efetivos de um negócio: o que foi escolhido no cadastro dele
+// (state.negocioSubmenusCfg, salvo na tabela config) ou, se nunca configurou,
+// o padrão (Provedor ganha Estoque por padrão).
+function submenusDoNegocio(negNome){
+  const n = state.negocios.find(x => x.nome === negNome);
+  const escolha = n && state.negocioSubmenusCfg ? state.negocioSubmenusCfg[n.id] : null;
+  if(Array.isArray(escolha)) return NEGOCIO_SUBMENUS_CATALOGO.filter(s => escolha.includes(s.view));
+  return NEGOCIOS_SUBMENUS[negNome] || NEGOCIOS_SUBMENUS_PADRAO;
+}
 function modulosPadrao(){
   return {
     visao:         { ver:true,  criar:false, editar:false, excluir:false },
@@ -1930,6 +1946,22 @@ async function saveMensagensModelo(){
     throw e;
   }
 }
+// Submenus escolhidos por negócio — mesma ideia: uma linha na tabela "config".
+async function saveNegocioSubmenusCfg(){
+  if(!state.user) return;
+  try{
+    const dono = donoAtual();
+    const { error } = await supabaseClient.from("config").upsert({
+      id: `negsubmenus_${dono}`, user_id: dono, dados: { porNegocio: state.negocioSubmenusCfg }, updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if(error) throw error;
+  }catch(e){
+    console.error("[saveNegocioSubmenusCfg]", e);
+    if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); throw e; }
+    showToast("Não salvou a escolha de submenus: " + (e.message||e), "error");
+    throw e;
+  }
+}
 // Log de "pra quem eu já mandei o quê" — uma linha por envio marcado como
 // feito na fila. É o que evita cobrar/avisar a mesma pessoa duas vezes sem
 // perceber (ver ultimoEnvioParaCliente).
@@ -2163,6 +2195,17 @@ async function loadData(){
     if(state.cliMensagensModelo.length === 0){
       state.cliMensagensModelo = [{ id: uid("msg"), nome: "Lembrete de vencimento", texto: MENSAGEM_COBRANCA_PADRAO }];
       await saveMensagensModelo();
+    }
+
+    // Submenus escolhidos por negócio (definidos no cadastro do negócio) —
+    // mesma tabela "config", linha própria por Master.
+    try{
+      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `negsubmenus_${dono}`).maybeSingle();
+      if(error) throw error;
+      state.negocioSubmenusCfg = (data && data.dados && data.dados.porNegocio) || {};
+    }catch(e){
+      console.warn("[loadData:config-negsubmenus] ainda não configurado — usando menus padrão.", e.message || e);
+      state.negocioSubmenusCfg = {};
     }
 
     // Tabelas de estoque/clientes/RH — opcionais/novas
@@ -2865,7 +2908,7 @@ function renderApp(){
       const acessiveis = new Set(
         Object.entries(state.perfilAtivo.permissoes || {})
           .flatMap(([neg, perm]) => perm.ver
-            ? (NEGOCIOS_SUBMENUS[neg] || NEGOCIOS_SUBMENUS_PADRAO).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
+            ? submenusDoNegocio(neg).filter(s => podeVerSubmenuNeg(neg, s.view)).map(s => s.view)
             : [])
       );
       if(!acessiveis.has(state.view)){
@@ -3104,29 +3147,13 @@ function sidebarConteudo(){
   }
 
   // ---- Menus "por Negócio" — cada negócio cadastrado ganha um grupo próprio
-  // no menu, com os dados DELE filtrados. O mesmo padrão de sub-itens vale
-  // para qualquer negócio (Provedor, Porto Odonto, etc.) — sem precisar
-  // hardcodar um bloco por negócio.
-  // Submenus padrão para todos os negócios (CRM + Fornecedores)
-  const SUBITENS_NEG_PADRAO = [
-    ["cli_lista",        "clientes",       "Clientes"],
-    ["lancamentos",      "lancamentos",    "Lançamentos"],
-    ["receitas",         "receber",        "Contas a Receber"],
-    ["despesas",         "pagar",          "Contas a Pagar"],
-    ["transferencias",   "transferencias", "Transferências"],
-    ["cli_chamados",     "chamados",       "Chamados"],
-    ["cli_planos",       "planos",         "Planos"],
-    ["cli_tecnicos",     "tecnicos",       "Técnicos"],
-    ["est_fornecedores", "fornecedores",   "Fornecedores"],
-  ];
-  // Provedor também inclui o módulo completo de Estoque
-  const SUBITENS_NEG_PROVEDOR = [
-    ...SUBITENS_NEG_PADRAO,
-    ["est_produtos",     "produtos",       "Estoque — Produtos"],
-    ["est_movimentos",   "movimentacoes",  "Estoque — Movimentações"],
-    ["est_compras",      "compras",        "Estoque — Compras (NF)"],
-    ["est_alertas",      "alertas",        "Estoque — Alertas"],
-  ];
+  // no menu, com os dados DELE filtrados. Quais submenus aparecem é definido
+  // no cadastro do negócio (submenusDoNegocio) — editável em Cadastro > Negócios.
+  const ICO_SUBMENU_NEG = {
+    cli_lista:"clientes", lancamentos:"lancamentos", receitas:"receber", despesas:"pagar",
+    transferencias:"transferencias", cli_chamados:"chamados", cli_planos:"planos",
+    cli_tecnicos:"tecnicos", est_fornecedores:"fornecedores", est_dashboard:"estoque",
+  };
   // Ordenação de negócios: salva em localStorage via drag-and-drop
   let negOrdenados = state.negocios.filter(n => master || podeVerNegocio(n.nome));
   if(negociosOrdem && negociosOrdem.length){
@@ -3137,11 +3164,14 @@ function sidebarConteudo(){
     });
   }
   negOrdenados.forEach(n => {
-    const subitens = n.nome === "Provedor" ? SUBITENS_NEG_PROVEDOR : SUBITENS_NEG_PADRAO;
+    const subitens = submenusDoNegocio(n.nome);
     const itens = subitens
-      .filter(([view]) => podeVerSubmenuNeg(n.nome, view))
-      .map(([v, icoKey, lbl]) => navItemNegocio(v, ic(icoKey), lbl, n.nome));
-    const views = subitens.map(([v]) => v);
+      .filter(s => podeVerSubmenuNeg(n.nome, s.view))
+      .map(s => navItemNegocio(s.view, ic(ICO_SUBMENU_NEG[s.view] || "clientes"), s.label, n.nome));
+    const views = subitens.map(s => s.view);
+    // As telas internas do Estoque (abertas pelos cartões do painel) também
+    // contam como "dentro" do grupo, pra ele continuar aberto/destacado.
+    if(views.includes("est_dashboard")) views.push("est_produtos","est_movimentos","est_compras","est_alertas");
     grupos.push(navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")));
   });
 
@@ -5374,7 +5404,7 @@ function viewCategorias(){
 function viewNegocios(){
   const rows = state.negocios.map(n => {
     const emUso = state.lancamentos.filter(l => l.negocio === n.nome).length;
-    return `<tr>${bulkCheckboxCellHTML("negocios", n.id)}<td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Renomear">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">×</button></div></td></tr>`;
+    return `<tr>${bulkCheckboxCellHTML("negocios", n.id)}<td><span class="tag-dot" style="background:${n.cor}; display:inline-block; margin-right:8px;"></span><strong>${esc(n.nome)}</strong></td><td style="text-align:center; color:var(--ink-4);">${emUso ? `${emUso} lançamento(s)` : "—"}</td><td><div class="row-actions"><button class="icon-btn" data-action="edit-negocio" data-id="${n.id}" title="Editar nome e submenus">✎</button><button class="icon-btn danger" data-action="del-negocio" data-id="${n.id}" title="Excluir">×</button></div></td></tr>`;
   }).join("");
   return `
     <div class="page-header"><div><div class="page-title">Negócios</div><div class="page-sub">Adicione quantos quiser — inclusive um negócio futuro, antes de lançar nele.</div></div><div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("negocios")}<button class="btn btn-primary" data-action="new-negocio">+ Novo negócio</button></div></div>
@@ -6255,24 +6285,46 @@ function modalSubcategoria(catId, existing){
 // ============================================================
 function modalNegocio(existing){
   const isEdit = !!existing;
+  // Marcados: o que o negócio já tem (editar) ou o padrão completo sem Estoque (novo)
+  const atuais = isEdit
+    ? submenusDoNegocio(existing.nome).map(s => s.view)
+    : NEGOCIOS_SUBMENUS_PADRAO.map(s => s.view);
+  const checks = NEGOCIO_SUBMENUS_CATALOGO.map(s => `
+    <label class="checkbox-row" style="display:flex; align-items:center; gap:8px; padding:5px 2px; cursor:pointer;">
+      <input type="checkbox" name="sub_${s.view}" ${atuais.includes(s.view) ? "checked" : ""}> ${esc(s.label)}
+    </label>`).join("");
   openModal(`
-    <div class="modal-head"><div class="modal-title">${isEdit ? "Renomear negócio" : "Novo negócio"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
-    <form id="formNegocio"><div class="modal-body"><div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Provedor, um negócio futuro..."></div></div>
+    <div class="modal-head"><div class="modal-title">${isEdit ? "Editar negócio" : "Novo negócio"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
+    <form id="formNegocio"><div class="modal-body">
+      <div class="field"><label>Nome</label><input required type="text" name="nome" value="${isEdit ? esc(existing.nome) : ""}" placeholder="Ex: Provedor, um negócio futuro..."></div>
+      <div class="field"><label>Submenus deste negócio</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 14px; border:1px solid var(--border); border-radius:8px; padding:8px 12px;">${checks}</div>
+        <div style="font-size:11.5px; color:var(--ink-4); margin-top:6px;">Marque o que deve aparecer no menu lateral deste negócio — dá pra mudar quando quiser editando o negócio.</div>
+      </div>
+    </div>
     <div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar" : "Adicionar"}</button></div></form>
   `);
   document.getElementById("formNegocio").addEventListener("submit", async e => {
     e.preventDefault();
-    const nome = new FormData(e.target).get("nome").trim();
+    const fd = new FormData(e.target);
+    const nome = fd.get("nome").trim();
     if(!nome) return;
     if(state.negocios.some(n => n.nome === nome && n !== existing)){ showToast("Já existe um negócio com esse nome.", "error"); return; }
+    const escolhidos = NEGOCIO_SUBMENUS_CATALOGO.map(s => s.view).filter(v => fd.get(`sub_${v}`) === "on");
+    let alvoId;
     if(isEdit){
       const nomeAntigo = existing.nome;
       existing.nome = nome;
       state.lancamentos.forEach(l => { if(l.negocio === nomeAntigo) l.negocio = nome; });
       await saveLancamentos();
+      alvoId = existing.id;
     }else{
-      state.negocios.push({ id: uid("neg"), nome, cor: proximaCorNegocio() });
+      const novo = { id: uid("neg"), nome, cor: proximaCorNegocio() };
+      state.negocios.push(novo);
+      alvoId = novo.id;
     }
+    state.negocioSubmenusCfg[alvoId] = escolhidos;
+    await saveNegocioSubmenusCfg();
     await saveNegocios(); closeModal(); renderApp(); showToast(isEdit ? "Negócio atualizado." : "Negócio criado.");
   });
 }
@@ -6329,7 +6381,7 @@ function modalPerfil(existing){
     const perm = getPermNeg(n);
     const negId = `neg_${n.id}`;
     const subId = `negsub_${n.id}`;
-    const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
+    const subs = submenusDoNegocio(n.nome);
     const savedSubs = (perm.submenus) || {};
     // "nunca configurado" → padrão: tela visível, sem ações
     const neverSaved = Object.keys(savedSubs).length === 0;
@@ -6487,7 +6539,7 @@ function modalPerfil(existing){
     // Salva permissoes[nome] = {ver, criar, editar, excluir, [submenus]}
     const permissoes = {};
     state.negocios.forEach(n => {
-      const subs = NEGOCIOS_SUBMENUS[n.nome] || NEGOCIOS_SUBMENUS_PADRAO;
+      const subs = submenusDoNegocio(n.nome);
       const ver = fd.get(`pver_${n.id}`) === "on";
       if(subs.length){
         // Negócio COM sub-menus: salva ações por tela
@@ -7473,6 +7525,7 @@ document.addEventListener("click", async e => {
     if(usado && !confirm(`O negócio "${neg.nome}" está em uso em lançamentos existentes. Excluir mesmo assim?`)) return;
     state.negocios = state.negocios.filter(n => n.id !== id);
     await deleteRow("negocios", id);
+    if(state.negocioSubmenusCfg[id]){ delete state.negocioSubmenusCfg[id]; await saveNegocioSubmenusCfg(); }
     renderApp(); showToast("Negócio removido.");
   }
 
@@ -11347,15 +11400,21 @@ function estKpiClicavel(label, value, note, cor, view, valueStyle){
 
 // ---- VIEW: DASHBOARD ESTOQUE ----
 function viewEstDashboard(){
-  const totalProdutos = state.estProdutos.length;
-  const totalFornecedores = state.estFornecedores.length;
-  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0) > 0);
-  const zerados = state.estProdutos.filter(p => estSaldoAtual(p.id) <= 0);
-  const valorTotal = state.estProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * estValorUnitarioEstimado(p), 0);
-  const movsHoje = state.estMovimentos.filter(m => m.data === todayISO()).length;
-  const ultMovs = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0,8);
+  // Dentro de um negócio (ex: Provedor > Estoque), o painel inteiro mostra só o que é dele.
+  const negTrava = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "";
+  const baseProdutos = negTrava ? state.estProdutos.filter(p => p.negocio === negTrava) : state.estProdutos;
+  const idsProdutos = new Set(baseProdutos.map(p => p.id));
+  const baseMovimentos = negTrava ? state.estMovimentos.filter(m => idsProdutos.has(m.produtoId)) : state.estMovimentos;
+  const baseCompras = negTrava ? state.estCompras.filter(c => c.negocio === negTrava) : state.estCompras;
+  const totalProdutos = baseProdutos.length;
+  const totalFornecedores = (negTrava ? state.estFornecedores.filter(f => f.negocio === negTrava) : state.estFornecedores).length;
+  const alertas = baseProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0) && Number(p.estoqueMinimo||0) > 0);
+  const zerados = baseProdutos.filter(p => estSaldoAtual(p.id) <= 0);
+  const valorTotal = baseProdutos.reduce((s,p) => s + estSaldoAtual(p.id) * estValorUnitarioEstimado(p), 0);
+  const movsHoje = baseMovimentos.filter(m => m.data === todayISO()).length;
+  const ultMovs = [...baseMovimentos].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0,8);
   const inicioMesISO = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10);
-  const comprasMes = state.estCompras.filter(c => c.data >= inicioMesISO);
+  const comprasMes = baseCompras.filter(c => c.data >= inicioMesISO);
   const totalComprasMes = comprasMes.reduce((s,c) => s + c.itens.reduce((ss,it)=>ss+it.valorTotal,0) + Number(c.frete||0) + Number(c.seguro||0) + Number(c.outrasDespesas||0), 0);
 
   const movRow = m => {
@@ -11384,7 +11443,7 @@ function viewEstDashboard(){
 
   return `
     <div class="page-header">
-      <div><div class="page-title">Estoque — Dashboard</div><div class="page-sub">Visão geral de equipamentos e insumos do provedor</div></div>
+      <div><div class="page-title">${negTrava ? `Estoque — ${esc(negTrava)}` : "Estoque — Dashboard"}</div><div class="page-sub">Visão geral de equipamentos e insumos${negTrava ? ` de ${esc(negTrava)}` : " do provedor"}</div></div>
       <div style="display:flex; gap:8px;">
         ${seModulo("estoque","criar",`<button class="btn btn-ghost" data-action="est-nova-movimentacao">+ Movimentação</button>`)}
         ${seModulo("estoque","criar",`<button class="btn btn-ghost" data-action="est-nova-compra">+ Compra (NF)</button>`)}
