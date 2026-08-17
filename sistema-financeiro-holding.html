@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.52";
+const APP_VERSION = "2.0.53";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2591,6 +2591,7 @@ async function doLogin(email, password){
     // Ao logar, sempre vai para a primeira tela (Visão Geral) — limpa qualquer navegação salva
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
+    sidebarTudoRecolhido = true; // login novo → menu todo recolhido
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
@@ -2676,6 +2677,7 @@ async function doAuthMembro(email, password, codPerfil, codHolding){
     if(!link.ok){ showToast(link.msg, "error"); return false; }
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
+    sidebarTudoRecolhido = true; // login novo → menu todo recolhido
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
@@ -3173,6 +3175,9 @@ let sidebarGruposAbertos = new Set();
 // em que você já está: toda vez que tentava fechar, "contém a view atual"
 // forçava aberto de novo, e o clique não tinha efeito nenhum visível).
 let sidebarGruposFechados = new Set();
+// Login novo: menu TODO recolhido (nem o grupo da tela atual abre sozinho)
+// até o usuário clicar em algum grupo — aí volta o comportamento normal.
+let sidebarTudoRecolhido = false;
 // Ordem customizada de negócios (drag-and-drop → salvo em localStorage)
 let negociosOrdem = (()=>{ try{ return JSON.parse(localStorage.getItem("neg_ordem")||"null"); }catch(e){ return null; } })();
 let _dragNegId = null;
@@ -3228,7 +3233,7 @@ function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const contemViewAtual = eGrupoNegocio
     ? ((viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)) && filtroNegocioTravado && cliFiltro.negocio === nome)
     : (!filtroNegocioTravado && (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)));
-  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
+  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || (contemViewAtual && !sidebarTudoRecolhido));
   // Handle de drag: só negócios têm, para arrastar e reordenar
   const negId = eGrupoNegocio ? id.slice(4) : null;
   const dragAttrs = eGrupoNegocio ? `draggable="true" data-neg-sort-id="${negId}"` : "";
@@ -4052,7 +4057,10 @@ const VERSICULOS_BOAS_VINDAS = [
 // Avança do splash para o app real (restaurando última navegação ou dashboard)
 function avancarDoSplash(){
   if(state.view !== "welcome") return;
-  state.view = "dashboard";          // sai do splash ANTES de qualquer outra coisa
+  // Tela padrão pós-login: Visão Executivo (a navegação salva de um F5,
+  // restaurada logo abaixo, pode sobrescrever — login de verdade não tem
+  // navegação salva, então cai aqui mesmo).
+  state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
   if(!navegacaoRestaurada){
     navegacaoRestaurada = true;
     restaurarNavegacaoSalva();       // pode sobrescrever state.view com a view salva
@@ -7476,6 +7484,7 @@ document.addEventListener("click", async e => {
     // conter a view atual nunca conseguia ser fechado (ver comentário perto
     // de sidebarGruposFechados).
     const estavaAberto = el.dataset.aberto === "true";
+    sidebarTudoRecolhido = false; // usuário mexeu no menu — volta o comportamento normal
     if(estavaAberto){ sidebarGruposAbertos.delete(grupoId); sidebarGruposFechados.add(grupoId); }
     else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
@@ -12490,6 +12499,7 @@ async function init(){
       if(event === "SIGNED_IN"){
         try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
         state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
+    sidebarTudoRecolhido = true; // login novo → menu todo recolhido
       }
       await carregarSessao();
       renderApp();
