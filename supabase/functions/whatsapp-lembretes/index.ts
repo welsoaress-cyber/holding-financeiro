@@ -15,8 +15,11 @@ const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
 // ----------------------------------------------------------------
 function normalizarTelefone(tel: string): string | null {
   if (!tel) return null
+  const internacional = tel.trim().startsWith('+')
   const digits = tel.replace(/\D/g, '')
   if (digits.length === 0) return null
+  // Número com "+": internacional — usa o código do país informado, sem adicionar 55
+  if (internacional) return digits.length >= 10 ? digits : null
   if (digits.startsWith('55') && digits.length >= 12) return digits
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
   if (digits.length === 8 || digits.length === 9) return null
