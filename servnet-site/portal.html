@@ -462,7 +462,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v4.0</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v4.1</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
 
     <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
@@ -473,7 +473,7 @@ a{color:inherit;}
           <div class="wa-banner-title">Receba alertas de vencimento pelo WhatsApp!</div>
           <div class="wa-banner-sub">Cadastre seu número e te avisamos antes do vencimento — de graça.</div>
           <div class="wa-banner-form">
-            <input class="wa-banner-input" id="waBannerTel" type="tel" placeholder="(11) 99999-9999" maxlength="15" oninput="mascaraTelBanner(this)">
+            <input class="wa-banner-input" id="waBannerTel" type="tel" placeholder="(11) 99999-9999 ou +1..." maxlength="19" oninput="mascaraTelBanner(this)">
             <button class="wa-banner-btn" id="waBannerBtn" onclick="salvarWhatsAppBanner()">Salvar</button>
           </div>
           <div class="wa-banner-ok" id="waBannerOk"></div>
@@ -805,6 +805,11 @@ function renderStatus(s){
 }
 
 function mascaraTelBanner(el){
+  // Número internacional: começa com "+" — sem máscara brasileira
+  if(el.value.trim().startsWith('+')){
+    el.value='+'+el.value.replace(/[^\d ]/g,'').slice(0,18);
+    return;
+  }
   let v=el.value.replace(/\D/g,'').slice(0,11);
   if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3');
   else if(v.length>6) v=v.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');
@@ -815,8 +820,11 @@ function mascaraTelBanner(el){
 async function salvarWhatsAppBanner(){
   const btn=document.getElementById('waBannerBtn');
   const ok=document.getElementById('waBannerOk');
-  const telRaw=(document.getElementById('waBannerTel')?.value||'').replace(/\D/g,'');
-  if(telRaw.length<10){ ok.textContent='⚠ Informe um número válido com DDD.'; ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5'; return; }
+  const telInp=(document.getElementById('waBannerTel')?.value||'').trim();
+  const telIntl=telInp.startsWith('+');
+  const telDigits=telInp.replace(/\D/g,'');
+  if(telDigits.length<10){ ok.textContent='⚠ Informe um número válido com DDD (ou +código do país).'; ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5'; return; }
+  const telRaw=telIntl?'+'+telDigits:telDigits;
   btn.disabled=true; btn.textContent='Salvando…';
   try{
     const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
