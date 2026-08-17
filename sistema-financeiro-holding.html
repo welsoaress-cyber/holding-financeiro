@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.24";
+const APP_VERSION = "2.0.25";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1164,6 +1164,11 @@ const HORIZONTE_ANOS = 5;
 // ---- Lembrar em que módulo/tela o usuário estava (sobrevive a F5) ----
 // Guardado no localStorage do navegador — não é dado sensível, é só o nome da tela.
 const NAV_STORAGE_KEY = "holding_ultima_navegacao_v1";
+// Cada usuário logado tem a SUA navegação salva (chave inclui o id do usuário) —
+// no mesmo navegador, cada um volta pra tela onde ELE parou, não pra do outro.
+function navKeyUsuario(){
+  return state.user ? `${NAV_STORAGE_KEY}_u${state.user.id}` : NAV_STORAGE_KEY;
+}
 const VIEWS_VALIDAS = new Set([
   "vg_sintetico","vg_analitico","vg_executivo",
   "cadastro_hub",
@@ -1180,12 +1185,12 @@ const VIEWS_VALIDAS = new Set([
 const VIEWS_FALLBACK_RESTAURACAO = { cli_detalhe: "cli_lista", rh_funcionario_detalhe: "rh_funcionarios", cli_os_detalhe: "cli_os_lista", cli_chamado_detalhe: "cli_chamados" };
 let navegacaoRestaurada = false;
 function salvarNavegacaoAtual(){
-  try{ localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify({ moduloAtivo: state.moduloAtivo, view: state.view })); }
+  try{ localStorage.setItem(navKeyUsuario(), JSON.stringify({ moduloAtivo: state.moduloAtivo, view: state.view })); }
   catch(e){ /* localStorage indisponível (modo privado etc.) — só não persiste, sem quebrar nada */ }
 }
 function restaurarNavegacaoSalva(){
   try{
-    const salvo = JSON.parse(localStorage.getItem(NAV_STORAGE_KEY) || "null");
+    const salvo = JSON.parse(localStorage.getItem(navKeyUsuario()) || "null");
     if(!salvo) return;
     const mod = MODULOS_CATALOGO.find(m => m.id === salvo.moduloAtivo);
     if(!mod || !mod.ativo) return; // módulo não existe mais ou ainda não foi liberado
@@ -1218,7 +1223,7 @@ const MODULOS_CATALOGO = [
   { id:"estoque",    ico:"", nome:"Estoque",    desc:"Equipamentos, ONUs, cabos, insumos", ativo:true },
   { id:"clientes",  ico:"", nome:"Clientes",   desc:"CRM, cadastros e contratos", ativo:true },
   { id:"rh",        ico:"", nome:"RH",         desc:"Funcionários, folha e férias", ativo:true },
-  { id:"comprasvendas", ico:"", nome:"Compra e Venda", desc:"Itens comprados e revendidos (OLX etc.)", ativo:true },
+  { id:"comprasvendas", ico:"", nome:"Compra e Venda", desc:"Itens comprados e revendidos (OLX etc.)", ativo:false },
   { id:"projetos",  ico:"", nome:"Projetos",   desc:"Gestão de projetos", ativo:false },
   { id:"bi",        ico:"", nome:"Relatórios", desc:"Business Intelligence", ativo:false },
 ];
@@ -1281,7 +1286,9 @@ const BULK_CONTEXTOS = {
   categorias: { arr: "categorias", tabela: "categorias", label: "categoria(s)" },
   negocios:   { arr: "negocios",   tabela: "negocios",   label: "negócio(s)" },
   est_produtos:     { arr: "estProdutos",     tabela: "est_produtos",     label: "produto(s)" },
-  est_fornecedores: { arr: "estFornecedores", tabela: "est_fornecedores", label: "fornecedor(es)" },
+  est_fornecedores: { arr: "estFornecedores", tabela: "est_fornecedores", label: "fornecedor(es)",
+    filtro: () => filtroNegocioTravado && cliFiltro.negocio ? state.estFornecedores.filter(f=>f.negocio===cliFiltro.negocio) : state.estFornecedores,
+  },
   est_compras: {
     arr: "estCompras", tabela: "est_compras", label: "compra(s)",
     cascade: async (ids) => {
@@ -1292,8 +1299,12 @@ const BULK_CONTEXTOS = {
     },
   },
   est_movimentos: { arr: "estMovimentos", tabela: "est_movimentos", label: "movimentação(ões)" },
-  cli_clientes:   { arr: "cliClientes",   tabela: "cli_clientes",   label: "cliente(s)" },
-  cli_planos:     { arr: "cliPlanos",     tabela: "cli_planos",     label: "plano(s)" },
+  cli_clientes:   { arr: "cliClientes",   tabela: "cli_clientes",   label: "cliente(s)",
+    filtro: () => filtroNegocioTravado && cliFiltro.negocio ? state.cliClientes.filter(c=>(c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio)) : state.cliClientes,
+  },
+  cli_planos:     { arr: "cliPlanos",     tabela: "cli_planos",     label: "plano(s)",
+    filtro: () => filtroNegocioTravado && cliFiltro.negocio ? state.cliPlanos.filter(p=>p.negocio===cliFiltro.negocio) : state.cliPlanos,
+  },
   cli_orcamentos: { arr: "cliOrcamentos", tabela: "cli_orcamentos", label: "orçamento(s)" },
   cli_os: {
     arr: "cliOS", tabela: "cli_os", label: "OS(s)",
@@ -1304,7 +1315,9 @@ const BULK_CONTEXTOS = {
       if(movIds.length) await deleteRows("est_movimentos", movIds);
     },
   },
-  cli_tecnicos: { arr: "cliTecnicos", tabela: "cli_tecnicos", label: "técnico(s)" },
+  cli_tecnicos: { arr: "cliTecnicos", tabela: "cli_tecnicos", label: "técnico(s)",
+    filtro: () => filtroNegocioTravado && cliFiltro.negocio ? state.cliTecnicos.filter(t=>t.negocio===cliFiltro.negocio) : state.cliTecnicos,
+  },
   cli_chamados: {
     arr: "cliChamados", tabela: "cli_chamados", label: "chamado(s)",
     cascade: async (ids) => {
@@ -1354,10 +1367,13 @@ function bulkBarraAcoesHTML(contexto){
   const cfg = BULK_CONTEXTOS[contexto];
   if(!cfg) return "";
   const sel = bulkSet(contexto);
-  const total = state[cfg.arr].length;
+  // Usa a função filtro (contexto de negócio travado) quando disponível,
+  // senão o array completo — o count e a ação ficam consistentes.
+  const listaEfetiva = cfg.filtro ? cfg.filtro() : state[cfg.arr];
+  const total = listaEfetiva.length;
   return `<div style="display:flex; gap:8px;">
     ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">× Excluir selecionados (${sel.size})</button>` : ""}
-    ${ehMaster() && total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga tudo dessa lista, mesmo o que não está sendo filtrado agora"> Limpar tudo (${total})</button>` : ""}
+    ${ehMaster() && total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga todos os itens visíveis desta lista"> Limpar tudo (${total})</button>` : ""}
   </div>`;
 }
 async function bulkExecutarExclusao(contexto, ids){
@@ -1508,18 +1524,25 @@ const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comp
 // Submenu padrão — todos os negócios seguem o modelo completo (Provedor)
 // Novo negócio criado em Cadastro recebe automaticamente este menu completo
 const NEGOCIOS_SUBMENUS_PADRAO = [
-  { view:"cli_lista",      label:"Clientes" },
-  { view:"lancamentos",    label:"Lançamentos" },
-  { view:"receitas",       label:"Contas a Receber" },
-  { view:"despesas",       label:"Contas a Pagar" },
-  { view:"transferencias", label:"Transferências" },
-  { view:"cli_chamados",   label:"Chamados" },
-  { view:"cli_planos",     label:"Planos" },
-  { view:"cli_tecnicos",   label:"Técnicos" },
+  { view:"cli_lista",        label:"Clientes" },
+  { view:"lancamentos",      label:"Lançamentos" },
+  { view:"receitas",         label:"Contas a Receber" },
+  { view:"despesas",         label:"Contas a Pagar" },
+  { view:"transferencias",   label:"Transferências" },
+  { view:"cli_chamados",     label:"Chamados" },
+  { view:"cli_planos",       label:"Planos" },
+  { view:"cli_tecnicos",     label:"Técnicos" },
+  { view:"est_fornecedores", label:"Fornecedores" },
 ];
 // Sub-menus por negócio — negócios não listados recebem NEGOCIOS_SUBMENUS_PADRAO
 const NEGOCIOS_SUBMENUS = {
-  "Provedor": NEGOCIOS_SUBMENUS_PADRAO,
+  "Provedor": [
+    ...NEGOCIOS_SUBMENUS_PADRAO,
+    { view:"est_produtos",   label:"Estoque — Produtos" },
+    { view:"est_movimentos", label:"Estoque — Movimentações" },
+    { view:"est_compras",    label:"Estoque — Compras (NF)" },
+    { view:"est_alertas",    label:"Estoque — Alertas" },
+  ],
 };
 function modulosPadrao(){
   return {
@@ -1982,6 +2005,49 @@ async function _migrarLancamentosLegados(){
     localStorage.setItem("mig_lanc_v2", "1");
   }catch(e){ console.warn("[migrarLancamentosLegados]", e); }
 }
+// Migração v3: limpa TODOS os resíduos dos negócios excluídos — planos, técnicos,
+// chamados, fornecedores e clientes (com suas OS e orçamentos) que ainda
+// apontavam pra negócios que não existem mais.
+async function _migrarResiduosLegados(){
+  if(localStorage.getItem("mig_residuos_v1")) return;
+  try{
+    const planIds = state.cliPlanos.filter(p => _NEGOCIOS_LEGADOS.includes(p.negocio)).map(p => p.id);
+    if(planIds.length){ await deleteRows("cli_planos", planIds); state.cliPlanos = state.cliPlanos.filter(p => !planIds.includes(p.id)); }
+
+    const tecIds = state.cliTecnicos.filter(t => _NEGOCIOS_LEGADOS.includes(t.negocio)).map(t => t.id);
+    if(tecIds.length){ await deleteRows("cli_tecnicos", tecIds); state.cliTecnicos = state.cliTecnicos.filter(t => !tecIds.includes(t.id)); }
+
+    const chamIds = state.cliChamados.filter(c => _NEGOCIOS_LEGADOS.includes(c.negocio)).map(c => c.id);
+    if(chamIds.length){ await deleteRows("cli_chamados", chamIds); state.cliChamados = state.cliChamados.filter(c => !chamIds.includes(c.id)); }
+
+    const fornIds = state.estFornecedores.filter(f => _NEGOCIOS_LEGADOS.includes(f.negocio)).map(f => f.id);
+    if(fornIds.length){ await deleteRows("est_fornecedores", fornIds); state.estFornecedores = state.estFornecedores.filter(f => !fornIds.includes(f.id)); }
+
+    // Clientes: se TODOS os contratos eram de negócios excluídos, o cliente sai
+    // junto (com OS e orçamentos dele); se só parte, remove só esses contratos.
+    const cliToDelete = [];
+    const cliToUpdate = [];
+    for(const c of state.cliClientes){
+      const total = (c.contratos||[]).length;
+      const sobreviventes = (c.contratos||[]).filter(ct => !_NEGOCIOS_LEGADOS.includes(ct.negocio));
+      if(total > 0 && sobreviventes.length === 0) cliToDelete.push(c.id);
+      else if(sobreviventes.length < total) cliToUpdate.push({ ...c, contratos: sobreviventes });
+    }
+    if(cliToDelete.length){
+      const osIds = state.cliOS.filter(o => cliToDelete.includes(o.clienteId)).map(o => o.id);
+      if(osIds.length){ await deleteRows("cli_os", osIds); state.cliOS = state.cliOS.filter(o => !osIds.includes(o.id)); }
+      const orcIds = state.cliOrcamentos.filter(o => cliToDelete.includes(o.clienteId)).map(o => o.id);
+      if(orcIds.length){ await deleteRows("cli_orcamentos", orcIds); state.cliOrcamentos = state.cliOrcamentos.filter(o => !orcIds.includes(o.id)); }
+      await deleteRows("cli_clientes", cliToDelete);
+      state.cliClientes = state.cliClientes.filter(c => !cliToDelete.includes(c.id));
+    }
+    for(const c of cliToUpdate){
+      state.cliClientes = state.cliClientes.map(x => x.id === c.id ? c : x);
+      await saveRows("cli_clientes", [c]);
+    }
+    localStorage.setItem("mig_residuos_v1", "1");
+  }catch(e){ console.warn("[migrarResiduosLegados]", e); }
+}
 
 async function loadData(){
   if(!state.user) return;
@@ -2089,6 +2155,7 @@ async function loadData(){
         state[key] = [];
       }
     }
+    await _migrarResiduosLegados();
 
     // Leads do site (tabela sem user_id — lê todos os registros autenticados)
     try{
@@ -2342,7 +2409,7 @@ async function doLogin(email, password){
     state.user = data.user;
     state.perfilAtivo = null; state.perfilEscolhido = false;
     // Ao logar, sempre vai para a primeira tela (Visão Geral) — limpa qualquer navegação salva
-    try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+    try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     await carregarSessao();
     return true;
@@ -2427,7 +2494,7 @@ async function doAuthMembro(email, password, codPerfil, codHolding){
     state.user = data.user;
     const link = await vincularPerfil(codPerfil, codHolding);
     if(!link.ok){ showToast(link.msg, "error"); return false; }
-    try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+    try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     await carregarSessao();
     return true;
@@ -3018,15 +3085,25 @@ function sidebarConteudo(){
   // no menu, com os dados DELE filtrados. O mesmo padrão de sub-itens vale
   // para qualquer negócio (Provedor, Porto Odonto, etc.) — sem precisar
   // hardcodar um bloco por negócio.
+  // Submenus padrão para todos os negócios (CRM + Fornecedores)
   const SUBITENS_NEG_PADRAO = [
-    ["cli_lista",      "clientes",       "Clientes"],
-    ["lancamentos",    "lancamentos",    "Lançamentos"],
-    ["receitas",       "receber",        "Contas a Receber"],
-    ["despesas",       "pagar",          "Contas a Pagar"],
-    ["transferencias", "transferencias", "Transferências"],
-    ["cli_chamados",   "chamados",       "Chamados"],
-    ["cli_planos",     "planos",         "Planos"],
-    ["cli_tecnicos",   "tecnicos",       "Técnicos"],
+    ["cli_lista",        "clientes",       "Clientes"],
+    ["lancamentos",      "lancamentos",    "Lançamentos"],
+    ["receitas",         "receber",        "Contas a Receber"],
+    ["despesas",         "pagar",          "Contas a Pagar"],
+    ["transferencias",   "transferencias", "Transferências"],
+    ["cli_chamados",     "chamados",       "Chamados"],
+    ["cli_planos",       "planos",         "Planos"],
+    ["cli_tecnicos",     "tecnicos",       "Técnicos"],
+    ["est_fornecedores", "fornecedores",   "Fornecedores"],
+  ];
+  // Provedor também inclui o módulo completo de Estoque
+  const SUBITENS_NEG_PROVEDOR = [
+    ...SUBITENS_NEG_PADRAO,
+    ["est_produtos",     "produtos",       "Estoque — Produtos"],
+    ["est_movimentos",   "movimentacoes",  "Estoque — Movimentações"],
+    ["est_compras",      "compras",        "Estoque — Compras (NF)"],
+    ["est_alertas",      "alertas",        "Estoque — Alertas"],
   ];
   // Ordenação de negócios: salva em localStorage via drag-and-drop
   let negOrdenados = state.negocios.filter(n => master || podeVerNegocio(n.nome));
@@ -3038,10 +3115,11 @@ function sidebarConteudo(){
     });
   }
   negOrdenados.forEach(n => {
-    const itens = SUBITENS_NEG_PADRAO
+    const subitens = n.nome === "Provedor" ? SUBITENS_NEG_PROVEDOR : SUBITENS_NEG_PADRAO;
+    const itens = subitens
       .filter(([view]) => podeVerSubmenuNeg(n.nome, view))
       .map(([v, icoKey, lbl]) => navItemNegocio(v, ic(icoKey), lbl, n.nome));
-    const views = SUBITENS_NEG_PADRAO.map(([v]) => v);
+    const views = subitens.map(([v]) => v);
     grupos.push(navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")));
   });
 
@@ -7249,9 +7327,10 @@ document.addEventListener("click", async e => {
     const contexto = el.dataset.contexto;
     const cfg = BULK_CONTEXTOS[contexto];
     if(!cfg) return;
-    const todosIds = state[cfg.arr].map(x => x.id);
+    const listaEfetiva = cfg.filtro ? cfg.filtro() : state[cfg.arr];
+    const todosIds = listaEfetiva.map(x => x.id);
     if(!todosIds.length){ showToast("Não há nada pra limpar aqui.", "error"); return; }
-    if(!confirm(`Isso apaga TODOS os ${todosIds.length} ${cfg.label} dessa lista — sem filtro, tudo mesmo. Ação irreversível. Quer mesmo limpar tudo?`)) return;
+    if(!confirm(`Isso apaga TODOS os ${todosIds.length} ${cfg.label} dessa lista. Ação irreversível. Quer mesmo limpar tudo?`)) return;
     await bulkExecutarExclusao(contexto, todosIds);
   }
   else if(action === "new-conta") modalConta(null);
@@ -7492,6 +7571,11 @@ document.addEventListener("click", async e => {
   }
   // ---- Leads do Site ----
   else if(action === "leads-filtro-status"){ leadsFiltro.status = el.value; renderView(); }
+  else if(action === "leads-filtro-status-quick"){
+    // Clicar na etiqueta de status filtra a lista por ele; clicar de novo tira o filtro.
+    leadsFiltro.status = leadsFiltro.status === el.dataset.status ? "" : el.dataset.status;
+    renderView();
+  }
   else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
   else if(action === "cliPlanos-filtro-clear"){ cliPlanosFiltro = {negocio:"",texto:""}; renderView(); }
   else if(action === "lead-wa"){
@@ -8588,7 +8672,7 @@ function viewCliLeads(){
       <select data-action="leads-filtro-status"
         style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem">
         <option value="" ${!sts?"selected":""}>Todos os status</option>
-        <option value="Novo" ${sts==="Novo"?"selected":""}>Novo</option>
+        <option value="Novo" ${sts==="Novo"?"selected":""}>Aguardando Contato</option>
         <option value="Contatado" ${sts==="Contatado"?"selected":""}>Contatado</option>
         <option value="Convertido" ${sts==="Convertido"?"selected":""}>Convertido</option>
         <option value="Descartado" ${sts==="Descartado"?"selected":""}>Descartado</option>
@@ -8626,7 +8710,9 @@ function viewCliLeads(){
                 <td style="padding:0.7rem 0.75rem;color:var(--text-secondary);">${l.plano||"—"}</td>
                 <td style="padding:0.7rem 0.75rem;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.endereco||"").replace(/"/g,"&quot;")}">${l.endereco||"—"}</td>
                 <td style="padding:0.7rem 0.75rem;text-align:center">
-                  <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;${corStyle}">${l.status||"Novo"}</span>
+                  <span data-action="leads-filtro-status-quick" data-status="${l.status||"Novo"}"
+                    title="${sts===(l.status||"Novo")?"Clique para tirar o filtro":"Clique para filtrar por este status"}"
+                    style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.73rem;font-weight:600;white-space:nowrap;cursor:pointer;${corStyle}">${(l.status||"Novo")==="Novo"?"Aguardando Contato":l.status}</span>
                 </td>
                 <td style="padding:0.7rem 0.75rem;color:var(--text-muted);font-size:0.78rem">${fmtData(l.created_at)}</td>
                 <td style="padding:0.7rem 0.75rem;text-align:center">
@@ -8828,7 +8914,9 @@ function viewCliDetalhe(){
 function viewCliPlanos(){
   // Apply filters
   let lista = [...state.cliPlanos];
-  if(cliPlanosFiltro.negocio) lista = lista.filter(p => p.negocio === cliPlanosFiltro.negocio);
+  // Quando dentro de um negócio específico (ex: Provedor > Planos), filtra automaticamente
+  if(filtroNegocioTravado && cliFiltro.negocio) lista = lista.filter(p => p.negocio === cliFiltro.negocio);
+  else if(cliPlanosFiltro.negocio) lista = lista.filter(p => p.negocio === cliPlanosFiltro.negocio);
   if(cliPlanosFiltro.texto){
     const t = cliPlanosFiltro.texto.toLowerCase();
     lista = lista.filter(p =>
@@ -8869,14 +8957,14 @@ function viewCliPlanos(){
       <button class="btn btn-ghost" style="color:var(--text-muted);border-color:var(--border);padding:0.3rem 0.8rem;font-size:0.82rem;" data-action="bulk-toggle-all" data-contexto="cli_planos" data-ids="${Array.from(selAtual).join(",")}">✕ Desmarcar</button>
     </div>` : "";
 
+  const titulo = filtroNegocioTravado && cliFiltro.negocio ? `Planos — ${esc(cliFiltro.negocio)}` : "Planos";
   return `
     <div class="page-header">
-      <div><div class="page-title">Planos</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
+      <div><div class="page-title">${titulo}</div><div class="page-sub">Configure os planos de cada negócio — eles ficam disponíveis no cadastro do cliente</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_planos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo-plano">+ Novo plano</button>`)}</div>
     </div>
 
-
-    <!-- Filtros -->
+    <!-- Filtros — oculta o seletor de negócio quando já está travado por contexto -->
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
       <input type="text"
         placeholder="🔍 Buscar por nome, descrição, velocidade…"
@@ -8884,11 +8972,11 @@ function viewCliPlanos(){
         data-action="cliPlanos-filtro-texto"
         style="flex:1;min-width:180px;max-width:340px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem;outline:none"
       />
-      <select data-action="cliPlanos-filtro-negocio"
+      ${!filtroNegocioTravado ? `<select data-action="cliPlanos-filtro-negocio"
         style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.8rem;color:var(--text-primary);font-size:0.85rem">
         <option value="" ${!cliPlanosFiltro.negocio?"selected":""}>Todos os negócios</option>
         ${negOpts}
-      </select>
+      </select>` : ""}
       ${temFiltro?`<button data-action="cliPlanos-filtro-clear"
         style="background:rgba(100,116,139,0.12);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.9rem;color:var(--text-muted);font-size:0.82rem;cursor:pointer">✕ Limpar filtros</button>`:""}
     </div>
@@ -9290,7 +9378,8 @@ function modalCliContrato(clienteId, existing){
 
 function modalCliPlano(existing, duplicar){
   const isEdit = !!existing && !duplicar;
-  const p = existing ? { ...existing, nome: duplicar ? `${existing.nome} (cópia)` : existing.nome } : { nome:"", negocio: state.negocios[0]?.nome||"", descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
+  const negPadraoPlano = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : (state.negocios[0]?.nome||"");
+  const p = existing ? { ...existing, nome: duplicar ? `${existing.nome} (cópia)` : existing.nome } : { nome:"", negocio: negPadraoPlano, descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const titulo = duplicar ? "Duplicar plano" : (isEdit?"Editar plano":"Novo plano");
   const botao = duplicar ? "Criar cópia" : (isEdit?"Salvar":"Criar plano");
@@ -9827,7 +9916,7 @@ function modalCodigoTecnico(tecnico){
 ========================================================================= */
 function modalCliTecnico(existing){
   const isEdit = !!existing;
-  const t = existing || { nome:"", telefone:"", negocio:"", diasAtendimento:"", valorMensal:0, ativo:true };
+  const t = existing || { nome:"", telefone:"", negocio: filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "", diasAtendimento:"", valorMensal:0, ativo:true };
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${t.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar técnico" : "Novo técnico"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -11313,6 +11402,7 @@ function viewEstDashboard(){
 let estFiltroCategoria = "", estFiltroTexto = "";
 function viewEstProdutos(){
   let lista = [...state.estProdutos];
+  if(filtroNegocioTravado && cliFiltro.negocio) lista = lista.filter(p => p.negocio === cliFiltro.negocio);
   if(estFiltroCategoria) lista = lista.filter(p => p.categoria === estFiltroCategoria);
   if(estFiltroTexto) lista = lista.filter(p => (p.nome+p.codigoInterno+p.modelo+p.fabricante).toLowerCase().includes(estFiltroTexto.toLowerCase()));
   lista.sort((a,b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome));
@@ -11378,6 +11468,7 @@ function viewEstProdutos(){
 let estMovFiltro = { tipo:"", produto:"", dataDe:"", dataAte:"" };
 function viewEstMovimentos(){
   let lista = [...state.estMovimentos].sort((a,b) => b.data.localeCompare(a.data)||b.id.localeCompare(a.id));
+  if(filtroNegocioTravado && cliFiltro.negocio) lista = lista.filter(m => estProdutoById(m.produtoId)?.negocio === cliFiltro.negocio);
   if(estMovFiltro.tipo) lista = lista.filter(m => m.tipo === estMovFiltro.tipo);
   if(estMovFiltro.produto) lista = lista.filter(m => m.produtoId === estMovFiltro.produto);
   if(estMovFiltro.dataDe) lista = lista.filter(m => m.data >= estMovFiltro.dataDe);
@@ -11426,7 +11517,11 @@ function viewEstMovimentos(){
 
 // ---- VIEW: FORNECEDORES ----
 function viewEstFornecedores(){
-  const rows = state.estFornecedores.map(f => {
+  // Filtra por negócio quando acessado dentro de um grupo de negócio (ex: Provedor > Fornecedores)
+  let lista = [...state.estFornecedores];
+  if(filtroNegocioTravado && cliFiltro.negocio) lista = lista.filter(f => f.negocio === cliFiltro.negocio);
+  const titulo = filtroNegocioTravado && cliFiltro.negocio ? `Fornecedores — ${esc(cliFiltro.negocio)}` : "Fornecedores";
+  const rows = lista.map(f => {
     const produtos = state.estProdutos.filter(p => p.fornecedorId === f.id).length;
     const negTag = f.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(f.negocio)} 14%, white); color:${negocioCor(f.negocio)};"><span class="tag-dot" style="background:${negocioCor(f.negocio)}"></span>${esc(f.negocio)}</span>` : "—";
     return `<tr>
@@ -11446,11 +11541,11 @@ function viewEstFornecedores(){
   }).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Fornecedores</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
+      <div><div class="page-title">${titulo}</div><div class="page-sub">Cadastro de fornecedores de equipamentos e insumos</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_fornecedores")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-novo-fornecedor">+ Novo fornecedor</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
-      <table><thead><tr>${bulkCheckboxHeaderHTML("est_fornecedores", state.estFornecedores.map(f=>f.id))}<th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
+      <table><thead><tr>${bulkCheckboxHeaderHTML("est_fornecedores", lista.map(f=>f.id))}<th>Nome</th><th>CNPJ</th><th>Negócio</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th style="text-align:center;">Produtos</th><th></th></tr></thead>
       <tbody>${rows || `<tr><td colspan="9">${emptyState("Nenhum fornecedor cadastrado ainda.")}</td></tr>`}</tbody></table>
     </div></div>
   `;
@@ -11458,7 +11553,10 @@ function viewEstFornecedores(){
 
 // ---- VIEW: ALERTAS ----
 function viewEstAlertas(){
-  const alertas = state.estProdutos.filter(p => estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0));
+  const alertas = state.estProdutos.filter(p => {
+    if(filtroNegocioTravado && cliFiltro.negocio && p.negocio !== cliFiltro.negocio) return false;
+    return estSaldoAtual(p.id) <= Number(p.estoqueMinimo||0);
+  });
   const rows = alertas.map(p => {
     const saldo = estSaldoAtual(p.id);
     const minimo = Number(p.estoqueMinimo||0);
@@ -11471,12 +11569,17 @@ function viewEstAlertas(){
       <td class="num" style="color:var(--neg); font-weight:600;">${minimo - saldo}</td>
       <td>${esc(fornecedor?.nome||"—")}</td>
       <td>${esc(fornecedor?.telefone||"—")}</td>
-      <td><div class="row-actions"><button class="btn btn-primary btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button></div></td>
+      <td><div class="row-actions">
+        <button class="btn btn-primary btn-sm" data-action="est-registrar-entrada" data-id="${p.id}">+ Entrada</button>
+        <button class="icon-btn" data-action="est-edit-produto" data-id="${p.id}" title="Editar produto">✎</button>
+        <button class="icon-btn danger" data-action="est-del-produto" data-id="${p.id}" title="Excluir produto">×</button>
+      </div></td>
     </tr>`;
   }).join("");
+  const tituloAlertas = filtroNegocioTravado && cliFiltro.negocio ? `Alertas de Estoque — ${esc(cliFiltro.negocio)}` : "Alertas de Estoque";
   return `
     <div class="page-header">
-      <div><div class="page-title">Alertas de Estoque</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
+      <div><div class="page-title">${tituloAlertas}</div><div class="page-sub">Produtos abaixo ou no limite do estoque mínimo — ${alertas.length} alerta(s)</div></div>
     </div>
     ${alertas.length ? `
     <div class="panel"><div class="panel-body">
@@ -11491,7 +11594,9 @@ function viewEstAlertas(){
 ========================================================================= */
 function modalEstProduto(existing){
   const isEdit = !!existing;
-  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", familia:"", peso:"", fornecedorId:"", negocio:"", unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
+  // Criando de dentro de um negócio (ex: Provedor > Estoque)? Já vem com ele selecionado.
+  const negPadraoProd = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "";
+  const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", familia:"", peso:"", fornecedorId:"", negocio:negPadraoProd, unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
   const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
   const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
   const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
@@ -11609,7 +11714,9 @@ function modalEstMovimentacao(presetProdutoId, presetTipo){
 
 function modalEstFornecedor(existing){
   const isEdit = !!existing;
-  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", negocio:"", observacoes:"" };
+  // Criando de dentro de um negócio (ex: Provedor > Fornecedores)? Já vem com ele selecionado.
+  const negPadrao = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "";
+  const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", negocio:negPadrao, observacoes:"" };
   const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar fornecedor":"Novo fornecedor"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -11640,7 +11747,8 @@ function modalEstFornecedor(existing){
 
 // ---- VIEW: COMPRAS (Notas Fiscais) ----
 function viewEstCompras(){
-  const lista = [...state.estCompras].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  let lista = [...state.estCompras].sort((a,b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  if(filtroNegocioTravado && cliFiltro.negocio) lista = lista.filter(c => c.negocio === cliFiltro.negocio);
   const rows = lista.map(c => {
     const fornecedor = estFornecedorById(c.fornecedorId);
     const totalItens = c.itens.reduce((s,it) => s + it.valorTotal, 0);
@@ -11975,7 +12083,7 @@ async function init(){
       // Login real (SIGNED_IN) → sempre vai pra Visão Geral, ignorando navegação salva.
       // Refresh de página (INITIAL_SESSION / TOKEN_REFRESHED) → restaura onde estava.
       if(event === "SIGNED_IN"){
-        try{ localStorage.removeItem(NAV_STORAGE_KEY); }catch(e){}
+        try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
         state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
       }
       await carregarSessao();
