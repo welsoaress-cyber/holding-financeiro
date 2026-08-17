@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.39";
+const APP_VERSION = "2.0.40";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5333,12 +5333,12 @@ function viewLancamentos(){
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOptions = [...STATUS_LANC, "Vencido"].map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
-  const contaOptions = state.contas.map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
+  const contaOptions = contasAZ().map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
-  const catNomeOptions = state.categorias.map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
+  const catNomeOptions = categoriasAZ().map(c => `<option value="${esc(c.nome)}" ${lancFilter.catNome===c.nome?"selected":""}>${esc(c.nome)}</option>`).join("");
   const subcatNomeOptions = subcategoriasDe(lancFilter.catNome).map(s => `<option value="${esc(s.nome)}" ${lancFilter.subcatNome===s.nome?"selected":""}>${esc(s.nome)}</option>`).join("");
-  const clienteOptions = cliAtivos().map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
+  const clienteOptions = cliAtivosAZ().map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
   // Negócio só conta como "filtro manual" quando o usuário escolheu um diferente do contexto travado
   const negFiltroManual = filtroNegocioTravado ? (lancFilter.negocio && lancFilter.negocio !== cliFiltro.negocio) : !!lancFilter.negocio;
   const temFiltro = negFiltroManual||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId;
@@ -5642,7 +5642,7 @@ function modalSenha(kind){
 function modalConta(existing){
   const isEdit = !!existing;
   const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true, negocio:"" };
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar conta" : "Nova conta bancária"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formConta"><div class="modal-body">
@@ -6664,7 +6664,7 @@ function modalCartao(existing){
   const isEdit = !!existing;
   const c = existing || { nome:"", bandeira:"Visa", ultimosDigitos:"", limite:0, diaFechamento:1, diaVencimento:10, contaPagamentoId: state.contas.find(x=>x.ativa!==false)?.id||"", ativo:true, negocio:"" };
   const contaOpts = contasParaSelecao(c.contaPagamentoId).map(x => `<option value="${x.id}" ${c.contaPagamentoId===x.id?"selected":""}>${contaLabel(x)}${x.ativa===false?" (inativa)":""}</option>`).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar cartão" : "Novo cartão de crédito"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formCartao"><div class="modal-body">
@@ -8084,6 +8084,14 @@ const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
 // Clientes não excluídos — use em TODAS as telas/contagens/dropdowns
 function cliAtivos(){ return state.cliClientes.filter(c => !c.excluido); }
+// ---- Listas em ordem alfabética (A→Z) pros selects de filtro/formulário ----
+function _cmpAZ(a,b){ return String(a||"").localeCompare(String(b||""), "pt-BR", {sensitivity:"base"}); }
+function cliAtivosAZ(){ return [...cliAtivos()].sort((a,b)=>_cmpAZ(cliNome(a), cliNome(b))); }
+function negociosAZ(){ return [...state.negocios].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
+function categoriasAZ(){ return [...state.categorias].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
+function planosAZ(){ return [...state.cliPlanos].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
+function contasAZ(){ return [...state.contas].sort((a,b)=>_cmpAZ(contaLabel(a), contaLabel(b))); }
+function fornecedoresAZ(){ return [...state.estFornecedores].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
 function cliNome(c){ return c.tipoPessoa === "PJ" ? (c.nomeFantasia || c.razaoSocial || c.nome) : c.nome; }
 // Status efetivo: se há receita vencida e não paga → Inadimplente automaticamente.
@@ -8568,7 +8576,7 @@ function clientesParaEnvio(negocioFiltro){
   });
 }
 function viewCliEnvioMassa(){
-  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${envioMassaNegocioFiltro===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOptions = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${envioMassaNegocioFiltro===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const modeloOptions = state.cliMensagensModelo.map(m=>`<option value="${m.id}" ${envioMassaModeloId===m.id?"selected":""}>${esc(m.nome)}</option>`).join("");
   const modeloAtual = state.cliMensagensModelo.find(m=>m.id===envioMassaModeloId) || state.cliMensagensModelo[0];
   if(!envioMassaModeloId && modeloAtual) envioMassaModeloId = modeloAtual.id;
@@ -8951,9 +8959,9 @@ function viewCliLista(){
       </div></td>
     </tr>`;
   }).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS_FILTRO.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
-  const planoOpts = state.cliPlanos.map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const planoOpts = planosAZ().map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
   const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
   return `
     <div class="page-header">
@@ -9103,7 +9111,7 @@ function viewCliPlanos(){
   lista.sort((a,b) => (a.negocio||"").localeCompare(b.negocio||"") || (a.nome||"").localeCompare(b.nome||""));
 
   const temFiltro = !!(cliPlanosFiltro.negocio || cliPlanosFiltro.texto);
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliPlanosFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliPlanosFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
 
   const rows = lista.map(p => {
     const usos = cliAtivos().filter(c=>(c.contratos||[]).some(ct=>ct.planoId===p.id)).length;
@@ -9176,7 +9184,7 @@ function modalCliCliente(existing){
   const negLinhas = state.negocios.map(n => {
     const contratoAtual = (c.contratos||[]).find(ct=>ct.negocio===n.nome);
     const hasContrato = !!contratoAtual;
-    const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome);
+    const planosDoNegocio = state.cliPlanos.filter(p=>p.negocio===n.nome).sort((a,b)=>_cmpAZ(a.nome,b.nome));
     const planoOpts = planosDoNegocio.map(p=>`<option value="${p.id}" ${contratoAtual&&contratoAtual.planoId===p.id?"selected":""}>${esc(p.nome)}${p.velocidade?` — ${esc(p.velocidade)}`:""}${podeVerValores()?` — ${fmtBRL(p.valor)}`:""}</option>`).join("");
     return `<tr>
       <td style="white-space:nowrap;">
@@ -9522,7 +9530,7 @@ function modalCliContrato(clienteId, existing){
   const negPadrao = (filtroNegocioTravado && cliFiltro.negocio) ? cliFiltro.negocio : (state.negocios[0]?.nome||"");
   const ct = existing || { negocio: negPadrao, planoId:"", status:"Ativo", dataContrato:todayISO(), diaVencimento:"", enderecoInstalacao:"", observacoes:"", cobrancaAutomatica:true };
   const fmtPlano = p => `${esc(p.nome)}${p.velocidade?` — ${esc(p.velocidade)}`:""}${podeVerValores()?` — ${fmtBRL(p.valor)}` : ""}`;
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${ct.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS.map(s=>`<option value="${s}" ${ct.status===s?"selected":""}>${s}</option>`).join("");
   const planosDoPNegocio = state.cliPlanos.filter(p=>p.negocio===ct.negocio);
   const planoOpts = planosDoPNegocio.map(p=>`<option value="${p.id}" ${ct.planoId===p.id?"selected":""}>${fmtPlano(p)}</option>`).join("");
@@ -9593,7 +9601,7 @@ function modalCliPlano(existing, duplicar){
   const isEdit = !!existing && !duplicar;
   const negPadraoPlano = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : (state.negocios[0]?.nome||"");
   const p = existing ? { ...existing, nome: duplicar ? `${existing.nome} (cópia)` : existing.nome } : { nome:"", negocio: negPadraoPlano, descricao:"", valor:"", velocidade:"", tecnologia:"", observacoes:"" };
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const titulo = duplicar ? "Duplicar plano" : (isEdit?"Editar plano":"Novo plano");
   const botao = duplicar ? "Criar cópia" : (isEdit?"Salvar":"Criar plano");
   openModal(`
@@ -9781,8 +9789,8 @@ function modalCliOrcamento(existing, modoOS){
   if(!cliAtivos().length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
   const o = existing || { clienteId: state.cliClientes[0].id, negocio:"", data: todayISO(), validade:"", itens:[], desconto:0, observacoes:"" };
   const podeEditar = modoOS || !isEdit || o.status==="Rascunho" || o.status==="Enviado";
-  const clienteOptions = cliAtivos().map(c=>`<option value="${c.id}" ${o.clienteId===c.id?"selected":""}>${esc(cliNome(c))}</option>`).join("");
-  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${o.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const clienteOptions = cliAtivosAZ().map(c => `<option value="${c.id}" ${o.clienteId===c.id?"selected":""}>${esc(cliNome(c))}</option>`).join("");
+  const negOptions = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${o.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const produtoOptionsHTML = (sel) => `<option value="">— Item livre / serviço —</option>` + state.estProdutos.map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
   const linhaItemHTML = (it) => `
     <tr>
@@ -10078,7 +10086,7 @@ function viewCliTecnicos(){
       </div></td>
     </tr>`;
   }).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique no botão $ do técnico pra lançar o pagamento em Contas a Pagar.</div></div>
@@ -10137,7 +10145,7 @@ function modalCodigoTecnico(tecnico){
 function modalCliTecnico(existing){
   const isEdit = !!existing;
   const t = existing || { nome:"", telefone:"", negocio: filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "", diasAtendimento:"", valorMensal:0, ativo:true };
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${t.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${t.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar técnico" : "Novo técnico"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formTecnico"><div class="modal-body">
@@ -10224,7 +10232,7 @@ function viewCliChamados(){
       <td><div class="row-actions"><button class="icon-btn" data-action="cham-detalhe" data-id="${c.id}" title="Ver">Ver</button><button class="icon-btn danger" data-action="cham-del" data-id="${c.id}" title="Excluir">×</button></div></td>
     </tr>`;
   }).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
       <div><div class="page-title">Chamados</div><div class="page-sub">O cliente ligou — abra o chamado, agende o técnico e acompanhe até concluir.</div></div>
@@ -10306,9 +10314,9 @@ function modalCliChamado(existing){
   const isEdit = !!existing;
   if(!isEdit && !cliAtivos().length){ showToast("Cadastre um cliente primeiro.", "error"); return; }
   const c = existing || { clienteId: state.cliClientes[0]?.id||"", negocio:"", tecnicoId:"", tipo:CHAMADO_TIPOS[0], prioridade:"Normal", motivo:"", dataAgendada:"", status:"Aberto", valorCobranca:0, observacoes:"" };
-  const clienteOptions = cliAtivos().map(cl=>`<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliLabel(cl))}</option>`).join("");
-  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
-  const tecnicoOptions = state.cliTecnicos.filter(t=>t.ativo!==false).map(t=>`<option value="${t.id}" ${c.tecnicoId===t.id?"selected":""}>${esc(t.nome)}</option>`).join("");
+  const clienteOptions = cliAtivosAZ().map(cl => `<option value="${cl.id}" ${c.clienteId===cl.id?"selected":""}>${esc(cliLabel(cl))}</option>`).join("");
+  const negOptions = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const tecnicoOptions = state.cliTecnicos.filter(t=>t.ativo!==false).sort((a,b)=>_cmpAZ(a.nome,b.nome)).map(t=>`<option value="${t.id}" ${c.tecnicoId===t.id?"selected":""}>${esc(t.nome)}</option>`).join("");
   const tipoOptions = CHAMADO_TIPOS.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("");
   const prioridadeOptions = CHAMADO_PRIORIDADES.map(p=>`<option ${c.prioridade===p?"selected":""}>${p}</option>`).join("");
   const statusOptions = CHAMADO_STATUS.map(s=>`<option ${c.status===s?"selected":""}>${s}</option>`).join("");
@@ -10639,7 +10647,7 @@ function viewComprasVendas(){
 function modalCompraVenda(existing){
   const isEdit = !!existing;
   const i = existing || { nome:"", negocio: cvNegocioPadrao(), status:"Em posse", origem:"", linkAnuncio:"", dataCompra: todayISO(), valorCompra:0, contaCompra: state.contas.find(x=>x.ativa!==false)?.id||"", observacoes:"" };
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${i.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${i.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CV_STATUS.map(s=>`<option value="${s}" ${i.status===s?"selected":""}>${s}</option>`).join("");
   const contaOpts = state.contas.map(c=>`<option value="${c.id}" ${i.contaCompra===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   openModal(`
@@ -10898,7 +10906,7 @@ function viewRhFuncionarios(){
       </div></td>
     </tr>`;
   }).join("");
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${rhFuncFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${rhFuncFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const cargoOpts = state.rhCargos.map(c=>`<option value="${c.id}" ${rhFuncFiltro.cargo===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const statusOpts = RH_STATUS.map(s=>`<option value="${s}" ${rhFuncFiltro.status===s?"selected":""}>${s}</option>`).join("");
   const temFiltro = rhFuncFiltro.negocio||rhFuncFiltro.cargo||rhFuncFiltro.status||rhFuncFiltro.texto;
@@ -11071,7 +11079,7 @@ function viewRhFolha(){
     </tr>`;
   }).join("");
 
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${rhFolhaFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${rhFolhaFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = RH_STATUS_FOLHA.map(s=>`<option value="${s}" ${rhFolhaFiltro.status===s?"selected":""}>${s}</option>`).join("");
   const temFiltro = rhFolhaFiltro.competencia||rhFolhaFiltro.negocio||rhFolhaFiltro.status;
   return `
@@ -11178,7 +11186,7 @@ function modalRhFuncionario(existing){
   const isEdit = !!existing;
   const f = existing || { nome:"", cpf:"", rg:"", dataNascimento:"", genero:"Não informado", email:"", telefone:"", negocio: state.negocios[0]?.nome||"", cargoId:"", dataAdmissao:todayISO(), tipoContrato:"CLT", salario:"", status:"Ativo", pix:"", logradouro:"", numero:"", complemento:"", bairro:"", cidade:"", uf:"SP", cep:"", dataDemissao:"", tipoDesligamento:"", motivoDesligamento:"", observacoes:"" };
 
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const cargoOpts = state.rhCargos.map(c=>`<option value="${c.id}" ${f.cargoId===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const contratoOpts = RH_TIPOS_CONTRATO.map(t=>`<option value="${t}" ${f.tipoContrato===t?"selected":""}>${t}</option>`).join("");
   const generoOpts = RH_GENEROS.map(g=>`<option value="${g}" ${(f.genero||"Não informado")===g?"selected":""}>${g}</option>`).join("");
@@ -11297,7 +11305,7 @@ function modalRhFuncionario(existing){
 function modalRhCargo(existing){
   const isEdit = !!existing;
   const c = existing || { nome:"", negocio: state.negocios[0]?.nome||"", salarioBase:"", cargaHoraria:"", descricao:"" };
-  const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar cargo":"Novo cargo"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formRhCargo"><div class="modal-body">
@@ -11823,10 +11831,10 @@ function modalEstProduto(existing){
   // Criando de dentro de um negócio (ex: Provedor > Estoque)? Já vem com ele selecionado.
   const negPadraoProd = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "";
   const p = existing || { nome:"", codigoInterno:"", categoria:"ONU/ONT", modelo:"", fabricante:"", familia:"", peso:"", fornecedorId:"", negocio:negPadraoProd, unidade:"un", precoUnitario:"", estoqueMinimo:"", localizacao:"", observacoes:"" };
-  const fornOptions = state.estFornecedores.map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
+  const fornOptions = fornecedoresAZ().map(f => `<option value="${f.id}" ${p.fornecedorId===f.id?"selected":""}>${esc(f.nome)}</option>`).join("");
   const catOptions = EST_CATEGORIAS.map(c => `<option value="${c}" ${p.categoria===c?"selected":""}>${c}</option>`).join("");
   const unOptions = EST_UNIDADES.map(u => `<option value="${u}" ${p.unidade===u?"selected":""}>${u}</option>`).join("");
-  const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOptions = negociosAZ().map(n => `<option value="${esc(n.nome)}" ${p.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar produto":"Novo produto"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formEstProduto"><div class="modal-body">
@@ -11943,7 +11951,7 @@ function modalEstFornecedor(existing){
   // Criando de dentro de um negócio (ex: Provedor > Fornecedores)? Já vem com ele selecionado.
   const negPadrao = filtroNegocioTravado && cliFiltro.negocio ? cliFiltro.negocio : "";
   const f = existing || { nome:"", cnpj:"", contato:"", telefone:"", email:"", endereco:"", negocio:negPadrao, observacoes:"" };
-  const negOptions = state.negocios.map(n => `<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const negOptions = negociosAZ().map(n => `<option value="${esc(n.nome)}" ${f.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit?"Editar fornecedor":"Novo fornecedor"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formEstForn"><div class="modal-body">
@@ -12010,8 +12018,8 @@ function viewEstCompras(){
    MODAL — COMPRA (Nota Fiscal): itens + rateio de frete/despesas
 ========================================================================= */
 function modalEstCompra(){
-  const fornOptions = state.estFornecedores.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join("");
-  const negOptions = state.negocios.map(n=>`<option value="${esc(n.nome)}">${esc(n.nome)}</option>`).join("");
+  const fornOptions = fornecedoresAZ().map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join("");
+  const negOptions = negociosAZ().map(n=>`<option value="${esc(n.nome)}">${esc(n.nome)}</option>`).join("");
   const produtoOptionsHTML = () => `<option value="">— Selecione —</option>` + state.estProdutos.map(p=>`<option value="${p.id}">${esc(p.nome)}${p.peso?` (${p.peso}kg)`:""}</option>`).join("");
   const linhaItemHTML = () => `
     <tr>
