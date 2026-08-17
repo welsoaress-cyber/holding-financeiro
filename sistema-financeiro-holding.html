@@ -667,8 +667,12 @@
   .panel-head { padding: 10px 14px 8px; flex-wrap: wrap; gap: 6px; }
   .panel-title { font-size: 12.5px; }
 
-  /* Tabelas: encolhem e quebram linha pra caber sem scroll, mesmo no celular */
-  .panel-body table { font-size: 13px; }
+  /* Tabelas largas: rolagem LATERAL no celular (deslize com o dedo) em vez
+     de espremer as colunas até sumirem valor/status/botões da direita. */
+  .panel-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .panel-body table { font-size: 13px; width: max-content; min-width: 100%; }
+  .panel-body thead th, .panel-body tbody td { white-space: nowrap; }
+  .panel-body tbody td:not(:has(.row-actions)) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
   thead th { padding: 9px 8px 7px; font-size: 11px; }
   tbody td { padding: 9px 8px; }
 
@@ -1138,7 +1142,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.43";
+const APP_VERSION = "2.0.44";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
