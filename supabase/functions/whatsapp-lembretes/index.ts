@@ -86,8 +86,7 @@ function montarMensagem(
   nome: string,
   valorFormatado: string,
   dataFormatada: string,
-  diasRestantes: number,
-  modo: string
+  diasRestantes: number
 ): string {
   const assinatura = `\n💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco.`
 
@@ -113,15 +112,10 @@ function montarMensagem(
   }
 
   // ── Vence hoje ────────────────────────────────────────────────
-  if (diasRestantes === 0 && modo === 'manha') {
+  if (diasRestantes === 0) {
     return `${saudacao}, *${nome}*! 👋\n\n` +
       `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
       `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
-  }
-  if (diasRestantes === 0) {
-    return `${saudacao}, *${nome}*! 👋\n\n` +
-      `⚠️ Não identificamos o seu pagamento, com isso infelizmente seu acesso foi temporariamente bloqueado.` +
-      assinatura
   }
 
   // ── A vencer ──────────────────────────────────────────────────
@@ -149,21 +143,6 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  // Parâmetro "modo":
-  // "manha" → só verifica faturas que vencem HOJE (cron 9h)
-  // "noite" ou ausente → vencidos + vence hoje + 1/2/3 dias (cron 22h15)
-  let modo = 'noite'
-  try {
-    if (req.method === 'POST') {
-      const body = await req.json()
-      if (body?.modo === 'manha') modo = 'manha'
-    }
-  } catch {
-    // body vazio ou inválido — mantém 'noite'
-  }
-
-  console.log(`🕐 Modo: ${modo}`)
-
   const sb = createClient(SB_URL, SB_SECRET)
 
   // Data de hoje ajustada para Brasília (UTC-3)
@@ -187,10 +166,8 @@ serve(async (req) => {
   const alvo2diasAtras = addDias(agora, -2)
   const alvo3diasAtras = addDias(agora, -3)
 
-  // Modo manhã: só hoje | Modo noite: vencidos (3 dias atrás) + hoje + próximos 3 dias
-  const todasDatas = modo === 'manha'
-    ? [hoje]
-    : [alvo3diasAtras, alvo2diasAtras, alvoOntem, hoje, alvo1dia, alvo2dias, alvo3dias]
+  // Disparo único diário (9h): vencidos (até 3 dias atrás) + hoje + próximos 3 dias
+  const todasDatas = [alvo3diasAtras, alvo2diasAtras, alvoOntem, hoje, alvo1dia, alvo2dias, alvo3dias]
 
   console.log(`🗓️ Hoje: ${hoje} | Datas: ${todasDatas.join(', ')}`)
 
@@ -236,7 +213,6 @@ serve(async (req) => {
   if (todoLancamentos.length === 0) {
     return new Response(JSON.stringify({
       ok: true,
-      modo,
       enviados: 0,
       msg: 'Nenhuma fatura a notificar.'
     }), { status: 200 })
@@ -307,7 +283,7 @@ serve(async (req) => {
 
     console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
 
-    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, modo)
+    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes)
 
     const ok = await enviarWhatsApp(telefone, mensagem)
     if (ok) {
@@ -323,7 +299,6 @@ serve(async (req) => {
 
   const resumo = {
     ok: true,
-    modo,
     data: hoje,
     faturas_encontradas: todoLancamentos.length,
     enviados,
