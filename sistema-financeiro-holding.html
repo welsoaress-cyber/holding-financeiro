@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.62";
+const APP_VERSION = "2.0.63";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5342,6 +5342,9 @@ function viewLancamentos(){
   if(lancFilter.status === "Vencido"){
     const _hj = todayISO();
     list = list.filter(l => l.status !== "Pago" && !l.inativo && l.data < _hj && l.tipo !== "Transferência");
+  } else if(lancFilter.status === "A pagar"){
+    // Pseudo-status: qualquer lançamento ainda não pago (Provisionado + Agendado)
+    list = list.filter(l => l.status !== "Pago");
   } else if(lancFilter.status){
     // Filtro casa com o status MOSTRADO na tela: um "Provisionado" com data
     // passada aparece como "Vencido", então não deve entrar no filtro
@@ -5480,7 +5483,7 @@ function viewLancamentos(){
     </div>`;
   }).join("");
   const negOptions = (ehMaster() ? state.negocios : state.negocios.filter(n => podeVerNegocio(n.nome))).map(n => `<option value="${esc(n.nome)}" ${lancFilter.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
-  const statusOptions = [...STATUS_LANC, "Vencido"].map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
+  const statusOptions = [...STATUS_LANC, "A pagar", "Vencido"].map(s => `<option value="${s}" ${lancFilter.status===s?"selected":""}>${s}</option>`).join("");
   const contaOptions = contasAZ().map(c => `<option value="${c.id}" ${lancFilter.conta===c.id?"selected":""}>${contaLabel(c)}</option>`).join("");
   const cartaoOptions = state.cartoes.map(c => `<option value="${c.id}" ${lancFilter.cartao===c.id?"selected":""}>${esc(c.nome)}</option>`).join("");
   const categoriaOptions = Object.entries(CATEGORIA_FILTRO_LABELS).map(([val,label]) => `<option value="${val}" ${lancFilter.categoria===val?"selected":""}>${label}</option>`).join("");
@@ -8505,7 +8508,7 @@ function modalNotificacoes(){
         lancFilter = {negocio:"",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:"",clienteId:""};
         const hj = todayISO();
         if(notifAction.endsWith("-vencidas")){ lancFilter.status = "Vencido"; lancFilter.dataAte = hj; }
-        else if(notifAction.endsWith("-hoje")){ lancFilter.dataDe = hj; lancFilter.dataAte = hj; }
+        else if(notifAction.endsWith("-hoje")){ lancFilter.dataDe = hj; lancFilter.dataAte = hj; lancFilter.status = "A pagar"; }
         lancMesNav = { ano: new Date().getFullYear(), mes: new Date().getMonth() };
         state.view = notifAction.startsWith("notif-ir-receitas") ? "receitas" : "despesas";
         state.moduloAtivo = "financeiro"; renderApp();
