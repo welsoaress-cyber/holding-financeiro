@@ -15,19 +15,11 @@ const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
 // ----------------------------------------------------------------
 function normalizarTelefone(tel: string): string | null {
   if (!tel) return null
-  // Remove tudo que não é dígito
   const digits = tel.replace(/\D/g, '')
   if (digits.length === 0) return null
-
-  // Já tem código do país
   if (digits.startsWith('55') && digits.length >= 12) return digits
-
-  // DDD + número (10 ou 11 dígitos)
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
-
-  // Apenas número sem DDD (improvável, mas trata)
   if (digits.length === 8 || digits.length === 9) return null
-
   return digits
 }
 
@@ -37,7 +29,7 @@ function normalizarTelefone(tel: string): string | null {
 async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000) // 15s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000)
 
     const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
       method: 'POST',
@@ -45,10 +37,7 @@ async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean
         'apikey': EVO_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        number: numero,
-        text: mensagem,
-      }),
+      body: JSON.stringify({ number: numero, text: mensagem }),
       signal: controller.signal,
     })
     clearTimeout(timeout)
@@ -87,17 +76,79 @@ function formatarData(data: string): string {
 }
 
 // ----------------------------------------------------------------
+// Monta mensagem de acordo com a situação da fatura
+// ----------------------------------------------------------------
+function montarMensagem(
+  saudacao: string,
+  nome: string,
+  valorFormatado: string,
+  dataFormatada: string,
+  diasRestantes: number,
+  modo: string
+): string {
+  const assinatura = `\n💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco.`
+
+  // ── Vencidos ──────────────────────────────────────────────────
+  if (diasRestantes <= -3) {
+    const dias = Math.abs(diasRestantes)
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Sua fatura venceu *há ${dias} dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
+      `Seu acesso está temporariamente bloqueado.` +
+      assinatura
+  }
+  if (diasRestantes === -2) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Sua fatura venceu *há 2 dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
+      `Seu acesso está temporariamente bloqueado.` +
+      assinatura
+  }
+  if (diasRestantes === -1) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Sua fatura venceu *ontem* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
+      `Seu acesso está temporariamente bloqueado.` +
+      assinatura
+  }
+
+  // ── Vence hoje ────────────────────────────────────────────────
+  if (diasRestantes === 0 && modo === 'manha') {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
+      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+  }
+  if (diasRestantes === 0) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Não identificamos o seu pagamento, com isso infelizmente seu acesso foi temporariamente bloqueado.` +
+      assinatura
+  }
+
+  // ── A vencer ──────────────────────────────────────────────────
+  if (diasRestantes === 1) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `Sua fatura vence *amanhã* (${dataFormatada}).\n\n` +
+      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+  }
+  if (diasRestantes === 2) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `Sua fatura vence em *2 dias* (${dataFormatada}).\n\n` +
+      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+  }
+  // 3 dias
+  return `${saudacao}, *${nome}*! 👋\n\n` +
+    `Sua fatura vence em *3 dias* (${dataFormatada}).\n\n` +
+    `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+}
+
+// ----------------------------------------------------------------
 // Função principal
 // ----------------------------------------------------------------
 serve(async (req) => {
-  // Permite chamada manual via GET ou POST (para o cron usar POST)
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  // Lê parâmetro "modo" do body:
-  // "manha" → só envia lembrete "vence hoje" (cron das 9h)
-  // "noite" ou ausente → envia bloqueado (hoje) + lembretes 1/2/3 dias (cron das 22h15)
+  // Parâmetro "modo":
+  // "manha" → só verifica faturas que vencem HOJE (cron 9h)
+  // "noite" ou ausente → vencidos + vence hoje + 1/2/3 dias (cron 22h15)
   let modo = 'noite'
   try {
     if (req.method === 'POST') {
@@ -112,36 +163,45 @@ serve(async (req) => {
 
   const sb = createClient(SB_URL, SB_SECRET)
 
-  // Data de hoje (UTC ajustado para Brasil UTC-3)
+  // Data de hoje ajustada para Brasília (UTC-3)
   const agora = new Date()
   agora.setHours(agora.getHours() - 3)
   const hoje = agora.toISOString().split('T')[0]
 
-  // Datas alvo: hoje + 1, + 2 e + 3 dias
-  const data1dia = new Date(agora)
-  data1dia.setDate(data1dia.getDate() + 1)
-  const alvo1dia = data1dia.toISOString().split('T')[0]
+  // Datas futuras
+  const addDias = (base: Date, n: number): string => {
+    const d = new Date(base)
+    d.setDate(d.getDate() + n)
+    return d.toISOString().split('T')[0]
+  }
 
-  const data2dias = new Date(agora)
-  data2dias.setDate(data2dias.getDate() + 2)
-  const alvo2dias = data2dias.toISOString().split('T')[0]
+  const alvo1dia      = addDias(agora,  1)
+  const alvo2dias     = addDias(agora,  2)
+  const alvo3dias     = addDias(agora,  3)
 
-  const data3dias = new Date(agora)
-  data3dias.setDate(data3dias.getDate() + 3)
-  const alvo3dias = data3dias.toISOString().split('T')[0]
+  // Datas passadas (vencidos)
+  const alvoOntem     = addDias(agora, -1)
+  const alvo2diasAtras = addDias(agora, -2)
+  const alvo3diasAtras = addDias(agora, -3)
 
-  // Modo manhã: só verifica faturas que vencem HOJE
-  // Modo noite: verifica hoje (bloqueado) + 1, 2 e 3 dias (lembretes)
+  // Modo manhã: só hoje | Modo noite: vencidos (3 dias atrás) + hoje + próximos 3 dias
   const todasDatas = modo === 'manha'
     ? [hoje]
-    : [hoje, alvo1dia, alvo2dias, alvo3dias]
+    : [alvo3diasAtras, alvo2diasAtras, alvoOntem, hoje, alvo1dia, alvo2dias, alvo3dias]
 
-  console.log(`🗓️ Hoje: ${hoje} | Datas verificadas: ${todasDatas.join(', ')}`)
+  console.log(`🗓️ Hoje: ${hoje} | Datas: ${todasDatas.join(', ')}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas não pagas nas datas alvo
+  // Busca faturas não pagas
   // ----------------------------------------------------------------
-  const { data: lancamentos, error } = await sb
+  const baseQuery = (extraFilter: (q: ReturnType<typeof sb.from>) => typeof q) =>
+    sb.from('lancamentos')
+      .select('id, dados, user_id')
+      .eq('dados->>tipo', 'Receita')
+      .neq('dados->>status', 'Pago')
+      .in('dados->>data', todasDatas)
+
+  const { data: lancamentosAtivos, error } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
@@ -154,7 +214,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 })
   }
 
-  // Filtra também lançamentos onde inativo não está definido (null = ativo)
+  // Inclui lançamentos sem campo inativo definido (null = ativo)
   const { data: lancamentosNull } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
@@ -164,7 +224,7 @@ serve(async (req) => {
     .in('dados->>data', todasDatas)
 
   const todoLancamentos = [
-    ...(lancamentos || []),
+    ...(lancamentosAtivos || []),
     ...(lancamentosNull || []),
   ]
 
@@ -190,7 +250,7 @@ serve(async (req) => {
     const dataVenc = dados?.data || ''
 
     if (!clienteId) {
-      console.log(`⚠️ Lançamento ${lanc.id} sem clienteId — campos disponíveis: ${Object.keys(dados || {}).join(', ')}`)
+      console.log(`⚠️ Lançamento ${lanc.id} sem clienteId`)
       resultados.push({ cliente: '?', numero: '-', status: 'pulado', motivo: 'sem clienteId' })
       continue
     }
@@ -211,69 +271,41 @@ serve(async (req) => {
     const cliDados = cliente.dados as Record<string, string>
     const nome = cliDados?.nome || 'Cliente'
 
-    // Tenta whatsapp, celular ou telefone
     const telRaw = cliDados?.whatsapp || cliDados?.celular || cliDados?.telefone || ''
     const telefone = normalizarTelefone(telRaw)
 
     if (!telefone) {
-      const campos = Object.keys(cliDados || {}).join(', ')
-      console.log(`⚠️ ${nome}: telefone inválido (${telRaw}) — campos disponíveis: ${campos}`)
-      resultados.push({ cliente: nome, numero: telRaw || '-', status: 'pulado', motivo: `telefone vazio — campos: ${campos}` })
+      console.log(`⚠️ ${nome}: telefone inválido (${telRaw})`)
+      resultados.push({ cliente: nome, numero: telRaw || '-', status: 'pulado', motivo: 'sem telefone' })
       continue
     }
 
-    // Saudação baseada no horário de Brasília
+    // Saudação por horário de Brasília
     const hora = agora.getHours()
-    let saudacao: string
-    if (hora >= 6 && hora < 12) {
-      saudacao = 'Bom dia'
-    } else if (hora >= 12 && hora < 18) {
-      saudacao = 'Boa tarde'
-    } else {
-      saudacao = 'Boa noite'
-    }
+    const saudacao = hora >= 6 && hora < 12 ? 'Bom dia'
+                   : hora >= 12 && hora < 18 ? 'Boa tarde'
+                   : 'Boa noite'
 
-    // Monta mensagem personalizada
+    // Calcula quantos dias faltam (negativo = vencido)
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    const diasRestantes = dataVenc === hoje ? 0 : dataVenc === alvo1dia ? 1 : dataVenc === alvo2dias ? 2 : 3
+    const diasRestantes =
+      dataVenc === alvo3diasAtras ? -3 :
+      dataVenc === alvo2diasAtras ? -2 :
+      dataVenc === alvoOntem      ? -1 :
+      dataVenc === hoje           ?  0 :
+      dataVenc === alvo1dia       ?  1 :
+      dataVenc === alvo2dias      ?  2 : 3
 
-    let mensagem: string
-    if (diasRestantes === 0 && modo === 'manha') {
-      // Lembrete suave: vence hoje (enviado de manhã)
-      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
-        `💰 *${valorFormatado}*\n` +
-        `Pix: welsoaress@gmail.com\n\n` +
-        `Em caso de dúvidas, entre em contato conosco. 😊`
-    } else if (diasRestantes === 0) {
-      // Acesso bloqueado (enviado à noite, não pagou no dia)
-      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Não identificamos o seu pagamento, com isso infelizmente seu acesso foi temporariamente bloqueado.\n\n` +
-        `💰 *${valorFormatado}*\n` +
-        `Pix: welsoaress@gmail.com\n\n` +
-        `Em caso de dúvidas, entre em contato conosco.`
-    } else if (diasRestantes === 1) {
-      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Gostaria de lembrar que seu vencimento é *amanhã* (${dataFormatada}).\n\n` +
-        `💰 *${valorFormatado}*\n` +
-        `Pix: welsoaress@gmail.com\n\n` +
-        `Em caso de dúvidas, entre em contato conosco. 😊`
-    } else if (diasRestantes === 2) {
-      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Gostaria de lembrar que seu vencimento é em *2 dias* (${dataFormatada}).\n\n` +
-        `💰 *${valorFormatado}*\n` +
-        `Pix: welsoaress@gmail.com\n\n` +
-        `Em caso de dúvidas, entre em contato conosco. 😊`
-    } else {
-      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
-        `Gostaria de lembrar que seu vencimento é em *3 dias* (${dataFormatada}).\n\n` +
-        `💰 *${valorFormatado}*\n` +
-        `Pix: welsoaress@gmail.com\n\n` +
-        `Em caso de dúvidas, entre em contato conosco. 😊`
-    }
+    const tipoLog = diasRestantes < 0
+      ? `vencido há ${Math.abs(diasRestantes)} dia(s)`
+      : diasRestantes === 0 ? 'vence hoje'
+      : `vence em ${diasRestantes} dia(s)`
 
-    // Envia mensagem
+    console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
+
+    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, modo)
+
     const ok = await enviarWhatsApp(telefone, mensagem)
     if (ok) {
       enviados++
@@ -283,7 +315,6 @@ serve(async (req) => {
       resultados.push({ cliente: nome, numero: telefone, status: 'erro' })
     }
 
-    // Pequena pausa entre envios para não sobrecarregar
     await new Promise(r => setTimeout(r, 1000))
   }
 
