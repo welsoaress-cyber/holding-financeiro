@@ -9,6 +9,7 @@ const SB_SECRET     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const EVO_URL       = Deno.env.get('EVOLUTION_API_URL') || 'http://163.176.122.177:8080'
 const EVO_KEY       = Deno.env.get('EVOLUTION_API_KEY') || 'servnet-evo-2026'
 const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
+const MP_TOKEN      = Deno.env.get('MP_ACCESS_TOKEN') || ''
 
 // ----------------------------------------------------------------
 // Normaliza telefone para formato internacional (55XXXXXXXXXXX)
@@ -24,6 +25,53 @@ function normalizarTelefone(tel: string): string | null {
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
   if (digits.length === 8 || digits.length === 9) return null
   return digits
+}
+
+// ----------------------------------------------------------------
+// Gera link de pagamento Pix via Mercado Pago
+// Retorna a URL para o cliente pagar, ou null se falhar
+// ----------------------------------------------------------------
+async function gerarLinkPix(
+  valor: number,
+  nome: string,
+  descricao: string,
+  dataVencimento: string, // YYYY-MM-DD
+  idempotencyKey: string,
+): Promise<string | null> {
+  if (!MP_TOKEN) return null
+  try {
+    const expiracao = `${dataVencimento}T23:59:59.000-03:00`
+    const res = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_TOKEN}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({
+        transaction_amount: valor,
+        payment_method_id: 'pix',
+        description: descricao,
+        date_of_expiration: expiracao,
+        payer: {
+          email: 'cliente@servnet.net.br',
+          first_name: nome.split(' ')[0] || nome,
+        },
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error(`⚠️ MP Pix error para ${nome}:`, err)
+      return null
+    }
+    const json = await res.json()
+    const url = json?.point_of_interaction?.transaction_data?.ticket_url
+    if (url) console.log(`💳 Link Pix gerado para ${nome}: ${url}`)
+    return url || null
+  } catch (err) {
+    console.error(`⚠️ Exceção ao gerar Pix MP para ${nome}:`, err)
+    return null
+  }
 }
 
 // ----------------------------------------------------------------
@@ -116,9 +164,13 @@ function montarMensagem(
   nome: string,
   valorFormatado: string,
   dataFormatada: string,
-  diasRestantes: number
+  diasRestantes: number,
+  linkPix?: string | null,
 ): string {
-  const assinatura = `\n💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco.`
+  const pagamento = linkPix
+    ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+    : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
+  const assinatura = `\n${pagamento}\n\nEm caso de dúvidas, entre em contato conosco.`
 
   // ── Vencidos ──────────────────────────────────────────────────
   if (diasRestantes <= -3) {
@@ -143,26 +195,28 @@ function montarMensagem(
 
   // ── Vence hoje ────────────────────────────────────────────────
   if (diasRestantes === 0) {
+    const pag = linkPix
+      ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+      : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
 
   // ── A vencer ──────────────────────────────────────────────────
+  const pag = linkPix
+    ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+    : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
   if (diasRestantes === 1) {
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Sua fatura vence *amanhã* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Sua fatura vence *amanhã* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
   if (diasRestantes === 2) {
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Sua fatura vence em *2 dias* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Sua fatura vence em *2 dias* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
   // 3 dias
   return `${saudacao}, *${nome}*! 👋\n\n` +
-    `Sua fatura vence em *3 dias* (${dataFormatada}).\n\n` +
-    `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+    `Sua fatura vence em *3 dias* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
 }
 
 // ----------------------------------------------------------------
@@ -373,7 +427,18 @@ serve(async (req) => {
 
     console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
 
-    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes)
+    // Gera link Pix do Mercado Pago (só para faturas a vencer/hoje, não para vencidas)
+    let linkPix: string | null = null
+    if (diasRestantes >= 0 && MP_TOKEN) {
+      const valorNum = parseFloat(String(valor || '0'))
+      if (valorNum > 0) {
+        const idempKey = `servnet-${lanc.id}-${hoje}`
+        const descPix = `Mensalidade Servnet - ${nome}`
+        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey)
+      }
+    }
+
+    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, linkPix)
 
     const ok = await enviarWhatsApp(telefone, mensagem)
     if (ok) {
