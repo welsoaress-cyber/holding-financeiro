@@ -136,6 +136,20 @@ a{color:inherit;}
 .hist-link{font-size:0.75rem;color:var(--pool);text-decoration:none;}
 .hist-link:hover{text-decoration:underline;}
 
+/* banner WhatsApp */
+.wa-banner{display:flex;align-items:center;gap:1rem;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.35);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.wa-banner-icon{font-size:1.6rem;flex-shrink:0;}
+.wa-banner-body{flex:1;min-width:0;}
+.wa-banner-title{font-size:0.9rem;font-weight:700;color:#34D399;margin-bottom:0.2rem;}
+.wa-banner-sub{font-size:0.78rem;color:var(--text-2);}
+.wa-banner-form{display:flex;gap:0.5rem;margin-top:0.65rem;flex-wrap:wrap;}
+.wa-banner-input{flex:1;min-width:160px;padding:0.55rem 0.85rem;background:#091C2A;border:1px solid rgba(37,211,102,0.3);border-radius:6px;color:var(--text);font-size:0.9rem;outline:none;font-family:inherit;}
+.wa-banner-input:focus{border-color:#34D399;}
+.wa-banner-btn{padding:0.55rem 1.1rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.wa-banner-btn:disabled{opacity:0.5;cursor:default;}
+.wa-banner-ok{font-size:0.8rem;margin-top:0.4rem;display:none;}
+.wa-banner-ok.show{display:block;}
+
 /* support card */
 .sup-desc{font-size:0.9rem;color:var(--text-2);margin-bottom:1.25rem;line-height:1.7;}
 .wa-btn{display:inline-flex;align-items:center;gap:0.6rem;padding:0.8rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;}
@@ -435,6 +449,7 @@ a{color:inherit;}
     <div class="login-err" id="loginErr"></div>
     <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=5511954490001">Fale pelo WhatsApp</a></div>
   </div>
+  <div style="text-align:center;margin-top:1rem;font-size:0.68rem;color:#aaa;opacity:0.6;letter-spacing:0.04em;">v2026.08.17</div>
 </div>
 
 <!-- ===== DASHBOARD ===== -->
@@ -447,8 +462,24 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.8</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v4.1</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
+
+    <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
+    <div id="waBanner" style="display:none">
+      <div class="wa-banner">
+        <div class="wa-banner-icon">📱</div>
+        <div class="wa-banner-body">
+          <div class="wa-banner-title">Receba alertas de vencimento pelo WhatsApp!</div>
+          <div class="wa-banner-sub">Cadastre seu número e te avisamos antes do vencimento — de graça.</div>
+          <div class="wa-banner-form">
+            <input class="wa-banner-input" id="waBannerTel" type="tel" placeholder="(11) 99999-9999 ou +1..." maxlength="19" oninput="mascaraTelBanner(this)">
+            <button class="wa-banner-btn" id="waBannerBtn" onclick="salvarWhatsAppBanner()">Salvar</button>
+          </div>
+          <div class="wa-banner-ok" id="waBannerOk"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Status da Rede — fora do grid, largura total, só visível quando há problema -->
     <div class="card status-card" id="statusCard" style="margin-bottom:1.2rem">
@@ -716,6 +747,10 @@ async function enterDash(data){
   loadIndicacoes(data);
   preencherDados(data);
   loadStatus();
+  // Mostra banner de WhatsApp se cliente não tem telefone cadastrado
+  if(!data.telefone || data.telefone.trim()===''){
+    document.getElementById('waBanner').style.display='block';
+  }
 }
 
 function preencherDados(data){
@@ -767,6 +802,54 @@ function renderStatus(s){
     </div>`;
   document.getElementById('statusLbl').textContent = `📡 Status da Rede — ${m.label}`;
   card.classList.add('vis');
+}
+
+function mascaraTelBanner(el){
+  // Número internacional: começa com "+" — sem máscara brasileira
+  if(el.value.trim().startsWith('+')){
+    el.value='+'+el.value.replace(/[^\d ]/g,'').slice(0,18);
+    return;
+  }
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3');
+  else if(v.length>6) v=v.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');
+  else if(v.length>2) v=v.replace(/^(\d{2})(\d*)$/,'($1) $2');
+  el.value=v;
+}
+
+async function salvarWhatsAppBanner(){
+  const btn=document.getElementById('waBannerBtn');
+  const ok=document.getElementById('waBannerOk');
+  const telInp=(document.getElementById('waBannerTel')?.value||'').trim();
+  const telIntl=telInp.startsWith('+');
+  const telDigits=telInp.replace(/\D/g,'');
+  if(telDigits.length<10){ ok.textContent='⚠ Informe um número válido com DDD (ou +código do país).'; ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5'; return; }
+  const telRaw=telIntl?'+'+telDigits:telDigits;
+  btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_email:      session.email||'',
+      p_telefone:   telRaw
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao salvar.');
+    session.telefone=telRaw;
+    sessionStorage.setItem('sn_sess',JSON.stringify(session));
+    // Atualiza campo Meus Dados também
+    const dadosTel=document.getElementById('dadosTelefone');
+    if(dadosTel) dadosTel.value=telRaw;
+    ok.textContent='✅ WhatsApp cadastrado! Você receberá alertas a partir de agora.';
+    ok.className='wa-banner-ok show'; ok.style.color='#34D399';
+    btn.textContent='Salvo ✓';
+    // Esconde banner após 3 segundos
+    setTimeout(()=>{ document.getElementById('waBanner').style.display='none'; },3000);
+  }catch(e){
+    ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.');
+    ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5';
+    btn.disabled=false; btn.textContent='Salvar';
+  }
 }
 
 async function salvarDados(){
@@ -882,7 +965,7 @@ function renderContratos(){
         <div id="plan-${key}">${planoHTML(ct,i)}</div>
       </div>
       <div class="card glow">
-        <div class="card-lbl">Próxima Fatura${sufixo}</div>
+        <div class="card-lbl">Minhas Faturas${sufixo}</div>
         <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
       </div>
       <div class="card span2" id="fidelCard-${key}">
@@ -932,49 +1015,100 @@ function renderNextFatura(key, fat){
   const el=document.getElementById('inv-'+key);
   if(!el) return;
   el.classList.remove('loading-center');
-  // A cobrança automática provisiona 5 anos de mensalidades, então "próxima
-  // fatura" é a primeira em aberto a vencer de hoje em diante. Se todas as
-  // pendentes já venceram, mostra a mais antiga em atraso.
+
   const hoje=new Date().toISOString().slice(0,10);
   const abertas=fat.filter(f=>(f.status||'').toLowerCase()!=='pago')
                    .sort((a,b)=>a.vencimento<b.vencimento?-1:1);
-  const f=abertas.find(x=>x.vencimento>=hoje)||abertas[0]||fat[0];
-  if(!f){
+
+  if(!abertas.length){
     el.innerHTML=`<div class="muted">Nenhuma cobrança registrada ainda.<br>Seu primeiro boleto chegará em breve.</div>`;
     return;
   }
-  const st=f.status||'Pendente';
-  el.innerHTML=`
-    <div class="inv-month">${esc(fmtMesRef(f.mes_referencia)||'Fatura atual')}</div>
-    <div class="inv-due">Vencimento: ${fmtDate(f.vencimento)}</div>
-    <div class="inv-val">${fmtVal(f.valor)}</div>
-    <span class="badge ${badgeClass(st)}">${esc(st)}</span>
-    ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
-    ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
-    <br><button class="pdf-btn" id="pdfbtn-${esc(f.id)}" onclick="abrirSegundaVia('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}','${esc(f.vencimento||'')}',${st.toLowerCase()!=='pago'},this)">📄 2ª Via / Comprovante</button>
-    ${(()=>{
-      const pagas=fat.filter(x=>(x.status||'').toLowerCase()==='pago')
-                    .sort((a,b)=>b.vencimento<a.vencimento?-1:1)
-                    .slice(0,3);
-      if(!pagas.length) return '';
-      const rows=pagas.map(p=>`
-        <tr>
-          <td class="fh-mes">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</td>
-          <td class="fh-data">${fmtDate(p.vencimento)}</td>
-          <td class="fh-data">${p.data_pagamento?fmtDate(p.data_pagamento):'—'}</td>
-          <td class="fh-status"><span class="fh-pill emdia">✓ Pago</span></td>
-        </tr>`).join('');
-      return `<div class="fh-wrap" style="margin-top:1.25rem;">
-        <div class="fh-title">Últimos pagamentos</div>
-        <table class="fh-table">
-          <thead><tr>
-            <th>Mês</th><th>Vencimento</th><th>Pago em</th><th>Situação</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
+
+  // Separa vencidas (em atraso) das próximas
+  const vencidas = abertas.filter(x=>x.vencimento < hoje);
+  const proximas  = abertas.filter(x=>x.vencimento >= hoje);
+
+  let html = '';
+
+  // ── Faturas em atraso (vermelho) ──────────────────────────────
+  if(vencidas.length){
+    html += `<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.1rem;">
+      <div style="color:#FCA5A5;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.65rem;">
+        ⚠️ Em atraso — ${vencidas.length} fatura${vencidas.length>1?'s':''}
       </div>`;
-    })()}
-  `;
+    html += vencidas.map((v,i)=>{
+      const st=v.status||'Vencido';
+      return `
+      ${i>0?'<hr style="border:none;border-top:1px solid rgba(239,68,68,0.2);margin:0.6rem 0;">':''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+        <div>
+          <div style="font-size:0.88rem;font-weight:700;color:#FCA5A5;">${esc(fmtMesRef(v.mes_referencia)||v.vencimento)}</div>
+          <div style="font-size:0.75rem;color:rgba(252,165,165,0.65);margin-bottom:0.4rem;">Venceu em ${fmtDate(v.vencimento)}</div>
+          <button class="pdf-btn" style="width:auto;padding:0.3rem 0.65rem;font-size:0.75rem;" id="pdfbtn-${esc(v.id)}" onclick="abrirSegundaVia('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}','${esc(v.vencimento||'')}',true,this)">📄 2ª via do boleto</button>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:1.15rem;font-weight:800;color:#FCA5A5;">${fmtVal(v.valor)}</div>
+          <button class="pix-btn" style="margin-top:0.3rem;padding:0.35rem 0.85rem;font-size:0.8rem;" id="pixbtn-${esc(v.id)}" onclick="gerarPixPortal('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}',this)">⚡ Pagar</button>
+        </div>
+      </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  // ── Próxima fatura principal ──────────────────────────────────
+  if(proximas.length){
+    const f=proximas[0];
+    const st=f.status||'Pendente';
+    html += `
+      <div class="inv-month">${esc(fmtMesRef(f.mes_referencia)||'Fatura atual')}</div>
+      <div class="inv-due">Vencimento: ${fmtDate(f.vencimento)}</div>
+      <div class="inv-val">${fmtVal(f.valor)}</div>
+      <span class="badge ${badgeClass(st)}">${esc(st)}</span>
+      ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
+      ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
+      <br><button class="pdf-btn" id="pdfbtn-${esc(f.id)}" onclick="abrirSegundaVia('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}','${esc(f.vencimento||'')}',${st.toLowerCase()!=='pago'},this)">${st.toLowerCase()!=='pago'?'📄 2ª via do boleto':'🧾 Comprovante de pagamento'}</button>`;
+
+    // Demais faturas a vencer (a partir da 2ª)
+    if(proximas.length > 1){
+      html += `<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem;">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);font-weight:700;margin-bottom:0.5rem;">Próximas faturas</div>`;
+      html += proximas.slice(1,4).map(p=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:0.84rem;font-weight:600;">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</div>
+            <div style="font-size:0.73rem;color:var(--text-2);">Vence em ${fmtDate(p.vencimento)}</div>
+          </div>
+          <div style="font-size:0.95rem;font-weight:700;">${fmtVal(p.valor)}</div>
+        </div>`).join('');
+      html += '</div>';
+    }
+  }
+
+  // ── Últimos pagamentos ────────────────────────────────────────
+  const pagas=fat.filter(x=>(x.status||'').toLowerCase()==='pago')
+                  .sort((a,b)=>b.vencimento<a.vencimento?-1:1)
+                  .slice(0,3);
+  if(pagas.length){
+    const rows=pagas.map(p=>`
+      <tr>
+        <td class="fh-mes">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</td>
+        <td class="fh-data">${fmtDate(p.vencimento)}</td>
+        <td class="fh-data">${p.data_pagamento?fmtDate(p.data_pagamento):'—'}</td>
+        <td class="fh-status"><span class="fh-pill emdia">✓ Pago</span></td>
+      </tr>`).join('');
+    html += `<div class="fh-wrap" style="margin-top:1.25rem;">
+      <div class="fh-title">Últimos pagamentos</div>
+      <table class="fh-table">
+        <thead><tr>
+          <th>Mês</th><th>Vencimento</th><th>Pago em</th><th>Situação</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 // ===== FIDELIDADE =====
@@ -1736,7 +1870,7 @@ async function abrirSegundaVia(lancId, valor, mesRef, contratoId, vencimento, is
       imprimirFatura(lancId, valor, mesRef, vencimento, false, '');
     }
   } catch(e){ alert('Erro de conexão. Tente novamente.'); }
-  finally { btn.disabled = false; btn.textContent = '📄 2ª Via / Comprovante'; }
+  finally { btn.disabled = false; btn.textContent = isPendente ? '📄 2ª via do boleto' : '🧾 Comprovante de pagamento'; }
 }
 
 function imprimirFatura(lancId, valor, mesRef, vencimento, isPendente, pixStr){
