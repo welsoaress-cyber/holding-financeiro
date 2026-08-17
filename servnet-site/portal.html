@@ -462,7 +462,7 @@ a{color:inherit;}
     </div>
   </nav>
   <div class="dash-body">
-    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.9</span></div>
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v4.0</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
 
     <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
@@ -1065,7 +1065,7 @@ function renderNextFatura(key, fat){
     if(proximas.length > 1){
       html += `<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem;">
         <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);font-weight:700;margin-bottom:0.5rem;">Próximas faturas</div>`;
-      html += proximas.slice(1).map(p=>`
+      html += proximas.slice(1,4).map(p=>`
         <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-size:0.84rem;font-weight:600;">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</div>
