@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.40";
+const APP_VERSION = "2.0.41";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4378,9 +4378,9 @@ function viewVgExecutivo(){
     if(!vencidos.length) return `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">⏰ Inadimplência</div></div><div class="panel-body">${emptyState("Nada vencido. Tudo em dia! ")}</div></div>`;
     const hoje = new Date(hojeISO+"T00:00:00");
     const buckets = [
-      { label:"Até 30 dias", min:0, max:30, cor:"#D97706", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#D97706;margin-right:4px;'></span>" },
-      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:4px;'></span>" },
-      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)", ponto:"<span style='display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neg);margin-right:4px;'></span>" },
+      { label:"Até 30 dias", min:0, max:30, cor:"#D97706" },
+      { label:"31 a 60 dias", min:31, max:60, cor:"#EA580C" },
+      { label:"Mais de 60 dias", min:61, max:Infinity, cor:"var(--neg)" },
     ].map(b => {
       const itens = vencidos.filter(l => { const dias = Math.floor((hoje-new Date(l.data+"T00:00:00"))/86400000); return dias>=b.min && dias<=b.max; });
       return { ...b, count: itens.length, valor: itens.reduce((s,l)=>s+Number(l.valor),0) };
@@ -4389,7 +4389,9 @@ function viewVgExecutivo(){
     const maxBucket = Math.max(1, ...buckets.map(b=>b.valor));
     const barras = buckets.filter(b=>b.count>0).map(b => {
       const tip = `<div>${b.label}</div><div class="tip-val">${fmtBRL(b.valor)}</div><div>${b.count} título(s)</div>`;
-      return graficoBarraHTML(`${b.ponto} ${b.label}`, (b.valor/maxBucket)*100, b.cor, vv(b.valor), tip);
+      // A bolinha colorida vai no parâmetro corDot — HTML dentro do label
+      // era escapado e aparecia como texto cru na tela.
+      return graficoBarraHTML(b.label, (b.valor/maxBucket)*100, b.cor, vv(b.valor), tip, b.cor);
     }).join("");
     return `<div class="panel" style="margin:0; border-color:var(--neg);">
       <div class="panel-head"><div class="panel-title" style="color:var(--neg);">⏰ Inadimplência — ${vv(totalVencido)}</div></div>
