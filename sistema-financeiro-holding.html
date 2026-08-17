@@ -873,6 +873,15 @@
 .bar-row[data-tip] .bar-track { transition: filter .1s; }
 .bar-row[data-tip]:hover .bar-track { filter: brightness(0.94); }
 
+/* Padrão (desktop): tabela visível, cards escondidos. PRECISA vir ANTES da
+   media query abaixo — em CSS, com mesma especificidade, a última regra
+   vence; se isso ficasse depois, anulava o modo mobile e a tabela espremida
+   aparecia no celular no lugar dos cards. */
+.neg-perf-mobile { display: none; }
+.neg-perf-desktop { display: block; }
+.so-mobile { display: none; }
+.so-desktop { display: block; }
+
 /* Correct the two-column A Pagar/A Receber to single column on mobile */
 @media (max-width: 599px) {
   div[style*="grid-template-columns: repeat(2, minmax(240px"] {
@@ -894,11 +903,6 @@
   .so-desktop { display: none; }
   .so-mobile  { display: block; }
 }
-/* No desktop, esconde os cards e mostra só a tabela */
-.neg-perf-mobile { display: none; }
-.neg-perf-desktop { display: block; }
-.so-mobile { display: none; }
-.so-desktop { display: block; }
 
 /* ---- Touch-friendly adjustments (applies to all touch devices) ---- */
 @media (hover: none) {
@@ -1147,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.48";
+const APP_VERSION = "2.0.49";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
