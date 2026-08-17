@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.56";
+const APP_VERSION = "2.0.57";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2183,8 +2183,14 @@ async function renovarRecorrenciasFixas(){
     const limiteRenovacao = _addAnosISO(hoje, 2);        // renova quando restam < 2 anos
     const alvoHorizonte  = _addAnosISO(hoje, HORIZONTE_ANOS); // completa até 5 anos à frente
     const grupos = new Map();
+    // Trava anti-duplicata: nunca criar uma ocorrência (série+data) que já
+    // existe — proteção extra caso a carga venha incompleta por qualquer
+    // motivo (foi o que duplicou milhares de parcelas em 17/08/2026).
+    const chavesExistentes = new Set();
     for(const l of state.lancamentos){
-      if(l.recorrenciaTipo !== "recorrente" || !l.recorrenciaId) continue;
+      if(!l.recorrenciaId) continue;
+      chavesExistentes.add(l.recorrenciaId + "|" + l.data);
+      if(l.recorrenciaTipo !== "recorrente") continue;
       if(!grupos.has(l.recorrenciaId)) grupos.set(l.recorrenciaId, []);
       grupos.get(l.recorrenciaId).push(l);
     }
@@ -2199,11 +2205,16 @@ async function renovarRecorrenciasFixas(){
       let d = proximaData(ultimo.data, freq);
       let guarda = 0;
       while(d <= alvoHorizonte && guarda < 400){
-        idx++; guarda++;
-        const novo = { ...ultimo, id: uid("l"), data: d, status: "Provisionado", conciliado: false,
-          recorrenciaIndex: idx, recorrenciaTotal: idx, recorrenciaFreq: freq };
-        delete novo.dataPagamento; delete novo.inativo; delete novo.inativadoPor; delete novo.inativadoEm;
-        novos.push(novo);
+        guarda++;
+        const chave = ultimo.recorrenciaId + "|" + d;
+        if(!chavesExistentes.has(chave)){
+          idx++;
+          const novo = { ...ultimo, id: uid("l"), data: d, status: "Provisionado", conciliado: false,
+            recorrenciaIndex: idx, recorrenciaTotal: idx, recorrenciaFreq: freq };
+          delete novo.dataPagamento; delete novo.inativo; delete novo.inativadoPor; delete novo.inativadoEm;
+          novos.push(novo);
+          chavesExistentes.add(chave);
+        }
         d = proximaData(d, freq);
       }
     }
@@ -2215,6 +2226,37 @@ async function renovarRecorrenciasFixas(){
   }catch(e){ console.warn("[renovarRecorrencias]", e); }
 }
 
+// Busca TODAS as linhas de uma tabela, paginando em blocos de 1.000.
+// IMPORTANTE: o Data API do Supabase corta qualquer resposta no "Max rows"
+// (configuração do projeto). Sem paginar, uma tabela grande (ex: lancamentos
+// com milhares de mensalidades) chegava TRUNCADA — e a renovação automática
+// de recorrências, sem enxergar as parcelas futuras, recriava milhares de
+// duplicatas a cada carregamento (aconteceu em 17/08/2026: 5.445 → 95.422
+// linhas; limpeza feita por SQL). O .order("id") garante páginas estáveis.
+async function fetchTudo(tabela, colunas, dono){
+  const LOTE = 1000;
+  // 1º: quantas linhas existem de verdade (só a contagem, sem dados)
+  const { count, error: errCount } = await supabaseClient.from(tabela)
+    .select("id", { count: "exact", head: true }).eq("user_id", dono);
+  if(errCount) throw errCount;
+  const total = count ?? 0;
+  let todas = [];
+  let de = 0;
+  while(todas.length < total){
+    const { data, error } = await supabaseClient.from(tabela)
+      .select(colunas).eq("user_id", dono).order("id").range(de, de + LOTE - 1);
+    if(error) throw error;
+    if(!data || !data.length) break;
+    todas = todas.concat(data);
+    de += data.length; // avança pelo que veio de fato (se o servidor cortar o lote, continua do ponto certo)
+  }
+  if(todas.length < total){
+    // Melhor falhar alto do que trabalhar com dados pela metade.
+    throw new Error(`Carga incompleta de ${tabela}: ${todas.length}/${total} linhas.`);
+  }
+  return todas;
+}
+
 async function loadData(){
   if(!state.user) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
@@ -2222,14 +2264,12 @@ async function loadData(){
     // "contas"/"categorias"/"negocios" têm colunas soltas no banco (ver TABELAS_FLAT) —
     // precisam de select("*") e não têm coluna "dados" pra desempacotar.
     const dono = donoAtual();
-    const results = await Promise.all(TABELAS_CORE.map(t =>
-      TABELAS_FLAT.has(t)
-        ? supabaseClient.from(t).select("*").eq("user_id", dono)
-        : supabaseClient.from(t).select("id,dados").eq("user_id", dono)
+    const resultados = await Promise.all(TABELAS_CORE.map(t =>
+      fetchTudo(t, TABELAS_FLAT.has(t) ? "*" : "id,dados", dono)
+        .catch(e => { console.error(`[loadData:${t}]`, e); throw e; })
     ));
-    results.forEach((r, i) => { if(r.error){ console.error(`[loadData:${TABELAS_CORE[i]}]`, r.error); throw r.error; } });
     const [contas, lancamentos, ajustes, categorias, negocios, cartoes] = TABELAS_CORE.map((t, i) => {
-      const linhas = results[i].data || [];
+      const linhas = resultados[i];
       if(TABELAS_FLAT.has(t)){
         return linhas.map(({ user_id, updated_at, ...resto }) => resto); // já vem com id + colunas soltas
       }
@@ -2324,9 +2364,8 @@ async function loadData(){
     // Tabelas de estoque/clientes/RH — opcionais/novas
     for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
       try{
-        const { data, error } = await supabaseClient.from(tbl).select("id,dados").eq("user_id", dono);
-        if(error) throw error;
-        state[key] = (data || []).map(row => ({ id: row.id, ...row.dados }));
+        const linhas = await fetchTudo(tbl, "id,dados", dono);
+        state[key] = linhas.map(row => ({ id: row.id, ...row.dados }));
       }catch(e){
         console.warn(`[loadData:${tbl}] tabela ainda não existe — rode o SQL de criação.`, e.message||e);
         state[key] = [];
