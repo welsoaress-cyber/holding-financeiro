@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.22";
+const APP_VERSION = "2.0.23";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1956,7 +1956,7 @@ async function tratarErroDeSessao(e){
   authMode = "login";
   renderApp();
 }
-// Migração única: remove negócios legados que não fazem mais parte da estrutura
+// Migração: remove negócios legados e todos os lançamentos vinculados a eles
 const _NEGOCIOS_LEGADOS = ["Precautec","Casa","Servsul","Porto Odonto","Pessoal"];
 async function _migrarNegociosLegados(){
   if(localStorage.getItem("mig_neg_v1")) return;
@@ -1968,6 +1968,19 @@ async function _migrarNegociosLegados(){
     }
     localStorage.setItem("mig_neg_v1", "1");
   }catch(e){ console.warn("[migrarNegociosLegados]", e); }
+}
+async function _migrarLancamentosLegados(){
+  if(localStorage.getItem("mig_lanc_v1")) return;
+  try{
+    const ids = state.lancamentos
+      .filter(l => _NEGOCIOS_LEGADOS.includes(l.negocio))
+      .map(l => l.id);
+    if(ids.length){
+      await deleteRows("lancamentos", ids);
+      state.lancamentos = state.lancamentos.filter(l => !ids.includes(l.id));
+    }
+    localStorage.setItem("mig_lanc_v1", "1");
+  }catch(e){ console.warn("[migrarLancamentosLegados]", e); }
 }
 
 async function loadData(){
@@ -1998,6 +2011,7 @@ async function loadData(){
     state.cartoes = cartoes;
     state.storageOK = true;
     await _migrarNegociosLegados();
+    await _migrarLancamentosLegados();
 
     // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
     // não trava o resto do app — só fica sem perfis (só o Master existe) até você
