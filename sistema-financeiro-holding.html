@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.31";
+const APP_VERSION = "2.0.32";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2103,6 +2103,64 @@ async function _migrarComprasVendasLegado(){
   }catch(e){ console.warn("[migrarComprasVendasLegado]", e); }
 }
 
+// ---- Recorrência SEM FIM (despesa e receita fixas) ----
+// Lançamentos fixos são gravados como ocorrências futuras (5 anos pra frente).
+// A cada login, séries recorrentes com menos de 2 anos de estrada pela frente
+// ganham novas ocorrências até completar o horizonte de novo — ou seja, uma
+// despesa/receita fixa nunca "acaba" sozinha. Só para quando você excluir
+// os lançamentos futuros da série (aí ela fica marcada como encerrada).
+function _addAnosISO(iso, anos){ const d = new Date(iso + "T12:00:00"); d.setFullYear(d.getFullYear() + anos); return d.toISOString().slice(0,10); }
+function _inferirFreqDaSerie(lista){
+  if(lista.length < 2) return "Mensal";
+  const a = new Date(lista[lista.length-2].data + "T12:00:00");
+  const b = new Date(lista[lista.length-1].data + "T12:00:00");
+  const dias = Math.round((b - a) / 86400000);
+  if(dias <= 9)   return "Semanal";
+  if(dias <= 20)  return "Quinzenal";
+  if(dias <= 45)  return "Mensal";
+  if(dias <= 75)  return "Bimestral";
+  if(dias <= 135) return "Trimestral";
+  if(dias <= 270) return "Semestral";
+  return "Anual";
+}
+async function renovarRecorrenciasFixas(){
+  try{
+    const hoje = todayISO();
+    const limiteRenovacao = _addAnosISO(hoje, 2);        // renova quando restam < 2 anos
+    const alvoHorizonte  = _addAnosISO(hoje, HORIZONTE_ANOS); // completa até 5 anos à frente
+    const grupos = new Map();
+    for(const l of state.lancamentos){
+      if(l.recorrenciaTipo !== "recorrente" || !l.recorrenciaId) continue;
+      if(!grupos.has(l.recorrenciaId)) grupos.set(l.recorrenciaId, []);
+      grupos.get(l.recorrenciaId).push(l);
+    }
+    const novos = [];
+    for(const lista of grupos.values()){
+      if(lista.some(l => l.recorrenciaEncerrada)) continue; // encerrada de propósito pelo usuário
+      lista.sort((a,b) => String(a.data).localeCompare(String(b.data)));
+      const ultimo = lista[lista.length-1];
+      if(!ultimo.data || ultimo.data > limiteRenovacao) continue; // ainda tem estrada suficiente
+      const freq = ultimo.recorrenciaFreq || _inferirFreqDaSerie(lista);
+      let idx = Math.max(0, ...lista.map(l => Number(l.recorrenciaIndex)||0));
+      let d = proximaData(ultimo.data, freq);
+      let guarda = 0;
+      while(d <= alvoHorizonte && guarda < 400){
+        idx++; guarda++;
+        const novo = { ...ultimo, id: uid("l"), data: d, status: "Provisionado", conciliado: false,
+          recorrenciaIndex: idx, recorrenciaTotal: idx, recorrenciaFreq: freq };
+        delete novo.dataPagamento; delete novo.inativo; delete novo.inativadoPor; delete novo.inativadoEm;
+        novos.push(novo);
+        d = proximaData(d, freq);
+      }
+    }
+    if(novos.length){
+      state.lancamentos.push(...novos);
+      await saveRows("lancamentos", novos);
+      console.log(`[renovarRecorrencias] ${novos.length} ocorrência(s) futura(s) criadas automaticamente.`);
+    }
+  }catch(e){ console.warn("[renovarRecorrencias]", e); }
+}
+
 async function loadData(){
   if(!state.user) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
@@ -2258,6 +2316,7 @@ async function loadData(){
       await saveCategorias();
       await saveNegocios();
     }
+    await renovarRecorrenciasFixas();
     if(autoBaixarAgendados().length) await saveLancamentos();
   }catch(e){
     state.storageOK = false;
@@ -5201,26 +5260,9 @@ function viewLancamentos(){
     list = list.filter(l => l.data >= primDia && l.data <= ultDia);
   }
 
-  // ---- Gráfico Receita vs Despesa do que está filtrado agora — só na aba
-  // "Todos os Lançamentos" (nas abas Receitas/Despesas um dos dois lados
-  // sempre ia ficar zerado, então não faz sentido comparar). Soma tudo que
-  // está sendo mostrado na tabela abaixo (qualquer status), não só o pago —
-  // por isso o rótulo deixa claro que é "do que está filtrado", não "realizado".
-  const graficoRecDespFiltroHTML = state.view === "lancamentos" ? (() => {
-    const ativos = list.filter(l => !l.inativo);
-    const totalReceita = ativos.filter(l=>l.tipo==="Receita").reduce((s,l)=>s+Number(l.valor),0);
-    const totalDespesa = ativos.filter(l=>l.tipo==="Despesa").reduce((s,l)=>s+Number(l.valor),0);
-    if(totalReceita<=0 && totalDespesa<=0) return "";
-    const max = Math.max(totalReceita, totalDespesa, 1);
-    const resultado = totalReceita - totalDespesa;
-    return `<div class="panel" style="margin-bottom:16px;"><div class="panel-body" style="padding-top:16px;">
-      ${graficoBarraHTML("Receita", (totalReceita/max)*100, "var(--pos)", fmtBRL(totalReceita), `<div>Receita</div><div class="tip-val">${fmtBRL(totalReceita)}</div>`)}
-      ${graficoBarraHTML("Despesa", (totalDespesa/max)*100, "var(--neg)", fmtBRL(totalDespesa), `<div>Despesa</div><div class="tip-val">${fmtBRL(totalDespesa)}</div>`)}
-      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
-        Resultado do que está filtrado: <strong style="color:${resultado>=0?'var(--pos)':'var(--neg)'};">${fmtBRL(resultado)}</strong> · qualquer status (Pago, Provisionado, Agendado) — não é só o realizado.
-      </div>
-    </div></div>`;
-  })() : "";
+  // Gráfico Receita vs Despesa removido a pedido do usuário (v2.0.32) —
+  // a tabela abaixo já mostra tudo, o painel só ocupava espaço.
+  const graficoRecDespFiltroHTML = "";
 
   lancVisibleIds = list.map(l => l.id);
   // limpa da selecao qualquer id que nao existe mais (ja excluido em outra tela, etc.)
@@ -5799,7 +5841,7 @@ function modalLancamento(existing, tipoPreset, prefill){
       <div id="repeticaoRecorrenteWrap" class="field" style="display:none;">
         <label>Repetir a cada</label>
         <select name="frequencia">${PERIODOS.map(f=>`<option value="${f}" ${f==='Mensal'?'selected':''}>${f}</option>`).join("")}</select>
-        <div class="field-help">É fixo, então não pedimos por quanto tempo — geramos automaticamente os próximos ${HORIZONTE_ANOS} anos de lançamentos.</div>
+        <div class="field-help">É fixo, então não pedimos por quanto tempo — não tem data pra acabar: o sistema vai renovando as ocorrências futuras sozinho. Pra encerrar, exclua o lançamento e escolha "este e os futuros".</div>
       </div>
       <div id="repeticaoParceladoWrap" class="field" style="display:none;">
         <label>Número de parcelas</label>
@@ -6122,6 +6164,9 @@ function modalLancamento(existing, tipoPreset, prefill){
       lancadoPor: isEdit ? existing.lancadoPor : (state.perfilAtivo ? state.perfilAtivo.nome : "Master"),
       editadoPor: isEdit ? (state.perfilAtivo ? state.perfilAtivo.nome : "Master") : undefined
     };
+    // Pagamento de técnico (botão $ na lista de Técnicos): guarda o id do
+    // técnico no lançamento pra tela conseguir mostrar "já lançado este mês".
+    if(!isEdit && prefill && prefill.tecnicoId) data.tecnicoId = prefill.tecnicoId;
     if(tipo === "Transferência" && data.contaOrigem === data.contaDestino){
       showToast("Conta de origem e destino não podem ser iguais.", "error"); return;
     }
@@ -6185,12 +6230,12 @@ function modalLancamento(existing, tipoPreset, prefill){
         descricao: descricaoOcorrencia,
         status: i===0 ? data.status : "Provisionado",
         conciliado: i===0 ? data.conciliado : false,
-        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd
+        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd, recorrenciaFreq: freq
       });
       dataOcorrencia = proximaData(dataOcorrencia, freq);
     }
     await saveLancamentos(); closeModal(); renderApp();
-    showToast(isParcelado ? `${qtd} parcelas criadas.` : `Lançamento fixo criado (próximos ${HORIZONTE_ANOS} anos já agendados).`);
+    showToast(isParcelado ? `${qtd} parcelas criadas.` : "Lançamento fixo criado — se renova sozinho, sem data pra acabar.");
   });
 }
 
@@ -6718,7 +6763,7 @@ function modalCompraCartao(cartaoIdPreset){
       <div id="compraRecorrenteWrap" class="field" style="display:none;">
         <label>Repetir a cada</label>
         <select name="frequencia"><option value="Mensal" selected>Mês</option><option value="Bimestral">Bimestre</option><option value="Trimestral">Trimestre</option><option value="Semestral">Semestre</option><option value="Anual">Ano</option></select>
-        <div class="field-help">É fixo, então geramos automaticamente os próximos ${HORIZONTE_ANOS} anos de faturas.</div>
+        <div class="field-help">É fixo — não tem data pra acabar: o sistema renova as faturas futuras sozinho. Pra encerrar, exclua e escolha "este e os futuros".</div>
       </div>
       <div class="field-help" style="margin-top:4px;">Toda compra entra como "Provisionado" — dá baixa manual ( em Lançamentos) quando pagar a fatura.</div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">Adicionar compra</button></div></form>
@@ -6858,12 +6903,12 @@ function modalCompraCartao(cartaoIdPreset){
         id: uid("l"), ...base,
         valor: valoresParcelas ? valoresParcelas[i] : valor,
         descricao: descricaoOcorrencia, data: dataVencOcorrencia,
-        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd
+        recorrenciaId: grupoId, recorrenciaTipo: repeticao, recorrenciaIndex: i+1, recorrenciaTotal: qtd, recorrenciaFreq: freq
       });
       dataVencOcorrencia = proximaData(dataVencOcorrencia, freq);
     }
     await saveLancamentos(); closeModal(); renderApp();
-    showToast(isParcelado ? `${qtd} parcelas criadas.` : `Compra fixa criada (próximos ${HORIZONTE_ANOS} anos já agendados).`);
+    showToast(isParcelado ? `${qtd} parcelas criadas.` : "Compra fixa criada — se renova sozinha, sem data pra acabar.");
   });
 }
 
@@ -7457,6 +7502,13 @@ document.addEventListener("click", async e => {
     const ids = afetados.map(x => x.id);
     state.lancamentos = state.lancamentos.filter(x => !ids.includes(x.id));
     await deleteRows("lancamentos", ids);
+    // Série recorrente: marca o que sobrou como encerrada — senão a renovação
+    // automática (recorrência sem fim) recriaria os futuros no próximo login.
+    const restantes = state.lancamentos.filter(x => x.recorrenciaId === l.recorrenciaId);
+    if(l.recorrenciaTipo === "recorrente" && restantes.length){
+      restantes.forEach(x => { x.recorrenciaEncerrada = true; });
+      await saveRows("lancamentos", restantes);
+    }
     closeModal(); renderApp(); showToast(`${afetados.length} lançamento(s) excluído(s).`);
   }
   else if(action === "del-lanc-todos"){
@@ -7710,6 +7762,9 @@ document.addEventListener("click", async e => {
       const idsCancelar = state.lancamentos.filter(l => l.recorrenciaId === ct.cobrancaRecorrenciaId && l.status !== "Pago").map(l=>l.id);
       state.lancamentos = state.lancamentos.filter(l => !(l.recorrenciaId === ct.cobrancaRecorrenciaId && l.status !== "Pago"));
       if(idsCancelar.length) await deleteRows("lancamentos", idsCancelar);
+      // As mensalidades já pagas ficam — marca a série como encerrada pra
+      // renovação automática não recriar cobranças de contrato removido.
+      state.lancamentos.forEach(l => { if(l.recorrenciaId === ct.cobrancaRecorrenciaId) l.recorrenciaEncerrada = true; });
       await saveLancamentos();
     }
     c.contratos = (c.contratos||[]).filter(x=>x.id!==el.dataset.cid);
@@ -7773,6 +7828,7 @@ document.addEventListener("click", async e => {
     modalLancamento(null, "Despesa", {
       negocio: t.negocio || "", valor: Number(t.valorMensal)||0,
       descricao: `Pagamento técnico ${t.nome}`, categoria: catExistente ? catExistente.nome : "",
+      tecnicoId: t.id,
     });
   }
   else if(action === "tec-del"){
@@ -9353,6 +9409,10 @@ async function sincronizarCobrancaContrato(cliente, contrato){
     const idsCancelar = state.lancamentos.filter(l => l.recorrenciaId === contrato.cobrancaRecorrenciaId && l.status !== "Pago").map(l=>l.id);
     state.lancamentos = state.lancamentos.filter(l => !(l.recorrenciaId === contrato.cobrancaRecorrenciaId && l.status !== "Pago"));
     if(idsCancelar.length) await deleteRows("lancamentos", idsCancelar);
+    // Mensalidades pagas da série antiga ficam — encerra a série pra
+    // renovação automática não recriar cobranças da configuração antiga.
+    state.lancamentos.forEach(l => { if(l.recorrenciaId === contrato.cobrancaRecorrenciaId) l.recorrenciaEncerrada = true; });
+    await saveLancamentos();
     contrato.cobrancaRecorrenciaId = "";
   }
   if(!contrato.cobrancaAutomatica || !contrato.planoId || !contrato.diaVencimento) return;
@@ -9370,7 +9430,7 @@ async function sincronizarCobrancaContrato(cliente, contrato){
       contaOrigem: state.contas.find(x=>x.ativa!==false)?.id||"", contaDestino: "", valor: Number(plano.valor),
       descricao: `Mensalidade ${plano.nome} — ${cliNome(cliente)}`, status: "Provisionado", conciliado: false,
       lancadoPor: state.perfilAtivo?state.perfilAtivo.nome:"Master", clienteId: cliente.id, contratoId: contrato.id,
-      recorrenciaId: grupoId, recorrenciaTipo: "recorrente", recorrenciaIndex: i+1, recorrenciaTotal: qtd,
+      recorrenciaId: grupoId, recorrenciaTipo: "recorrente", recorrenciaIndex: i+1, recorrenciaTotal: qtd, recorrenciaFreq: "Mensal",
     });
     dataOcorrencia = proximaData(dataOcorrencia, "Mensal");
   }
@@ -9411,7 +9471,7 @@ function modalCliContrato(clienteId, existing){
       </div>
       <div class="field"><label>Observações do contrato</label><textarea name="observacoes" rows="2" style="resize:none;" placeholder="Detalhes do plano, SLA, observações...">${esc(ct.observacoes||"")}</textarea></div>
       <div class="field"><label class="checkbox-row"><input type="checkbox" name="cobrancaAutomatica" ${ct.cobrancaAutomatica?"checked":""}> Gerar cobrança mensal automática em Contas a Receber</label>
-        <div class="field-help">Ligado por padrão em todo contrato novo, em qualquer negócio — cria a mensalidade (valor do plano, no dia de vencimento) já provisionada em Contas a Receber, pros próximos ${HORIZONTE_ANOS} anos. Precisa de Plano e Dia de vencimento preenchidos pra funcionar. Desmarque só se esse contrato específico não deve gerar cobrança (cortesia, teste, etc.). Reajustar valor/plano/vencimento aqui recria as ocorrências futuras — as já pagas ficam intactas.</div>
+        <div class="field-help">Ligado por padrão em todo contrato novo, em qualquer negócio — cria a mensalidade (valor do plano, no dia de vencimento) já provisionada em Contas a Receber, sem data pra acabar — o sistema renova as ocorrências futuras sozinho enquanto o contrato existir. Precisa de Plano e Dia de vencimento preenchidos pra funcionar. Desmarque só se esse contrato específico não deve gerar cobrança (cortesia, teste, etc.). Reajustar valor/plano/vencimento aqui recria as ocorrências futuras — as já pagas ficam intactas.</div>
       </div>
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit?"Salvar":"Vincular"}</button></div></form>
   `);
@@ -9916,20 +9976,27 @@ async function osConcluir(osId){
 function viewCliTecnicos(){
   let lista = [...state.cliTecnicos].sort((a,b) => a.nome.localeCompare(b.nome));
   if(cliFiltro.negocio) lista = lista.filter(t => t.negocio === cliFiltro.negocio);
+  const mesAtualTec = todayISO().slice(0,7);
   const rows = lista.map(t => {
     const negTag = t.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(t.negocio)} 14%, white); color:${negocioCor(t.negocio)};"><span class="tag-dot" style="background:${negocioCor(t.negocio)}"></span>${esc(t.negocio)}</span>` : "—";
     const qtdChamados = state.cliChamados.filter(c => c.tecnicoId === t.id && c.status!=="Concluído" && c.status!=="Cancelado").length;
+    // "Já lancei este mês?" — procura despesa do mês atual ligada a esse técnico
+    // (pelo tecnicoId gravado no lançamento, ou pela descrição padrão do botão $)
+    const jaLancadoMes = state.lancamentos.some(l =>
+      l.tipo === "Despesa" && !l.inativo && String(l.data||"").startsWith(mesAtualTec) &&
+      (l.tecnicoId === t.id || (l.descricao||"").toLowerCase().startsWith(`pagamento técnico ${t.nome}`.toLowerCase()))
+    );
     return `<tr>
       ${bulkCheckboxCellHTML("cli_tecnicos", t.id)}
       <td style="font-weight:600;">${esc(t.nome)}${t.ativo===false?` <span style="color:var(--ink-4); font-weight:400;">(inativo)</span>`:""}</td>
       <td>${esc(t.telefone||"—")}</td>
       <td>${negTag}</td>
       <td style="color:var(--ink-3);">${esc(t.diasAtendimento||"—")}</td>
-      ${podeVerValores()?`<td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}</td>`:""}
+      ${podeVerValores()?`<td class="num">${t.valorMensal ? fmtBRL(t.valorMensal) : "—"}${Number(t.valorMensal)>0 ? `<div style="font-size:10.5px; font-weight:600; white-space:nowrap; color:${jaLancadoMes?"var(--pos)":"var(--warn)"};">${jaLancadoMes?"✓ lançado este mês":"não lançado este mês"}</div>` : ""}</td>`:""}
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">↗</button>
-        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg); font-weight:700;">$</button>` : ""}
+        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="${jaLancadoMes?"Pagamento deste mês JÁ lançado — clique só se quiser lançar outro":"Lançar pagamento em Contas a Pagar"}" style="color:${jaLancadoMes?"var(--pos)":"var(--neg)"}; font-weight:700;">${jaLancadoMes?"✓":"$"}</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">×</button>
       </div></td>
