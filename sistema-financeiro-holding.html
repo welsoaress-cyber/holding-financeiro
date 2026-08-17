@@ -890,10 +890,15 @@
   /* Tabela de performance por negócio: esconde tabela, mostra cards no mobile */
   .neg-perf-desktop { display: none; }
   .neg-perf-mobile  { display: block; }
+  /* Genérico: tabela no desktop, cards empilhados no mobile */
+  .so-desktop { display: none; }
+  .so-mobile  { display: block; }
 }
 /* No desktop, esconde os cards e mostra só a tabela */
 .neg-perf-mobile { display: none; }
 .neg-perf-desktop { display: block; }
+.so-mobile { display: none; }
+.so-desktop { display: block; }
 
 /* ---- Touch-friendly adjustments (applies to all touch devices) ---- */
 @media (hover: none) {
@@ -1142,7 +1147,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.44";
+const APP_VERSION = "2.0.45";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8980,6 +8985,34 @@ function viewCliLista(){
       </div></td>
     </tr>`;
   }).join("");
+
+  // Versão mobile: um cartão por cliente, com TUDO empilhado (sem rolagem
+  // lateral) — telefone, cidade, cadastro, mensalidade e status à vista.
+  const cardsCli = lista.map(c => {
+    const stEfetivo = clienteStatusEfetivo(c);
+    const statusClass = statusClassCli(stEfetivo);
+    const mrr = (c.contratos||[]).filter(ct=>ct.status==="Ativo").reduce((s,ct)=>{const p=cliPlanoById(ct.planoId); return s+(p?Number(p.valor||0):0);},0);
+    const dias = clienteDiasAtraso(c);
+    const negocios = (c.contratos||[]).map(ct=>`<span class="status-pill status-agendado" style="margin:1px;">${esc(ct.negocio)}</span>`).join("");
+    return `<div style="padding:12px 2px; border-bottom:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="font-weight:700; color:var(--accent); font-size:14px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-action="cli-detalhe" data-id="${c.id}">${esc(cliNome(c))}</div>
+        <div style="flex-shrink:0; white-space:nowrap;"><span class="status-pill ${statusClass}">${esc(stEfetivo)}</span>${dias>0?` <span style="font-size:10px;color:var(--ink-3);">${dias}d</span>`:""}</div>
+      </div>
+      ${negocios?`<div style="margin:6px 0 2px; display:flex; flex-wrap:wrap; gap:3px;">${negocios}</div>`:""}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; font-size:12.5px; color:var(--ink-2); margin-top:7px;">
+        <div><span style="color:var(--ink-4); font-size:10.5px; display:block;">Telefone</span>${esc(c.telefone||"—")}</div>
+        <div><span style="color:var(--ink-4); font-size:10.5px; display:block;">Cidade</span>${esc(c.cidade||"—")}${c.uf?`/${c.uf}`:""}</div>
+        <div><span style="color:var(--ink-4); font-size:10.5px; display:block;">Cadastro</span>${fmtDateBR(c.dataCadastro)}</div>
+        ${podeVerValores()?`<div><span style="color:var(--ink-4); font-size:10.5px; display:block;">Mensalidade (MRR)</span><strong style="font-variant-numeric:tabular-nums; color:${mrr>0?'var(--pos)':'var(--ink-3)'};">${mrr>0?fmtBRL(mrr):"—"}</strong></div>`:""}
+        ${c.cpfCnpj?`<div><span style="color:var(--ink-4); font-size:10.5px; display:block;">CPF/CNPJ</span>${esc(c.cpfCnpj)}</div>`:""}
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn btn-ghost btn-sm" style="flex:1;" data-action="cli-detalhe" data-id="${c.id}">✎ Ver / Editar</button>
+        ${seModulo("clientes","excluir",`<button class="btn btn-ghost btn-sm" style="color:var(--neg);" data-action="cli-del" data-id="${c.id}">×</button>`)}
+      </div>
+    </div>`;
+  }).join("");
   const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS_FILTRO.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
   const planoOpts = planosAZ().map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
@@ -8998,8 +9031,11 @@ function viewCliLista(){
         ${temFiltro?`<button class="btn btn-ghost btn-sm" data-action="cli-filtro-clear">Limpar</button>`:""}
       </div>
       <div class="panel-body">
-        <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th>${podeVerValores()?`<th class="num">MRR</th>`:""}<th>Status</th><th></th></tr></thead>
-        <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
+        <div class="so-desktop">
+          <table><thead><tr>${bulkCheckboxHeaderHTML("cli_clientes", lista.map(c=>c.id))}<th>Nome</th><th>CPF/CNPJ</th><th>Negócios</th><th>Cidade</th><th>Telefone</th><th>Cadastro</th>${podeVerValores()?`<th class="num">MRR</th>`:""}<th>Status</th><th></th></tr></thead>
+          <tbody>${rows||`<tr><td colspan="10">${emptyState("Nenhum cliente encontrado.")}</td></tr>`}</tbody></table>
+        </div>
+        <div class="so-mobile">${cardsCli || emptyState("Nenhum cliente encontrado.")}</div>
       </div>
     </div>
   `;
