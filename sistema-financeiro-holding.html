@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.36";
+const APP_VERSION = "2.0.37";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8958,7 +8958,7 @@ function viewCliLista(){
   return `
     <div class="page-header">
       <div><div class="page-title">${filtroNegocioTravado && cliFiltro.negocio ? `Clientes — ${esc(cliFiltro.negocio)}` : "Todos os Clientes"}</div><div class="page-sub">${(() => { const totalBase = filtroNegocioTravado && cliFiltro.negocio ? cliAtivos().filter(c=>(c.contratos||[]).some(ct=>ct.negocio===cliFiltro.negocio)).length : cliAtivos().length; return lista.length === totalBase ? `${lista.length} cliente(s)` : `${lista.length} de ${totalBase} cliente(s)`; })()}</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}</div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_clientes", {semLimparTudo:true})}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="cli-novo">+ Novo cliente</button>`)}</div>
     </div>
     <div class="panel">
       <div class="filter-bar">
