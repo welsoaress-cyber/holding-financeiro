@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.61";
+const APP_VERSION = "2.0.62";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2285,17 +2285,28 @@ async function loadData(){
     await _migrarNegociosLegados();
     await _migrarLancamentosLegados();
 
-    // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
-    // não trava o resto do app — só fica sem perfis (só o Master existe) até você
-    // rodar o SQL de criação da tabela no Supabase.
-    try{
-      const { data, error } = await supabaseClient.from("perfis").select("id,dados").eq("user_id", dono);
-      if(error) throw error;
-      state.perfis = (data || []).map(row => ({ id: row.id, ...row.dados }));
-    }catch(e){
-      console.warn("[loadData:perfis] tabela 'perfis' ainda não existe no Supabase — rode o SQL de criação.", e.message || e);
-      state.perfis = [];
-    }
+    // Carrega perfis + config + tabelas opcionais + leads + logs em paralelo.
+    // Antes eram ~22 requests sequenciais (~7s); agora são todos simultâneos (~1s).
+    const TBLS_OPC = [
+      ["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],
+      ["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],
+      ["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],["compras_vendas","comprasVendas"],
+      ["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"],
+    ];
+    const sbQ = (q) => Promise.resolve(q).catch(e => ({ data: null, error: e }));
+    const [rPerfis, rCfgMstr, rCfgMsg, rCfgNegSub, rLeads, rLogs, ...rOpc] = await Promise.all([
+      sbQ(supabaseClient.from("perfis").select("id,dados").eq("user_id", dono)),
+      sbQ(supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", "master").maybeSingle()),
+      sbQ(supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `msgmodelo_${dono}`).maybeSingle()),
+      sbQ(supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `negsubmenus_${dono}`).maybeSingle()),
+      sbQ(supabaseClient.from("site_leads").select("id,dados,created_at").order("created_at", {ascending:false})),
+      sbQ(supabaseClient.from("logs_auditoria").select("*").eq("user_id", dono).order("criado_em", { ascending:false }).limit(500)),
+      ...TBLS_OPC.map(([tbl]) => fetchTudo(tbl, "id,dados", dono).catch(() => [])),
+    ]);
+
+    // Perfis (multiusuário) — opcional/nova tabela
+    if(rPerfis.error) console.warn("[loadData:perfis] tabela 'perfis' ainda não existe no Supabase — rode o SQL de criação.", rPerfis.error?.message || rPerfis.error);
+    state.perfis = rPerfis.error ? [] : (rPerfis.data || []).map(row => ({ id: row.id, ...row.dados }));
 
     // Login individual da equipe (Modo Membro): a pessoa já entrou com o
     // e-mail/senha PRÓPRIOS dela (não escolhe o perfil numa lista) — acha o
@@ -2323,80 +2334,45 @@ async function loadData(){
       state.view = "welcome";
     }
 
-    // "config" guarda a senha do Master. Tambem opcional/nova: se nao existir, usa a senha padrao.
-    try{
-      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", "master").maybeSingle();
-      if(error) throw error;
-      state.senhaMaster = (data && data.dados && data.dados.senhaMaster) || SENHA_MASTER_PADRAO;
-    }catch(e){
-      console.warn("[loadData:config] tabela 'config' ainda não existe no Supabase — usando senha padrão do Master.", e.message || e);
-      state.senhaMaster = SENHA_MASTER_PADRAO;
-    }
+    // Config: senha Master
+    if(rCfgMstr.error) console.warn("[loadData:config] tabela 'config' ainda não existe no Supabase — usando senha padrão do Master.", rCfgMstr.error?.message || rCfgMstr.error);
+    state.senhaMaster = (!rCfgMstr.error && rCfgMstr.data?.dados?.senhaMaster) || SENHA_MASTER_PADRAO;
 
-    // Modelos de mensagem (WhatsApp) — mesma tabela "config", linha própria
-    // (id prefixado com o user_id do DONO — Master — pra não colidir com a
-    // de outro Master nessa mesma tabela compartilhada, e pra quem entra
-    // como Membro ler/usar os mesmos modelos do Master, não uma lista vazia).
-    try{
-      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `msgmodelo_${dono}`).maybeSingle();
-      if(error) throw error;
-      state.cliMensagensModelo = (data && data.dados && data.dados.lista) || [];
-    }catch(e){
-      console.warn("[loadData:config-mensagens] ainda não existe — começando sem modelos salvos.", e.message || e);
-      state.cliMensagensModelo = [];
-    }
+    // Config: modelos de mensagem (WhatsApp)
+    if(rCfgMsg.error) console.warn("[loadData:config-mensagens] ainda não existe — começando sem modelos salvos.", rCfgMsg.error?.message || rCfgMsg.error);
+    state.cliMensagensModelo = (!rCfgMsg.error && rCfgMsg.data?.dados?.lista) || [];
     if(state.cliMensagensModelo.length === 0){
       state.cliMensagensModelo = [{ id: uid("msg"), nome: "Lembrete de vencimento", texto: MENSAGEM_COBRANCA_PADRAO }];
       await saveMensagensModelo();
     }
 
-    // Submenus escolhidos por negócio (definidos no cadastro do negócio) —
-    // mesma tabela "config", linha própria por Master.
-    try{
-      const { data, error } = await supabaseClient.from("config").select("id,dados").eq("user_id", dono).eq("id", `negsubmenus_${dono}`).maybeSingle();
-      if(error) throw error;
-      state.negocioSubmenusCfg = (data && data.dados && data.dados.porNegocio) || {};
-    }catch(e){
-      console.warn("[loadData:config-negsubmenus] ainda não configurado — usando menus padrão.", e.message || e);
-      state.negocioSubmenusCfg = {};
-    }
+    // Config: submenus por negócio
+    if(rCfgNegSub.error) console.warn("[loadData:config-negsubmenus] ainda não configurado — usando menus padrão.", rCfgNegSub.error?.message || rCfgNegSub.error);
+    state.negocioSubmenusCfg = (!rCfgNegSub.error && rCfgNegSub.data?.dados?.porNegocio) || {};
 
-    // Tabelas de estoque/clientes/RH — opcionais/novas
-    for(const [tbl, key] of [["est_produtos","estProdutos"],["est_movimentos","estMovimentos"],["est_fornecedores","estFornecedores"],["est_compras","estCompras"],["cli_clientes","cliClientes"],["cli_planos","cliPlanos"],["cli_orcamentos","cliOrcamentos"],["cli_os","cliOS"],["cli_tecnicos","cliTecnicos"],["cli_chamados","cliChamados"],["cli_mensagens_enviadas","cliMensagensEnviadas"],["compras_vendas","comprasVendas"],["rh_funcionarios","rhFuncionarios"],["rh_cargos","rhCargos"],["rh_folha","rhFolha"],["rh_ferias","rhFerias"]]){
-      try{
-        const linhas = await fetchTudo(tbl, "id,dados", dono);
-        state[key] = linhas.map(row => ({ id: row.id, ...row.dados }));
-      }catch(e){
-        console.warn(`[loadData:${tbl}] tabela ainda não existe — rode o SQL de criação.`, e.message||e);
+    // Tabelas opcionais (estoque / clientes / RH / comprasVendas)
+    for(let i = 0; i < TBLS_OPC.length; i++){
+      const [tbl, key] = TBLS_OPC[i];
+      const linhas = rOpc[i];
+      if(!Array.isArray(linhas)){
+        console.warn(`[loadData:${tbl}] tabela ainda não existe — rode o SQL de criação.`);
         state[key] = [];
+      } else {
+        state[key] = linhas.map(row => ({ id: row.id, ...row.dados }));
       }
     }
+
     await _migrarResiduosLegados();
     await _migrarComprasVendasLegado();
     await _migrarVincularPlanosSemVinculo();
 
-    // Leads do site (tabela sem user_id — lê todos os registros autenticados)
-    try{
-      const { data: leadsData, error: leadsErr } = await supabaseClient
-        .from("site_leads").select("id,dados,created_at").order("created_at", {ascending:false});
-      if(leadsErr) throw leadsErr;
-      state.siteLeads = (leadsData||[]).map(r=>({ id:r.id, created_at:r.created_at, ...(r.dados||{}) }));
-    }catch(e){
-      console.warn("[loadData:site_leads] tabela ainda não existe — rode setup-leads.sql.", e.message||e);
-      state.siteLeads = [];
-    }
+    // Leads do site
+    if(rLeads.error) console.warn("[loadData:site_leads] tabela ainda não existe — rode setup-leads.sql.", rLeads.error?.message || rLeads.error);
+    state.siteLeads = rLeads.error ? [] : (rLeads.data||[]).map(r=>({ id:r.id, created_at:r.created_at, ...(r.dados||{}) }));
 
-    // Logs de auditoria — só os mais recentes (a tabela só cresce, não faz
-    // sentido carregar tudo desde sempre a cada login).
-    try{
-      const { data, error } = await supabaseClient.from("logs_auditoria").select("*")
-        .eq("user_id", dono).order("criado_em", { ascending:false }).limit(500);
-      if(error) throw error;
-      state.logsAuditoria = data || [];
-    }catch(e){
-      console.warn("[loadData:logs_auditoria] tabela ainda não existe — rode o SQL de criação.", e.message||e);
-      state.logsAuditoria = [];
-    }
+    // Logs de auditoria — só os mais recentes
+    if(rLogs.error) console.warn("[loadData:logs_auditoria] tabela ainda não existe — rode o SQL de criação.", rLogs.error?.message || rLogs.error);
+    state.logsAuditoria = rLogs.error ? [] : (rLogs.data || []);
 
     // A partir daqui, qualquer save/delete já compara contra o estado atual
     // (snapshot) pra gerar o log — inclusive o próprio seed/auto-baixa logo
