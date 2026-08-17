@@ -95,11 +95,25 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // Lê parâmetro "modo" do body:
+  // "manha" → só envia lembrete "vence hoje" (cron das 9h)
+  // "noite" ou ausente → envia bloqueado (hoje) + lembretes 1/2/3 dias (cron das 22h15)
+  let modo = 'noite'
+  try {
+    if (req.method === 'POST') {
+      const body = await req.json()
+      if (body?.modo === 'manha') modo = 'manha'
+    }
+  } catch {
+    // body vazio ou inválido — mantém 'noite'
+  }
+
+  console.log(`🕐 Modo: ${modo}`)
+
   const sb = createClient(SB_URL, SB_SECRET)
 
-  // Data de hoje (UTC, mas ajustado para Brasil UTC-3)
+  // Data de hoje (UTC ajustado para Brasil UTC-3)
   const agora = new Date()
-  // Ajusta para horário de Brasília
   agora.setHours(agora.getHours() - 3)
   const hoje = agora.toISOString().split('T')[0]
 
@@ -116,13 +130,17 @@ serve(async (req) => {
   data3dias.setDate(data3dias.getDate() + 3)
   const alvo3dias = data3dias.toISOString().split('T')[0]
 
-  console.log(`🗓️ Hoje: ${hoje} | Verificando vencimentos: ${hoje}, ${alvo1dia}, ${alvo2dias} e ${alvo3dias}`)
+  // Modo manhã: só verifica faturas que vencem HOJE
+  // Modo noite: verifica hoje (bloqueado) + 1, 2 e 3 dias (lembretes)
+  const todasDatas = modo === 'manha'
+    ? [hoje]
+    : [hoje, alvo1dia, alvo2dias, alvo3dias]
+
+  console.log(`🗓️ Hoje: ${hoje} | Datas verificadas: ${todasDatas.join(', ')}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas vencidas HOJE (acesso bloqueado) + vencendo em 1, 2 ou 3 dias
+  // Busca faturas não pagas nas datas alvo
   // ----------------------------------------------------------------
-  const todasDatas = [hoje, alvo1dia, alvo2dias, alvo3dias]
-
   const { data: lancamentos, error } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
@@ -136,7 +154,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 })
   }
 
-  // Filtra também lançamentos onde inativo não está definido (null/undefined = ativo)
+  // Filtra também lançamentos onde inativo não está definido (null = ativo)
   const { data: lancamentosNull } = await sb
     .from('lancamentos')
     .select('id, dados, user_id')
@@ -155,8 +173,9 @@ serve(async (req) => {
   if (todoLancamentos.length === 0) {
     return new Response(JSON.stringify({
       ok: true,
+      modo,
       enviados: 0,
-      msg: 'Nenhuma fatura a notificar hoje.'
+      msg: 'Nenhuma fatura a notificar.'
     }), { status: 200 })
   }
 
@@ -169,7 +188,6 @@ serve(async (req) => {
     const clienteId = dados?.clienteId
     const valor = dados?.valor || dados?.valorTotal || dados?.valorFatura || '0'
     const dataVenc = dados?.data || ''
-    const descricao = dados?.descricao || 'Mensalidade Internet'
 
     if (!clienteId) {
       console.log(`⚠️ Lançamento ${lanc.id} sem clienteId — campos disponíveis: ${Object.keys(dados || {}).join(', ')}`)
@@ -193,8 +211,8 @@ serve(async (req) => {
     const cliDados = cliente.dados as Record<string, string>
     const nome = cliDados?.nome || 'Cliente'
 
-    // Tenta celular primeiro, depois telefone
-    const telRaw = cliDados?.celular || cliDados?.telefone || cliDados?.whatsapp || ''
+    // Tenta whatsapp, celular ou telefone
+    const telRaw = cliDados?.whatsapp || cliDados?.celular || cliDados?.telefone || ''
     const telefone = normalizarTelefone(telRaw)
 
     if (!telefone) {
@@ -221,7 +239,15 @@ serve(async (req) => {
     const diasRestantes = dataVenc === hoje ? 0 : dataVenc === alvo1dia ? 1 : dataVenc === alvo2dias ? 2 : 3
 
     let mensagem: string
-    if (diasRestantes === 0) {
+    if (diasRestantes === 0 && modo === 'manha') {
+      // Lembrete suave: vence hoje (enviado de manhã)
+      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
+        `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
+        `💰 *${valorFormatado}*\n` +
+        `Pix: welsoaress@gmail.com\n\n` +
+        `Em caso de dúvidas, entre em contato conosco. 😊`
+    } else if (diasRestantes === 0) {
+      // Acesso bloqueado (enviado à noite, não pagou no dia)
       mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
         `Não identificamos o seu pagamento, com isso infelizmente seu acesso foi temporariamente bloqueado.\n\n` +
         `💰 *${valorFormatado}*\n` +
@@ -263,6 +289,7 @@ serve(async (req) => {
 
   const resumo = {
     ok: true,
+    modo,
     data: hoje,
     faturas_encontradas: todoLancamentos.length,
     enviados,
