@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.38";
+const APP_VERSION = "2.0.39";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -9425,10 +9425,16 @@ function modalCliCliente(existing){
       data.contratos = negociosMarcados.map(n=>({ id:uid("ct"), negocio:n.nome, planoId:fd.get(`plano_${n.id}`)||"", status:"Ativo", dataContrato:todayISO() }));
     }
 
+    // Só pula pro detalhe do cliente se o usuário já estava na área de
+    // Clientes — editando a partir de outra tela (ex: Contas a Receber,
+    // clicando no nome do cliente no lançamento), volta pra onde estava.
+    const estavaEmClientes = String(state.view||"").startsWith("cli_");
     if(isEdit){
       await saveCliClientes(); closeModal();
-      cliViewDetalheId = existing.id;
-      state.view = "cli_detalhe";
+      if(estavaEmClientes){
+        cliViewDetalheId = existing.id;
+        state.view = "cli_detalhe";
+      }
       renderApp(); showToast("Cliente atualizado.");
     }else{
       // Verificar duplicata antes de cadastrar
@@ -9450,8 +9456,10 @@ function modalCliCliente(existing){
       const novoId = uid("cli");
       state.cliClientes.push({ id:novoId, ...data });
       await saveCliClientes(); closeModal();
-      cliViewDetalheId = novoId;
-      state.view = "cli_detalhe";
+      if(estavaEmClientes){
+        cliViewDetalheId = novoId;
+        state.view = "cli_detalhe";
+      }
       renderApp(); showToast("Cliente cadastrado.");
     }
   });
