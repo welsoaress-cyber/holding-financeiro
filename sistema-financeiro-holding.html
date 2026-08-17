@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.29";
+const APP_VERSION = "2.0.30";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1364,7 +1364,7 @@ function bulkCheckboxCellHTML(contexto, id){
   const sel = bulkSet(contexto);
   return `<td style="text-align:center;"><input type="checkbox" data-action="bulk-toggle" data-contexto="${contexto}" data-id="${id}" ${sel.has(id)?"checked":""}></td>`;
 }
-function bulkBarraAcoesHTML(contexto){
+function bulkBarraAcoesHTML(contexto, opts){
   const cfg = BULK_CONTEXTOS[contexto];
   if(!cfg) return "";
   const sel = bulkSet(contexto);
@@ -1372,9 +1372,10 @@ function bulkBarraAcoesHTML(contexto){
   // senão o array completo — o count e a ação ficam consistentes.
   const listaEfetiva = cfg.filtro ? cfg.filtro() : state[cfg.arr];
   const total = listaEfetiva.length;
+  const semLimparTudo = opts && opts.semLimparTudo;
   return `<div style="display:flex; gap:8px;">
     ${sel.size > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-excluir" data-contexto="${contexto}">× Excluir selecionados (${sel.size})</button>` : ""}
-    ${ehMaster() && total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga todos os itens visíveis desta lista"> Limpar tudo (${total})</button>` : ""}
+    ${!semLimparTudo && ehMaster() && total > 0 ? `<button class="btn btn-ghost" style="color:var(--neg); border-color:var(--neg-bg);" data-action="bulk-limpar-tudo" data-contexto="${contexto}" title="Apaga todos os itens visíveis desta lista"> Limpar tudo (${total})</button>` : ""}
   </div>`;
 }
 async function bulkExecutarExclusao(contexto, ids){
@@ -11847,7 +11848,7 @@ function viewEstCompras(){
   return `
     <div class="page-header">
       <div><div class="page-title">Compras (Notas Fiscais)</div><div class="page-sub">Lançar uma compra rateia frete/seguro/outras despesas entre os itens e atualiza o Custo Médio Real do estoque.</div></div>
-      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_compras")}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button>`)}</div>
+      <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("est_compras", {semLimparTudo:true})}${seModulo("estoque","criar",`<button class="btn btn-primary" data-action="est-nova-compra">+ Nova compra</button>`)}</div>
     </div>
     <div class="panel"><div class="panel-body">
       <table><thead><tr>${bulkCheckboxHeaderHTML("est_compras", lista.map(c=>c.id))}<th>Nota</th><th>Data</th><th>Fornecedor</th><th>Negócio</th><th style="text-align:center;">Itens</th><th class="num">Despesas</th><th class="num">Total</th><th></th></tr></thead>
