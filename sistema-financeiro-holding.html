@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.53";
+const APP_VERSION = "2.0.54";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8208,7 +8208,10 @@ function _cmpAZ(a,b){ return String(a||"").localeCompare(String(b||""), "pt-BR",
 function cliAtivosAZ(){ return [...cliAtivos()].sort((a,b)=>_cmpAZ(cliNome(a), cliNome(b))); }
 function negociosAZ(){ return [...state.negocios].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
 function categoriasAZ(){ return [...state.categorias].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
-function planosAZ(){ return [...state.cliPlanos].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
+function planosAZ(){ return [...state.cliPlanos].sort((a,b)=>_cmpAZ(a.nome, b.nome) || (Number(a.valor||0) - Number(b.valor||0))); }
+// Rótulo do plano pros dropdowns: "Mensal R$ 30,00" — vários planos têm o
+// mesmo nome, só o valor diferencia (valor escondido de quem não pode ver).
+function planoLabel(p){ return `${p.nome}${podeVerValores() && Number(p.valor)>0 ? ` ${fmtBRL(p.valor)}` : ""}`; }
 function contasAZ(){ return [...state.contas].sort((a,b)=>_cmpAZ(contaLabel(a), contaLabel(b))); }
 function fornecedoresAZ(){ return [...state.estFornecedores].sort((a,b)=>_cmpAZ(a.nome, b.nome)); }
 function cliPlanoById(id){ return state.cliPlanos.find(p => p.id === id); }
@@ -9138,7 +9141,7 @@ function viewCliLista(){
   }).join("");
   const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   const statusOpts = CLI_STATUS_FILTRO.map(s=>`<option value="${s}" ${cliFiltro.status===s?"selected":""}>${s}</option>`).join("");
-  const planoOpts = planosAZ().map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const planoOpts = planosAZ().map(p=>`<option value="${p.id}" ${cliFiltro.plano===p.id?"selected":""}>${esc(planoLabel(p))}</option>`).join("");
   const temFiltro = cliFiltro.negocio||cliFiltro.status||cliFiltro.plano||cliFiltro.texto;
   return `
     <div class="page-header">
