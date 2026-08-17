@@ -198,6 +198,17 @@ serve(async (req) => {
       continue
     }
 
+    // Saudação baseada no horário de Brasília
+    const hora = agora.getHours()
+    let saudacao: string
+    if (hora >= 6 && hora < 12) {
+      saudacao = 'Bom dia'
+    } else if (hora >= 12 && hora < 18) {
+      saudacao = 'Boa tarde'
+    } else {
+      saudacao = 'Boa noite'
+    }
+
     // Monta mensagem personalizada
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
@@ -205,18 +216,16 @@ serve(async (req) => {
 
     let mensagem: string
     if (diasRestantes === 1) {
-      mensagem = `⚠️ *${nome}*, sua fatura da *Servnet* vence *amanhã* (${dataFormatada})!\n\n` +
-        `💰 Valor: *${valorFormatado}*\n` +
-        `📋 ${descricao}\n\n` +
-        `Acesse o portal para pagar via Pix:\n` +
-        `🔗 https://servnet.netlify.app\n\n` +
+      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
+        `Gostaria de lembrar que seu vencimento é *amanhã* (${dataFormatada}).\n\n` +
+        `💰 *${valorFormatado}*\n` +
+        `Pix: welsoaress@gmail.com\n\n` +
         `Em caso de dúvidas, entre em contato conosco. 😊`
     } else {
-      mensagem = `📅 *${nome}*, sua fatura da *Servnet* vence em *3 dias* (${dataFormatada})!\n\n` +
-        `💰 Valor: *${valorFormatado}*\n` +
-        `📋 ${descricao}\n\n` +
-        `Acesse o portal para pagar via Pix:\n` +
-        `🔗 https://servnet.netlify.app\n\n` +
+      mensagem = `${saudacao}, *${nome}*! 👋\n\n` +
+        `Gostaria de lembrar que seu vencimento vence em *3 dias* (${dataFormatada}).\n\n` +
+        `💰 *${valorFormatado}*\n` +
+        `Pix: welsoaress@gmail.com\n\n` +
         `Em caso de dúvidas, entre em contato conosco. 😊`
     }
 
