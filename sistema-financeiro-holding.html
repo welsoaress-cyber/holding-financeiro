@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.21";
+const APP_VERSION = "2.0.22";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1505,15 +1505,9 @@ function perfilById(id){ return state.perfis.find(p => p.id === id); }
 const MODULOS_GRANULARES = ["visao","financeiro","estoque","clientes","rh","comprasvendas","cadastro"];
 
 // Sub-menus padrão usados por TODOS os negócios (modal de permissões + sidebar)
-// Submenu padrão — negócios genéricos (Casa, Pessoal, Transporte, etc.)
+// Submenu padrão — todos os negócios seguem o modelo completo (Provedor)
+// Novo negócio criado em Cadastro recebe automaticamente este menu completo
 const NEGOCIOS_SUBMENUS_PADRAO = [
-  { view:"lancamentos",    label:"Lançamentos" },
-  { view:"receitas",       label:"Contas a Receber" },
-  { view:"despesas",       label:"Contas a Pagar" },
-  { view:"transferencias", label:"Transferências" },
-];
-// Submenu completo — negócios com CRM (clientes, chamados, planos, técnicos)
-const NEGOCIOS_SUBMENUS_CRM = [
   { view:"cli_lista",      label:"Clientes" },
   { view:"lancamentos",    label:"Lançamentos" },
   { view:"receitas",       label:"Contas a Receber" },
@@ -1523,9 +1517,9 @@ const NEGOCIOS_SUBMENUS_CRM = [
   { view:"cli_planos",     label:"Planos" },
   { view:"cli_tecnicos",   label:"Técnicos" },
 ];
-// Sub-menus por negócio — negócios não listados aqui recebem NEGOCIOS_SUBMENUS_PADRAO
+// Sub-menus por negócio — negócios não listados recebem NEGOCIOS_SUBMENUS_PADRAO
 const NEGOCIOS_SUBMENUS = {
-  "Provedor": NEGOCIOS_SUBMENUS_CRM,
+  "Provedor": NEGOCIOS_SUBMENUS_PADRAO,
 };
 function modulosPadrao(){
   return {
@@ -1962,6 +1956,20 @@ async function tratarErroDeSessao(e){
   authMode = "login";
   renderApp();
 }
+// Migração única: remove negócios legados que não fazem mais parte da estrutura
+const _NEGOCIOS_LEGADOS = ["Precautec","Casa","Servsul","Porto Odonto","Pessoal"];
+async function _migrarNegociosLegados(){
+  if(localStorage.getItem("mig_neg_v1")) return;
+  try{
+    const alvo = state.negocios.filter(n => _NEGOCIOS_LEGADOS.includes(n.nome));
+    for(const n of alvo){
+      state.negocios = state.negocios.filter(x => x.id !== n.id);
+      await deleteRow("negocios", n.id);
+    }
+    localStorage.setItem("mig_neg_v1", "1");
+  }catch(e){ console.warn("[migrarNegociosLegados]", e); }
+}
+
 async function loadData(){
   if(!state.user) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
@@ -1989,6 +1997,7 @@ async function loadData(){
     state.negocios = negocios;
     state.cartoes = cartoes;
     state.storageOK = true;
+    await _migrarNegociosLegados();
 
     // "perfis" (multiusuário) é tabela opcional/nova: se ainda não existir no banco,
     // não trava o resto do app — só fica sem perfis (só o Master existe) até você
@@ -2903,6 +2912,9 @@ let sidebarGruposAbertos = new Set();
 // em que você já está: toda vez que tentava fechar, "contém a view atual"
 // forçava aberto de novo, e o clique não tinha efeito nenhum visível).
 let sidebarGruposFechados = new Set();
+// Ordem customizada de negócios (drag-and-drop → salvo em localStorage)
+let negociosOrdem = (()=>{ try{ return JSON.parse(localStorage.getItem("neg_ordem")||"null"); }catch(e){ return null; } })();
+let _dragNegId = null;
 // renderApp() sempre desenha o menu lateral já fechado (é uma trava de
 // segurança pra nunca deixar a rolagem travada — ver comentário lá dentro).
 // Isso é ótimo pra navegação de verdade, mas expandir/fechar um grupo do
@@ -2911,17 +2923,60 @@ let sidebarGruposFechados = new Set();
 // por abrir um grupo. Essa flag deixa o toggle avisar "eu já estava aberto,
 // continua aberto" antes de chamar renderApp().
 let drawerAbertoAntes = false;
+
+// Drag-and-drop para reordenar negócios no menu lateral
+document.addEventListener("dragstart", function(e){
+  const el = e.target.closest("[data-neg-sort-id]");
+  if(!el) return;
+  _dragNegId = el.dataset.negSortId;
+  e.dataTransfer.effectAllowed = "move";
+  requestAnimationFrame(() => { if(el) el.style.opacity = ".35"; });
+});
+document.addEventListener("dragend", function(){
+  document.querySelectorAll("[data-neg-sort-id]").forEach(el => el.style.opacity = "");
+  _dragNegId = null;
+});
+document.addEventListener("dragover", function(e){
+  const el = e.target.closest("[data-neg-sort-id]");
+  if(el && _dragNegId && el.dataset.negSortId !== _dragNegId){ e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+});
+document.addEventListener("drop", function(e){
+  const el = e.target.closest("[data-neg-sort-id]");
+  if(!el || !_dragNegId) return;
+  e.preventDefault();
+  const targetId = el.dataset.negSortId;
+  if(targetId === _dragNegId){ _dragNegId = null; return; }
+  let ordem = negociosOrdem ? [...negociosOrdem] : state.negocios.map(n => n.id);
+  // garante que negócios novos estão na lista
+  state.negocios.forEach(n => { if(!ordem.includes(n.id)) ordem.push(n.id); });
+  const fi = ordem.indexOf(_dragNegId), ti = ordem.indexOf(targetId);
+  if(fi >= 0 && ti >= 0){ ordem.splice(fi, 1); ordem.splice(ti, 0, _dragNegId); }
+  negociosOrdem = ordem;
+  try{ localStorage.setItem("neg_ordem", JSON.stringify(ordem)); }catch(err){}
+  document.querySelectorAll("[data-neg-sort-id]").forEach(el => el.style.opacity = "");
+  _dragNegId = null;
+  renderApp();
+});
+
 function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const eGrupoNegocio = id.startsWith("neg_");
   // Views de detalhe herdam o pertencimento da view-pai (cli_detalhe → cli_lista, etc.)
   const viewEfetiva = VIEWS_FALLBACK_RESTAURACAO[state.view] || state.view;
+  // Quando em modo negócio (filtroNegocioTravado), só o grupo daquele negócio
+  // deve aparecer como ativo — grupos globais (Financeiro, Estoque…) ficam neutros.
   const contemViewAtual = eGrupoNegocio
     ? ((viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)) && filtroNegocioTravado && cliFiltro.negocio === nome)
-    : (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva));
+    : (!filtroNegocioTravado && (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)));
   const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || contemViewAtual);
+  // Handle de drag: só negócios têm, para arrastar e reordenar
+  const negId = eGrupoNegocio ? id.slice(4) : null;
+  const dragAttrs = eGrupoNegocio ? `draggable="true" data-neg-sort-id="${negId}"` : "";
+  const dragHandle = eGrupoNegocio
+    ? `<span class="neg-drag-handle" title="Segurar e arrastar para reordenar" style="color:rgba(255,255,255,.2);font-size:14px;cursor:grab;margin-right:3px;user-select:none;flex-shrink:0;">⠿</span>`
+    : "";
   return `
-    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" style="cursor:pointer;">
-      <span style="display:flex;align-items:center;gap:9px;"><span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
+    <div class="nav-item ${contemViewAtual && !aberto ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
+      <span style="display:flex;align-items:center;gap:9px;">${dragHandle}<span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
     ${aberto ? `<div style="padding-left:12px; border-left:1px solid rgba(255,255,255,.08); margin:2px 0 2px 18px;">${itensHTML}</div>` : ""}
@@ -2959,7 +3014,16 @@ function sidebarConteudo(){
     ["cli_planos",     "planos",         "Planos"],
     ["cli_tecnicos",   "tecnicos",       "Técnicos"],
   ];
-  state.negocios.filter(n => master || podeVerNegocio(n.nome)).forEach(n => {
+  // Ordenação de negócios: salva em localStorage via drag-and-drop
+  let negOrdenados = state.negocios.filter(n => master || podeVerNegocio(n.nome));
+  if(negociosOrdem && negociosOrdem.length){
+    negOrdenados = [...negOrdenados].sort((a, b) => {
+      const ia = negociosOrdem.indexOf(a.id);
+      const ib = negociosOrdem.indexOf(b.id);
+      return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+    });
+  }
+  negOrdenados.forEach(n => {
     const itens = SUBITENS_NEG_PADRAO
       .filter(([view]) => podeVerSubmenuNeg(n.nome, view))
       .map(([v, icoKey, lbl]) => navItemNegocio(v, ic(icoKey), lbl, n.nome));
