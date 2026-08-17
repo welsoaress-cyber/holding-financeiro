@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.28";
+const APP_VERSION = "2.0.29";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -9922,7 +9922,7 @@ function viewCliTecnicos(){
       <td class="num">${qtdChamados||"—"}</td>
       <td><div class="row-actions">
         <button class="icon-btn" data-action="tec-app-codigo" data-id="${t.id}" title="Código de acesso ao App do Técnico" style="color:var(--accent);">↗</button>
-        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg);"></button>` : ""}
+        ${Number(t.valorMensal)>0 && podeVerValores() ? `<button class="icon-btn" data-action="tec-gerar-pagamento" data-id="${t.id}" title="Lançar pagamento em Contas a Pagar" style="color:var(--neg); font-weight:700;">$</button>` : ""}
         <button class="icon-btn" data-action="tec-edit" data-id="${t.id}" title="Editar">✎</button>
         <button class="icon-btn danger" data-action="tec-del" data-id="${t.id}" title="Excluir">×</button>
       </div></td>
@@ -9931,7 +9931,7 @@ function viewCliTecnicos(){
   const negOpts = state.negocios.map(n=>`<option value="${esc(n.nome)}" ${cliFiltro.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
   return `
     <div class="page-header">
-      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique em  pra lançar o pagamento em Contas a Pagar.</div></div>
+      <div><div class="page-title">Técnicos</div><div class="page-sub">Quem atende os chamados em campo — CLT ou terceirizado, tanto faz. O valor mensal é só informativo — clique no botão $ do técnico pra lançar o pagamento em Contas a Pagar.</div></div>
       <div style="display:flex; gap:8px;">${bulkBarraAcoesHTML("cli_tecnicos")}${seModulo("clientes","criar",`<button class="btn btn-primary" data-action="tec-novo">+ Novo técnico</button>`)}</div>
     </div>
     ${!filtroNegocioTravado ? `<div class="panel" style="margin-bottom:12px;"><div class="filter-bar">
