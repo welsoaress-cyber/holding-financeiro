@@ -1147,7 +1147,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.46";
+const APP_VERSION = "2.0.47";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2112,6 +2112,47 @@ async function _migrarComprasVendasLegado(){
   }catch(e){ console.warn("[migrarComprasVendasLegado]", e); }
 }
 
+// Migração: vincula o plano dos contratos "sem plano" usando as mensalidades
+// que JÁ existem do cliente — primeiro pelo nome do plano na descrição
+// ("Mensalidade Mensal_1A — Fulano"), depois pelo valor (quando só um plano
+// do negócio tem aquele valor). Resolve os importados que vieram com valor
+// mas sem o nome exato do plano na planilha.
+async function _migrarVincularPlanosSemVinculo(){
+  if(localStorage.getItem("mig_vincplano_v1")) return;
+  try{
+    const alterados = [];
+    for(const c of state.cliClientes){
+      let mudou = false;
+      const recsDoCliente = state.lancamentos.filter(l => l.tipo==="Receita" && l.clienteId === c.id);
+      const contratos = (c.contratos||[]).map(ct => {
+        if(ct.status !== "Ativo" || (ct.planoId && cliPlanoById(ct.planoId))) return ct;
+        const planosNeg = state.cliPlanos.filter(p => p.negocio === ct.negocio);
+        if(!planosNeg.length) return ct;
+        let plano = null;
+        for(const l of recsDoCliente){
+          const m = /^Mensalidade (.+?) — /.exec(l.descricao||"");
+          if(m){ plano = planosNeg.find(p => p.nome === m[1].trim()); if(plano) break; }
+        }
+        if(!plano){
+          for(const l of recsDoCliente){
+            const candidatos = planosNeg.filter(p => Number(p.valor) === Number(l.valor));
+            if(candidatos.length === 1){ plano = candidatos[0]; break; }
+          }
+        }
+        if(plano){ mudou = true; return { ...ct, planoId: plano.id }; }
+        return ct;
+      });
+      if(mudou) alterados.push({ ...c, contratos });
+    }
+    if(alterados.length){
+      state.cliClientes = state.cliClientes.map(c => alterados.find(a => a.id === c.id) || c);
+      await saveRows("cli_clientes", alterados);
+      showToast(`${alterados.length} cliente(s) tiveram o plano vinculado automaticamente pela mensalidade já lançada.`);
+    }
+    localStorage.setItem("mig_vincplano_v1", "1");
+  }catch(e){ console.warn("[vincularPlanosSemVinculo]", e); }
+}
+
 // ---- Recorrência SEM FIM (despesa e receita fixas) ----
 // Lançamentos fixos são gravados como ocorrências futuras (5 anos pra frente).
 // A cada login, séries recorrentes com menos de 2 anos de estrada pela frente
@@ -2289,6 +2330,7 @@ async function loadData(){
     }
     await _migrarResiduosLegados();
     await _migrarComprasVendasLegado();
+    await _migrarVincularPlanosSemVinculo();
 
     // Leads do site (tabela sem user_id — lê todos os registros autenticados)
     try{
@@ -4646,7 +4688,17 @@ const IMPORT_ENTIDADES = {
     ],
     montar: (v) => {
       const negocio = v.negocio && state.negocios.some(n=>n.nome.trim().toLowerCase()===v.negocio.trim().toLowerCase()) ? v.negocio.trim() : "";
-      const plano = negocio ? state.cliPlanos.find(p=>p.negocio===negocio && p.nome.trim().toLowerCase()===(v.plano||"").trim().toLowerCase()) : null;
+      let plano = negocio ? state.cliPlanos.find(p=>p.negocio===negocio && p.nome.trim().toLowerCase()===(v.plano||"").trim().toLowerCase()) : null;
+      // Coluna de plano com VALOR em vez do nome (ex: "35,00" ou "R$ 35")?
+      // Acha o plano do negócio com esse valor — desde que só exista um.
+      if(!plano && negocio && v.plano){
+        const bruto = String(v.plano).replace(/[R$\s]/g,"");
+        const num = bruto.includes(",") ? parseFloat(bruto.replace(/\./g,"").replace(",", ".")) : parseFloat(bruto);
+        if(num > 0){
+          const cand = state.cliPlanos.filter(p=>p.negocio===negocio && Number(p.valor)===num);
+          if(cand.length === 1) plano = cand[0];
+        }
+      }
       return {
         nome:v.nome, tipoPessoa: v.tipoPessoa==="PJ"?"PJ":"PF", razaoSocial:"", nomeFantasia:"", cpfCnpj:v.cpfCnpj||"", rg:"",
         dataNascimento:"", genero:"Não informado", email:v.email||"", telefone:v.telefone||"", whatsapp:"",
