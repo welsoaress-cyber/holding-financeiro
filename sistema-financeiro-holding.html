@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.60";
+const APP_VERSION = "2.0.61";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5458,7 +5458,7 @@ function viewLancamentos(){
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${statusLabel}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
+      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="dup-lanc" data-id="${l.id}" title="Duplicar">⧉</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
 
@@ -5484,6 +5484,7 @@ function viewLancamentos(){
       ${cliVinculado
         ? `<div data-action="cli-edit" data-id="${cliVinculado.id}" title="Abrir o cadastro" style="font-weight:700; font-size:14px; color:var(--accent); cursor:pointer; text-decoration:underline; text-underline-offset:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">👤 ${esc(cliNome(cliVinculado))}</div>`
         : `<div style="font-weight:700; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.descricao?esc(l.descricao):"—"}</div>`}
+      ${(l.categoria||l.subcategoria)?`<div style="font-size:11px; color:var(--ink-3); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${[l.categoria,l.subcategoria].filter(Boolean).map(esc).join(" › ")}</div>`:""}
       <div style="margin-top:5px; font-size:12.5px;">
         <strong style="font-size:15px; font-variant-numeric:tabular-nums; color:${corValor};">${maskBRL(l.valor, true)}</strong>
         <span style="color:var(--ink-3);"> ${labelData} ${fmtDateBR(l.data)}</span>
@@ -5497,6 +5498,7 @@ function viewLancamentos(){
         ${podeVerFaturaDoItem?`<button class="btn btn-ghost btn-sm" data-action="ver-fatura-item" data-id="${l.id}" style="color:var(--pos);">Fatura CC</button>`:""}
         ${linkCobranca?`<a class="btn btn-ghost btn-sm" href="${linkCobranca}" target="_blank" rel="noopener" style="color:#25D366;">WhatsApp</a>`:""}
         ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="edit-lanc" data-id="${l.id}">✎ Editar</button>`:""}
+        ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="dup-lanc" data-id="${l.id}" title="Criar cópia deste lançamento">⧉ Duplicar</button>`:""}
         ${podeExcluir?`<button class="btn btn-ghost btn-sm" style="color:var(--neg);" data-action="del-lanc" data-id="${l.id}">× Excluir</button>`:""}
       </div>`:""}
     </div>`;
@@ -7660,6 +7662,16 @@ document.addEventListener("click", async e => {
     modalCompraCartao(null);
   }
   else if(action === "edit-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalLancamento(l); }
+  else if(action === "dup-lanc"){
+    const l = state.lancamentos.find(x=>x.id===id);
+    if(l){
+      // Cria cópia com status Provisionado e data de hoje; sem vínculo de recorrência
+      const copia = { ...l, id: null, status: "Provisionado", data: todayISO() };
+      delete copia.dataPagamento; delete copia.recorrenciaId;
+      delete copia.recorrenciaIndex; delete copia.recorrenciaTotal;
+      modalLancamento(copia);
+    }
+  }
   else if(action === "del-lanc"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalExcluirLancamento(l); }
   else if(action === "del-lanc-um"){
     const l = state.lancamentos.find(x => x.id === id);
