@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.35";
+const APP_VERSION = "2.0.36";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -9249,8 +9249,10 @@ function modalCliCliente(existing){
 
       <div class="form-section-head">Contato</div>
       <div class="field-row">
-        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000 ou +351 912 345 678"></div>
-        <div class="field"><label>WhatsApp</label><input type="text" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000 ou +1 305 555 0100"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="cliTelInput" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000 ou +351 912 345 678"></div>
+        <div class="field"><label>WhatsApp</label><input type="text" id="cliWhatsInput" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000 ou +1 305 555 0100">
+          <label class="checkbox-row" style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-3); margin-top:5px; cursor:pointer;"><input type="checkbox" id="cliWhatsIgualTel" ${(!isEdit || (c.telefone && c.whatsapp === c.telefone)) ? "checked" : ""}> Mesmo número do telefone</label>
+        </div>
         <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(c.email||"")}" placeholder="cliente@email.com"></div>
       </div>
       <div class="field-help" style="margin-top:-6px; margin-bottom:10px;">Número de fora do Brasil? Digite com <strong>+</strong> e o código do país (ex: +1 305 555 0100). Sem o +, o sistema assume que é do Brasil.</div>
@@ -9309,6 +9311,29 @@ function modalCliCliente(existing){
   // Máscara DD/MM/AAAA nas datas do cliente
   applyDateMask(document.getElementById("cliDataCadastro"));
   applyDateMask(document.getElementById("cliDataNascimento"));
+
+  // "WhatsApp é o mesmo do telefone": marcado, o campo WhatsApp copia o
+  // telefone sozinho e fica travado; desmarcado, libera pra digitar outro.
+  const cliTelInput = document.getElementById("cliTelInput");
+  const cliWhatsInput = document.getElementById("cliWhatsInput");
+  const cliWhatsIgualTel = document.getElementById("cliWhatsIgualTel");
+  if(cliTelInput && cliWhatsInput && cliWhatsIgualTel){
+    const sincronizarWhats = () => {
+      if(cliWhatsIgualTel.checked){
+        cliWhatsInput.value = cliTelInput.value;
+        cliWhatsInput.readOnly = true;
+        cliWhatsInput.style.background = "var(--surface-2)";
+        cliWhatsInput.style.color = "var(--ink-3)";
+      }else{
+        cliWhatsInput.readOnly = false;
+        cliWhatsInput.style.background = "";
+        cliWhatsInput.style.color = "";
+      }
+    };
+    cliWhatsIgualTel.addEventListener("change", sincronizarWhats);
+    cliTelInput.addEventListener("input", () => { if(cliWhatsIgualTel.checked) cliWhatsInput.value = cliTelInput.value; });
+    sincronizarWhats();
+  }
 
   // Auto-preenchimento de endereço pelo CEP
   const cliCepInput = document.getElementById("cliCepInput");
@@ -9369,7 +9394,7 @@ function modalCliCliente(existing){
       genero: fd.get("genero"),
       email: (fd.get("email")||"").trim(),
       telefone: (fd.get("telefone")||"").trim(),
-      whatsapp: (fd.get("whatsapp")||"").trim(),
+      whatsapp: (document.getElementById("cliWhatsIgualTel")?.checked ? (fd.get("telefone")||"") : (fd.get("whatsapp")||"")).trim(),
       cep: (fd.get("cep")||"").trim(),
       logradouro: (fd.get("logradouro")||"").trim(),
       numero: (fd.get("numero")||"").trim(),
