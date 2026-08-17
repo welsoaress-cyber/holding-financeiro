@@ -136,6 +136,20 @@ a{color:inherit;}
 .hist-link{font-size:0.75rem;color:var(--pool);text-decoration:none;}
 .hist-link:hover{text-decoration:underline;}
 
+/* banner WhatsApp */
+.wa-banner{display:flex;align-items:center;gap:1rem;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.35);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.wa-banner-icon{font-size:1.6rem;flex-shrink:0;}
+.wa-banner-body{flex:1;min-width:0;}
+.wa-banner-title{font-size:0.9rem;font-weight:700;color:#34D399;margin-bottom:0.2rem;}
+.wa-banner-sub{font-size:0.78rem;color:var(--text-2);}
+.wa-banner-form{display:flex;gap:0.5rem;margin-top:0.65rem;flex-wrap:wrap;}
+.wa-banner-input{flex:1;min-width:160px;padding:0.55rem 0.85rem;background:#091C2A;border:1px solid rgba(37,211,102,0.3);border-radius:6px;color:var(--text);font-size:0.9rem;outline:none;font-family:inherit;}
+.wa-banner-input:focus{border-color:#34D399;}
+.wa-banner-btn{padding:0.55rem 1.1rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.wa-banner-btn:disabled{opacity:0.5;cursor:default;}
+.wa-banner-ok{font-size:0.8rem;margin-top:0.4rem;display:none;}
+.wa-banner-ok.show{display:block;}
+
 /* support card */
 .sup-desc{font-size:0.9rem;color:var(--text-2);margin-bottom:1.25rem;line-height:1.7;}
 .wa-btn{display:inline-flex;align-items:center;gap:0.6rem;padding:0.8rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;}
@@ -450,6 +464,22 @@ a{color:inherit;}
     <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v3.8</span></div>
     <div class="dash-title" id="dashTitle">Bem-vindo!</div>
 
+    <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
+    <div id="waBanner" style="display:none">
+      <div class="wa-banner">
+        <div class="wa-banner-icon">📱</div>
+        <div class="wa-banner-body">
+          <div class="wa-banner-title">Receba alertas de vencimento pelo WhatsApp!</div>
+          <div class="wa-banner-sub">Cadastre seu número e te avisamos antes do vencimento — de graça.</div>
+          <div class="wa-banner-form">
+            <input class="wa-banner-input" id="waBannerTel" type="tel" placeholder="(11) 99999-9999" maxlength="15" oninput="mascaraTelBanner(this)">
+            <button class="wa-banner-btn" id="waBannerBtn" onclick="salvarWhatsAppBanner()">Salvar</button>
+          </div>
+          <div class="wa-banner-ok" id="waBannerOk"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Status da Rede — fora do grid, largura total, só visível quando há problema -->
     <div class="card status-card" id="statusCard" style="margin-bottom:1.2rem">
       <div class="card-lbl" id="statusLbl">📡 Status da Rede</div>
@@ -716,6 +746,10 @@ async function enterDash(data){
   loadIndicacoes(data);
   preencherDados(data);
   loadStatus();
+  // Mostra banner de WhatsApp se cliente não tem telefone cadastrado
+  if(!data.telefone || data.telefone.trim()===''){
+    document.getElementById('waBanner').style.display='block';
+  }
 }
 
 function preencherDados(data){
@@ -767,6 +801,46 @@ function renderStatus(s){
     </div>`;
   document.getElementById('statusLbl').textContent = `📡 Status da Rede — ${m.label}`;
   card.classList.add('vis');
+}
+
+function mascaraTelBanner(el){
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3');
+  else if(v.length>6) v=v.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');
+  else if(v.length>2) v=v.replace(/^(\d{2})(\d*)$/,'($1) $2');
+  el.value=v;
+}
+
+async function salvarWhatsAppBanner(){
+  const btn=document.getElementById('waBannerBtn');
+  const ok=document.getElementById('waBannerOk');
+  const telRaw=(document.getElementById('waBannerTel')?.value||'').replace(/\D/g,'');
+  if(telRaw.length<10){ ok.textContent='⚠ Informe um número válido com DDD.'; ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5'; return; }
+  btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_email:      session.email||'',
+      p_telefone:   telRaw
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao salvar.');
+    session.telefone=telRaw;
+    sessionStorage.setItem('sn_sess',JSON.stringify(session));
+    // Atualiza campo Meus Dados também
+    const dadosTel=document.getElementById('dadosTelefone');
+    if(dadosTel) dadosTel.value=telRaw;
+    ok.textContent='✅ WhatsApp cadastrado! Você receberá alertas a partir de agora.';
+    ok.className='wa-banner-ok show'; ok.style.color='#34D399';
+    btn.textContent='Salvo ✓';
+    // Esconde banner após 3 segundos
+    setTimeout(()=>{ document.getElementById('waBanner').style.display='none'; },3000);
+  }catch(e){
+    ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.');
+    ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5';
+    btn.disabled=false; btn.textContent='Salvar';
+  }
 }
 
 async function salvarDados(){
