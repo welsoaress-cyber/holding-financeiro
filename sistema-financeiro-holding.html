@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.34";
+const APP_VERSION = "2.0.35";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5822,7 +5822,7 @@ function modalLancamento(existing, tipoPreset, prefill){
         <div id="novoClienteLancRow" style="display:none;margin-top:8px;padding:12px;background:var(--muted-bg);border-radius:var(--r);">
           <div class="field-row" style="margin-bottom:8px;">
             <div class="field" style="margin-bottom:0;"><label>Nome</label><input type="text" id="novoClienteLancNome" placeholder="Nome do cliente"></div>
-            <div class="field" style="margin-bottom:0;"><label>Telefone / WhatsApp</label><input type="text" id="novoClienteLancTel" placeholder="(11) 99999-9999"></div>
+            <div class="field" style="margin-bottom:0;"><label>Telefone / WhatsApp</label><input type="text" id="novoClienteLancTel" placeholder="(11) 99999-9999 ou +351 912 345 678"></div>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" id="novoClienteLancBtn" style="width:100%;justify-content:center;">+ Criar cliente e vincular</button>
         </div>
@@ -7708,11 +7708,11 @@ document.addEventListener("click", async e => {
   else if(action === "leads-filtro-clear"){ leadsFiltro = {status:"",texto:""}; renderView(); }
   else if(action === "cliPlanos-filtro-clear"){ cliPlanosFiltro = {negocio:"",texto:""}; renderView(); }
   else if(action === "lead-wa"){
-    const t = (el.dataset.tel||"").replace(/\D/g,"");
     const nomeCompleto = el.dataset.nome||"";
     const n = nomeCompleto.split(" ")[0] || "tudo bem";
-    const msg = encodeURIComponent(`Olá, ${n}! Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
-    window.open(`https://wa.me/55${t}?text=${msg}`,"_blank");
+    const link = waLinkTexto(el.dataset.tel||"", `Olá, ${n}! Vi que você se cadastrou no nosso site com interesse em nossos planos de internet. Posso te ajudar?`);
+    if(link) window.open(link, "_blank");
+    else showToast("Esse lead está sem telefone válido.", "error");
   }
   else if(action === "lead-status"){
     const lead = state.siteLeads.find(l=>l.id===id);
@@ -8354,12 +8354,16 @@ let MENSAGEM_COBRANCA_PADRAO = "Olá,\n\nSeu vencimento está próximo. Recomend
 // QUEM é o cliente do lançamento — hoje isso só é gravado nas cobranças
 // automáticas de contrato (clienteId) e nas geradas a partir de um chamado
 // (via chamadoId); um lançamento digitado à mão não tem esse vínculo.
-// Telefone -> só dígitos, com o 55 (Brasil) na frente se não tiver nenhum
-// código de país já digitado. Retorna "" se não sobrar nada usável.
+// Telefone -> só dígitos. Número digitado com "+" (ou 00 na frente) é
+// internacional: já tem o código do país, não mexe. Sem nenhum código,
+// assume Brasil e põe o 55. Retorna "" se não sobrar nada usável.
 function waDigits(telefone){
-  const fone = (telefone||"").replace(/\D/g,"");
+  const bruto = String(telefone||"").trim();
+  const fone = bruto.replace(/\D/g,"");
   if(!fone) return "";
-  return fone.length <= 11 ? "55"+fone : fone;
+  if(bruto.startsWith("+")) return fone;           // +1 305..., +351 912... → usa como está
+  if(fone.startsWith("00")) return fone.slice(2);  // 00 1 305... → tira o prefixo de discagem
+  return fone.length <= 11 ? "55"+fone : fone;     // sem código → Brasil
 }
 function waLinkTexto(telefone, texto){
   const digits = waDigits(telefone);
@@ -8792,7 +8796,14 @@ function viewCliLeads(){
   const novos       = state.siteLeads.filter(l=>l.status==="Novo").length;
   const convertidos = state.siteLeads.filter(l=>l.status==="Convertido").length;
 
-  const fmtTel = t => t ? t.replace(/(\d{2})(\d{4,5})(\d{4})/,"($1) $2-$3") : "—";
+  const fmtTel = t => {
+    if(!t) return "—";
+    const s = String(t).trim();
+    const d = s.replace(/\D/g,"");
+    // Internacional (com + ou mais dígitos que um número BR): mostra com o +, sem máscara BR
+    if(s.startsWith("+") || d.length > 11) return s.startsWith("+") ? s : "+" + d;
+    return d.replace(/(\d{2})(\d{4,5})(\d{4})/,"($1) $2-$3");
+  };
   const fmtData = d => d ? new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
 
   const temFiltro = sts || txt;
@@ -9238,10 +9249,11 @@ function modalCliCliente(existing){
 
       <div class="form-section-head">Contato</div>
       <div class="field-row">
-        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000"></div>
-        <div class="field"><label>WhatsApp</label><input type="text" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(c.telefone||"")}" placeholder="(00) 00000-0000 ou +351 912 345 678"></div>
+        <div class="field"><label>WhatsApp</label><input type="text" name="whatsapp" value="${esc(c.whatsapp||"")}" placeholder="(00) 00000-0000 ou +1 305 555 0100"></div>
         <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(c.email||"")}" placeholder="cliente@email.com"></div>
       </div>
+      <div class="field-help" style="margin-top:-6px; margin-bottom:10px;">Número de fora do Brasil? Digite com <strong>+</strong> e o código do país (ex: +1 305 555 0100). Sem o +, o sistema assume que é do Brasil.</div>
 
       <div class="form-section-head">Endereço</div>
       <div class="field-row">
@@ -10098,7 +10110,7 @@ function modalCliTecnico(existing){
     <form id="formTecnico"><div class="modal-body">
       <div class="field"><label>Nome</label><input required type="text" name="nome" value="${esc(t.nome)}" placeholder="Ex: Carlos"></div>
       <div class="field-row">
-        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(t.telefone)}" placeholder="(11) 90000-0000"></div>
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(t.telefone)}" placeholder="(11) 90000-0000 ou +351 912 345 678"></div>
         <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Sem negócio específico —</option>${negOpts}</select></div>
       </div>
       <div class="field"><label>Quando atende</label><input type="text" name="diasAtendimento" value="${esc(t.diasAtendimento)}" placeholder="Ex: fins de semana e feriados">
@@ -11157,7 +11169,7 @@ function modalRhFuncionario(existing){
       </div>
       <div class="field-row">
         <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email||"")}" placeholder="funcionario@email.com"></div>
-        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(f.telefone||"")}" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Telefone</label><input type="text" name="telefone" value="${esc(f.telefone||"")}" placeholder="(00) 00000-0000 ou +351 912 345 678"></div>
       </div>
 
       <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:700; margin:14px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px;">Dados profissionais</div>
@@ -11908,7 +11920,7 @@ function modalEstFornecedor(existing){
       </div>
       <div class="field-row">
         <div class="field"><label>Nome do contato</label><input type="text" name="contato" value="${esc(f.contato)}" placeholder="Nome"></div>
-        <div class="field"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="${esc(f.telefone)}" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="${esc(f.telefone)}" placeholder="(00) 00000-0000 ou +1 305 555 0100"></div>
       </div>
       <div class="field"><label>E-mail</label><input type="email" name="email" value="${esc(f.email)}" placeholder="fornecedor@email.com"></div>
       <div class="field"><label>Negócio</label><select name="negocio"><option value="">— Fornecedor compartilhado —</option>${negOptions}</select></div>
