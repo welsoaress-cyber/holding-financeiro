@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.30";
+const APP_VERSION = "2.0.31";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5554,7 +5554,13 @@ function openModal(html){
   overlay.className = "modal-overlay";
   overlay.id = "modalOverlay";
   overlay.innerHTML = `<div class="modal">${html}</div>`;
-  overlay.addEventListener("click", e => { if(e.target === overlay) closeModal(); });
+  // Só fecha se o clique COMEÇAR e TERMINAR no fundo escurecido.
+  // Sem isso, selecionar um texto dentro do modal e soltar o mouse fora
+  // contava como "clique no fundo" e fechava o modal, perdendo o que
+  // estava sendo preenchido.
+  let apertouNoFundo = false;
+  overlay.addEventListener("mousedown", e => { apertouNoFundo = (e.target === overlay); });
+  overlay.addEventListener("click", e => { if(e.target === overlay && apertouNoFundo) closeModal(); apertouNoFundo = false; });
   document.body.appendChild(overlay);
 }
 function closeModal(){ const el = document.getElementById("modalOverlay"); if(el) el.remove(); }
