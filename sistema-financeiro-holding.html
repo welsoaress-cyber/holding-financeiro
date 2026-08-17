@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.50";
+const APP_VERSION = "2.0.51";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8510,10 +8510,25 @@ function waLinkCobranca(l){
     if(cham) cliente = cliClienteById(cham.clienteId);
   }
   if(!cliente) return null;
-  // Texto exato pedido pelo usuário — igual pra todo mundo, de propósito
-  // (ele quer reaproveitar esse mesmo texto num envio em massa depois, não
-  // dá pra ficar diferente por cliente).
-  return waLinkTexto(cliente.whatsapp || cliente.telefone, MENSAGEM_COBRANCA_PADRAO);
+  // Mensagem esperta por situação: vencida (com dias de atraso), vence HOJE
+  // ou vence em breve — sempre com nome, valor e data do título clicado.
+  // (O texto fixo MENSAGEM_COBRANCA_PADRAO continua sendo o modelo do envio
+  // em massa; aqui é cobrança individual, então dá pra personalizar.)
+  const primeiroNome = (cliNome(cliente)||"").trim().split(" ")[0] || "";
+  const ola = primeiroNome ? `Olá, ${primeiroNome}! Tudo bem?` : "Olá! Tudo bem?";
+  const hoje = todayISO();
+  const venc = fmtDateBR(l.data);
+  const valor = fmtBRL(l.valor);
+  let texto;
+  if(l.data < hoje){
+    const dias = Math.floor((Date.parse(hoje) - Date.parse(l.data)) / 86400000);
+    texto = `${ola}\n\nConsta em aberto a mensalidade de ${valor}, com vencimento em ${venc}${dias > 0 ? ` — ${dias} dia${dias > 1 ? "s" : ""} em atraso` : ""}.\n\nPode verificar o pagamento, por favor? Se já pagou, desconsidere esta mensagem e, se puder, nos envie o comprovante.\n\nQualquer dúvida, estamos à disposição.\n\nAtt,\nTom`;
+  }else if(l.data === hoje){
+    texto = `${ola}\n\nPassando pra lembrar que a sua mensalidade de ${valor} vence HOJE (${venc}).\n\nSe já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
+  }else{
+    texto = `${ola}\n\nSua mensalidade de ${valor} vence em ${venc}. Recomendamos o pagamento até a data pra garantir a continuidade do serviço.\n\nSe já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
+  }
+  return waLinkTexto(cliente.whatsapp || cliente.telefone, texto);
 }
 
 // ============================================================
