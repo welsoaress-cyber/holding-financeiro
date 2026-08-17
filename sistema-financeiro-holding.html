@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.55";
+const APP_VERSION = "2.0.56";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5317,7 +5317,12 @@ function viewLancamentos(){
     const _hj = todayISO();
     list = list.filter(l => l.status !== "Pago" && !l.inativo && l.data < _hj && l.tipo !== "Transferência");
   } else if(lancFilter.status){
-    list = list.filter(l => l.status === lancFilter.status);
+    // Filtro casa com o status MOSTRADO na tela: um "Provisionado" com data
+    // passada aparece como "Vencido", então não deve entrar no filtro
+    // Provisionado/Agendado — só no filtro Vencido.
+    const _hj = todayISO();
+    list = list.filter(l => l.status === lancFilter.status
+      && !(l.status !== "Pago" && !l.inativo && l.data < _hj && l.tipo !== "Transferência"));
   }
   if(lancFilter.conta) list = list.filter(l => l.contaOrigem === lancFilter.conta || l.contaDestino === lancFilter.conta);
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
