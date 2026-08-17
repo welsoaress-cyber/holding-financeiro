@@ -368,7 +368,7 @@
     text-transform: uppercase; letter-spacing: .06em;
     margin-bottom: 6px; font-weight: 600;
   }
-  .kpi-value { font-family: var(--font-num); font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+  .kpi-value { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
   .kpi-value.pos { color: var(--pos); }
   .kpi-value.neg { color: var(--neg); }
   .kpi-note { font-size: 11px; color: var(--ink-4); margin-top: 4px; }
@@ -411,7 +411,7 @@
   tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F2F5; vertical-align: middle; word-break: break-word; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #F7F9FC; }
-  td.num, th.num { text-align: right; font-family: var(--font-mono); font-size: 12px; }
+  td.num, th.num { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 12.5px; }
 
   /* ---- Tags & Status ---- */
   .tag {
@@ -543,7 +543,7 @@
   .bar-row { display: grid; grid-template-columns: 160px 1fr 110px; align-items: center; gap: 12px; padding: 8px 0; }
   .bar-track { height: 6px; border-radius: 999px; background: var(--muted-bg); overflow: hidden; }
   .bar-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
-  .bar-row .val { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--ink-2); }
+  .bar-row .val { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; text-align: right; color: var(--ink-2); }
 
   /* ---- Toast ---- */
   .toast-wrap { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
@@ -863,7 +863,7 @@
   box-shadow: 0 6px 18px rgba(0,0,0,.28); display: none; max-width: 220px;
 }
 .gtip.show { display: block; }
-.gtip .tip-val { font-weight: 700; font-family: var(--font-mono); font-size: 12.5px; }
+.gtip .tip-val { font-weight: 700; font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 12.5px; }
 .grafico-linha-pt:hover circle:last-child { r: 5.5; }
 [data-tip] { cursor: default; }
 .bar-row[data-tip] .bar-track { transition: filter .1s; }
@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.32";
+const APP_VERSION = "2.0.33";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -4093,7 +4093,7 @@ function viewVgExecutivo(){
     </div>`;
 
   const patrimonioHTML = `
-    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Patrimônio</div></div><div class="panel-body">
+    <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Patrimônio</div></div><div class="panel-body">
       <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;">
         ${master ? vgKpiCard("Saldo atual", vv(saldoAtualMes), isMesAtual?"Realizado até hoje":"Realizado até o fim do mês", saldoAtualMes>=0?"pos":"neg", {modulo:"financeiro", view:"contas", label:"Contas"}) : ""}
         ${master ? vgKpiCard("Saldo previsto (fim do mês)", vv(saldoFinalPrevisto), "Com o que ainda falta entrar/sair", saldoFinalPrevisto>=0?"pos":"neg") : ""}
@@ -4271,7 +4271,7 @@ function viewVgExecutivo(){
     }).join("");
     const critico = comMargem.filter(l=>l.margem<40);
     return `<div class="panel" style="margin-bottom:16px;">
-      <div class="panel-head"><div class="panel-title"> Margem por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
+      <div class="panel-head"><div class="panel-title">Margem por negócio — ${isMesAtual?"este mês":`${NOMES_MESES[mv.mes]}/${mv.ano}`}</div></div>
       <div class="panel-body">
         ${barras}
         <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
@@ -4333,7 +4333,7 @@ function viewVgExecutivo(){
     }).join("");
     const classeA = linhasAbc.filter(l=>l.classe==="A");
     return `<div class="panel" style="margin:0;">
-      <div class="panel-head"><div class="panel-title"> Curva ABC — negócios por receita</div></div>
+      <div class="panel-head"><div class="panel-title">Curva ABC — negócios por receita</div></div>
       <div class="panel-body">
         ${barras}
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink-3);">
@@ -4342,7 +4342,7 @@ function viewVgExecutivo(){
         <div class="field-help" style="margin-top:6px;">A = essencial (até 80% acumulado) · B = relevante (até 95%) · C = complementar (resto)</div>
       </div>
     </div>`;
-  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Curva ABC — negócios por receita</div></div><div class="panel-body">${emptyState("Nenhum negócio com receita nesse mês.")}</div></div>`;
+  })() : `<div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Curva ABC — negócios por receita</div></div><div class="panel-body">${emptyState("Nenhum negócio com receita nesse mês.")}</div></div>`;
 
   // ---- Top clientes por receita recorrente (MRR dos contratos ativos — não
   // muda com o mês, é o valor recorrente atual; os lançamentos não guardam
@@ -4434,7 +4434,7 @@ function viewVgExecutivo(){
     ${graficoRecDespMesHTML}
     <div class="two-col" style="margin-bottom:16px;">${graficoReceitaHTML}${graficoDespesaCategoriaHTML}</div>
     <div class="two-col" style="margin-bottom:16px;">${graficoMargemHTML}${graficoAbcHTML}</div>
-    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title"> Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
+    <div class="panel" style="margin-bottom:16px;"><div class="panel-head"><div class="panel-title">Performance por negócio (detalhado)</div></div><div class="panel-body">${tabelaNegociosHTML}</div></div>
     ${(topClientesHTML || inadimplenciaHTML) ? `<div class="two-col" style="margin-bottom:16px;">${topClientesHTML}${inadimplenciaHTML}</div>` : ""}
     <div class="two-col">${alertasHTML}</div>
   `;
@@ -4872,7 +4872,7 @@ function viewDashboard(){
         <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)}${l.negocio ? ' · ' + esc(l.negocio) : ''}${l.lancadoPor ? ` · ${esc(l.lancadoPor)}` : ''}</div>
       </div>
       <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-        <span style="font-family:var(--font-mono); font-weight:600; color:${tipo==='receber'?'var(--pos)':'var(--neg)'};">${fmtBRL(l.valor)}</span>
+        <span style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:600; color:${tipo==='receber'?'var(--pos)':'var(--neg)'};">${fmtBRL(l.valor)}</span>
         ${tipo==='receber' && waLinkCobranca(l) ? `<a class="icon-btn" href="${waLinkCobranca(l)}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366; font-size:14px;">WA</a>` : ""}
         ${l.cartaoId
           ? (podeEditarNegocio(l.negocio) ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos); font-size:14px;">CC</button>` : "")
@@ -4892,10 +4892,10 @@ function viewDashboard(){
           <div style="font-weight:600;">${esc(c.nome)} <span style="font-size:11px; color:var(--ink-4);">final ${esc(c.ultimosDigitos)}</span></div>
           <div style="font-size:11px; color:var(--ink-4);">Vence ${fmtDateBR(f.data)} · ${f.itens.length} compra${f.itens.length===1?'':'s'} · Limite disp. ${fmtBRL(Number(c.limite||0)-faturaEmAberto(c.id))}</div>
         </div>
-        <span style="font-family:var(--font-mono); font-weight:700; color:var(--neg);">${fmtBRL(f.total)}</span>
+        <span style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; color:var(--neg);">${fmtBRL(f.total)}</span>
       </div>
       <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}"> Pagar total</button>
+        <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar total</button>
         <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-minimo" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Pague só o mínimo, sem precisar escolher compras">Pagar mínimo</button>
         <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Digite qualquer valor, sem precisar escolher compras">✏ Pagar parcial</button>
         <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
@@ -4904,7 +4904,7 @@ function viewDashboard(){
 
   const totalPagarMes = pagarMes.reduce((s,l) => s+Number(l.valor), 0) + totalFaturasMes;
   const totalReceberMes = receberMes.reduce((s,l) => s+Number(l.valor), 0);
-  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada em aberto. </div>`;
+  const pagarHTML = (pagarMes.map(l => listaItemHTML(l,'pagar')).join("") + faturasCartaoHTML) || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada em aberto.</div>`;
   const receberHTML = receberMes.map(l => listaItemHTML(l,'receber')).join("") || `<div style="font-size:12px; color:var(--ink-4); padding:10px 0;">Nada a receber neste mês.</div>`;
 
   const barRow = (c, nested) => {
@@ -4926,7 +4926,7 @@ function viewDashboard(){
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; ${i===0?'':'border-top:1px solid var(--border);'}">
         <div style="min-width:0;"><div style="font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${i+1}. ${esc(l.descricao)}</div>
         <div style="font-size:11px; color:var(--ink-4);">${fmtDateBR(l.data)} · ${l.status}${l.negocio ? ' · '+esc(l.negocio) : ''}</div></div>
-        <div style="font-family:var(--font-mono); font-size:12.5px; font-weight:600; white-space:nowrap;">${fmtBRL(l.valor)}</div>
+        <div style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:600; white-space:nowrap;">${fmtBRL(l.valor)}</div>
       </div>`).join("");
   };
 
@@ -4943,8 +4943,8 @@ function viewDashboard(){
           <button class="icon-btn" data-action="mes-next" style="font-size:16px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
         </div>
         <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-bottom:0;">
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
-          <div class="kpi-card" style="text-align:center;"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${saldoAtualMes>=0?'pos':'neg'}">${fmtBRL(saldoAtualMes)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Saldo mês anterior</div><div class="kpi-value ${saldoMesAnterior>=0?'pos':'neg'}">${fmtBRL(saldoMesAnterior)}</div></div>
+          <div class="kpi-card"><div class="kpi-label">Saldo atual</div><div class="kpi-value ${saldoAtualMes>=0?'pos':'neg'}">${fmtBRL(saldoAtualMes)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Realizado receitas</div><div class="kpi-value pos">${fmtBRL(movReal.entradas)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Realizado despesas</div><div class="kpi-value neg">${fmtBRL(movReal.saidas)}</div></div>
           <div class="kpi-card"><div class="kpi-label">Previsto receitas</div><div class="kpi-value pos">${fmtBRL(movPendente.entradas)}</div></div>
@@ -4957,15 +4957,15 @@ function viewDashboard(){
     <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(240px, 1fr)); margin-bottom:0;">
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
-          <div class="panel-title"> A Receber — ${NOMES_MESES[mv.mes]}</div>
-          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--pos);">${fmtBRL(totalReceberMes)}</div>
+          <div class="panel-title">A Receber — ${NOMES_MESES[mv.mes]}</div>
+          <div style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:14px; color:var(--pos);">${fmtBRL(totalReceberMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${receberHTML}</div>
       </div>
       <div class="panel" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;">
         <div class="panel-head">
-          <div class="panel-title"> A Pagar — ${NOMES_MESES[mv.mes]}</div>
-          <div style="font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--neg);">${fmtBRL(totalPagarMes)}</div>
+          <div class="panel-title">A Pagar — ${NOMES_MESES[mv.mes]}</div>
+          <div style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:14px; color:var(--neg);">${fmtBRL(totalPagarMes)}</div>
         </div>
         <div class="panel-body" style="padding-top:0; max-height:340px; overflow-y:auto;">${pagarHTML}</div>
       </div>
@@ -5035,7 +5035,7 @@ function viewRelFluxoCaixa(){
 
   return `
     <div class="page-header">
-      <div><div class="page-title"> Fluxo de Caixa</div><div class="page-sub">Entradas e saídas realizadas (pagas) mês a mês — termina em ${isMesAtual?"o mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}.</div></div>
+      <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas e saídas realizadas (pagas) mês a mês — termina em ${isMesAtual?"o mês atual":`${NOMES_MESES[mv.mes]}/${mv.ano}`}.</div></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <select id="relFluxoPeriodoSelect" style="font-family:var(--font-ui); font-size:13px; padding:8px 10px; border-radius:var(--r); border:1px solid var(--border);">
           <option value="3" ${relFluxoPeriodo===3?"selected":""}>Últimos 3 meses</option>
@@ -5089,7 +5089,7 @@ function viewRelDre(){
 
   const linha = (label, valor, opts={}) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:${opts.grande?'12px 0':'8px 0'}; ${opts.semBorda?'':'border-top:1px solid var(--border);'} ${opts.indent?'padding-left:16px;':''}">
     <div style="font-size:${opts.grande?'14.5px':'13px'}; font-weight:${opts.grande?'700':opts.negrito?'600':'400'}; color:${opts.cor||'var(--ink)'};">${esc(label)}</div>
-    <div style="font-family:var(--font-mono); font-size:${opts.grande?'15px':'13px'}; font-weight:${opts.grande||opts.negrito?'700':'400'}; color:${opts.cor||'var(--ink)'};">${valor}</div>
+    <div style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:${opts.grande?'15px':'13px'}; font-weight:${opts.grande||opts.negrito?'700':'500'}; color:${opts.cor||'var(--ink)'};">${valor}</div>
   </div>`;
 
   return `
@@ -5168,7 +5168,7 @@ function viewCartoes(){
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border); font-size:12px;">
         <span style="color:var(--ink-3); cursor:pointer;" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Vence ${fmtDateBR(f.data)} <span style="color:var(--ink-4);">(${f.itens.length} item${f.itens.length===1?'':'s'})</span></span>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-          <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-mono); font-weight:600;">${maskBRL(f.total, pagarDesbloqueado())}</span>
+          <span class="${lockedPagar?'masked-value':''}" style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:600;">${maskBRL(f.total, pagarDesbloqueado())}</span>
           <button class="btn btn-ghost btn-sm" data-action="ver-fatura" data-id="${c.id}" data-venc="${f.data}">Detalhes</button>
           <button class="btn btn-ghost btn-sm" data-action="pagar-fatura-parcial" data-id="${c.id}" data-venc="${f.data}" data-total="${f.total}" title="Digite qualquer valor, sem precisar escolher compras">Pagar valor</button>
           <button class="btn btn-primary btn-sm" data-action="pagar-fatura" data-id="${c.id}" data-venc="${f.data}">Pagar fatura</button>
@@ -6926,7 +6926,7 @@ function modalBaixa(l){
       <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:18px;">
         <div style="font-weight:700;font-size:14px;color:var(--ink);margin-bottom:6px;line-height:1.3;">${esc(l.descricao)}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:${corValor};">${sinalValor} ${maskBRL(l.valor, unlockedValor)}</span>
+          <span style="font-size:20px;font-weight:800;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:${corValor};">${sinalValor} ${maskBRL(l.valor, unlockedValor)}</span>
           <span class="status-pill status-pendente">${l.status}</span>
           ${l.recorrenciaId ? `<span style="font-size:11px;color:var(--ink-4);">Parcela ${l.recorrenciaIndex||""}/${l.recorrenciaTotal||""}</span>` : ""}
         </div>
@@ -7108,7 +7108,7 @@ function modalDetalheFatura(cartaoId, dataVencimento){
           <div style="font-size:13px; font-weight:600;">${esc(l.descricao)}</div>
           ${catTxt ? `<div style="font-size:11px; color:var(--ink-4);">${esc(catTxt)}</div>` : ""}
         </div>
-        <div class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-mono); font-weight:700; font-size:13.5px; white-space:nowrap;">${maskBRL(l.valor, unlockedValor)}</div>
+        <div class="${unlockedValor?'':'masked-value'}" style="font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:13.5px; white-space:nowrap;">${maskBRL(l.valor, unlockedValor)}</div>
       </div>
       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:7px; font-size:11px; color:var(--ink-3);">
         <span>${fmtDateBR(l.dataCompra || l.data)}</span>
@@ -8583,7 +8583,7 @@ function viewCliEnvioMassa(){
   }).join("");
   const qtdSelecionados = Array.from(sel).length;
   return `
-    <div class="page-header"><div><div class="page-title"> Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
+    <div class="page-header"><div><div class="page-title">Enviar mensagens</div><div class="page-sub">Selecione o negócio, os contatos e o modelo — depois envie automático (sozinho, precisa do WhatsApp automático configurado) ou manual (abre o WhatsApp um por um pra você clicar em Enviar).</div></div></div>
     <div class="panel" style="margin-bottom:16px;"><div class="panel-body">
       <div class="field-row">
         <div class="field"><label>Negócio</label><select id="envioNegocioSelect"><option value="">Todos os negócios</option>${negOptions}</select></div>
@@ -8730,7 +8730,7 @@ function viewCliDashboard(){
     </div>
 
     <div class="panel">
-      <div class="panel-head"><div class="panel-title"> Novos clientes — últimos 30 dias</div><span style="font-size:12px;color:var(--ink-3);">${novos30} cadastros</span></div>
+      <div class="panel-head"><div class="panel-title">Novos clientes — últimos 30 dias</div><span style="font-size:12px;color:var(--ink-3);">${novos30} cadastros</span></div>
       <div class="panel-body" style="padding-top:6px;">
         ${novosRows ? `<table><thead><tr><th>Nome</th><th>Cadastrado em</th><th>Negócios</th><th>Cidade</th></tr></thead><tbody>${novosRows}</tbody></table>` : emptyState("Nenhum cadastro nos últimos 30 dias.")}
       </div>
@@ -9691,7 +9691,7 @@ function viewCliOSDetalhe(){
     </div>
     <div class="two-col">
       <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Itens vendidos</div></div><div class="panel-body"><table><thead><tr><th>Item</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Valor unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensVendaHTML}</tbody></table></div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Baixa de estoque (custo real da instalação)</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}</tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${os.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">Observações</div></div><div class="panel-body" style="font-size:13px;">${esc(os.observacoes)}</div></div>`:""}
   `;
@@ -10217,7 +10217,7 @@ function viewCliChamadoDetalhe(){
         <div><strong>Aberto em:</strong> ${fmtDateBR(c.dataCadastro)}${c.lancadoPor?` por ${esc(c.lancadoPor)}`:""}</div>
         ${c.dataConclusao?`<div><strong>Concluído em:</strong> ${fmtDateBR(c.dataConclusao)}</div>`:""}
       </div></div>
-      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title"> Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
+      <div class="panel" style="margin:0;"><div class="panel-head"><div class="panel-title">Materiais usados</div></div><div class="panel-body"><table><thead><tr><th>Produto</th><th class="num">Qtd</th>${podeVerValores()?`<th class="num">Custo unit.</th><th class="num">Total</th>`:""}<th class="num"></th></tr></thead><tbody>${itensBaixadosHTML}</tbody></table></div></div>
     </div>
     ${c.observacoes?`<div class="panel" style="margin-top:16px;"><div class="panel-head"><div class="panel-title">Relato do atendimento</div></div><div class="panel-body" style="font-size:13px; white-space:pre-line; line-height:1.7;">${esc(c.observacoes)}</div></div>`:""}
   `;
@@ -10929,7 +10929,7 @@ function viewRhFuncionarioDetalhe(){
       </div>
       <div>
         <div class="panel" style="margin-bottom:12px;">
-          <div class="panel-head"><div class="panel-title"> Folha de pagamento</div></div>
+          <div class="panel-head"><div class="panel-title">Folha de pagamento</div></div>
           <div class="panel-body"><table><thead><tr><th>Competência</th><th class="num">Base</th><th class="num">Bônus</th><th class="num">Descontos</th><th class="num">Líquido</th><th>Status</th><th></th></tr></thead><tbody>${folhaHTML}</tbody></table></div>
         </div>
         <div class="panel">
