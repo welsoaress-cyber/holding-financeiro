@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.23";
+const APP_VERSION = "2.0.24";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -1957,20 +1957,20 @@ async function tratarErroDeSessao(e){
   renderApp();
 }
 // Migração: remove negócios legados e todos os lançamentos vinculados a eles
-const _NEGOCIOS_LEGADOS = ["Precautec","Casa","Servsul","Porto Odonto","Pessoal"];
+const _NEGOCIOS_LEGADOS = ["Precautec","Casa","Servsul","Porto Odonto","Pessoal","Transporte"];
 async function _migrarNegociosLegados(){
-  if(localStorage.getItem("mig_neg_v1")) return;
+  if(localStorage.getItem("mig_neg_v2")) return;
   try{
     const alvo = state.negocios.filter(n => _NEGOCIOS_LEGADOS.includes(n.nome));
     for(const n of alvo){
       state.negocios = state.negocios.filter(x => x.id !== n.id);
       await deleteRow("negocios", n.id);
     }
-    localStorage.setItem("mig_neg_v1", "1");
+    localStorage.setItem("mig_neg_v2", "1");
   }catch(e){ console.warn("[migrarNegociosLegados]", e); }
 }
 async function _migrarLancamentosLegados(){
-  if(localStorage.getItem("mig_lanc_v1")) return;
+  if(localStorage.getItem("mig_lanc_v2")) return;
   try{
     const ids = state.lancamentos
       .filter(l => _NEGOCIOS_LEGADOS.includes(l.negocio))
@@ -1979,7 +1979,7 @@ async function _migrarLancamentosLegados(){
       await deleteRows("lancamentos", ids);
       state.lancamentos = state.lancamentos.filter(l => !ids.includes(l.id));
     }
-    localStorage.setItem("mig_lanc_v1", "1");
+    localStorage.setItem("mig_lanc_v2", "1");
   }catch(e){ console.warn("[migrarLancamentosLegados]", e); }
 }
 
