@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.51";
+const APP_VERSION = "2.0.52";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8522,7 +8522,7 @@ function waLinkCobranca(l){
   let texto;
   if(l.data < hoje){
     const dias = Math.floor((Date.parse(hoje) - Date.parse(l.data)) / 86400000);
-    texto = `${ola}\n\nConsta em aberto a mensalidade de ${valor}, com vencimento em ${venc}${dias > 0 ? ` — ${dias} dia${dias > 1 ? "s" : ""} em atraso` : ""}.\n\nPode verificar o pagamento, por favor? Se já pagou, desconsidere esta mensagem e, se puder, nos envie o comprovante.\n\nQualquer dúvida, estamos à disposição.\n\nAtt,\nTom`;
+    texto = `${ola}\n\nNotamos que a mensalidade de ${valor}, com vencimento em ${venc}${dias > 0 ? ` (${dias} dia${dias > 1 ? "s" : ""} atrás)` : ""}, ainda está em aberto.\n\nDesistiu de assinar com a gente? Sem problema nenhum — é só nos avisar por aqui que encerramos tudo certinho, sem nenhuma cobrança. 😊\n\nAgora, se quiser continuar com o serviço, é só regularizar o pagamento. Se já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
   }else if(l.data === hoje){
     texto = `${ola}\n\nPassando pra lembrar que a sua mensalidade de ${valor} vence HOJE (${venc}).\n\nSe já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
   }else{
