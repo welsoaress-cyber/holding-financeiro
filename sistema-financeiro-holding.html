@@ -1138,7 +1138,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.37";
+const APP_VERSION = "2.0.38";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5291,7 +5291,7 @@ function viewLancamentos(){
     const unlocked = l.tipo === "Despesa" ? pagarDesbloqueado() : receberDesbloqueado();
     const catTxt = [l.categoria, l.subcategoria].filter(Boolean).join(" › ");
     const cliVinculado = l.clienteId ? cliClienteById(l.clienteId) : null;
-    const clienteBadge = cliVinculado ? `<div style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:500;">👤 ${esc(cliNome(cliVinculado))}</div>` : "";
+    const clienteBadge = cliVinculado ? `<div data-action="cli-edit" data-id="${cliVinculado.id}" title="Abrir o cadastro de ${esc(cliNome(cliVinculado))}" style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">👤 ${esc(cliNome(cliVinculado))}</div>` : "";
     // OBS: o emoji fica reservado pra despesa de cartão de verdade
     // (l.cartaoId) — "Parcelado" sozinho não quer dizer cartão (dá pra
     // parcelar uma despesa direto, sem cartão nenhum, ex: financiamento).
