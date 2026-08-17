@@ -36,6 +36,9 @@ function normalizarTelefone(tel: string): string | null {
 // ----------------------------------------------------------------
 async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000) // 15s timeout
+
     const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
       method: 'POST',
       headers: {
@@ -46,7 +49,9 @@ async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean
         number: numero,
         text: mensagem,
       }),
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
 
     if (!res.ok) {
       const err = await res.text()
