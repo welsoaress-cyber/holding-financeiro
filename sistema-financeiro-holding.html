@@ -452,6 +452,17 @@
   }
   .btn-baixar:hover { background: color-mix(in srgb, var(--pos) 22%, transparent); border-color: color-mix(in srgb, var(--pos) 55%, transparent); }
 
+  /* Botão de cobrança via WhatsApp automático (chama a Edge Function) */
+  .btn-cobrar-wa {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(37,211,102,.35);
+    background: rgba(37,211,102,.10);
+    color: #25D366; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; transition: background .15s, border-color .15s;
+  }
+  .btn-cobrar-wa:hover { background: rgba(37,211,102,.22); border-color: rgba(37,211,102,.55); }
+  .btn-cobrar-wa:disabled { opacity: .6; cursor: not-allowed; }
+
   /* ---- Filter bar ---- */
   .filter-bar {
     display: flex; gap: 8px; flex-wrap: wrap;
@@ -1151,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.65";
+const APP_VERSION = "2.0.66";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5419,6 +5430,7 @@ function viewLancamentos(){
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
     const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar && !l.inativo;
     const linkCobranca = !l.inativo && l.status !== "Pago" ? waLinkCobranca(l) : null;
+    const podeCobrarWA = !l.inativo && l.status !== "Pago" && l.tipo === "Receita" && !!l.clienteId;
     const marcado = lancSelecionados.has(l.id);
     const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
@@ -5446,7 +5458,7 @@ function viewLancamentos(){
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${statusLabel}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="dup-lanc" data-id="${l.id}" title="Duplicar">⧉</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
+      <td><div class="row-actions">${podeCobrarWA ? `<button class="btn-cobrar-wa" data-action="cobrar-whatsapp" data-id="${l.id}" title="Enviar cobrança via WhatsApp (automático)">📲 Cobrar</button>` : ""}${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Abrir WhatsApp manualmente" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="dup-lanc" data-id="${l.id}" title="Duplicar">⧉</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
 
@@ -5465,8 +5477,9 @@ function viewLancamentos(){
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar;
     const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar;
     const linkCobranca = l.status !== "Pago" ? waLinkCobranca(l) : null;
+    const podeCobrarWAMob = l.status !== "Pago" && l.tipo === "Receita" && !!l.clienteId;
     const corValor = l.tipo === "Despesa" ? "var(--neg)" : l.tipo === "Receita" ? "var(--pos)" : "var(--ink-2)";
-    const temAcao = podeBaixar || podeVerFaturaDoItem || podeEditar || podeExcluir || linkCobranca;
+    const temAcao = podeBaixar || podeVerFaturaDoItem || podeEditar || podeExcluir || linkCobranca || podeCobrarWAMob;
     const labelData = l.tipo === "Transferência" ? "Data" : "Vencimento";
     return `<div style="padding:12px ${eVencido?'8px':'2px'}; border-bottom:1px solid var(--border); ${eVencido?'background:var(--neg-bg); border-radius:8px; margin:2px 0;':''}">
       ${cliVinculado
@@ -5483,8 +5496,9 @@ function viewLancamentos(){
       </div>
       ${temAcao?`<div style="display:flex; gap:8px; margin-top:9px; justify-content:center; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:9px;">
         ${podeBaixar?`<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}" style="min-width:100px; justify-content:center;">✓ Baixar</button>`:""}
+        ${podeCobrarWAMob?`<button class="btn-cobrar-wa" data-action="cobrar-whatsapp" data-id="${l.id}" style="min-width:100px; justify-content:center;">📲 Cobrar</button>`:""}
         ${podeVerFaturaDoItem?`<button class="btn btn-ghost btn-sm" data-action="ver-fatura-item" data-id="${l.id}" style="color:var(--pos);">Fatura CC</button>`:""}
-        ${linkCobranca?`<a class="btn btn-ghost btn-sm" href="${linkCobranca}" target="_blank" rel="noopener" style="color:#25D366;">WhatsApp</a>`:""}
+        ${linkCobranca?`<a class="btn btn-ghost btn-sm" href="${linkCobranca}" target="_blank" rel="noopener" style="color:#25D366;">WA manual</a>`:""}
         ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="edit-lanc" data-id="${l.id}">✎ Editar</button>`:""}
         ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="dup-lanc" data-id="${l.id}" title="Criar cópia deste lançamento">⧉ Duplicar</button>`:""}
         ${podeExcluir?`<button class="btn btn-ghost btn-sm" style="color:var(--neg);" data-action="del-lanc" data-id="${l.id}">× Excluir</button>`:""}
@@ -7703,6 +7717,11 @@ document.addEventListener("click", async e => {
     if(l){ l.conciliado = !l.conciliado; await saveLancamentos(); renderApp(); }
   }
   else if(action === "baixar-titulo"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalBaixa(l); }
+  else if(action === "cobrar-whatsapp"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l && l.clienteId) await cobrarWhatsApp(l, el);
+    else showToast("Sem clienteId vinculado — não é possível enviar.", "error");
+  }
   else if(action === "ver-fatura-item"){
     // Despesa de cartão não se baixa sozinha — quem baixa é a fatura inteira
     // (ou uma parte dela). Em vez de um  que faria pouco sentido isolado,
@@ -8596,6 +8615,36 @@ function waLinkCobranca(l){
     texto = `${ola}\n\nSua mensalidade de ${valor} vence em ${venc}. Recomendamos o pagamento até a data pra garantir a continuidade do serviço.\n\nSe já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
   }
   return waLinkTexto(cliente.whatsapp || cliente.telefone, texto);
+}
+
+// Envio automático de cobrança via WhatsApp — chama a Edge Function
+// whatsapp-lembretes com ?clienteId=xxx para disparar exatamente a mesma
+// mensagem (com link Pix) que o cron diário enviaria. Diferente do
+// waLinkCobranca() (que apenas abre o wa.me no navegador), aqui o envio
+// é feito pela Evolution API sem intervenção manual.
+async function cobrarWhatsApp(l, btnEl){
+  const textoOriginal = btnEl?.textContent || "📲 Cobrar";
+  if(btnEl){ btnEl.disabled = true; btnEl.textContent = "Enviando..."; }
+  try {
+    const url = `${SUPABASE_URL}/functions/v1/whatsapp-lembretes?clienteId=${encodeURIComponent(l.clienteId)}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const json = await res.json().catch(() => ({}));
+    const cli = l.clienteId ? cliClienteById(l.clienteId) : null;
+    const nome = cli ? cliNome(cli) : "cliente";
+    if(res.ok && json.enviados > 0){
+      showToast(`✅ WhatsApp enviado para ${nome}!`);
+    } else if(res.ok){
+      showToast(`ℹ️ Nada enviado para ${nome} — sem cobrança pendente ou sem número cadastrado.`, "warn");
+    } else {
+      showToast(`Erro ao enviar para ${nome}: ${json.error || json.msg || res.status}`, "error");
+    }
+  } catch(err) {
+    showToast(`Erro de rede: ${err.message}`, "error");
+  } finally {
+    if(btnEl){ btnEl.disabled = false; btnEl.textContent = textoOriginal; }
+  }
 }
 
 // ============================================================
