@@ -174,11 +174,24 @@ function montarMensagem(
     : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
   const assinatura = `\n${pagamento}\n\nEm caso de dúvidas, entre em contato conosco.`
 
-  // ── Vencidos ──────────────────────────────────────────────────
-  if (diasRestantes <= -3) {
+  // ── Vencidos há mais de 3 dias — reengajamento ────────────────
+  // (ciclo de 5 em 5 dias no automático, ou clique no 📲 Cobrar)
+  // Tom de incentivo: novidades do serviço + convite pra voltar,
+  // em vez de só aviso de bloqueio.
+  if (diasRestantes <= -4) {
     const dias = Math.abs(diasRestantes)
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `⚠️ Sua fatura venceu *há ${dias} dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
+      `Sentimos sua falta por aqui! 💙\n\n` +
+      `A *Servnet está com novidades*: fizemos atualizações e melhorias na rede pra você navegar ainda melhor. 🚀\n\n` +
+      `Notamos que a sua fatura vencida em ${dataFormatada} (há ${dias} dias) ainda está em aberto. ` +
+      `Que tal regularizar agora e voltar a aproveitar tudo isso? 😊` +
+      assinatura
+  }
+
+  // ── Vencidos (até 3 dias) ─────────────────────────────────────
+  if (diasRestantes === -3) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Sua fatura venceu *há 3 dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
       `Seu acesso está temporariamente bloqueado.` +
       assinatura
   }
@@ -274,23 +287,22 @@ serve(async (req) => {
 
   // ----------------------------------------------------------------
   // Busca faturas não pagas:
-  //   - Vencidas — modo AUTOMÁTICO (cron, sem ?clienteId): só até 3 dias
-  //     de atraso. Acima disso a cobrança é decisão manual do usuário,
-  //     feita pelo botão 📲 Cobrar no sistema (que chama com ?clienteId).
-  //   - Vencidas — modo MANUAL (?clienteId): TODAS, sem limite de data —
-  //     o botão precisa alcançar qualquer fatura antiga do cliente.
+  //   - Vencidas: TODAS, sem limite de data (nos dois modos). O ritmo de
+  //     cada uma é decidido no loop abaixo:
+  //       · até 3 dias de atraso → aviso diário (mensagens de bloqueio)
+  //       · acima de 3 dias      → cobrança a cada 5 dias de atraso
+  //                                (5, 10, 15, ...) com mensagem de
+  //                                incentivo/novidades (reengajamento)
+  //     No modo MANUAL (?clienteId, botão 📲 Cobrar) não há ritmo:
+  //     o clique é a decisão — envia tudo que está em aberto na hora.
   //   - A vencer: hoje + próximos 3 dias (nos dois modos)
   // ----------------------------------------------------------------
-  const limiteVencidasAuto = addDias(agora, -3)
-  if (!filtroClienteId) console.log(`⏱️ Modo automático: vencidas só a partir de ${limiteVencidasAuto}`)
-
   const [resVencAt, resVencNull] = await Promise.all([
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
         .eq('dados->>inativo', 'false').lt('dados->>data', hoje)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
-      else q = q.gte('dados->>data', limiteVencidasAuto)
       return q
     })(),
     (() => {
@@ -298,7 +310,6 @@ serve(async (req) => {
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
         .is('dados->>inativo', null).lt('dados->>data', hoje)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
-      else q = q.gte('dados->>data', limiteVencidasAuto)
       return q
     })(),
   ])
@@ -365,6 +376,23 @@ serve(async (req) => {
       continue
     }
 
+    // Dias exatos até o vencimento (negativo = vencido há X dias)
+    const msPerDia = 24 * 60 * 60 * 1000
+    const diasRestantes = dataVenc
+      ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
+      : 0
+    const diasAtraso = -diasRestantes
+
+    // Ritmo do modo automático: vencida há mais de 3 dias só entra no
+    // ciclo de 5 em 5 dias de atraso (5, 10, 15, ...) — aí vai a mensagem
+    // de incentivo/novidades. No modo manual (?clienteId, botão 📲 Cobrar)
+    // não há ritmo: o clique é a decisão, envia sempre.
+    if (!filtroClienteId && diasAtraso > 3 && diasAtraso % 5 !== 0) {
+      console.log(`⏭️ Lançamento ${lanc.id} vencido há ${diasAtraso} dias — fora do ciclo de 5 em 5, pulado hoje`)
+      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: `atraso ${diasAtraso}d fora do ciclo 5/5` })
+      continue
+    }
+
     // Busca dados do cliente
     const { data: cliente, error: errCli } = await sb
       .from('cli_clientes')
@@ -396,14 +424,8 @@ serve(async (req) => {
                    : hora >= 12 && hora < 18 ? 'Boa tarde'
                    : 'Boa noite'
 
-    // Calcula quantos dias faltam (negativo = vencido)
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    // Calcula dias exatos (negativo = vencido há X dias)
-    const msPerDia = 24 * 60 * 60 * 1000
-    const diasRestantes = dataVenc
-      ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
-      : 0
 
     const tipoLog = diasRestantes < 0
       ? `vencido há ${Math.abs(diasRestantes)} dia(s)`
