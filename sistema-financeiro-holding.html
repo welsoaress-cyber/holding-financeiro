@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.72";
+const APP_VERSION = "2.0.73";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2764,6 +2764,8 @@ let authBusy = false;
 // no Modo Membro quando onAuthStateChange e doAuthMembro disparam carregarSessao
 // ao mesmo tempo). Resetado pelo SIGNED_OUT do Supabase.
 let _acessoBloqueado = false;
+// Timer do splash de boas-vindas — avança automaticamente após 3s.
+let _splashTimer = null;
 async function doLogin(email, password){
   try{
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -3123,11 +3125,13 @@ function renderApp(){
   if(state.modoTecnico){ renderAppTecnico(); return; }
   if(state.perfis.length > 0 && !state.perfilEscolhido){ app.innerHTML = renderSeletorPerfil(); document.getElementById("modbarWrap").innerHTML = ""; return; }
 
-  // Splash de boas-vindas — tela cheia, sem sidebar, sem timer.
-  // Sai ao clicar em qualquer lugar.
+  // Splash de boas-vindas — tela cheia, sem sidebar.
+  // Avança ao tocar/clicar em qualquer lugar ou automaticamente após 3s.
   if(state.view === "welcome"){
     document.getElementById("modbarWrap").innerHTML = "";
     app.innerHTML = viewBoasVindasSplash();
+    clearTimeout(_splashTimer);
+    _splashTimer = setTimeout(avancarDoSplash, 3000);
     return;
   }
 
@@ -4251,6 +4255,7 @@ const VERSICULOS_BOAS_VINDAS = [
 // Avança do splash para o app real (restaurando última navegação ou dashboard)
 function avancarDoSplash(){
   if(state.view !== "welcome") return;
+  clearTimeout(_splashTimer); _splashTimer = null;
   // Tela padrão pós-login: Visão Executivo (a navegação salva de um F5,
   // restaurada logo abaixo, pode sobrescrever — login de verdade não tem
   // navegação salva, então cai aqui mesmo).
@@ -4296,6 +4301,7 @@ function viewBoasVindasSplash(){
     <div class="splash-inner">
       <p class="splash-nome">${saud}, <em>${esc(nome)}</em>.</p>
       <p class="splash-verso">"${esc(v.texto)}" <strong>— ${esc(v.ref)}</strong></p>
+      <p style="margin-top:40px; font-size:12px; color:rgba(255,255,255,.25); letter-spacing:.04em;">toque para continuar</p>
     </div>
   </div>`;
 }
