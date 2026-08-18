@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.63";
+const APP_VERSION = "2.0.64";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7116,7 +7116,7 @@ function modalBaixa(l){
     l.dataPagamento = fd.get("dataPagamento");
     l.contaOrigem = fd.get("contaOrigem");
     l.conciliado = fd.get("conciliado") === "on";
-    await saveLancamentos(); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
+    await saveRows("lancamentos", [l]); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
   });
 }
 

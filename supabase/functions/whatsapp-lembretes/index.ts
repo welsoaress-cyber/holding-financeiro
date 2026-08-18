@@ -9,6 +9,7 @@ const SB_SECRET     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const EVO_URL       = Deno.env.get('EVOLUTION_API_URL') || 'http://163.176.122.177:8080'
 const EVO_KEY       = Deno.env.get('EVOLUTION_API_KEY') || 'servnet-evo-2026'
 const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
+const MP_TOKEN      = Deno.env.get('MP_ACCESS_TOKEN') || ''
 
 // ----------------------------------------------------------------
 // Normaliza telefone para formato internacional (55XXXXXXXXXXX)
@@ -27,36 +28,115 @@ function normalizarTelefone(tel: string): string | null {
 }
 
 // ----------------------------------------------------------------
-// Envia mensagem WhatsApp via Evolution API
+// Gera link de pagamento Pix via Mercado Pago
+// Retorna a URL para o cliente pagar, ou null se falhar
 // ----------------------------------------------------------------
-async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
+async function gerarLinkPix(
+  valor: number,
+  nome: string,
+  descricao: string,
+  dataVencimento: string, // YYYY-MM-DD
+  idempotencyKey: string,
+  lancId: string,         // ID do lançamento — salvo como external_reference para o webhook
+): Promise<string | null> {
+  if (!MP_TOKEN) return null
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
-
-    const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+    const expiracao = `${dataVencimento}T23:59:59.000-03:00`
+    const res = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
-        'apikey': EVO_KEY,
+        'Authorization': `Bearer ${MP_TOKEN}`,
         'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey,
       },
-      body: JSON.stringify({ number: numero, text: mensagem }),
+      body: JSON.stringify({
+        transaction_amount: valor,
+        payment_method_id: 'pix',
+        description: descricao,
+        date_of_expiration: expiracao,
+        external_reference: lancId, // webhook usa isso para dar baixa automática
+        payer: {
+          email: 'cliente@servnet.net.br',
+          first_name: nome.split(' ')[0] || nome,
+        },
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error(`⚠️ MP Pix error para ${nome}:`, err)
+      return null
+    }
+    const json = await res.json()
+    const url = json?.point_of_interaction?.transaction_data?.ticket_url
+    if (url) console.log(`💳 Link Pix gerado para ${nome}: ${url}`)
+    return url || null
+  } catch (err) {
+    console.error(`⚠️ Exceção ao gerar Pix MP para ${nome}:`, err)
+    return null
+  }
+}
+
+// ----------------------------------------------------------------
+// Aguarda N milissegundos
+// ----------------------------------------------------------------
+function sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms))
+}
+
+// ----------------------------------------------------------------
+// Verifica se a instância Evolution API está conectada (antes de disparar)
+// ----------------------------------------------------------------
+async function verificarInstancia(): Promise<{ ok: boolean; estado: string }> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const res = await fetch(`${EVO_URL}/instance/connectionState/${EVO_INSTANCE}`, {
+      headers: { 'apikey': EVO_KEY },
       signal: controller.signal,
     })
     clearTimeout(timeout)
-
-    if (!res.ok) {
-      const err = await res.text()
-      console.error(`❌ Erro ao enviar para ${numero}:`, err)
-      return false
-    }
-
-    console.log(`✅ Mensagem enviada para ${numero}`)
-    return true
+    if (!res.ok) return { ok: false, estado: `HTTP ${res.status}` }
+    const json = await res.json()
+    // Evolution API v1: json.instance.state | v2: json.state
+    const estado: string = json?.instance?.state ?? json?.state ?? 'desconhecido'
+    return { ok: estado === 'open', estado }
   } catch (err) {
-    console.error(`❌ Exceção ao enviar para ${numero}:`, err)
-    return false
+    return { ok: false, estado: `timeout/rede: ${err}` }
   }
+}
+
+// ----------------------------------------------------------------
+// Envia mensagem WhatsApp via Evolution API (com retry e backoff)
+// ----------------------------------------------------------------
+async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
+  const MAX = 3
+  for (let t = 1; t <= MAX; t++) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+        method: 'POST',
+        headers: { 'apikey': EVO_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: numero, text: mensagem }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (!res.ok) {
+        const err = await res.text()
+        console.error(`❌ [${t}/${MAX}] Erro HTTP ao enviar para ${numero}:`, err)
+        if (t < MAX) await sleep(1000 * t) // 1 s, depois 2 s
+        continue
+      }
+      if (t > 1) console.log(`✅ Mensagem enviada para ${numero} (tentativa ${t})`)
+      else       console.log(`✅ Mensagem enviada para ${numero}`)
+      return true
+    } catch (err) {
+      console.error(`❌ [${t}/${MAX}] Exceção ao enviar para ${numero}:`, err)
+      if (t < MAX) await sleep(1000 * t)
+    }
+  }
+  console.error(`🔴 Falha definitiva para ${numero} após ${MAX} tentativas`)
+  return false
 }
 
 // ----------------------------------------------------------------
@@ -86,9 +166,13 @@ function montarMensagem(
   nome: string,
   valorFormatado: string,
   dataFormatada: string,
-  diasRestantes: number
+  diasRestantes: number,
+  linkPix?: string | null,
 ): string {
-  const assinatura = `\n💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco.`
+  const pagamento = linkPix
+    ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+    : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
+  const assinatura = `\n${pagamento}\n\nEm caso de dúvidas, entre em contato conosco.`
 
   // ── Vencidos ──────────────────────────────────────────────────
   if (diasRestantes <= -3) {
@@ -113,26 +197,28 @@ function montarMensagem(
 
   // ── Vence hoje ────────────────────────────────────────────────
   if (diasRestantes === 0) {
+    const pag = linkPix
+      ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+      : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Lembrando que sua fatura vence *hoje* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
 
   // ── A vencer ──────────────────────────────────────────────────
+  const pag = linkPix
+    ? `💰 *${valorFormatado}*\n👉 Pagar agora: ${linkPix}`
+    : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
   if (diasRestantes === 1) {
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Sua fatura vence *amanhã* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Sua fatura vence *amanhã* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
   if (diasRestantes === 2) {
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `Sua fatura vence em *2 dias* (${dataFormatada}).\n\n` +
-      `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+      `Sua fatura vence em *2 dias* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
   }
   // 3 dias
   return `${saudacao}, *${nome}*! 👋\n\n` +
-    `Sua fatura vence em *3 dias* (${dataFormatada}).\n\n` +
-    `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com\n\nEm caso de dúvidas, entre em contato conosco. 😊`
+    `Sua fatura vence em *3 dias* (${dataFormatada}).\n\n${pag}\n\nEm caso de dúvidas, entre em contato conosco. 😊`
 }
 
 // ----------------------------------------------------------------
@@ -144,6 +230,22 @@ serve(async (req) => {
   }
 
   const sb = createClient(SB_URL, SB_SECRET)
+
+  // ----------------------------------------------------------------
+  // Verifica se a Evolution API está online antes de qualquer disparo.
+  // Falha rápida: evita tentar enviar para todos os clientes quando a
+  // instância está desconectada (sessão expirada, servidor reiniciado, etc.)
+  // ----------------------------------------------------------------
+  const { ok: apiOK, estado: apiEstado } = await verificarInstancia()
+  if (!apiOK) {
+    const msg = `🔴 Evolution API OFFLINE — instância '${EVO_INSTANCE}' estado: ${apiEstado}. Acesse o painel para reconectar.`
+    console.error(msg)
+    return new Response(JSON.stringify({
+      ok: false,
+      error: `Evolution API offline (estado: ${apiEstado}). Reconecte a instância '${EVO_INSTANCE}' no painel da Evolution API e dispare novamente.`,
+    }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+  }
+  console.log(`✅ Evolution API conectada (estado: ${apiEstado})`)
 
   // Data de hoje ajustada para Brasília (UTC-3)
   const agora = new Date()
@@ -327,7 +429,18 @@ serve(async (req) => {
 
     console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
 
-    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes)
+    // Gera link Pix do Mercado Pago (só para faturas a vencer/hoje, não para vencidas)
+    let linkPix: string | null = null
+    if (diasRestantes >= 0 && MP_TOKEN) {
+      const valorNum = parseFloat(String(valor || '0'))
+      if (valorNum > 0) {
+        const idempKey = `servnet-${lanc.id}-${hoje}`
+        const descPix = `Mensalidade Servnet - ${nome}`
+        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey, lanc.id)
+      }
+    }
+
+    const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, linkPix)
 
     const ok = await enviarWhatsApp(telefone, mensagem)
     if (ok) {
