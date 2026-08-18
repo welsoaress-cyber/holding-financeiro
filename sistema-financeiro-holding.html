@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.68";
+const APP_VERSION = "2.0.69";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2246,13 +2246,23 @@ async function renovarRecorrenciasFixas(){
 // Regra do usuário: cliente que FICOU INADIMPLENTE (régua de cobrança:
 // 4+ dias de atraso) não deve acumular novas mensalidades — as ocorrências
 // FUTURAS ainda não pagas das séries recorrentes dele são removidas e a
-// série fica marcada (recorrenciaSuspensa). As vencidas/de hoje ficam:
-// são a dívida a cobrar. Quando o pagamento entra (baixa manual ou Pix
-// automático) e o cliente sai da inadimplência, a série RETOMA: os meses
-// seguintes voltam a ser lançados A PARTIR DE HOJE, mantendo o dia de
-// vencimento. Os meses do período bloqueado NÃO são recriados de propósito
-// — nasceriam já vencidos e o cliente voltava a ficar inadimplente na
-// hora, num loop sem fim.
+// série fica marcada (recorrenciaSuspensa guarda a DATA da suspensão).
+// As vencidas/de hoje ficam: são a dívida a cobrar.
+//
+// RETOMADA (o ponto delicado — "cobrar quando tem que cobrar e não
+// cobrar quando não tiver"): quando o pagamento entra (baixa manual ou
+// Pix automático) e o cliente sai da inadimplência, a série volta a
+// lançar A PARTIR DO DIA EM QUE ELE REGULARIZOU (a data do pagamento
+// mais recente desde a suspensão), mantendo o dia de vencimento:
+//   · Os meses do período BLOQUEADO (entre suspender e pagar) não são
+//     recriados — não houve serviço, e nasceriam já vencidos, o que
+//     re-suspenderia o cliente num loop sem fim.
+//   · Os meses DEPOIS do pagamento são todos criados, mesmo que o
+//     sistema só seja aberto dias depois e algum já tenha passado —
+//     serviço ativo é serviço cobrado; se o sistema demorar a abrir e
+//     o cliente atrasar essas novas, a régua age normalmente de novo.
+//   · Dívida perdoada sem pagamento (lançamentos inativados): retoma a
+//     partir de hoje.
 // Idempotente: roda a cada login (depois de renovarRecorrenciasFixas) e
 // depois de cada baixa de Receita com cliente — só grava quando algo muda.
 function _diasMinInadimplencia(){
@@ -2289,14 +2299,31 @@ async function sincronizarRecorrenciasInadimplentes(){
         }
         for(const l of lista){
           if(removerDaSerie.has(l.id)){ idsRemover.push(l.id); continue; }
-          l.recorrenciaSuspensa = true;
+          l.recorrenciaSuspensa = hoje; // guarda QUANDO suspendeu (p/ retomada)
           alterados.push(l);
         }
         suspensas++;
       }else if(!inadimplente && suspensa){
-        // RETOMA: limpa a marca e recria as ocorrências a partir de hoje
+        // RETOMA: cliente regularizou. A cobrança volta a partir do dia do
+        // pagamento que o regularizou — não de "hoje" — senão a mensalidade
+        // que venceu entre o pagamento e a próxima abertura do sistema
+        // seria pulada (mês de serviço de graça).
+        const dataSusp = (() => {
+          const v = lista.find(l => l.recorrenciaSuspensa)?.recorrenciaSuspensa;
+          return typeof v === "string" ? v : null; // compat: flag antiga era boolean
+        })();
         for(const l of lista){
           if(l.recorrenciaSuspensa){ delete l.recorrenciaSuspensa; alterados.push(l); }
+        }
+        // Pagamento mais recente do cliente desde a suspensão = data em que
+        // regularizou. Sem pagamento (dívida perdoada/inativada) → hoje.
+        let dataRetomada = hoje;
+        const pagosDesde = state.lancamentos.filter(x =>
+          x.clienteId === cliente.id && x.tipo === "Receita" && x.status === "Pago" &&
+          x.dataPagamento && (!dataSusp || x.dataPagamento >= dataSusp));
+        if(pagosDesde.length){
+          const maxPg = pagosDesde.reduce((m,x) => x.dataPagamento > m ? x.dataPagamento : m, pagosDesde[0].dataPagamento);
+          if(maxPg < hoje) dataRetomada = maxPg;
         }
         const ativos = lista.filter(l => !l.inativo).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
         const ultimo = ativos[ativos.length-1];
@@ -2307,7 +2334,7 @@ async function sincronizarRecorrenciasInadimplentes(){
         const alvo = _addAnosISO(hoje, HORIZONTE_ANOS);
         let d = proximaData(ultimo.data, freq);
         let guarda = 0;
-        while(d < hoje && guarda < 400){ guarda++; d = proximaData(d, freq); } // pula o período suspenso
+        while(d < dataRetomada && guarda < 400){ guarda++; d = proximaData(d, freq); } // pula só o período bloqueado
         while(d <= alvo && guarda < 400){
           guarda++;
           const chave = ultimo.recorrenciaId + "|" + d;
@@ -2424,6 +2451,16 @@ async function loadData(){
     // perfil correspondente aqui e já libera o acesso direto.
     if(state.modoMembro && state.membroAuthInfo){
       const perfilLigado = state.perfis.find(p => p.id === state.membroAuthInfo.perfilId);
+      if(perfilLigado && perfilLigado.inativo){
+        // SEGURANÇA: usuário com "Acesso bloqueado" (inativado em Usuários)
+        // NÃO entra — nem pelo login individual com e-mail/senha próprios.
+        // (Antes só a lista "Quem está usando?" filtrava inativos, e quem
+        // tinha login próprio passava direto por aqui sem essa checagem.)
+        await supabaseClient.auth.signOut();
+        state.user = null; state.modoMembro = false; state.membroAuthInfo = null;
+        showToast("Seu acesso está bloqueado — fale com quem administra o sistema.", "error");
+        return;
+      }
       if(perfilLigado){
         state.perfilAtivo = perfilLigado;
         state.perfilEscolhido = true;
@@ -7672,7 +7709,13 @@ document.addEventListener("click", async e => {
   else if(action === "switch-auth-master"){ authMode = "login"; renderApp(); }
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
-  else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
+  else if(action === "selecionar-perfil"){
+    const p = perfilById(id);
+    // Defesa extra: a lista já esconde inativos, mas nunca abre a senha
+    // de um perfil bloqueado mesmo que o botão apareça por render antigo.
+    if(p && p.inativo){ showToast("Acesso bloqueado — fale com quem administra o sistema.", "error"); return; }
+    if(p) modalSenhaPerfil(p);
+  }
   else if(action === "dados-teste-executar"){
     const acaoTeste = el.dataset.acao, escopo = el.dataset.escopo;
     closeModal();

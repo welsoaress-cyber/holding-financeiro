@@ -348,6 +348,25 @@ serve(async (req) => {
 
   console.log(`📋 Faturas encontradas: ${todoLancamentos.length}`)
 
+  // ----------------------------------------------------------------
+  // Mapa de inadimplência por cliente (a partir das vencidas já buscadas).
+  // Cliente com atraso >= 4 dias (régua: Inadimplente) recebe cobrança SÓ
+  // da fatura MAIS ANTIGA — nada de aviso de fatura nova/a vencer enquanto
+  // a dívida existe, e nada de várias mensagens no mesmo dia. Trava feita
+  // AQUI no servidor de propósito: funciona mesmo que o sistema (que
+  // suspende as mensalidades futuras no login) fique dias sem ser aberto.
+  // ----------------------------------------------------------------
+  const msDia = 24 * 60 * 60 * 1000
+  const inadimplencia = new Map<string, { maxAtraso: number; oldestId: string }>()
+  for (const lanc of [...(resVencAt.data || []), ...(resVencNull.data || [])]) {
+    const d = lanc.dados as Record<string, string>
+    const cid = d?.clienteId
+    if (!cid || !d?.data) continue
+    const atraso = Math.round((new Date(hoje).getTime() - new Date(d.data).getTime()) / msDia)
+    const atual = inadimplencia.get(cid)
+    if (!atual || atraso > atual.maxAtraso) inadimplencia.set(cid, { maxAtraso: atraso, oldestId: lanc.id })
+  }
+
   if (todoLancamentos.length === 0) {
     return new Response(JSON.stringify({
       ok: true,
@@ -382,6 +401,17 @@ serve(async (req) => {
       ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
       : 0
     const diasAtraso = -diasRestantes
+
+    // Trava de inadimplência do modo automático: cliente com atraso >= 4
+    // dias só recebe cobrança da fatura MAIS ANTIGA (a dívida) — as outras
+    // faturas dele (novas, a vencer, vencidas mais recentes) ficam mudas
+    // até a dívida ser paga. Modo manual (?clienteId) ignora a trava.
+    const inf = inadimplencia.get(clienteId)
+    if (!filtroClienteId && inf && inf.maxAtraso >= 4 && lanc.id !== inf.oldestId) {
+      console.log(`⏭️ Lançamento ${lanc.id} pulado — cliente inadimplente (${inf.maxAtraso}d), cobrança focada na fatura mais antiga`)
+      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: `cliente inadimplente ${inf.maxAtraso}d — só a fatura mais antiga é cobrada` })
+      continue
+    }
 
     // Ritmo do modo automático: vencida há mais de 3 dias só entra no
     // ciclo de 5 em 5 dias de atraso (5, 10, 15, ...) — aí vai a mensagem
