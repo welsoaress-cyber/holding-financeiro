@@ -1151,7 +1151,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.64";
+const APP_VERSION = "2.0.65";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -5357,7 +5357,16 @@ function viewLancamentos(){
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.catNome) list = list.filter(l => l.categoria === lancFilter.catNome);
   if(lancFilter.subcatNome) list = list.filter(l => l.subcategoria === lancFilter.subcatNome);
-  if(lancFilter.texto) list = list.filter(l => (l.descricao||"").toLowerCase().includes(lancFilter.texto.toLowerCase()));
+  if(lancFilter.texto) {
+    const _txt = lancFilter.texto.trim();
+    // Multi-termo: "termo1","termo2" → busca qualquer um (OR) na descrição
+    const _quoted = [..._txt.matchAll(/"([^"]*)"/g)].map(m => m[1].toLowerCase()).filter(Boolean);
+    if(_quoted.length > 0) {
+      list = list.filter(l => _quoted.some(t => (l.descricao||"").toLowerCase().includes(t)));
+    } else {
+      list = list.filter(l => (l.descricao||"").toLowerCase().includes(_txt.toLowerCase()));
+    }
+  }
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
   if(lancFilter.clienteId) list = list.filter(l => l.clienteId === lancFilter.clienteId);
@@ -5530,7 +5539,7 @@ function viewLancamentos(){
     ${graficoRecDespFiltroHTML}
     ${mesNavHTML}
     <div class="panel"><div class="filter-bar">
-      <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
+      <input type="text" placeholder='Buscar... ou "termo1","termo2"' value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       ${cliAtivos().length ? `<select data-action="filter-clienteid"><option value="">Todos os clientes</option>${clienteOptions}</select>` : ""}
