@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.75";
+const APP_VERSION = "2.0.76";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3434,7 +3434,7 @@ function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const dragAttrs = `draggable="true" data-menu-sort-id="${id}"`;
   const dragHandle = `<span class="neg-drag-handle" title="Segurar e arrastar para reordenar" style="color:rgba(255,255,255,.2);font-size:14px;cursor:grab;margin-right:3px;user-select:none;flex-shrink:0;">⠿</span>`;
   return `
-    <div class="nav-item ${contemViewAtual && !aberto && sidebarGruposAbertos.size === 0 ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
+    <div class="nav-item ${aberto || (contemViewAtual && !aberto && sidebarGruposAbertos.size === 0) ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;">${dragHandle}<span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
