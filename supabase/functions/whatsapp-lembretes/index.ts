@@ -229,6 +229,10 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // Filtro opcional: ?clienteId=xxx envia só para aquele cliente (útil para testes)
+  const url = new URL(req.url)
+  const filtroClienteId = url.searchParams.get('clienteId') || null
+
   const sb = createClient(SB_URL, SB_SECRET)
 
   // ----------------------------------------------------------------
@@ -276,13 +280,15 @@ serve(async (req) => {
   // ----------------------------------------------------------------
   // Busca faturas não pagas dentro da janela de notificação
   // ----------------------------------------------------------------
-  const { data: lancamentosAtivos, error } = await sb
+  let qAtivos = sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .eq('dados->>inativo', 'false')
     .in('dados->>data', todasDatas)
+  if (filtroClienteId) qAtivos = qAtivos.eq('dados->>clienteId', filtroClienteId)
+  const { data: lancamentosAtivos, error } = await qAtivos
 
   if (error) {
     console.error('❌ Erro ao buscar lançamentos:', error)
@@ -290,18 +296,22 @@ serve(async (req) => {
   }
 
   // Inclui lançamentos sem campo inativo definido (null = ativo)
-  const { data: lancamentosNull } = await sb
+  let qNull = sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .is('dados->>inativo', null)
     .in('dados->>data', todasDatas)
+  if (filtroClienteId) qNull = qNull.eq('dados->>clienteId', filtroClienteId)
+  const { data: lancamentosNull } = await qNull
 
   const todoLancamentos = [
     ...(lancamentosAtivos || []),
     ...(lancamentosNull || []),
   ]
+
+  if (filtroClienteId) console.log(`🔍 Filtro ativo: clienteId=${filtroClienteId}`)
 
   console.log(`📋 Faturas encontradas: ${todoLancamentos.length}`)
 
@@ -429,14 +439,16 @@ serve(async (req) => {
 
     console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
 
-    // Gera link Pix do Mercado Pago (só para faturas a vencer/hoje, não para vencidas)
+    // Gera link Pix do Mercado Pago para todas as faturas (vencidas ou não)
+    // Para vencidas, usa hoje como expiração (fim do dia) para o MP aceitar
     let linkPix: string | null = null
-    if (diasRestantes >= 0 && MP_TOKEN) {
+    if (MP_TOKEN) {
       const valorNum = parseFloat(String(valor || '0'))
       if (valorNum > 0) {
         const idempKey = `servnet-${lanc.id}-${hoje}`
         const descPix = `Mensalidade Servnet - ${nome}`
-        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey, lanc.id)
+        const dataExpiracao = diasRestantes >= 0 ? (dataVenc || hoje) : hoje
+        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataExpiracao, idempKey, lanc.id)
       }
     }
 
