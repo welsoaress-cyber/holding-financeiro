@@ -9,10 +9,181 @@ const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const MP_TOKEN  = Deno.env.get('MP_ACCESS_TOKEN') || ''
 
 // ----------------------------------------------------------------
+// Processa baixa automática para um paymentId do Mercado Pago
+// ----------------------------------------------------------------
+async function processarBaixa(paymentId: string): Promise<{ ok: boolean; msg: string }> {
+  if (!MP_TOKEN) {
+    console.error('❌ MP_ACCESS_TOKEN não configurado')
+    return { ok: false, msg: 'MP_ACCESS_TOKEN ausente' }
+  }
+
+  // Busca detalhes do pagamento no Mercado Pago
+  let pagamento: Record<string, unknown>
+  try {
+    const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${MP_TOKEN}` },
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error(`❌ Erro ao buscar pagamento ${paymentId} no MP:`, err)
+      return { ok: false, msg: `MP API error: ${err}` }
+    }
+    pagamento = await res.json()
+  } catch (err) {
+    console.error(`❌ Exceção ao consultar MP para pagamento ${paymentId}:`, err)
+    return { ok: false, msg: `Exceção: ${err}` }
+  }
+
+  const status        = pagamento?.status as string | undefined
+  const externalRef   = pagamento?.external_reference as string | undefined
+  const valorPago     = pagamento?.transaction_amount as number | undefined
+  const statusDetalhe = pagamento?.status_detail as string | undefined
+
+  // Log detalhado para diagnóstico
+  console.log(`💳 Pagamento ${paymentId}: status=${status} (${statusDetalhe}), external_reference=${externalRef ?? '(vazio)'}, valor=${valorPago}`)
+
+  // Só processa pagamentos aprovados
+  if (status !== 'approved') {
+    console.log(`ℹ️ Pagamento ${paymentId} não aprovado (status: ${status}) — sem ação`)
+    return { ok: true, msg: `status ${status} — sem ação` }
+  }
+
+  // Precisa da referência para identificar o lançamento
+  if (!externalRef) {
+    console.error(`⚠️ Pagamento ${paymentId} aprovado mas sem external_reference — Pix gerado sem ID do lançamento`)
+    return { ok: false, msg: 'external_reference ausente' }
+  }
+
+  // Busca o lançamento no Supabase pelo ID (external_reference)
+  const sb = createClient(SB_URL, SB_SECRET)
+  console.log(`🔍 Buscando lançamento id="${externalRef}" no Supabase`)
+
+  const { data: lancamento, error: errBusca } = await sb
+    .from('lancamentos')
+    .select('id, dados')
+    .eq('id', externalRef)
+    .single()
+
+  if (errBusca || !lancamento) {
+    console.error(`❌ Lançamento "${externalRef}" não encontrado:`, errBusca?.message)
+    return { ok: false, msg: `Lançamento "${externalRef}" não encontrado: ${errBusca?.message}` }
+  }
+
+  const dados = lancamento.dados as Record<string, unknown>
+
+  // Evita dar baixa dupla
+  if (dados?.status === 'Pago') {
+    console.log(`ℹ️ Lançamento ${externalRef} já Pago — sem ação`)
+    return { ok: true, msg: 'já pago' }
+  }
+
+  // Data de hoje em Brasília (UTC-3)
+  const agora = new Date()
+  agora.setHours(agora.getHours() - 3)
+  const hoje = agora.toISOString().split('T')[0]
+
+  const dadosAtualizados = {
+    ...dados,
+    status: 'Pago',
+    dataPagamento: hoje,
+    formaPagamento: 'Pix',
+    mpPaymentId: String(paymentId),
+    ...(valorPago !== undefined ? { valorPago: String(valorPago) } : {}),
+  }
+
+  const { error: errUpdate } = await sb
+    .from('lancamentos')
+    .update({ dados: dadosAtualizados })
+    .eq('id', externalRef)
+
+  if (errUpdate) {
+    console.error(`❌ Erro ao atualizar lançamento ${externalRef}:`, errUpdate.message)
+    return { ok: false, msg: `Erro ao atualizar: ${errUpdate.message}` }
+  }
+
+  const cliente = dados?.clienteNome || dados?.nome || externalRef
+  console.log(`✅ Baixa automática: lançamento ${externalRef} (${cliente}) marcado como Pago — pagamento MP ${paymentId}`)
+  return { ok: true, msg: `Baixa realizada — ${cliente} marcado como Pago` }
+}
+
+// ----------------------------------------------------------------
 // Handler principal
 // ----------------------------------------------------------------
 serve(async (req) => {
-  // Mercado Pago envia POST com JSON
+  const url = new URL(req.url)
+
+  // ----------------------------------------------------------------
+  // GET → diagnóstico e recuperação manual
+  // ?paymentId=xxx  → busca pagamento no MP e processa baixa
+  // ?lancId=xxx     → força baixa manual por ID do lançamento
+  // ----------------------------------------------------------------
+  if (req.method === 'GET') {
+    const paymentId = url.searchParams.get('paymentId')
+    const lancId    = url.searchParams.get('lancId')
+
+    if (paymentId) {
+      console.log(`🔧 Diagnóstico manual — paymentId: ${paymentId}`)
+      const resultado = await processarBaixa(paymentId)
+      return new Response(JSON.stringify({ paymentId, ...resultado }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (lancId) {
+      console.log(`🔧 Baixa manual solicitada — lancId: ${lancId}`)
+      const sb = createClient(SB_URL, SB_SECRET)
+      const { data: lanc, error: errB } = await sb
+        .from('lancamentos')
+        .select('id, dados')
+        .eq('id', lancId)
+        .single()
+
+      if (errB || !lanc) {
+        return new Response(JSON.stringify({ ok: false, msg: `Lançamento "${lancId}" não encontrado: ${errB?.message}` }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const dados = lanc.dados as Record<string, unknown>
+      if (dados?.status === 'Pago') {
+        return new Response(JSON.stringify({ ok: true, msg: 'já pago', lancamento: lancId }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const agora = new Date()
+      agora.setHours(agora.getHours() - 3)
+      const hoje = agora.toISOString().split('T')[0]
+
+      const { error: errU } = await sb
+        .from('lancamentos')
+        .update({ dados: { ...dados, status: 'Pago', dataPagamento: hoje, formaPagamento: 'Pix' } })
+        .eq('id', lancId)
+
+      if (errU) {
+        return new Response(JSON.stringify({ ok: false, msg: `Erro ao atualizar: ${errU.message}` }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const cliente = dados?.clienteNome || dados?.nome || lancId
+      console.log(`✅ Baixa manual: lançamento ${lancId} (${cliente}) marcado como Pago`)
+      return new Response(JSON.stringify({ ok: true, msg: `Baixa manual OK — ${cliente}`, lancamento: lancId }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    return new Response(JSON.stringify({ ok: true, msg: 'MP Webhook ativo. Use ?paymentId=xxx ou ?lancId=xxx.' }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // ----------------------------------------------------------------
+  // POST → notificação do Mercado Pago
+  // Retorna 200 IMEDIATAMENTE e processa em background via waitUntil
+  // para evitar EarlyDrop (função derrubada antes de concluir)
+  // ----------------------------------------------------------------
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
@@ -26,150 +197,42 @@ serve(async (req) => {
 
   console.log('📩 MP Webhook recebido:', JSON.stringify(body))
 
-  // Mercado Pago envia: { type: "payment", action: "payment.updated", data: { id: "..." } }
-  const tipo = body?.type as string | undefined
+  const tipo      = body?.type as string | undefined
+  const action    = body?.action as string | undefined
   const paymentId = (body?.data as Record<string, unknown>)?.id as string | undefined
+
+  console.log(`   type=${tipo}, action=${action}, payment_id=${paymentId}`)
 
   // Ignora notificações que não são de pagamento
   if (tipo !== 'payment' || !paymentId) {
-    console.log(`ℹ️ Notificação ignorada — tipo: ${tipo}, id: ${paymentId}`)
-    // Sempre retorna 200 para o Mercado Pago não retentar
+    console.log(`ℹ️ Notificação ignorada — tipo=${tipo}, id=${paymentId}`)
     return new Response(JSON.stringify({ ok: true, msg: 'ignorado' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  // ----------------------------------------------------------------
-  // Busca detalhes do pagamento no Mercado Pago para verificar status
-  // e obter external_reference (= ID do lançamento no Supabase)
-  // ----------------------------------------------------------------
-  if (!MP_TOKEN) {
-    console.error('❌ MP_ACCESS_TOKEN não configurado')
-    return new Response(JSON.stringify({ ok: false, error: 'MP_ACCESS_TOKEN ausente' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  let pagamento: Record<string, unknown>
-  try {
-    const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { 'Authorization': `Bearer ${MP_TOKEN}` },
-    })
-    if (!res.ok) {
-      const err = await res.text()
-      console.error(`❌ Erro ao buscar pagamento ${paymentId} no MP:`, err)
-      return new Response(JSON.stringify({ ok: false, error: `MP API error: ${err}` }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-    pagamento = await res.json()
-  } catch (err) {
-    console.error(`❌ Exceção ao consultar MP para pagamento ${paymentId}:`, err)
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const status = pagamento?.status as string | undefined
-  const externalRef = pagamento?.external_reference as string | undefined
-  const valorPago = pagamento?.transaction_amount as number | undefined
-
-  console.log(`💳 Pagamento ${paymentId} — status: ${status}, external_reference: ${externalRef}`)
-
-  // Só processa pagamentos aprovados
-  if (status !== 'approved') {
-    console.log(`ℹ️ Pagamento ${paymentId} não aprovado (status: ${status}) — sem ação`)
-    return new Response(JSON.stringify({ ok: true, msg: `status ${status} — sem ação` }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // Precisa da referência para identificar o lançamento
-  if (!externalRef) {
-    console.error(`⚠️ Pagamento ${paymentId} aprovado mas sem external_reference — não é possível dar baixa`)
-    return new Response(JSON.stringify({ ok: false, error: 'external_reference ausente' }), {
-      status: 200, // retorna 200 para MP não retentar
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // ----------------------------------------------------------------
-  // Busca o lançamento no Supabase pelo ID (external_reference)
-  // ----------------------------------------------------------------
-  const sb = createClient(SB_URL, SB_SECRET)
-
-  const { data: lancamento, error: errBusca } = await sb
-    .from('lancamentos')
-    .select('id, dados')
-    .eq('id', externalRef)
-    .single()
-
-  if (errBusca || !lancamento) {
-    console.error(`❌ Lançamento ${externalRef} não encontrado:`, errBusca?.message)
-    return new Response(JSON.stringify({ ok: false, error: `Lançamento ${externalRef} não encontrado` }), {
-      status: 200, // retorna 200 para MP não retentar
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const dados = lancamento.dados as Record<string, unknown>
-
-  // Evita dar baixa dupla
-  if (dados?.status === 'Pago') {
-    console.log(`ℹ️ Lançamento ${externalRef} já está como Pago — sem ação`)
-    return new Response(JSON.stringify({ ok: true, msg: 'já pago' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // ----------------------------------------------------------------
-  // Data de hoje em Brasília (UTC-3) para registrar como dataPagamento
-  // ----------------------------------------------------------------
-  const agora = new Date()
-  agora.setHours(agora.getHours() - 3)
-  const hoje = agora.toISOString().split('T')[0]
-
-  // Atualiza o lançamento: marca como Pago
-  const dadosAtualizados = {
-    ...dados,
-    status: 'Pago',
-    dataPagamento: hoje,
-    formaPagamento: 'Pix',
-    // Registra o ID do pagamento MP para rastreabilidade
-    mpPaymentId: String(paymentId),
-    ...(valorPago !== undefined ? { valorPago: String(valorPago) } : {}),
-  }
-
-  const { error: errUpdate } = await sb
-    .from('lancamentos')
-    .update({ dados: dadosAtualizados })
-    .eq('id', externalRef)
-
-  if (errUpdate) {
-    console.error(`❌ Erro ao atualizar lançamento ${externalRef}:`, errUpdate.message)
-    return new Response(JSON.stringify({ ok: false, error: errUpdate.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const cliente = dados?.clienteNome || dados?.nome || externalRef
-  console.log(`✅ Baixa automática: lançamento ${externalRef} (${cliente}) marcado como Pago via Pix MP — pagamento ${paymentId}`)
-
-  return new Response(JSON.stringify({
-    ok: true,
-    msg: 'Baixa realizada com sucesso',
-    lancamento: externalRef,
-    pagamento: paymentId,
-    status: 'Pago',
-  }), {
+  // Responde 200 IMEDIATAMENTE para o Mercado Pago não retentar
+  // e processa a baixa em background para evitar EarlyDrop
+  const resposta = new Response(JSON.stringify({ ok: true, msg: 'recebido', paymentId }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   })
+
+  // EdgeRuntime.waitUntil garante que o processamento termine
+  // mesmo após a resposta HTTP ser enviada
+  try {
+    // deno-lint-ignore no-explicit-any
+    ;(globalThis as any).EdgeRuntime?.waitUntil(
+      processarBaixa(String(paymentId))
+        .catch(err => console.error(`❌ Erro no processamento background de ${paymentId}:`, err))
+    )
+  } catch {
+    // Se waitUntil não estiver disponível, processa inline (pode causar EarlyDrop)
+    // mas pelo menos tentamos
+    processarBaixa(String(paymentId))
+      .catch(err => console.error(`❌ Erro inline de ${paymentId}:`, err))
+  }
+
+  return resposta
 })

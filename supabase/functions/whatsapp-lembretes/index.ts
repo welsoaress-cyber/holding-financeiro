@@ -174,11 +174,24 @@ function montarMensagem(
     : `💰 *${valorFormatado}*\nPix: welsoaress@gmail.com`
   const assinatura = `\n${pagamento}\n\nEm caso de dúvidas, entre em contato conosco.`
 
-  // ── Vencidos ──────────────────────────────────────────────────
-  if (diasRestantes <= -3) {
+  // ── Vencidos há mais de 3 dias — reengajamento ────────────────
+  // (ciclo de 5 em 5 dias no automático, ou clique no 📲 Cobrar)
+  // Tom de incentivo: novidades do serviço + convite pra voltar,
+  // em vez de só aviso de bloqueio.
+  if (diasRestantes <= -4) {
     const dias = Math.abs(diasRestantes)
     return `${saudacao}, *${nome}*! 👋\n\n` +
-      `⚠️ Sua fatura venceu *há ${dias} dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
+      `Sentimos sua falta por aqui! 💙\n\n` +
+      `A *Servnet está com novidades*: fizemos atualizações e melhorias na rede pra você navegar ainda melhor. 🚀\n\n` +
+      `Notamos que a sua fatura vencida em ${dataFormatada} (há ${dias} dias) ainda está em aberto. ` +
+      `Que tal regularizar agora e voltar a aproveitar tudo isso? 😊` +
+      assinatura
+  }
+
+  // ── Vencidos (até 3 dias) ─────────────────────────────────────
+  if (diasRestantes === -3) {
+    return `${saudacao}, *${nome}*! 👋\n\n` +
+      `⚠️ Sua fatura venceu *há 3 dias* (${dataFormatada}) e ainda não identificamos o pagamento. ` +
       `Seu acesso está temporariamente bloqueado.` +
       assinatura
   }
@@ -267,53 +280,92 @@ serve(async (req) => {
   const alvo2dias     = addDias(agora,  2)
   const alvo3dias     = addDias(agora,  3)
 
-  // Datas passadas (vencidos)
-  const alvoOntem     = addDias(agora, -1)
-  const alvo2diasAtras = addDias(agora, -2)
-  const alvo3diasAtras = addDias(agora, -3)
+  // Datas futuras próximas (janela de aviso antecipado)
+  const datasProximas = [hoje, alvo1dia, alvo2dias, alvo3dias]
 
-  // Disparo único diário (9h): vencidos (até 3 dias atrás) + hoje + próximos 3 dias
-  const todasDatas = [alvo3diasAtras, alvo2diasAtras, alvoOntem, hoje, alvo1dia, alvo2dias, alvo3dias]
-
-  console.log(`🗓️ Hoje: ${hoje} | Datas: ${todasDatas.join(', ')}`)
+  console.log(`🗓️ Hoje: ${hoje} | Próximas: ${datasProximas.join(', ')}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas não pagas dentro da janela de notificação
+  // Busca faturas não pagas:
+  //   - Vencidas: TODAS, sem limite de data (nos dois modos). O ritmo de
+  //     cada uma é decidido no loop abaixo:
+  //       · até 3 dias de atraso → aviso diário (mensagens de bloqueio)
+  //       · acima de 3 dias      → cobrança a cada 5 dias de atraso
+  //                                (5, 10, 15, ...) com mensagem de
+  //                                incentivo/novidades (reengajamento)
+  //     No modo MANUAL (?clienteId, botão 📲 Cobrar) não há ritmo:
+  //     o clique é a decisão — envia tudo que está em aberto na hora.
+  //   - A vencer: hoje + próximos 3 dias (nos dois modos)
   // ----------------------------------------------------------------
-  let qAtivos = sb
-    .from('lancamentos')
-    .select('id, dados, user_id')
-    .eq('dados->>tipo', 'Receita')
-    .neq('dados->>status', 'Pago')
-    .eq('dados->>inativo', 'false')
-    .in('dados->>data', todasDatas)
-  if (filtroClienteId) qAtivos = qAtivos.eq('dados->>clienteId', filtroClienteId)
-  const { data: lancamentosAtivos, error } = await qAtivos
+  const [resVencAt, resVencNull] = await Promise.all([
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>inativo', 'false').lt('dados->>data', hoje)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .is('dados->>inativo', null).lt('dados->>data', hoje)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+  ])
 
-  if (error) {
-    console.error('❌ Erro ao buscar lançamentos:', error)
-    return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 })
+  // A vencer: hoje + próximos 3 dias
+  const [resProxAt, resProxNull] = await Promise.all([
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>inativo', 'false').in('dados->>data', datasProximas)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .is('dados->>inativo', null).in('dados->>data', datasProximas)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+  ])
+
+  if (resVencAt.error) {
+    console.error('❌ Erro ao buscar lançamentos:', resVencAt.error)
+    return new Response(JSON.stringify({ ok: false, error: resVencAt.error.message }), { status: 500 })
   }
 
-  // Inclui lançamentos sem campo inativo definido (null = ativo)
-  let qNull = sb
-    .from('lancamentos')
-    .select('id, dados, user_id')
-    .eq('dados->>tipo', 'Receita')
-    .neq('dados->>status', 'Pago')
-    .is('dados->>inativo', null)
-    .in('dados->>data', todasDatas)
-  if (filtroClienteId) qNull = qNull.eq('dados->>clienteId', filtroClienteId)
-  const { data: lancamentosNull } = await qNull
-
   const todoLancamentos = [
-    ...(lancamentosAtivos || []),
-    ...(lancamentosNull || []),
+    ...(resVencAt.data || []),
+    ...(resVencNull.data || []),
+    ...(resProxAt.data || []),
+    ...(resProxNull.data || []),
   ]
 
   if (filtroClienteId) console.log(`🔍 Filtro ativo: clienteId=${filtroClienteId}`)
 
   console.log(`📋 Faturas encontradas: ${todoLancamentos.length}`)
+
+  // ----------------------------------------------------------------
+  // Mapa de inadimplência por cliente (a partir das vencidas já buscadas).
+  // Cliente com atraso >= 4 dias (régua: Inadimplente) recebe cobrança SÓ
+  // da fatura MAIS ANTIGA — nada de aviso de fatura nova/a vencer enquanto
+  // a dívida existe, e nada de várias mensagens no mesmo dia. Trava feita
+  // AQUI no servidor de propósito: funciona mesmo que o sistema (que
+  // suspende as mensalidades futuras no login) fique dias sem ser aberto.
+  // ----------------------------------------------------------------
+  const msDia = 24 * 60 * 60 * 1000
+  const inadimplencia = new Map<string, { maxAtraso: number; oldestId: string }>()
+  for (const lanc of [...(resVencAt.data || []), ...(resVencNull.data || [])]) {
+    const d = lanc.dados as Record<string, string>
+    const cid = d?.clienteId
+    if (!cid || !d?.data) continue
+    const atraso = Math.round((new Date(hoje).getTime() - new Date(d.data).getTime()) / msDia)
+    const atual = inadimplencia.get(cid)
+    if (!atual || atraso > atual.maxAtraso) inadimplencia.set(cid, { maxAtraso: atraso, oldestId: lanc.id })
+  }
 
   if (todoLancamentos.length === 0) {
     return new Response(JSON.stringify({
@@ -323,49 +375,9 @@ serve(async (req) => {
     }), { status: 200 })
   }
 
-  // ----------------------------------------------------------------
-  // Identifica inadimplentes: clientes com faturas não pagas FORA da
-  // janela de notificação (vencidas há mais de 3 dias). Esses clientes
-  // não recebem aviso de novas parcelas — só a mais antiga aparece
-  // dentro da janela, ou já saiu dela e ninguém mais avisa.
-  // ----------------------------------------------------------------
-  const clienteIdsNaJanela = [
-    ...new Set(
-      todoLancamentos
-        .map(l => (l.dados as Record<string, string>)?.clienteId)
-        .filter((id): id is string => !!id)
-    ),
-  ]
-
-  const inadimplentesSet = new Set<string>()
-
-  if (clienteIdsNaJanela.length > 0) {
-    const [{ data: devAt }, { data: devNull }] = await Promise.all([
-      sb.from('lancamentos')
-        .select('dados')
-        .eq('dados->>tipo', 'Receita')
-        .neq('dados->>status', 'Pago')
-        .eq('dados->>inativo', 'false')
-        .lt('dados->>data', alvo3diasAtras)
-        .in('dados->>clienteId', clienteIdsNaJanela),
-      sb.from('lancamentos')
-        .select('dados')
-        .eq('dados->>tipo', 'Receita')
-        .neq('dados->>status', 'Pago')
-        .is('dados->>inativo', null)
-        .lt('dados->>data', alvo3diasAtras)
-        .in('dados->>clienteId', clienteIdsNaJanela),
-    ])
-
-    for (const d of [...(devAt || []), ...(devNull || [])]) {
-      const cid = (d.dados as Record<string, string>)?.clienteId
-      if (cid) inadimplentesSet.add(cid)
-    }
-
-    if (inadimplentesSet.size > 0) {
-      console.log(`🚫 Inadimplentes bloqueados (dívida fora da janela): ${inadimplentesSet.size}`)
-    }
-  }
+  // Ninguém é pulado por status de cliente: toda fatura que entrou na janela
+  // acima gera aviso — inadimplente também pode (e deve) pagar. O corte de
+  // "vencida há mais de 3 dias" no modo automático é feito na busca, não aqui.
 
   let enviados = 0
   let erros = 0
@@ -383,10 +395,31 @@ serve(async (req) => {
       continue
     }
 
-    // Pula clientes inadimplentes (têm dívida vencida fora da janela)
-    if (inadimplentesSet.has(clienteId)) {
-      console.log(`⏭️ Lançamento ${lanc.id} pulado — cliente ${clienteId} inadimplente`)
-      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: 'inadimplente' })
+    // Dias exatos até o vencimento (negativo = vencido há X dias)
+    const msPerDia = 24 * 60 * 60 * 1000
+    const diasRestantes = dataVenc
+      ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
+      : 0
+    const diasAtraso = -diasRestantes
+
+    // Trava de inadimplência do modo automático: cliente com atraso >= 4
+    // dias só recebe cobrança da fatura MAIS ANTIGA (a dívida) — as outras
+    // faturas dele (novas, a vencer, vencidas mais recentes) ficam mudas
+    // até a dívida ser paga. Modo manual (?clienteId) ignora a trava.
+    const inf = inadimplencia.get(clienteId)
+    if (!filtroClienteId && inf && inf.maxAtraso >= 4 && lanc.id !== inf.oldestId) {
+      console.log(`⏭️ Lançamento ${lanc.id} pulado — cliente inadimplente (${inf.maxAtraso}d), cobrança focada na fatura mais antiga`)
+      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: `cliente inadimplente ${inf.maxAtraso}d — só a fatura mais antiga é cobrada` })
+      continue
+    }
+
+    // Ritmo do modo automático: vencida há mais de 3 dias só entra no
+    // ciclo de 5 em 5 dias de atraso (5, 10, 15, ...) — aí vai a mensagem
+    // de incentivo/novidades. No modo manual (?clienteId, botão 📲 Cobrar)
+    // não há ritmo: o clique é a decisão, envia sempre.
+    if (!filtroClienteId && diasAtraso > 3 && diasAtraso % 5 !== 0) {
+      console.log(`⏭️ Lançamento ${lanc.id} vencido há ${diasAtraso} dias — fora do ciclo de 5 em 5, pulado hoje`)
+      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: `atraso ${diasAtraso}d fora do ciclo 5/5` })
       continue
     }
 
@@ -421,16 +454,8 @@ serve(async (req) => {
                    : hora >= 12 && hora < 18 ? 'Boa tarde'
                    : 'Boa noite'
 
-    // Calcula quantos dias faltam (negativo = vencido)
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    const diasRestantes =
-      dataVenc === alvo3diasAtras ? -3 :
-      dataVenc === alvo2diasAtras ? -2 :
-      dataVenc === alvoOntem      ? -1 :
-      dataVenc === hoje           ?  0 :
-      dataVenc === alvo1dia       ?  1 :
-      dataVenc === alvo2dias      ?  2 : 3
 
     const tipoLog = diasRestantes < 0
       ? `vencido há ${Math.abs(diasRestantes)} dia(s)`

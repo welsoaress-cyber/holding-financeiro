@@ -452,6 +452,17 @@
   }
   .btn-baixar:hover { background: color-mix(in srgb, var(--pos) 22%, transparent); border-color: color-mix(in srgb, var(--pos) 55%, transparent); }
 
+  /* Botão de cobrança via WhatsApp automático (chama a Edge Function) */
+  .btn-cobrar-wa {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(37,211,102,.35);
+    background: rgba(37,211,102,.10);
+    color: #25D366; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; transition: background .15s, border-color .15s;
+  }
+  .btn-cobrar-wa:hover { background: rgba(37,211,102,.22); border-color: rgba(37,211,102,.55); }
+  .btn-cobrar-wa:disabled { opacity: .6; cursor: not-allowed; }
+
   /* ---- Filter bar ---- */
   .filter-bar {
     display: flex; gap: 8px; flex-wrap: wrap;
@@ -1151,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.64";
+const APP_VERSION = "2.0.69";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2197,6 +2208,11 @@ async function renovarRecorrenciasFixas(){
     const novos = [];
     for(const lista of grupos.values()){
       if(lista.some(l => l.recorrenciaEncerrada)) continue; // encerrada de propósito pelo usuário
+      // Série suspensa por inadimplência do cliente: não renova NEM preenche
+      // o buraco — quem decide retomar é sincronizarRecorrenciasInadimplentes()
+      // quando o pagamento entrar (e ela retoma a partir de hoje, sem recriar
+      // os meses do período bloqueado).
+      if(lista.some(l => l.recorrenciaSuspensa)) continue;
       lista.sort((a,b) => String(a.data).localeCompare(String(b.data)));
       const ultimo = lista[lista.length-1];
       if(!ultimo.data || ultimo.data > limiteRenovacao) continue; // ainda tem estrada suficiente
@@ -2224,6 +2240,128 @@ async function renovarRecorrenciasFixas(){
       console.log(`[renovarRecorrencias] ${novos.length} ocorrência(s) futura(s) criadas automaticamente.`);
     }
   }catch(e){ console.warn("[renovarRecorrencias]", e); }
+}
+
+// ---- Suspensão de recorrência por inadimplência ----
+// Regra do usuário: cliente que FICOU INADIMPLENTE (régua de cobrança:
+// 4+ dias de atraso) não deve acumular novas mensalidades — as ocorrências
+// FUTURAS ainda não pagas das séries recorrentes dele são removidas e a
+// série fica marcada (recorrenciaSuspensa guarda a DATA da suspensão).
+// As vencidas/de hoje ficam: são a dívida a cobrar.
+//
+// RETOMADA (o ponto delicado — "cobrar quando tem que cobrar e não
+// cobrar quando não tiver"): quando o pagamento entra (baixa manual ou
+// Pix automático) e o cliente sai da inadimplência, a série volta a
+// lançar A PARTIR DO DIA EM QUE ELE REGULARIZOU (a data do pagamento
+// mais recente desde a suspensão), mantendo o dia de vencimento:
+//   · Os meses do período BLOQUEADO (entre suspender e pagar) não são
+//     recriados — não houve serviço, e nasceriam já vencidos, o que
+//     re-suspenderia o cliente num loop sem fim.
+//   · Os meses DEPOIS do pagamento são todos criados, mesmo que o
+//     sistema só seja aberto dias depois e algum já tenha passado —
+//     serviço ativo é serviço cobrado; se o sistema demorar a abrir e
+//     o cliente atrasar essas novas, a régua age normalmente de novo.
+//   · Dívida perdoada sem pagamento (lançamentos inativados): retoma a
+//     partir de hoje.
+// Idempotente: roda a cada login (depois de renovarRecorrenciasFixas) e
+// depois de cada baixa de Receita com cliente — só grava quando algo muda.
+function _diasMinInadimplencia(){
+  const r = INADIMPLENCIA_RULES.find(x => x.status === "Inadimplente");
+  return r ? r.diasMin : 4;
+}
+async function sincronizarRecorrenciasInadimplentes(){
+  try{
+    const hoje = todayISO();
+    const diasMin = _diasMinInadimplencia();
+    // Agrupa séries recorrentes de Receita com cliente vinculado
+    const series = new Map();
+    for(const l of state.lancamentos){
+      if(!l.recorrenciaId || l.recorrenciaTipo !== "recorrente") continue;
+      if(l.tipo !== "Receita" || !l.clienteId) continue;
+      if(!series.has(l.recorrenciaId)) series.set(l.recorrenciaId, []);
+      series.get(l.recorrenciaId).push(l);
+    }
+    const idsRemover = [];
+    const alterados = [];  // linhas existentes com flag mudada (upsert)
+    const novos = [];      // ocorrências recriadas na retomada
+    let suspensas = 0, retomadas = 0;
+    for(const lista of series.values()){
+      if(lista.some(l => l.recorrenciaEncerrada)) continue;
+      const cliente = cliClienteById(lista[0].clienteId);
+      if(!cliente || cliente.excluido) continue;
+      const inadimplente = clienteDiasAtraso(cliente) >= diasMin;
+      const suspensa = lista.some(l => l.recorrenciaSuspensa);
+      if(inadimplente && !suspensa){
+        // SUSPENDE: remove as futuras não pagas e marca o que sobra
+        const removerDaSerie = new Set();
+        for(const l of lista){
+          if(l.status !== "Pago" && !l.inativo && l.data > hoje) removerDaSerie.add(l.id);
+        }
+        for(const l of lista){
+          if(removerDaSerie.has(l.id)){ idsRemover.push(l.id); continue; }
+          l.recorrenciaSuspensa = hoje; // guarda QUANDO suspendeu (p/ retomada)
+          alterados.push(l);
+        }
+        suspensas++;
+      }else if(!inadimplente && suspensa){
+        // RETOMA: cliente regularizou. A cobrança volta a partir do dia do
+        // pagamento que o regularizou — não de "hoje" — senão a mensalidade
+        // que venceu entre o pagamento e a próxima abertura do sistema
+        // seria pulada (mês de serviço de graça).
+        const dataSusp = (() => {
+          const v = lista.find(l => l.recorrenciaSuspensa)?.recorrenciaSuspensa;
+          return typeof v === "string" ? v : null; // compat: flag antiga era boolean
+        })();
+        for(const l of lista){
+          if(l.recorrenciaSuspensa){ delete l.recorrenciaSuspensa; alterados.push(l); }
+        }
+        // Pagamento mais recente do cliente desde a suspensão = data em que
+        // regularizou. Sem pagamento (dívida perdoada/inativada) → hoje.
+        let dataRetomada = hoje;
+        const pagosDesde = state.lancamentos.filter(x =>
+          x.clienteId === cliente.id && x.tipo === "Receita" && x.status === "Pago" &&
+          x.dataPagamento && (!dataSusp || x.dataPagamento >= dataSusp));
+        if(pagosDesde.length){
+          const maxPg = pagosDesde.reduce((m,x) => x.dataPagamento > m ? x.dataPagamento : m, pagosDesde[0].dataPagamento);
+          if(maxPg < hoje) dataRetomada = maxPg;
+        }
+        const ativos = lista.filter(l => !l.inativo).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+        const ultimo = ativos[ativos.length-1];
+        if(!ultimo || !ultimo.data) continue;
+        const freq = ultimo.recorrenciaFreq || "Mensal";
+        const chaves = new Set(lista.map(l => l.recorrenciaId + "|" + l.data));
+        let idx = Math.max(0, ...lista.map(l => Number(l.recorrenciaIndex)||0));
+        const alvo = _addAnosISO(hoje, HORIZONTE_ANOS);
+        let d = proximaData(ultimo.data, freq);
+        let guarda = 0;
+        while(d < dataRetomada && guarda < 400){ guarda++; d = proximaData(d, freq); } // pula só o período bloqueado
+        while(d <= alvo && guarda < 400){
+          guarda++;
+          const chave = ultimo.recorrenciaId + "|" + d;
+          if(!chaves.has(chave)){
+            idx++;
+            const novo = { ...ultimo, id: uid("l"), data: d, status: "Provisionado", conciliado: false,
+              recorrenciaIndex: idx, recorrenciaTotal: idx, recorrenciaFreq: freq };
+            delete novo.dataPagamento; delete novo.inativo; delete novo.inativadoPor; delete novo.inativadoEm;
+            delete novo.recorrenciaSuspensa; delete novo.formaPagamento; delete novo.mpPaymentId; delete novo.valorPago;
+            novos.push(novo);
+            chaves.add(chave);
+          }
+          d = proximaData(d, freq);
+        }
+        retomadas++;
+      }
+    }
+    if(idsRemover.length){
+      state.lancamentos = state.lancamentos.filter(l => !idsRemover.includes(l.id));
+      await deleteRows("lancamentos", idsRemover);
+    }
+    if(novos.length) state.lancamentos.push(...novos);
+    if(alterados.length || novos.length) await saveRows("lancamentos", [...alterados, ...novos]);
+    if(suspensas || retomadas){
+      console.log(`[recorrenciaInadimplente] ${suspensas} série(s) suspensas (${idsRemover.length} futuras removidas), ${retomadas} retomada(s) (${novos.length} ocorrências recriadas).`);
+    }
+  }catch(e){ console.warn("[recorrenciaInadimplente]", e); }
 }
 
 // Busca TODAS as linhas de uma tabela, paginando em blocos de 1.000.
@@ -2313,6 +2451,16 @@ async function loadData(){
     // perfil correspondente aqui e já libera o acesso direto.
     if(state.modoMembro && state.membroAuthInfo){
       const perfilLigado = state.perfis.find(p => p.id === state.membroAuthInfo.perfilId);
+      if(perfilLigado && perfilLigado.inativo){
+        // SEGURANÇA: usuário com "Acesso bloqueado" (inativado em Usuários)
+        // NÃO entra — nem pelo login individual com e-mail/senha próprios.
+        // (Antes só a lista "Quem está usando?" filtrava inativos, e quem
+        // tinha login próprio passava direto por aqui sem essa checagem.)
+        await supabaseClient.auth.signOut();
+        state.user = null; state.modoMembro = false; state.membroAuthInfo = null;
+        showToast("Seu acesso está bloqueado — fale com quem administra o sistema.", "error");
+        return;
+      }
       if(perfilLigado){
         state.perfilAtivo = perfilLigado;
         state.perfilEscolhido = true;
@@ -2388,6 +2536,10 @@ async function loadData(){
     }
     await renovarRecorrenciasFixas();
     if(autoBaixarAgendados().length) await saveLancamentos();
+    // Depois da renovação e das baixas automáticas: suspende séries de
+    // clientes inadimplentes e retoma as de quem regularizou (inclui os
+    // pagos via Pix pelo webhook desde o último carregamento).
+    await sincronizarRecorrenciasInadimplentes();
   }catch(e){
     state.storageOK = false;
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
@@ -2608,6 +2760,7 @@ async function doLogin(email, password){
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+    sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
@@ -2694,6 +2847,7 @@ async function doAuthMembro(email, password, codPerfil, codHolding){
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+    sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
@@ -5357,7 +5511,16 @@ function viewLancamentos(){
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.catNome) list = list.filter(l => l.categoria === lancFilter.catNome);
   if(lancFilter.subcatNome) list = list.filter(l => l.subcategoria === lancFilter.subcatNome);
-  if(lancFilter.texto) list = list.filter(l => (l.descricao||"").toLowerCase().includes(lancFilter.texto.toLowerCase()));
+  if(lancFilter.texto) {
+    const _txt = lancFilter.texto.trim();
+    // Multi-termo: "termo1","termo2" → busca qualquer um (OR) na descrição
+    const _quoted = [..._txt.matchAll(/"([^"]*)"/g)].map(m => m[1].toLowerCase()).filter(Boolean);
+    if(_quoted.length > 0) {
+      list = list.filter(l => _quoted.some(t => (l.descricao||"").toLowerCase().includes(t)));
+    } else {
+      list = list.filter(l => (l.descricao||"").toLowerCase().includes(_txt.toLowerCase()));
+    }
+  }
   if(lancFilter.dataDe) list = list.filter(l => l.data >= lancFilter.dataDe);
   if(lancFilter.dataAte) list = list.filter(l => l.data <= lancFilter.dataAte);
   if(lancFilter.clienteId) list = list.filter(l => l.clienteId === lancFilter.clienteId);
@@ -5410,6 +5573,7 @@ function viewLancamentos(){
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar && !l.inativo;
     const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar && !l.inativo;
     const linkCobranca = !l.inativo && l.status !== "Pago" ? waLinkCobranca(l) : null;
+    const podeCobrarWA = !l.inativo && l.status !== "Pago" && l.tipo === "Receita" && !!l.clienteId;
     const marcado = lancSelecionados.has(l.id);
     const autorBadge = l.lancadoPor ? `<span style="font-size:10px; color:var(--ink-4); margin-left:4px; font-family:var(--font-mono);">por ${esc(l.lancadoPor)}</span>` : "";
     if(l.inativo){
@@ -5437,7 +5601,7 @@ function viewLancamentos(){
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${statusLabel}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
-      <td><div class="row-actions">${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Cobrar esse cliente no WhatsApp" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="dup-lanc" data-id="${l.id}" title="Duplicar">⧉</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
+      <td><div class="row-actions">${podeCobrarWA ? `<button class="btn-cobrar-wa" data-action="cobrar-whatsapp" data-id="${l.id}" title="Enviar cobrança via WhatsApp (automático)">📲 Cobrar</button>` : ""}${linkCobranca ? `<a class="icon-btn" href="${linkCobranca}" target="_blank" rel="noopener" title="Abrir WhatsApp manualmente" style="color:#25D366;">WA</a>` : ""}${podeBaixar ? `<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}">✓ Baixar</button>` : ""}${podeVerFaturaDoItem ? `<button class="icon-btn" data-action="ver-fatura-item" data-id="${l.id}" title="É de cartão — ver opções de pagamento da fatura" style="color:var(--pos);">CC</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="edit-lanc" data-id="${l.id}" title="Editar">✎</button>` : ""}${podeEditar ? `<button class="icon-btn" data-action="dup-lanc" data-id="${l.id}" title="Duplicar">⧉</button>` : ""}${podeExcluir ? `<button class="icon-btn danger" data-action="del-lanc" data-id="${l.id}" title="Inativar">×</button>` : ""}</div></td>
     </tr>`;
   }).join("");
 
@@ -5456,8 +5620,9 @@ function viewLancamentos(){
     const podeBaixar = l.status !== "Pago" && l.tipo !== "Transferência" && !l.cartaoId && podeEditar;
     const podeVerFaturaDoItem = l.cartaoId && l.status !== "Pago" && podeEditar;
     const linkCobranca = l.status !== "Pago" ? waLinkCobranca(l) : null;
+    const podeCobrarWAMob = l.status !== "Pago" && l.tipo === "Receita" && !!l.clienteId;
     const corValor = l.tipo === "Despesa" ? "var(--neg)" : l.tipo === "Receita" ? "var(--pos)" : "var(--ink-2)";
-    const temAcao = podeBaixar || podeVerFaturaDoItem || podeEditar || podeExcluir || linkCobranca;
+    const temAcao = podeBaixar || podeVerFaturaDoItem || podeEditar || podeExcluir || linkCobranca || podeCobrarWAMob;
     const labelData = l.tipo === "Transferência" ? "Data" : "Vencimento";
     return `<div style="padding:12px ${eVencido?'8px':'2px'}; border-bottom:1px solid var(--border); ${eVencido?'background:var(--neg-bg); border-radius:8px; margin:2px 0;':''}">
       ${cliVinculado
@@ -5474,8 +5639,9 @@ function viewLancamentos(){
       </div>
       ${temAcao?`<div style="display:flex; gap:8px; margin-top:9px; justify-content:center; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:9px;">
         ${podeBaixar?`<button class="btn-baixar" data-action="baixar-titulo" data-id="${l.id}" style="min-width:100px; justify-content:center;">✓ Baixar</button>`:""}
+        ${podeCobrarWAMob?`<button class="btn-cobrar-wa" data-action="cobrar-whatsapp" data-id="${l.id}" style="min-width:100px; justify-content:center;">📲 Cobrar</button>`:""}
         ${podeVerFaturaDoItem?`<button class="btn btn-ghost btn-sm" data-action="ver-fatura-item" data-id="${l.id}" style="color:var(--pos);">Fatura CC</button>`:""}
-        ${linkCobranca?`<a class="btn btn-ghost btn-sm" href="${linkCobranca}" target="_blank" rel="noopener" style="color:#25D366;">WhatsApp</a>`:""}
+        ${linkCobranca?`<a class="btn btn-ghost btn-sm" href="${linkCobranca}" target="_blank" rel="noopener" style="color:#25D366;">WA manual</a>`:""}
         ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="edit-lanc" data-id="${l.id}">✎ Editar</button>`:""}
         ${podeEditar?`<button class="btn btn-ghost btn-sm" data-action="dup-lanc" data-id="${l.id}" title="Criar cópia deste lançamento">⧉ Duplicar</button>`:""}
         ${podeExcluir?`<button class="btn btn-ghost btn-sm" style="color:var(--neg);" data-action="del-lanc" data-id="${l.id}">× Excluir</button>`:""}
@@ -5530,7 +5696,7 @@ function viewLancamentos(){
     ${graficoRecDespFiltroHTML}
     ${mesNavHTML}
     <div class="panel"><div class="filter-bar">
-      <input type="text" placeholder="Buscar por descrição..." value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
+      <input type="text" placeholder='Buscar... ou "termo1","termo2"' value="${esc(lancFilter.texto)}" data-action="filter-texto" style="min-width:200px;">
       ${state.view === "lancamentos" ? `<select data-action="filter-categoria"><option value="">Todas as categorias</option>${categoriaOptions}</select>` : ""}
       <select data-action="filter-negocio"><option value="">Todos os negócios</option>${negOptions}</select>
       ${cliAtivos().length ? `<select data-action="filter-clienteid"><option value="">Todos os clientes</option>${clienteOptions}</select>` : ""}
@@ -7116,7 +7282,11 @@ function modalBaixa(l){
     l.dataPagamento = fd.get("dataPagamento");
     l.contaOrigem = fd.get("contaOrigem");
     l.conciliado = fd.get("conciliado") === "on";
-    await saveRows("lancamentos", [l]); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
+    await saveRows("lancamentos", [l]);
+    // Se essa baixa tirou o cliente da inadimplência, a série recorrente
+    // dele é retomada na hora (os próximos meses voltam pra Contas a Receber).
+    if(l.tipo === "Receita" && l.clienteId) await sincronizarRecorrenciasInadimplentes();
+    closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
   });
 }
 
@@ -7520,7 +7690,12 @@ document.addEventListener("click", async e => {
     // conter a view atual nunca conseguia ser fechado (ver comentário perto
     // de sidebarGruposFechados).
     const estavaAberto = el.dataset.aberto === "true";
-    sidebarTudoRecolhido = false; // usuário mexeu no menu — volta o comportamento normal
+    // OBS: sidebarTudoRecolhido fica como está de propósito — antes o primeiro
+    // clique num grupo desligava o modo "tudo recolhido" e o grupo da tela
+    // atual (ex: Visão, logo após o login) abria SOZINHO junto com o grupo
+    // clicado. Um clique abria dois grupos. Agora cada grupo só abre/fecha
+    // quando o usuário clica NELE; o auto-abrir por conter a view atual só
+    // vale no carregamento da página (F5), quando o flag já nasce false.
     if(estavaAberto){ sidebarGruposAbertos.delete(grupoId); sidebarGruposFechados.add(grupoId); }
     else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
@@ -7534,7 +7709,13 @@ document.addEventListener("click", async e => {
   else if(action === "switch-auth-master"){ authMode = "login"; renderApp(); }
   else if(action === "logout") doLogout();
   else if(action === "selecionar-master") modalSenhaMaster();
-  else if(action === "selecionar-perfil"){ const p = perfilById(id); if(p) modalSenhaPerfil(p); }
+  else if(action === "selecionar-perfil"){
+    const p = perfilById(id);
+    // Defesa extra: a lista já esconde inativos, mas nunca abre a senha
+    // de um perfil bloqueado mesmo que o botão apareça por render antigo.
+    if(p && p.inativo){ showToast("Acesso bloqueado — fale com quem administra o sistema.", "error"); return; }
+    if(p) modalSenhaPerfil(p);
+  }
   else if(action === "dados-teste-executar"){
     const acaoTeste = el.dataset.acao, escopo = el.dataset.escopo;
     closeModal();
@@ -7694,6 +7875,11 @@ document.addEventListener("click", async e => {
     if(l){ l.conciliado = !l.conciliado; await saveLancamentos(); renderApp(); }
   }
   else if(action === "baixar-titulo"){ const l = state.lancamentos.find(x=>x.id===id); if(l) modalBaixa(l); }
+  else if(action === "cobrar-whatsapp"){
+    const l = state.lancamentos.find(x => x.id === id);
+    if(l && l.clienteId) await cobrarWhatsApp(l, el);
+    else showToast("Sem clienteId vinculado — não é possível enviar.", "error");
+  }
   else if(action === "ver-fatura-item"){
     // Despesa de cartão não se baixa sozinha — quem baixa é a fatura inteira
     // (ou uma parte dela). Em vez de um  que faria pouco sentido isolado,
@@ -8587,6 +8773,36 @@ function waLinkCobranca(l){
     texto = `${ola}\n\nSua mensalidade de ${valor} vence em ${venc}. Recomendamos o pagamento até a data pra garantir a continuidade do serviço.\n\nSe já pagou, desconsidere esta mensagem.\n\nAtt,\nTom`;
   }
   return waLinkTexto(cliente.whatsapp || cliente.telefone, texto);
+}
+
+// Envio automático de cobrança via WhatsApp — chama a Edge Function
+// whatsapp-lembretes com ?clienteId=xxx para disparar exatamente a mesma
+// mensagem (com link Pix) que o cron diário enviaria. Diferente do
+// waLinkCobranca() (que apenas abre o wa.me no navegador), aqui o envio
+// é feito pela Evolution API sem intervenção manual.
+async function cobrarWhatsApp(l, btnEl){
+  const textoOriginal = btnEl?.textContent || "📲 Cobrar";
+  if(btnEl){ btnEl.disabled = true; btnEl.textContent = "Enviando..."; }
+  try {
+    const url = `${SUPABASE_URL}/functions/v1/whatsapp-lembretes?clienteId=${encodeURIComponent(l.clienteId)}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const json = await res.json().catch(() => ({}));
+    const cli = l.clienteId ? cliClienteById(l.clienteId) : null;
+    const nome = cli ? cliNome(cli) : "cliente";
+    if(res.ok && json.enviados > 0){
+      showToast(`✅ WhatsApp enviado para ${nome}!`);
+    } else if(res.ok){
+      showToast(`ℹ️ Nada enviado para ${nome} — sem cobrança pendente ou sem número cadastrado.`, "warn");
+    } else {
+      showToast(`Erro ao enviar para ${nome}: ${json.error || json.msg || res.status}`, "error");
+    }
+  } catch(err) {
+    showToast(`Erro de rede: ${err.message}`, "error");
+  } finally {
+    if(btnEl){ btnEl.disabled = false; btnEl.textContent = textoOriginal; }
+  }
 }
 
 // ============================================================
@@ -12548,7 +12764,8 @@ async function init(){
       if(event === "SIGNED_IN"){
         try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
         state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
-    sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+        sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+        sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
       }
       await carregarSessao();
       renderApp();
