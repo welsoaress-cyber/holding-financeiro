@@ -323,49 +323,7 @@ serve(async (req) => {
     }), { status: 200 })
   }
 
-  // ----------------------------------------------------------------
-  // Identifica inadimplentes: clientes com faturas não pagas FORA da
-  // janela de notificação (vencidas há mais de 3 dias). Esses clientes
-  // não recebem aviso de novas parcelas — só a mais antiga aparece
-  // dentro da janela, ou já saiu dela e ninguém mais avisa.
-  // ----------------------------------------------------------------
-  const clienteIdsNaJanela = [
-    ...new Set(
-      todoLancamentos
-        .map(l => (l.dados as Record<string, string>)?.clienteId)
-        .filter((id): id is string => !!id)
-    ),
-  ]
-
-  const inadimplentesSet = new Set<string>()
-
-  if (clienteIdsNaJanela.length > 0) {
-    const [{ data: devAt }, { data: devNull }] = await Promise.all([
-      sb.from('lancamentos')
-        .select('dados')
-        .eq('dados->>tipo', 'Receita')
-        .neq('dados->>status', 'Pago')
-        .eq('dados->>inativo', 'false')
-        .lt('dados->>data', alvo3diasAtras)
-        .in('dados->>clienteId', clienteIdsNaJanela),
-      sb.from('lancamentos')
-        .select('dados')
-        .eq('dados->>tipo', 'Receita')
-        .neq('dados->>status', 'Pago')
-        .is('dados->>inativo', null)
-        .lt('dados->>data', alvo3diasAtras)
-        .in('dados->>clienteId', clienteIdsNaJanela),
-    ])
-
-    for (const d of [...(devAt || []), ...(devNull || [])]) {
-      const cid = (d.dados as Record<string, string>)?.clienteId
-      if (cid) inadimplentesSet.add(cid)
-    }
-
-    if (inadimplentesSet.size > 0) {
-      console.log(`🚫 Inadimplentes bloqueados (dívida fora da janela): ${inadimplentesSet.size}`)
-    }
-  }
+  // Inadimplentes também recebem o aviso — podem pagar qualquer fatura
 
   let enviados = 0
   let erros = 0
@@ -380,13 +338,6 @@ serve(async (req) => {
     if (!clienteId) {
       console.log(`⚠️ Lançamento ${lanc.id} sem clienteId`)
       resultados.push({ cliente: '?', numero: '-', status: 'pulado', motivo: 'sem clienteId' })
-      continue
-    }
-
-    // Pula clientes inadimplentes (têm dívida vencida fora da janela)
-    if (inadimplentesSet.has(clienteId)) {
-      console.log(`⏭️ Lançamento ${lanc.id} pulado — cliente ${clienteId} inadimplente`)
-      resultados.push({ cliente: clienteId, numero: '-', status: 'pulado', motivo: 'inadimplente' })
       continue
     }
 
