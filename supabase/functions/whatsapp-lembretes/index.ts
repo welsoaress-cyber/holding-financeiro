@@ -229,6 +229,10 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // Filtro opcional: ?clienteId=xxx envia só para aquele cliente (útil para testes)
+  const url = new URL(req.url)
+  const filtroClienteId = url.searchParams.get('clienteId') || null
+
   const sb = createClient(SB_URL, SB_SECRET)
 
   // ----------------------------------------------------------------
@@ -276,13 +280,15 @@ serve(async (req) => {
   // ----------------------------------------------------------------
   // Busca faturas não pagas dentro da janela de notificação
   // ----------------------------------------------------------------
-  const { data: lancamentosAtivos, error } = await sb
+  let qAtivos = sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .eq('dados->>inativo', 'false')
     .in('dados->>data', todasDatas)
+  if (filtroClienteId) qAtivos = qAtivos.eq('dados->>clienteId', filtroClienteId)
+  const { data: lancamentosAtivos, error } = await qAtivos
 
   if (error) {
     console.error('❌ Erro ao buscar lançamentos:', error)
@@ -290,18 +296,22 @@ serve(async (req) => {
   }
 
   // Inclui lançamentos sem campo inativo definido (null = ativo)
-  const { data: lancamentosNull } = await sb
+  let qNull = sb
     .from('lancamentos')
     .select('id, dados, user_id')
     .eq('dados->>tipo', 'Receita')
     .neq('dados->>status', 'Pago')
     .is('dados->>inativo', null)
     .in('dados->>data', todasDatas)
+  if (filtroClienteId) qNull = qNull.eq('dados->>clienteId', filtroClienteId)
+  const { data: lancamentosNull } = await qNull
 
   const todoLancamentos = [
     ...(lancamentosAtivos || []),
     ...(lancamentosNull || []),
   ]
+
+  if (filtroClienteId) console.log(`🔍 Filtro ativo: clienteId=${filtroClienteId}`)
 
   console.log(`📋 Faturas encontradas: ${todoLancamentos.length}`)
 
