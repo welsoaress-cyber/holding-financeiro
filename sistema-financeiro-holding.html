@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.77";
+const APP_VERSION = "2.0.78";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -7717,6 +7717,33 @@ document.addEventListener("click", async e => {
     else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
     renderApp();
+    // Ao ABRIR um grupo: se a view atual não pertence a nenhum filho renderizado
+    // desse grupo, navega automaticamente para o primeiro filho disponível.
+    // Isso resolve o "cliquei em Financeiro, abriu o submenu mas nada mudou na
+    // tela" — o usuário espera que clicar no cabeçalho do grupo o leve a uma
+    // página daquele grupo, não apenas expanda a lista.
+    if(!estavaAberto){
+      const grupoNoDOM = document.querySelector(`[data-action="toggle-nav-grupo"][data-id="${grupoId}"]`);
+      const filhosContainer = grupoNoDOM?.nextElementSibling;
+      if(filhosContainer){
+        // Se já há um filho ativo (view atual está no grupo), não navega — fica onde está.
+        const filhoAtivo = filhosContainer.querySelector('[data-action="nav"].active,[data-action="nav-negocio"].active');
+        if(!filhoAtivo){
+          // Navega para o primeiro filho acessível do grupo
+          const primeiroFilho = filhosContainer.querySelector('[data-action="nav"],[data-action="nav-negocio"]');
+          if(primeiroFilho){
+            if(primeiroFilho.dataset.action === "nav-negocio"){
+              filtroNegocioTravado = true;
+              cliFiltro.negocio = primeiroFilho.dataset.negocio;
+              lancFilter.negocio = primeiroFilho.dataset.negocio;
+            } else {
+              filtroNegocioTravado = false;
+            }
+            setView(primeiroFilho.dataset.view);
+          }
+        }
+      }
+    }
   }
   else if(action === "abrir-notificacoes") modalNotificacoes();
   else if(action === "close-modal") closeModal();
