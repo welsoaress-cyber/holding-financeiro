@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.69";
+const APP_VERSION = "2.0.70";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2397,6 +2397,8 @@ async function fetchTudo(tabela, colunas, dono){
 
 async function loadData(){
   if(!state.user) return;
+  // Bloqueio de acesso detectado por chamada concorrente (ver _acessoBloqueado)
+  if(_acessoBloqueado) return;
   const TABELAS_CORE = ["contas","lancamentos","ajustes","categorias","negocios","cartoes"];
   try{
     // "contas"/"categorias"/"negocios" têm colunas soltas no banco (ver TABELAS_FLAT) —
@@ -2454,8 +2456,10 @@ async function loadData(){
       if(perfilLigado && perfilLigado.inativo){
         // SEGURANÇA: usuário com "Acesso bloqueado" (inativado em Usuários)
         // NÃO entra — nem pelo login individual com e-mail/senha próprios.
-        // (Antes só a lista "Quem está usando?" filtrava inativos, e quem
-        // tinha login próprio passava direto por aqui sem essa checagem.)
+        // _acessoBloqueado=true ANTES do signOut: impede que a chamada
+        // concorrente de doAuthMembro (que também chama carregarSessao)
+        // passe pelo guard acima e entre no sistema como "Master".
+        _acessoBloqueado = true;
         await supabaseClient.auth.signOut();
         state.user = null; state.modoMembro = false; state.membroAuthInfo = null;
         showToast("Seu acesso está bloqueado — fale com quem administra o sistema.", "error");
@@ -2487,11 +2491,14 @@ async function loadData(){
     state.senhaMaster = (!rCfgMstr.error && rCfgMstr.data?.dados?.senhaMaster) || SENHA_MASTER_PADRAO;
 
     // Config: modelos de mensagem (WhatsApp)
+    // Em Modo Membro, leituras de config do Master falham por RLS (auth.uid() ≠ user_id
+    // do Master). Tratamos o erro silenciosamente e pulamos o seed/write — Modo Membro
+    // é somente-leitura de config; o modelo padrão já aparece na memória.
     if(rCfgMsg.error) console.warn("[loadData:config-mensagens] ainda não existe — começando sem modelos salvos.", rCfgMsg.error?.message || rCfgMsg.error);
     state.cliMensagensModelo = (!rCfgMsg.error && rCfgMsg.data?.dados?.lista) || [];
     if(state.cliMensagensModelo.length === 0){
       state.cliMensagensModelo = [{ id: uid("msg"), nome: "Lembrete de vencimento", texto: MENSAGEM_COBRANCA_PADRAO }];
-      await saveMensagensModelo();
+      if(!state.modoMembro) await saveMensagensModelo(); // Modo Membro: sem permissão de escrita na config
     }
 
     // Config: submenus por negócio
@@ -2528,7 +2535,9 @@ async function loadData(){
     snapshotShadowInicial();
 
     // Primeiro login: sem categorias/negocios ainda -> semeia os padroes.
-    if(state.categorias.length === 0 && state.negocios.length === 0){
+    // Modo Membro: RLS bloqueia escrita — se as tabelas aparecerem vazias
+    // (leitura RLS do Master negada), não tenta escrever os padrões.
+    if(state.categorias.length === 0 && state.negocios.length === 0 && !state.modoMembro){
       state.categorias = seedCategorias();
       state.negocios = seedNegocios();
       await saveCategorias();
@@ -2750,6 +2759,11 @@ function codigosConviteTecnicoDaURL(){
 }
 let authMode = codigosConviteDaURL() ? "membro" : (codigosConviteTecnicoDaURL() ? "tecnico" : "login");
 let authBusy = false;
+// Guard flag: impede que uma segunda chamada concorrente de loadData()
+// ignore o bloqueio de acesso detectado pela primeira chamada (race condition
+// no Modo Membro quando onAuthStateChange e doAuthMembro disparam carregarSessao
+// ao mesmo tempo). Resetado pelo SIGNED_OUT do Supabase.
+let _acessoBloqueado = false;
 async function doLogin(email, password){
   try{
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -12771,6 +12785,7 @@ async function init(){
       renderApp();
     }else if(!state.user){
       carregouUmaVez = false;
+      _acessoBloqueado = false; // libera para a próxima tentativa de login
       state.modoTecnico = false; state.tecnicoAuthInfo = null;
       renderApp();
     }

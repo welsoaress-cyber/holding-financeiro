@@ -237,9 +237,29 @@ function montarMensagem(
 // ----------------------------------------------------------------
 // Função principal
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// CORS — necessário para chamadas diretas do browser (botão "📲 Cobrar")
+// ----------------------------------------------------------------
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function jsonRes(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  })
+}
+
 serve(async (req) => {
+  // Responde ao preflight OPTIONS que o browser envia antes da requisição real
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS })
+  }
+
   if (req.method !== 'GET' && req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS })
   }
 
   // Filtro opcional: ?clienteId=xxx envia só para aquele cliente (útil para testes)
@@ -257,10 +277,10 @@ serve(async (req) => {
   if (!apiOK) {
     const msg = `🔴 Evolution API OFFLINE — instância '${EVO_INSTANCE}' estado: ${apiEstado}. Acesse o painel para reconectar.`
     console.error(msg)
-    return new Response(JSON.stringify({
+    return jsonRes({
       ok: false,
       error: `Evolution API offline (estado: ${apiEstado}). Reconecte a instância '${EVO_INSTANCE}' no painel da Evolution API e dispare novamente.`,
-    }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+    }, 503)
   }
   console.log(`✅ Evolution API conectada (estado: ${apiEstado})`)
 
@@ -334,7 +354,7 @@ serve(async (req) => {
 
   if (resVencAt.error) {
     console.error('❌ Erro ao buscar lançamentos:', resVencAt.error)
-    return new Response(JSON.stringify({ ok: false, error: resVencAt.error.message }), { status: 500 })
+    return jsonRes({ ok: false, error: resVencAt.error.message }, 500)
   }
 
   const todoLancamentos = [
@@ -368,11 +388,7 @@ serve(async (req) => {
   }
 
   if (todoLancamentos.length === 0) {
-    return new Response(JSON.stringify({
-      ok: true,
-      enviados: 0,
-      msg: 'Nenhuma fatura a notificar.'
-    }), { status: 200 })
+    return jsonRes({ ok: true, enviados: 0, msg: 'Nenhuma fatura a notificar.' })
   }
 
   // Ninguém é pulado por status de cliente: toda fatura que entrou na janela
@@ -502,8 +518,5 @@ serve(async (req) => {
 
   console.log('📊 Resumo:', JSON.stringify(resumo))
 
-  return new Response(JSON.stringify(resumo), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return jsonRes(resumo)
 })
