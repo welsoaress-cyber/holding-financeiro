@@ -267,48 +267,63 @@ serve(async (req) => {
   const alvo2dias     = addDias(agora,  2)
   const alvo3dias     = addDias(agora,  3)
 
-  // Datas passadas (vencidos)
-  const alvoOntem     = addDias(agora, -1)
-  const alvo2diasAtras = addDias(agora, -2)
-  const alvo3diasAtras = addDias(agora, -3)
+  // Datas futuras próximas (janela de aviso antecipado)
+  const datasProximas = [hoje, alvo1dia, alvo2dias, alvo3dias]
 
-  // Disparo único diário (9h): vencidos (até 3 dias atrás) + hoje + próximos 3 dias
-  const todasDatas = [alvo3diasAtras, alvo2diasAtras, alvoOntem, hoje, alvo1dia, alvo2dias, alvo3dias]
-
-  console.log(`🗓️ Hoje: ${hoje} | Datas: ${todasDatas.join(', ')}`)
+  console.log(`🗓️ Hoje: ${hoje} | Próximas: ${datasProximas.join(', ')}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas não pagas dentro da janela de notificação
+  // Busca faturas não pagas:
+  //   - Vencidas: qualquer data passada (sem limite) → todos os inadimplentes
+  //   - A vencer: hoje + próximos 3 dias
   // ----------------------------------------------------------------
-  let qAtivos = sb
-    .from('lancamentos')
-    .select('id, dados, user_id')
-    .eq('dados->>tipo', 'Receita')
-    .neq('dados->>status', 'Pago')
-    .eq('dados->>inativo', 'false')
-    .in('dados->>data', todasDatas)
-  if (filtroClienteId) qAtivos = qAtivos.eq('dados->>clienteId', filtroClienteId)
-  const { data: lancamentosAtivos, error } = await qAtivos
 
-  if (error) {
-    console.error('❌ Erro ao buscar lançamentos:', error)
-    return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 })
+  // Vencidas (todas, sem limite de data)
+  const [resVencAt, resVencNull] = await Promise.all([
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>inativo', 'false').lt('dados->>data', hoje)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .is('dados->>inativo', null).lt('dados->>data', hoje)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+  ])
+
+  // A vencer: hoje + próximos 3 dias
+  const [resProxAt, resProxNull] = await Promise.all([
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>inativo', 'false').in('dados->>data', datasProximas)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+    (() => {
+      let q = sb.from('lancamentos').select('id, dados, user_id')
+        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .is('dados->>inativo', null).in('dados->>data', datasProximas)
+      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      return q
+    })(),
+  ])
+
+  if (resVencAt.error) {
+    console.error('❌ Erro ao buscar lançamentos:', resVencAt.error)
+    return new Response(JSON.stringify({ ok: false, error: resVencAt.error.message }), { status: 500 })
   }
 
-  // Inclui lançamentos sem campo inativo definido (null = ativo)
-  let qNull = sb
-    .from('lancamentos')
-    .select('id, dados, user_id')
-    .eq('dados->>tipo', 'Receita')
-    .neq('dados->>status', 'Pago')
-    .is('dados->>inativo', null)
-    .in('dados->>data', todasDatas)
-  if (filtroClienteId) qNull = qNull.eq('dados->>clienteId', filtroClienteId)
-  const { data: lancamentosNull } = await qNull
-
   const todoLancamentos = [
-    ...(lancamentosAtivos || []),
-    ...(lancamentosNull || []),
+    ...(resVencAt.data || []),
+    ...(resVencNull.data || []),
+    ...(resProxAt.data || []),
+    ...(resProxNull.data || []),
   ]
 
   if (filtroClienteId) console.log(`🔍 Filtro ativo: clienteId=${filtroClienteId}`)
@@ -375,13 +390,11 @@ serve(async (req) => {
     // Calcula quantos dias faltam (negativo = vencido)
     const dataFormatada = formatarData(dataVenc)
     const valorFormatado = formatarValor(valor)
-    const diasRestantes =
-      dataVenc === alvo3diasAtras ? -3 :
-      dataVenc === alvo2diasAtras ? -2 :
-      dataVenc === alvoOntem      ? -1 :
-      dataVenc === hoje           ?  0 :
-      dataVenc === alvo1dia       ?  1 :
-      dataVenc === alvo2dias      ?  2 : 3
+    // Calcula dias exatos (negativo = vencido há X dias)
+    const msPerDia = 24 * 60 * 60 * 1000
+    const diasRestantes = dataVenc
+      ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
+      : 0
 
     const tipoLog = diasRestantes < 0
       ? `vencido há ${Math.abs(diasRestantes)} dia(s)`
