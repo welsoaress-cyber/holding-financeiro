@@ -429,14 +429,16 @@ serve(async (req) => {
 
     console.log(`📤 ${nome} — ${tipoLog} (${dataVenc})`)
 
-    // Gera link Pix do Mercado Pago (só para faturas a vencer/hoje, não para vencidas)
+    // Gera link Pix do Mercado Pago para todas as faturas (vencidas ou não)
+    // Para vencidas, usa hoje como expiração (fim do dia) para o MP aceitar
     let linkPix: string | null = null
-    if (diasRestantes >= 0 && MP_TOKEN) {
+    if (MP_TOKEN) {
       const valorNum = parseFloat(String(valor || '0'))
       if (valorNum > 0) {
         const idempKey = `servnet-${lanc.id}-${hoje}`
         const descPix = `Mensalidade Servnet - ${nome}`
-        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataVenc || hoje, idempKey, lanc.id)
+        const dataExpiracao = diasRestantes >= 0 ? (dataVenc || hoje) : hoje
+        linkPix = await gerarLinkPix(valorNum, nome, descPix, dataExpiracao, idempKey, lanc.id)
       }
     }
 
