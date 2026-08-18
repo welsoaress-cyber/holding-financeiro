@@ -1,10 +1,11 @@
-// Service worker do PWA — só existe pra deixar o app instalável e carregar
-// mais rápido em visitas repetidas. O sistema depende do Supabase pra
-// funcionar de verdade, então NÃO promete uso offline: é rede primeiro,
-// e só cai no cache (versão anterior) se a rede falhar (ex: sem sinal por
-// um instante) — melhor que tela em branco, mas os dados podem estar
-// desatualizados até a conexão voltar.
-const CACHE_NAME = "holding-app-shell-v2";
+// Service worker do PWA — carregamento rápido com cache + atualização em background.
+// Estratégia: stale-while-revalidate.
+//   1. Serve o cache imediatamente (carregamento instantâneo em visitas repetidas)
+//   2. Busca nova versão em background com "no-cache" (valida ETag/Last-Modified)
+//   3. Se o arquivo mudou, atualiza o cache — próxima visita já pega a nova versão
+//   4. O app mostra banner "nova versão disponível" via verificarNovaVersao()
+//   5. Primeira visita (sem cache): aguarda a rede normalmente
+const CACHE_NAME = "holding-app-shell-v3";
 const APP_SHELL = [
   "./sistema-financeiro-holding.html",
   "./manifest.json",
@@ -34,16 +35,22 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // deixa Supabase/CDNs passarem direto
 
   event.respondWith(
-    // "reload" força ignorar o cache HTTP do navegador e ir na rede de verdade —
-    // sem isso, o navegador podia responder com uma versão antiga direto do disco
-    // (sem nem passar pela rede), e o "rede primeiro" daqui virava só teoria,
-    // fazendo correções (como a de layout mobile) demorarem pra chegar no celular.
-    fetch(event.request, { cache: "reload" })
-      .then((resp) => {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return resp;
-      })
-      .catch(() => caches.match(event.request))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+
+      // Busca em background: "no-cache" valida com o servidor via ETag/Last-Modified.
+      // Se o arquivo não mudou, o servidor responde 304 (sem baixar 812KB de novo).
+      // Se mudou, baixa a nova versão e atualiza o cache para a próxima visita.
+      const networkFetch = fetch(event.request, { cache: "no-cache" })
+        .then((resp) => {
+          if (resp.ok) cache.put(event.request, resp.clone());
+          return resp;
+        })
+        .catch(() => cached || new Response("", { status: 503 }));
+
+      // Stale-while-revalidate: cache disponível → entrega imediato + atualiza em background.
+      // Sem cache (primeira visita) → aguarda a rede.
+      return cached || networkFetch;
+    })
   );
 });

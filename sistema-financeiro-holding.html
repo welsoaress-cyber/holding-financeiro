@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.73";
+const APP_VERSION = "2.0.77";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -3424,12 +3424,17 @@ function navGrupo(id, icon, nome, viewsDoGrupo, itensHTML){
   const contemViewAtual = eGrupoNegocio
     ? ((viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)) && filtroNegocioTravado && cliFiltro.negocio === nome)
     : (!filtroNegocioTravado && (viewsDoGrupo.includes(state.view) || viewsDoGrupo.includes(viewEfetiva)));
-  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || (contemViewAtual && !sidebarTudoRecolhido));
+  // Auto-abrir pelo conteúdo da view atual só faz sentido quando nenhum grupo
+  // foi explicitamente aberto pelo usuário. Se sidebarGruposAbertos.size > 0,
+  // o usuário escolheu qual grupo quer ver — outros grupos não devem
+  // abrir sozinhos por "conter a view atual" (causava dois grupos abertos
+  // simultaneamente ao clicar em Financeiro estando na Visão, p.ex.).
+  const aberto = sidebarGruposFechados.has(id) ? false : (sidebarGruposAbertos.has(id) || (contemViewAtual && !sidebarTudoRecolhido && sidebarGruposAbertos.size === 0));
   // Handle de drag: TODOS os grupos podem ser arrastados e reordenados
   const dragAttrs = `draggable="true" data-menu-sort-id="${id}"`;
   const dragHandle = `<span class="neg-drag-handle" title="Segurar e arrastar para reordenar" style="color:rgba(255,255,255,.2);font-size:14px;cursor:grab;margin-right:3px;user-select:none;flex-shrink:0;">⠿</span>`;
   return `
-    <div class="nav-item ${contemViewAtual && !aberto && sidebarGruposAbertos.size === 0 ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
+    <div class="nav-item ${aberto || (contemViewAtual && !aberto && sidebarGruposAbertos.size === 0) ? 'active' : ''}" data-action="toggle-nav-grupo" data-id="${id}" data-aberto="${aberto}" ${dragAttrs} style="cursor:pointer;">
       <span style="display:flex;align-items:center;gap:9px;">${dragHandle}<span class="nav-ico">${icon}</span><span class="label">${esc(nome)}</span></span>
       <span class="label" style="color:rgba(255,255,255,.3); font-size:11px;">${aberto ? "▾" : "▸"}</span>
     </div>
@@ -5686,23 +5691,15 @@ function viewLancamentos(){
     const nomeMes = NOMES_MESES[lancMesNav.mes];
     const hoje = new Date();
     const isMesAtual = lancMesNav.ano === hoje.getFullYear() && lancMesNav.mes === hoje.getMonth();
-    const temDataManual = !!(lancFilter.dataDe || lancFilter.dataAte);
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    return `<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px;">
       <button class="icon-btn" data-action="lanc-mes-prev" title="Mês anterior" style="font-size:15px;padding:5px 11px;border:1px solid var(--border);border-radius:var(--r);">◀</button>
       <div style="display:flex;flex-direction:column;align-items:center;min-width:160px;">
         <strong style="font-size:14px;">${nomeMes} de ${lancMesNav.ano}</strong>
-        ${temDataManual
-          ? `<span style="font-size:10.5px;color:var(--accent);cursor:pointer;text-decoration:underline;" data-action="lanc-limpar-datas">filtro manual ativo — limpar</span>`
-          : isMesAtual
-            ? `<span style="font-size:10.5px;color:var(--ink-4);">mês atual</span>`
-            : `<span style="font-size:10.5px;color:var(--ink-4);cursor:pointer;text-decoration:underline;" data-action="lanc-mes-hoje">voltar para o mês atual</span>`}
+        ${isMesAtual
+          ? `<span style="font-size:10.5px;color:var(--ink-4);">mês atual</span>`
+          : `<span style="font-size:10.5px;color:var(--ink-4);cursor:pointer;text-decoration:underline;" data-action="lanc-mes-hoje">voltar para o mês atual</span>`}
       </div>
       <button class="icon-btn" data-action="lanc-mes-next" title="Próximo mês" style="font-size:15px;padding:5px 11px;border:1px solid var(--border);border-radius:var(--r);">▶</button>
-      <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);margin-left:6px;border-left:1px solid var(--border);padding-left:10px;">
-        De <input type="date" data-action="filter-data-de" value="${lancFilter.dataDe}" min="2000-01-01" max="2099-12-31" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);">
-        até <input type="date" data-action="filter-data-ate" value="${lancFilter.dataAte}" min="2000-01-01" max="2099-12-31" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);">
-      </span>
-      ${lancFilter.clienteId ? (() => { const _cl = cliClienteById(lancFilter.clienteId); return _cl ? `<span style="font-size:12px;color:var(--ink-3);margin-left:4px;">· Cliente: <strong>${esc(cliLabel(_cl))}</strong></span>` : ""; })() : ""}
     </div>`;
   })();
   return `
