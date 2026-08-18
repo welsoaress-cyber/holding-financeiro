@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.66";
+const APP_VERSION = "2.0.67";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2619,6 +2619,7 @@ async function doLogin(email, password){
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+    sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao fazer login.", "error"); return false; }
@@ -2705,6 +2706,7 @@ async function doAuthMembro(email, password, codPerfil, codHolding){
     try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
     state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
     sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+    sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
     await carregarSessao();
     return true;
   }catch(e){ showToast("Erro ao entrar.", "error"); return false; }
@@ -7543,7 +7545,12 @@ document.addEventListener("click", async e => {
     // conter a view atual nunca conseguia ser fechado (ver comentário perto
     // de sidebarGruposFechados).
     const estavaAberto = el.dataset.aberto === "true";
-    sidebarTudoRecolhido = false; // usuário mexeu no menu — volta o comportamento normal
+    // OBS: sidebarTudoRecolhido fica como está de propósito — antes o primeiro
+    // clique num grupo desligava o modo "tudo recolhido" e o grupo da tela
+    // atual (ex: Visão, logo após o login) abria SOZINHO junto com o grupo
+    // clicado. Um clique abria dois grupos. Agora cada grupo só abre/fecha
+    // quando o usuário clica NELE; o auto-abrir por conter a view atual só
+    // vale no carregamento da página (F5), quando o flag já nasce false.
     if(estavaAberto){ sidebarGruposAbertos.delete(grupoId); sidebarGruposFechados.add(grupoId); }
     else{ sidebarGruposFechados.delete(grupoId); sidebarGruposAbertos.add(grupoId); }
     drawerAbertoAntes = document.getElementById("mainSidebar")?.classList.contains("open") || false;
@@ -12606,7 +12613,8 @@ async function init(){
       if(event === "SIGNED_IN"){
         try{ localStorage.removeItem(navKeyUsuario()); }catch(e){}
         state.view = "vg_executivo"; state.moduloAtivo = "visaogeral";
-    sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+        sidebarTudoRecolhido = true; // login novo → menu todo recolhido
+        sidebarGruposAbertos.clear(); sidebarGruposFechados.clear();
       }
       await carregarSessao();
       renderApp();
