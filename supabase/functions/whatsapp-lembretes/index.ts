@@ -274,17 +274,23 @@ serve(async (req) => {
 
   // ----------------------------------------------------------------
   // Busca faturas não pagas:
-  //   - Vencidas: qualquer data passada (sem limite) → todos os inadimplentes
-  //   - A vencer: hoje + próximos 3 dias
+  //   - Vencidas — modo AUTOMÁTICO (cron, sem ?clienteId): só até 3 dias
+  //     de atraso. Acima disso a cobrança é decisão manual do usuário,
+  //     feita pelo botão 📲 Cobrar no sistema (que chama com ?clienteId).
+  //   - Vencidas — modo MANUAL (?clienteId): TODAS, sem limite de data —
+  //     o botão precisa alcançar qualquer fatura antiga do cliente.
+  //   - A vencer: hoje + próximos 3 dias (nos dois modos)
   // ----------------------------------------------------------------
+  const limiteVencidasAuto = addDias(agora, -3)
+  if (!filtroClienteId) console.log(`⏱️ Modo automático: vencidas só a partir de ${limiteVencidasAuto}`)
 
-  // Vencidas (todas, sem limite de data)
   const [resVencAt, resVencNull] = await Promise.all([
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
         .eq('dados->>inativo', 'false').lt('dados->>data', hoje)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      else q = q.gte('dados->>data', limiteVencidasAuto)
       return q
     })(),
     (() => {
@@ -292,6 +298,7 @@ serve(async (req) => {
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
         .is('dados->>inativo', null).lt('dados->>data', hoje)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
+      else q = q.gte('dados->>data', limiteVencidasAuto)
       return q
     })(),
   ])
@@ -338,7 +345,9 @@ serve(async (req) => {
     }), { status: 200 })
   }
 
-  // Inadimplentes também recebem o aviso — podem pagar qualquer fatura
+  // Ninguém é pulado por status de cliente: toda fatura que entrou na janela
+  // acima gera aviso — inadimplente também pode (e deve) pagar. O corte de
+  // "vencida há mais de 3 dias" no modo automático é feito na busca, não aqui.
 
   let enviados = 0
   let erros = 0

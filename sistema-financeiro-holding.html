@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.67";
+const APP_VERSION = "2.0.68";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -2208,6 +2208,11 @@ async function renovarRecorrenciasFixas(){
     const novos = [];
     for(const lista of grupos.values()){
       if(lista.some(l => l.recorrenciaEncerrada)) continue; // encerrada de propósito pelo usuário
+      // Série suspensa por inadimplência do cliente: não renova NEM preenche
+      // o buraco — quem decide retomar é sincronizarRecorrenciasInadimplentes()
+      // quando o pagamento entrar (e ela retoma a partir de hoje, sem recriar
+      // os meses do período bloqueado).
+      if(lista.some(l => l.recorrenciaSuspensa)) continue;
       lista.sort((a,b) => String(a.data).localeCompare(String(b.data)));
       const ultimo = lista[lista.length-1];
       if(!ultimo.data || ultimo.data > limiteRenovacao) continue; // ainda tem estrada suficiente
@@ -2235,6 +2240,101 @@ async function renovarRecorrenciasFixas(){
       console.log(`[renovarRecorrencias] ${novos.length} ocorrência(s) futura(s) criadas automaticamente.`);
     }
   }catch(e){ console.warn("[renovarRecorrencias]", e); }
+}
+
+// ---- Suspensão de recorrência por inadimplência ----
+// Regra do usuário: cliente que FICOU INADIMPLENTE (régua de cobrança:
+// 4+ dias de atraso) não deve acumular novas mensalidades — as ocorrências
+// FUTURAS ainda não pagas das séries recorrentes dele são removidas e a
+// série fica marcada (recorrenciaSuspensa). As vencidas/de hoje ficam:
+// são a dívida a cobrar. Quando o pagamento entra (baixa manual ou Pix
+// automático) e o cliente sai da inadimplência, a série RETOMA: os meses
+// seguintes voltam a ser lançados A PARTIR DE HOJE, mantendo o dia de
+// vencimento. Os meses do período bloqueado NÃO são recriados de propósito
+// — nasceriam já vencidos e o cliente voltava a ficar inadimplente na
+// hora, num loop sem fim.
+// Idempotente: roda a cada login (depois de renovarRecorrenciasFixas) e
+// depois de cada baixa de Receita com cliente — só grava quando algo muda.
+function _diasMinInadimplencia(){
+  const r = INADIMPLENCIA_RULES.find(x => x.status === "Inadimplente");
+  return r ? r.diasMin : 4;
+}
+async function sincronizarRecorrenciasInadimplentes(){
+  try{
+    const hoje = todayISO();
+    const diasMin = _diasMinInadimplencia();
+    // Agrupa séries recorrentes de Receita com cliente vinculado
+    const series = new Map();
+    for(const l of state.lancamentos){
+      if(!l.recorrenciaId || l.recorrenciaTipo !== "recorrente") continue;
+      if(l.tipo !== "Receita" || !l.clienteId) continue;
+      if(!series.has(l.recorrenciaId)) series.set(l.recorrenciaId, []);
+      series.get(l.recorrenciaId).push(l);
+    }
+    const idsRemover = [];
+    const alterados = [];  // linhas existentes com flag mudada (upsert)
+    const novos = [];      // ocorrências recriadas na retomada
+    let suspensas = 0, retomadas = 0;
+    for(const lista of series.values()){
+      if(lista.some(l => l.recorrenciaEncerrada)) continue;
+      const cliente = cliClienteById(lista[0].clienteId);
+      if(!cliente || cliente.excluido) continue;
+      const inadimplente = clienteDiasAtraso(cliente) >= diasMin;
+      const suspensa = lista.some(l => l.recorrenciaSuspensa);
+      if(inadimplente && !suspensa){
+        // SUSPENDE: remove as futuras não pagas e marca o que sobra
+        const removerDaSerie = new Set();
+        for(const l of lista){
+          if(l.status !== "Pago" && !l.inativo && l.data > hoje) removerDaSerie.add(l.id);
+        }
+        for(const l of lista){
+          if(removerDaSerie.has(l.id)){ idsRemover.push(l.id); continue; }
+          l.recorrenciaSuspensa = true;
+          alterados.push(l);
+        }
+        suspensas++;
+      }else if(!inadimplente && suspensa){
+        // RETOMA: limpa a marca e recria as ocorrências a partir de hoje
+        for(const l of lista){
+          if(l.recorrenciaSuspensa){ delete l.recorrenciaSuspensa; alterados.push(l); }
+        }
+        const ativos = lista.filter(l => !l.inativo).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+        const ultimo = ativos[ativos.length-1];
+        if(!ultimo || !ultimo.data) continue;
+        const freq = ultimo.recorrenciaFreq || "Mensal";
+        const chaves = new Set(lista.map(l => l.recorrenciaId + "|" + l.data));
+        let idx = Math.max(0, ...lista.map(l => Number(l.recorrenciaIndex)||0));
+        const alvo = _addAnosISO(hoje, HORIZONTE_ANOS);
+        let d = proximaData(ultimo.data, freq);
+        let guarda = 0;
+        while(d < hoje && guarda < 400){ guarda++; d = proximaData(d, freq); } // pula o período suspenso
+        while(d <= alvo && guarda < 400){
+          guarda++;
+          const chave = ultimo.recorrenciaId + "|" + d;
+          if(!chaves.has(chave)){
+            idx++;
+            const novo = { ...ultimo, id: uid("l"), data: d, status: "Provisionado", conciliado: false,
+              recorrenciaIndex: idx, recorrenciaTotal: idx, recorrenciaFreq: freq };
+            delete novo.dataPagamento; delete novo.inativo; delete novo.inativadoPor; delete novo.inativadoEm;
+            delete novo.recorrenciaSuspensa; delete novo.formaPagamento; delete novo.mpPaymentId; delete novo.valorPago;
+            novos.push(novo);
+            chaves.add(chave);
+          }
+          d = proximaData(d, freq);
+        }
+        retomadas++;
+      }
+    }
+    if(idsRemover.length){
+      state.lancamentos = state.lancamentos.filter(l => !idsRemover.includes(l.id));
+      await deleteRows("lancamentos", idsRemover);
+    }
+    if(novos.length) state.lancamentos.push(...novos);
+    if(alterados.length || novos.length) await saveRows("lancamentos", [...alterados, ...novos]);
+    if(suspensas || retomadas){
+      console.log(`[recorrenciaInadimplente] ${suspensas} série(s) suspensas (${idsRemover.length} futuras removidas), ${retomadas} retomada(s) (${novos.length} ocorrências recriadas).`);
+    }
+  }catch(e){ console.warn("[recorrenciaInadimplente]", e); }
 }
 
 // Busca TODAS as linhas de uma tabela, paginando em blocos de 1.000.
@@ -2399,6 +2499,10 @@ async function loadData(){
     }
     await renovarRecorrenciasFixas();
     if(autoBaixarAgendados().length) await saveLancamentos();
+    // Depois da renovação e das baixas automáticas: suspende séries de
+    // clientes inadimplentes e retoma as de quem regularizou (inclui os
+    // pagos via Pix pelo webhook desde o último carregamento).
+    await sincronizarRecorrenciasInadimplentes();
   }catch(e){
     state.storageOK = false;
     if(ehErroDeSessao(e)){ await tratarErroDeSessao(e); return; }
@@ -7141,7 +7245,11 @@ function modalBaixa(l){
     l.dataPagamento = fd.get("dataPagamento");
     l.contaOrigem = fd.get("contaOrigem");
     l.conciliado = fd.get("conciliado") === "on";
-    await saveRows("lancamentos", [l]); closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
+    await saveRows("lancamentos", [l]);
+    // Se essa baixa tirou o cliente da inadimplência, a série recorrente
+    // dele é retomada na hora (os próximos meses voltam pra Contas a Receber).
+    if(l.tipo === "Receita" && l.clienteId) await sincronizarRecorrenciasInadimplentes();
+    closeModal(); renderApp(); showToast("✓ Baixa confirmada — lançamento marcado como Pago.");
   });
 }
 
