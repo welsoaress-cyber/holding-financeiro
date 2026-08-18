@@ -262,9 +262,16 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS })
   }
 
-  // Filtro opcional: ?clienteId=xxx envia só para aquele cliente (útil para testes)
+  // Filtro opcional: clienteId pode vir como ?clienteId=xxx (GET/cron)
+  // ou no body JSON { clienteId } (POST via supabaseClient.functions.invoke do browser)
   const url = new URL(req.url)
-  const filtroClienteId = url.searchParams.get('clienteId') || null
+  let filtroClienteId: string | null = url.searchParams.get('clienteId') || null
+  if (!filtroClienteId && req.method === 'POST') {
+    try {
+      const body = await req.json()
+      filtroClienteId = body?.clienteId || null
+    } catch { /* body vazio ou não-JSON — ignora */ }
+  }
 
   const sb = createClient(SB_URL, SB_SECRET)
 

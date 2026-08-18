@@ -1162,7 +1162,7 @@ async function registrarLogs(entradas){
 // carregou a atualização mais recente ou ainda tá com uma versão em cache
 // (o service worker às vezes demora a trocar) — se o número aqui bater com
 // o que eu disse que subi, é a versão nova. Bump a cada mudança publicada.
-const APP_VERSION = "2.0.70";
+const APP_VERSION = "2.0.71";
 
 let state = {
   contas: [], lancamentos: [], ajustes: [], categorias: [], negocios: [], cartoes: [], perfis: [],
@@ -8790,30 +8790,25 @@ function waLinkCobranca(l){
 }
 
 // Envio automático de cobrança via WhatsApp — chama a Edge Function
-// whatsapp-lembretes com ?clienteId=xxx para disparar exatamente a mesma
-// mensagem (com link Pix) que o cron diário enviaria. Diferente do
-// waLinkCobranca() (que apenas abre o wa.me no navegador), aqui o envio
-// é feito pela Evolution API sem intervenção manual.
+// whatsapp-lembretes via supabaseClient.functions.invoke() (passa o token
+// de sessão e gerencia CORS automaticamente, sem depender de fetch raw).
 async function cobrarWhatsApp(l, btnEl){
   const textoOriginal = btnEl?.textContent || "📲 Cobrar";
   if(btnEl){ btnEl.disabled = true; btnEl.textContent = "Enviando..."; }
   try {
-    const url = `${SUPABASE_URL}/functions/v1/whatsapp-lembretes?clienteId=${encodeURIComponent(l.clienteId)}`;
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    const { data: json, error } = await supabaseClient.functions.invoke('whatsapp-lembretes', {
+      body: { clienteId: l.clienteId }
     });
-    const json = await res.json().catch(() => ({}));
     const cli = l.clienteId ? cliClienteById(l.clienteId) : null;
     const nome = cli ? cliNome(cli) : "cliente";
-    if(res.ok && json.enviados > 0){
+    if(error) throw new Error(error.message || JSON.stringify(error));
+    if(json && json.enviados > 0){
       showToast(`✅ WhatsApp enviado para ${nome}!`);
-    } else if(res.ok){
-      showToast(`ℹ️ Nada enviado para ${nome} — sem cobrança pendente ou sem número cadastrado.`, "warn");
     } else {
-      showToast(`Erro ao enviar para ${nome}: ${json.error || json.msg || res.status}`, "error");
+      showToast(`ℹ️ Nada enviado para ${nome} — sem cobrança pendente ou sem número cadastrado.`, "warn");
     }
   } catch(err) {
-    showToast(`Erro de rede: ${err.message}`, "error");
+    showToast(`Erro ao cobrar: ${err.message || err}`, "error");
   } finally {
     if(btnEl){ btnEl.disabled = false; btnEl.textContent = textoOriginal; }
   }
