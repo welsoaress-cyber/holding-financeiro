@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.4 — 2026-08-19
+
+### Corrigido
+- Versão da topbar e da tela Sobre desencontradas: agora ambas leem a
+  MESMA constante do app — impossível divergirem de novo.
+
 ## v2.5.3 — 2026-08-19
 
 ### Alterado

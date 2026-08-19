@@ -571,7 +571,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.5.3</span>
+    GrupoTom <span id="tb-version" style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;"></span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
@@ -1069,6 +1069,15 @@ function aplicarHexScale() {
     if (el) { el.style.transform = s === 1 ? '' : `scale(${s})`; el.style.transformOrigin = 'center top'; }
   });
 }
+(function versaoUnica(){
+  const el = document.getElementById('tb-version');
+  if (!el) return;
+  let n = 0;
+  const t = setInterval(() => {
+    if (window.GT_VERSION) { el.textContent = 'v' + window.GT_VERSION; clearInterval(t); }
+    else if (++n > 40) clearInterval(t);
+  }, 250);
+})();
 (function initHexSize(){
   const btn = document.getElementById('btn-hexsize');
   const pop = document.getElementById('hexsize-pop');
