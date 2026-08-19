@@ -1,4 +1,17 @@
-<title>Servnet</title>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Internet fibra óptica 100% no Jardim Moraes Prado a partir de R$ 60/mês. Instalação grátis, Wi-Fi incluso e suporte local via WhatsApp. Assine a Servnet!">
+<meta property="og:title" content="Servnet — Internet Fibra no Jardim Moraes Prado">
+<meta property="og:description" content="Planos de 100 a 300 Mbps a partir de R$ 60/mês. Instalação grátis, Wi-Fi incluso e atendimento de vizinho pra vizinho.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://servnet.net.br/">
+<meta property="og:image" content="https://servnet.net.br/faisca.png">
+<meta property="og:locale" content="pt_BR">
+<link rel="icon" type="image/png" href="faisca.png">
+<link rel="canonical" href="https://servnet.net.br/">
+<title>Servnet — Internet Fibra no Jardim Moraes Prado</title>
 <style>
 /* ===== TOKENS ===== */
 :root {
@@ -1064,6 +1077,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
     <li><a href="#planos">Planos</a></li>
     <li><a href="#cobertura">Cobertura</a></li>
     <li><a href="#contato">Contato</a></li>
+    <li><a href="privacidade.html">Privacidade</a></li>
   </ul>
   <div class="footer-copy">© 2025 Servnet. Todos os direitos reservados.</div>
 </footer>
@@ -1320,6 +1334,7 @@ async function submitLead(e) {
   );
 
   // Abre WhatsApp após 1s
+  if (typeof gtag === 'function') gtag('event', 'conversion_lead_whatsapp', { event_category: 'lead', event_label: plano || 'sem-plano' });
   setTimeout(() => window.open(`https://wa.me/${WA_NUM}?text=${msg}`, '_blank'), 900);
   // Fecha modal após 5s
   setTimeout(closeModal, 5000);
