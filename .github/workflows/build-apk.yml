@@ -1,0 +1,90 @@
+name: Build APK — Limpezas Tom
+
+on:
+  push:
+    branches:
+      - claude/limpezas-tom-qhscar
+      - main
+    paths:
+      - 'limpezas-tom/**'
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Variante do build'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build:
+    name: Compilar APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: limpezas-tom
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache do Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('limpezas-tom/**/*.gradle*', 'limpezas-tom/**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-
+
+      - name: Permissão no Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Compilar APK debug
+        if: ${{ github.event.inputs.variant != 'release' }}
+        run: ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
+
+      - name: Compilar APK release (sem assinatura)
+        if: ${{ github.event.inputs.variant == 'release' }}
+        run: ./gradlew :composeApp:assembleRelease --no-daemon --stacktrace
+
+      - name: Localizar APK gerado
+        id: apk_path
+        run: |
+          APK=$(find composeApp/build/outputs/apk -name "*.apk" | head -1)
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "APK encontrado: $APK"
+          ls -lh "$APK"
+
+      - name: Upload do APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: limpezas-tom-${{ github.event.inputs.variant || 'debug' }}-${{ github.run_number }}
+          path: limpezas-tom/${{ steps.apk_path.outputs.path }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Resumo do build
+        run: |
+          APK="${{ steps.apk_path.outputs.path }}"
+          SIZE=$(du -sh "$APK" | cut -f1)
+          echo "## ✅ APK compilado com sucesso" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Arquivo | \`$(basename $APK)\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tamanho | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Para instalar:** baixe o artefato acima, copie o APK para o celular e instale habilitando 'Fontes desconhecidas' nas configurações." >> $GITHUB_STEP_SUMMARY
