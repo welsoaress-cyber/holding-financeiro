@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.12 — 2026-08-19
+
+### Corrigido
+- Busca de Cobranças permitia digitar só uma letra por vez: a tela se
+  reconstruía a cada tecla e o cursor saía da caixa. Agora a lista
+  atualiza 350ms após parar de digitar e o cursor permanece na busca.
+
 ## v2.4.11 — 2026-08-19
 
 ### Corrigido
