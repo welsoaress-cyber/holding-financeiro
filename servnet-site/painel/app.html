@@ -206,6 +206,17 @@
       align-items: center; justify-content: center; gap: 5px;
     }
     .hex-icon { font-size: 28px; line-height: 1; }
+    @media (min-width: 1200px) {
+      .hex-icon { font-size: 40px; }
+      .hex-label { font-size: 12px; max-width: 130px; }
+      .home-greeting h1 { font-size: 34px; }
+      .home-greeting p { font-size: 15px; }
+    }
+    @media (min-width: 1600px) {
+      .hex-icon { font-size: 48px; }
+      .hex-label { font-size: 14px; max-width: 150px; }
+      .home-greeting h1 { font-size: 40px; }
+    }
     .hex-label {
       font-family: var(--font-head); font-size: 10px; font-weight: 600;
       color: var(--text-2); letter-spacing: 0.5px; text-align: center;
@@ -742,9 +753,11 @@ function isMobile() { return window.innerWidth <= 767; }
 ══════════════════════════════════════════════════════════ */
 function getHexSize() {
   const vw = window.innerWidth;
-  if (vw < 400) return { HW: 120, HH: 130 };
-  if (vw < 720) return { HW: 145, HH: 158 };
-  return               { HW: 130, HH: 140 };
+  if (vw < 400)  return { HW: 120, HH: 130 };
+  if (vw < 720)  return { HW: 145, HH: 158 };
+  if (vw < 1200) return { HW: 160, HH: 173 };
+  if (vw < 1600) return { HW: 190, HH: 205 };
+  return                { HW: 220, HH: 238 };
 }
 
 function renderHexGrid() {
