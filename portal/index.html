@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Área do Cliente — Servnet</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+:root{
+  --pool:#00C4D8;--pool-hi:#2DDAE8;
+  --bg:#030F18;--surface:#061520;--card:#091C2A;
+  --text:#CDEAF2;--text-2:#4A8898;
+  --border:rgba(0,196,216,0.15);
+  --pos:#10B981;--neg:#EF4444;--warn:#F59E0B;
+}
+body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
+a{color:inherit;}
+
+/* ===== LOGIN ===== */
+.login-screen{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:2rem 1rem;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,196,216,0.08) 0%,transparent 70%);
+}
+.login-logo{font-size:1.8rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 20px rgba(0,196,216,0.4);margin-bottom:0.3rem;}
+.login-logo span{color:var(--text);opacity:0.7;font-weight:700;}
+.login-sub{font-size:0.82rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.18em;margin-bottom:2.5rem;}
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2.5rem 2rem;}
+.login-card h2{font-size:1.1rem;font-weight:700;margin-bottom:0.4rem;}
+.login-card p{font-size:0.88rem;color:var(--text-2);margin-bottom:1.75rem;}
+.f-group{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1.2rem;}
+.f-label{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);}
+.f-input{padding:0.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.f-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
+.f-input::placeholder{color:var(--text-2);opacity:0.6;}
+/* date text input — sem calendário nativo */
+.login-btn{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:0.4rem;font-family:inherit;}
+.login-btn:hover:not(:disabled){opacity:0.88;transform:translateY(-1px);}
+.login-btn:disabled{opacity:0.55;cursor:default;}
+.login-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:0.75rem 1rem;color:#FCA5A5;font-size:0.88rem;margin-top:1rem;display:none;}
+.login-err.show{display:block;}
+.login-help{text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--text-2);}
+.login-help a{color:var(--pool);text-decoration:none;}
+.login-back{display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-2);text-decoration:none;margin-bottom:1.5rem;transition:color 0.15s;}
+.login-back:hover{color:var(--pool);}
+
+/* ===== DASHBOARD ===== */
+.dash-screen{display:none;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(3,15,24,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 max(5vw,1.5rem);height:58px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-size:1.2rem;font-weight:900;letter-spacing:0.09em;color:var(--pool);text-decoration:none;}
+.topbar-logo span{color:var(--text);opacity:0.7;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:1rem;}
+.topbar-user{font-size:0.88rem;color:var(--text-2);}
+.topbar-user strong{color:var(--text);}
+.logout-btn{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-2);padding:0.35rem 0.8rem;font-size:0.82rem;cursor:pointer;transition:color 0.15s,border-color 0.15s;font-family:inherit;}
+.logout-btn:hover{color:var(--text);border-color:rgba(0,196,216,0.4);}
+.dash-body{max-width:960px;margin:0 auto;padding:2.5rem max(5vw,1.5rem);}
+.dash-greet{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--text-2);margin-bottom:0.25rem;}
+.dash-title{font-size:1.6rem;font-weight:800;margin-bottom:2rem;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem;}
+@media(max-width:640px){.cards{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 10%,var(--pool) 50%,transparent 90%);opacity:0.3;}
+.card.glow::before{opacity:1;box-shadow:0 0 10px rgba(0,196,216,0.5);}
+.card-lbl{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.18em;color:var(--pool);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;}
+.card-lbl::before{content:'';display:block;width:14px;height:1.5px;background:var(--pool);}
+.span2{grid-column:span 2;}
+@media(max-width:640px){.span2{grid-column:span 1;}}
+
+/* status da rede card */
+.status-card{display:none;}
+.status-card.vis{display:block;}
+.status-banner{display:flex;align-items:flex-start;gap:1rem;padding:1rem 1.25rem;border-radius:8px;border:1px solid;}
+.status-icon{font-size:1.8rem;flex-shrink:0;line-height:1;}
+.status-body{}
+.status-titulo{font-size:1rem;font-weight:700;margin-bottom:0.25rem;}
+.status-desc{font-size:0.86rem;opacity:0.85;line-height:1.5;}
+.status-atualizado{font-size:0.73rem;opacity:0.55;margin-top:0.5rem;}
+/* lentidao = amber */
+.s-lentidao{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.35);color:#FCD34D;}
+/* queda = red */
+.s-queda{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.35);color:#FCA5A5;}
+/* manutencao = purple */
+.s-manutencao{background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.35);color:#C4B5FD;}
+
+/* plan card */
+.plan-speed{font-family:'Courier New',monospace;font-size:2.5rem;font-weight:700;color:var(--pool);line-height:1;}
+.plan-speed span{font-size:1rem;color:var(--text-2);font-weight:400;}
+.plan-name{font-size:1rem;font-weight:600;margin-top:0.3rem;margin-bottom:0.6rem;}
+.plan-detail{font-size:0.86rem;color:var(--text-2);margin-bottom:0.3rem;display:flex;align-items:center;gap:0.4rem;}
+.plan-price{font-size:1.3rem;font-weight:800;margin-top:0.75rem;}
+.plan-price span{font-size:0.82rem;color:var(--text-2);font-weight:400;}
+
+/* badges */
+.badge{display:inline-block;padding:0.2rem 0.65rem;border-radius:100px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;}
+.b-ativo{background:rgba(16,185,129,0.15);color:#34D399;border:1px solid rgba(16,185,129,0.25);}
+.b-suspenso{background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
+.b-cancelado{background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25);}
+.b-pago{background:rgba(16,185,129,0.15);color:#34D399;border:1px solid rgba(16,185,129,0.25);}
+.b-pendente{background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);}
+.b-vencido{background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25);}
+
+/* invoice card */
+.inv-month{font-size:1rem;font-weight:700;margin-bottom:0.2rem;}
+.inv-due{font-size:0.84rem;color:var(--text-2);margin-bottom:0.75rem;}
+.inv-val{font-size:2.2rem;font-weight:900;line-height:1;margin-bottom:0.75rem;}
+.boleto-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.25rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;margin-top:0.75rem;font-family:inherit;}
+.boleto-btn:hover{opacity:0.85;}
+.pix-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.25rem;background:transparent;color:var(--pool);border:1.5px solid var(--pool);border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;transition:opacity 0.15s;margin-top:0.5rem;font-family:inherit;width:100%;}
+.pix-btn:hover{background:rgba(0,196,216,0.08);}
+.pix-btn:disabled{opacity:0.5;cursor:default;}
+.pdf-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.55rem 1rem;background:transparent;color:var(--text-2);border:1px solid var(--border);border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:opacity 0.15s;margin-top:0.4rem;font-family:inherit;width:100%;}
+.pdf-btn:hover{background:rgba(255,255,255,0.04);}
+.pdf-btn:disabled{opacity:0.5;cursor:default;}
+/* Modal Pix */
+.pix-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.pix-modal{background:#061520;border:1px solid rgba(0,196,216,0.2);border-radius:14px;padding:2rem 1.5rem;width:100%;max-width:340px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0.75rem;}
+.pix-modal h3{font-size:1rem;font-weight:700;color:var(--pool);margin:0;}
+.pix-modal img{display:block;width:190px;height:190px;border:3px solid var(--pool);border-radius:8px;background:#fff;padding:6px;}
+.pix-val{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:100px;padding:0.3rem 1.2rem;color:#34D399;font-size:1.1rem;font-weight:700;}
+.pix-copy-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);align-self:flex-start;}
+.pix-copy-wrap{display:flex;gap:0.4rem;width:100%;}
+.pix-copy-input{flex:1;padding:0.6rem 0.8rem;background:#091C2A;border:1px solid rgba(0,196,216,0.15);border-radius:6px;color:var(--text);font-size:0.75rem;font-family:monospace;outline:none;min-width:0;}
+.pix-copy-btn{padding:0.6rem 0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.pix-close{width:100%;padding:0.7rem;background:transparent;color:var(--text-2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:0.9rem;cursor:pointer;font-family:inherit;}
+
+/* history */
+.hist-list{display:flex;flex-direction:column;gap:0.65rem;}
+.hist-item{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border-radius:7px;border:1px solid var(--border);}
+.hist-month{font-size:0.9rem;font-weight:600;}
+.hist-due{font-size:0.76rem;color:var(--text-2);}
+.hist-right{text-align:right;}
+.hist-val{font-size:0.9rem;font-weight:700;}
+.hist-link{font-size:0.75rem;color:var(--pool);text-decoration:none;}
+.hist-link:hover{text-decoration:underline;}
+
+/* banner WhatsApp */
+.wa-banner{display:flex;align-items:center;gap:1rem;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.35);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.wa-banner-icon{font-size:1.6rem;flex-shrink:0;}
+.wa-banner-body{flex:1;min-width:0;}
+.wa-banner-title{font-size:0.9rem;font-weight:700;color:#34D399;margin-bottom:0.2rem;}
+.wa-banner-sub{font-size:0.78rem;color:var(--text-2);}
+.wa-banner-form{display:flex;gap:0.5rem;margin-top:0.65rem;flex-wrap:wrap;}
+.wa-banner-input{flex:1;min-width:160px;padding:0.55rem 0.85rem;background:#091C2A;border:1px solid rgba(37,211,102,0.3);border-radius:6px;color:var(--text);font-size:0.9rem;outline:none;font-family:inherit;}
+.wa-banner-input:focus{border-color:#34D399;}
+.wa-banner-btn{padding:0.55rem 1.1rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.wa-banner-btn:disabled{opacity:0.5;cursor:default;}
+.wa-banner-ok{font-size:0.8rem;margin-top:0.4rem;display:none;}
+.wa-banner-ok.show{display:block;}
+
+/* support card */
+.sup-desc{font-size:0.9rem;color:var(--text-2);margin-bottom:1.25rem;line-height:1.7;}
+.wa-btn{display:inline-flex;align-items:center;gap:0.6rem;padding:0.8rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:700;text-decoration:none;cursor:pointer;transition:opacity 0.15s;}
+.wa-btn:hover{opacity:0.88;}
+.sup-info{margin-top:1rem;font-size:0.82rem;color:var(--text-2);}
+.sup-info a{color:var(--pool);text-decoration:none;}
+
+/* ===== FIDELIDADE — Cartão Físico ===== */
+/* Wrapper do cartão */
+.fc-wrap{display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* O cartão em si */
+.fc{
+  width:100%;max-width:480px;
+  background:linear-gradient(135deg,#041825 0%,#061e2e 40%,#031219 100%);
+  border:1px solid rgba(0,196,216,0.25);
+  border-radius:18px;
+  padding:1.4rem 1.4rem 1.2rem;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(0,196,216,0.08),inset 0 1px 0 rgba(255,255,255,0.04);
+}
+/* brilho de canto */
+.fc::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.18) 0%,transparent 70%);
+  pointer-events:none;
+}
+.fc::after{
+  content:'';position:absolute;bottom:-40px;left:-40px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+/* topo do cartão */
+.fc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;}
+.fc-brand{font-size:1.1rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 16px rgba(0,196,216,0.5);}
+.fc-brand span{color:rgba(205,234,242,0.7);font-weight:700;}
+.fc-title-col{text-align:right;}
+.fc-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.2em;color:rgba(0,196,216,0.6);margin-bottom:0.1rem;}
+.fc-subtitle{font-size:0.78rem;font-weight:700;color:rgba(205,234,242,0.9);}
+.fc-validade{font-size:0.6rem;color:rgba(0,196,216,0.55);margin-top:0.2rem;letter-spacing:0.02em;}
+.fc-validade strong{color:rgba(0,196,216,0.85);font-weight:700;}
+/* grade de selos — 12 posições limpas, 6 por linha.
+   Os prêmios NÃO ficam na grade: eles não ocupam um mês, são o que o
+   cartão completo desbloqueia. Vão na faixa .fc-premios logo abaixo. */
+.fc-stamps{display:grid;grid-template-columns:repeat(6,1fr);gap:0.45rem;margin-bottom:0.5rem;position:relative;z-index:1;}
+.fcs{
+  aspect-ratio:1;border-radius:9px;border:2px solid;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;transition:all 0.3s;cursor:default;overflow:hidden;position:relative;
+}
+/* vazio */
+.fcs.empty{
+  border-color:rgba(0,196,216,0.15);border-style:dashed;
+  background:rgba(0,196,216,0.02);
+}
+.fcs.empty .fcs-n{color:rgba(0,196,216,0.22);font-size:0.52rem;font-weight:700;}
+/* conquistado */
+.fcs.ok{
+  border-color:rgba(0,196,216,0.7);border-style:solid;
+  background:linear-gradient(135deg,rgba(0,196,216,0.2) 0%,rgba(0,196,216,0.08) 100%);
+  box-shadow:0 0 8px rgba(0,196,216,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.fcs.ok .fcs-check{color:var(--pool);font-size:1rem;line-height:1;text-shadow:0 0 8px rgba(0,196,216,0.6);}
+.fcs.ok .fcs-n{color:rgba(0,196,216,0.55);font-size:0.56rem;font-weight:700;}
+/* mês que já perdeu o selo: pago com atraso, ou vencido sem pagamento */
+.fcs.inelegivel{
+  border-color:rgba(239,68,68,0.6);border-style:solid;
+  background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(239,68,68,0.05) 100%);
+}
+.fcs.inelegivel .fcs-check{color:#F87171;font-size:0.95rem;line-height:1;}
+.fcs.inelegivel .fcs-n{color:rgba(248,113,113,0.8);font-size:0.56rem;font-weight:700;}
+/* mês ainda no prazo: dá para conquistar o selo */
+.fcs.aberto{
+  border-color:rgba(0,196,216,0.3);border-style:solid;
+  background:rgba(0,196,216,0.05);
+}
+.fcs.aberto .fcs-check{color:rgba(0,196,216,0.45);font-size:0.8rem;line-height:1;}
+.fcs.aberto .fcs-n{color:rgba(0,196,216,0.5);font-size:0.56rem;font-weight:700;}
+/* aviso dos meses em atraso */
+.fc-tropeco{margin-top:0.6rem;font-size:0.66rem;line-height:1.35;color:#FCD34D;
+  background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.22);
+  border-radius:8px;padding:0.4rem 0.6rem;position:relative;z-index:1;}
+.fc-tropeco strong{color:#FDE68A;font-weight:700;}
+/* faixa de prêmios — separada dos selos */
+.fc-premios{display:flex;flex-direction:column;gap:0.4rem;margin-top:0.75rem;position:relative;z-index:1;}
+.fp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  column-gap:0.6rem;row-gap:0.05rem;border-radius:10px;border:1.5px solid;
+  padding:0.55rem 0.7rem;transition:all 0.3s;min-width:0;}
+.fp-ico{font-size:1.05rem;line-height:1;grid-row:1 / span 2;align-self:center;}
+.fp-val{font-size:0.8rem;font-weight:800;letter-spacing:0.01em;white-space:nowrap;}
+.fp-st{grid-row:1;grid-column:3;font-size:0.58rem;text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:700;white-space:nowrap;text-align:right;}
+.fp-onde{grid-row:2;grid-column:2 / span 2;font-size:0.63rem;letter-spacing:0.01em;
+  opacity:0.75;line-height:1.3;text-wrap:pretty;}
+/* telas estreitas: encolhe o texto em vez de quebrar o valor do prêmio */
+@media(max-width:400px){
+  .fp-val{font-size:0.72rem;}
+  .fp-onde{font-size:0.58rem;}
+  .fp-st{font-size:0.53rem;}
+}
+/* prêmio 1 — 50% OFF */
+.fp.p1e{border-color:rgba(0,196,216,0.2);border-style:dashed;background:rgba(0,196,216,0.03);}
+.fp.p1e .fp-ico{opacity:0.35;}
+.fp.p1e .fp-val,.fp.p1e .fp-onde,.fp.p1e .fp-st{color:rgba(0,196,216,0.4);}
+.fp.p1ok{border-color:var(--pool);background:linear-gradient(135deg,rgba(0,196,216,0.22) 0%,rgba(0,196,216,0.07) 100%);
+  box-shadow:0 0 14px rgba(0,196,216,0.35);}
+.fp.p1ok .fp-val{color:var(--pool);} .fp.p1ok .fp-onde{color:rgba(0,196,216,0.75);}
+.fp.p1ok .fp-st{color:var(--pool);}
+/* prêmio 2 — mês grátis */
+.fp.p2e{border-color:rgba(245,158,11,0.2);border-style:dashed;background:rgba(245,158,11,0.03);}
+.fp.p2e .fp-ico{opacity:0.35;}
+.fp.p2e .fp-val,.fp.p2e .fp-onde,.fp.p2e .fp-st{color:rgba(245,158,11,0.45);}
+.fp.p2ok{border-color:#F59E0B;background:linear-gradient(135deg,rgba(245,158,11,0.24) 0%,rgba(245,158,11,0.07) 100%);
+  box-shadow:0 0 14px rgba(245,158,11,0.35);}
+.fp.p2ok .fp-val{color:#FCD34D;} .fp.p2ok .fp-onde{color:rgba(245,158,11,0.8);}
+.fp.p2ok .fp-st{color:#FCD34D;}
+/* prêmio que não cabe mais no que resta do cartão */
+.fp.impossivel{border-color:rgba(148,163,184,0.25);border-style:solid;background:rgba(148,163,184,0.05);}
+.fp.impossivel .fp-ico{opacity:0.25;filter:grayscale(1);}
+.fp.impossivel .fp-val{color:rgba(148,163,184,0.6);text-decoration:line-through;text-decoration-thickness:1px;}
+.fp.impossivel .fp-onde{color:rgba(148,163,184,0.45);}
+.fp.impossivel .fp-st{color:rgba(148,163,184,0.7);}
+.premio-pill.neutro{background:rgba(148,163,184,0.07);border:1px solid rgba(148,163,184,0.2);color:rgba(203,213,225,0.85);}
+/* conquistado num cartão anterior: continua aceso, sem o brilho de recém-ganho */
+.fp.passado{box-shadow:none;opacity:0.82;}
+
+/* rodapé do cartão */
+.fc-footer{display:flex;align-items:flex-end;justify-content:space-between;margin-top:0.9rem;position:relative;z-index:1;}
+.fc-cliente{font-size:0.7rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.12em;}
+.fc-cliente strong{display:block;font-size:0.82rem;color:rgba(205,234,242,0.85);font-weight:700;letter-spacing:0.04em;margin-top:0.1rem;}
+.fc-progress-col{text-align:right;}
+.fc-pct{font-size:1.5rem;font-weight:900;color:var(--pool);line-height:1;text-shadow:0 0 12px rgba(0,196,216,0.4);}
+.fc-pct-label{font-size:0.58rem;color:rgba(0,196,216,0.5);text-transform:uppercase;letter-spacing:0.1em;}
+/* legenda abaixo do cartão */
+.fc-legend{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;}
+.fc-leg-item{display:flex;align-items:center;gap:0.4rem;font-size:0.74rem;color:var(--text-2);}
+.fc-leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+/* barra de progresso */
+.fidel-bar-wrap{width:100%;max-width:480px;margin:0 auto;}
+.fidel-bar-labels{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-2);margin-bottom:0.4rem;}
+.fidel-bar{height:7px;background:rgba(0,196,216,0.1);border-radius:4px;overflow:hidden;}
+.fidel-bar-fill{height:100%;background:linear-gradient(90deg,#10B981,var(--pool));border-radius:4px;transition:width 0.8s cubic-bezier(.22,.61,.36,1);}
+/* pill de prêmio */
+.premio-pill{display:block;padding:0.6rem 1rem;border-radius:8px;font-size:0.86rem;line-height:1.5;width:100%;max-width:480px;}
+.premio-pill.next{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;}
+.premio-pill.earned{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#34D399;}
+
+/* ===== HISTÓRICO DE PAGAMENTOS (fidelidade) ===== */
+.fh-wrap{margin-top:1.5rem;width:100%;}
+.fh-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.16em;color:rgba(0,196,216,0.6);margin-bottom:0.7rem;display:flex;align-items:center;gap:0.5rem;}
+.fh-title::before{content:'';display:block;width:14px;height:1.5px;background:rgba(0,196,216,0.4);}
+.fh-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.fh-table th{padding:0.4rem 0.7rem;text-align:left;color:var(--text-2);font-weight:600;font-size:0.72rem;border-bottom:1px solid var(--border);white-space:nowrap;}
+.fh-table td{padding:0.55rem 0.7rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+/* linha em atraso — fundo levemente laranja */
+.fh-table tr.atraso td{background:rgba(245,158,11,0.06);}
+.fh-table tr.atraso td:first-child{border-left:3px solid rgba(245,158,11,0.6);}
+/* linha vencida — fundo levemente vermelho */
+.fh-table tr.vencido td{background:rgba(239,68,68,0.05);}
+.fh-table tr.vencido td:first-child{border-left:3px solid rgba(239,68,68,0.5);}
+/* células */
+.fh-mes{font-weight:600;color:var(--text);}
+.fh-data{color:var(--text-2);white-space:nowrap;}
+.fh-status{white-space:nowrap;}
+/* pills de status */
+.fh-pill{display:inline-flex;align-items:center;gap:0.3rem;padding:0.18rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.fh-pill.emdia   {background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#34D399;}
+.fh-pill.atraso  {background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FCD34D;}
+.fh-pill.vencido {background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#F87171;}
+.fh-pill.aberto  {background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.25);color:#94A3B8;}
+.fh-badge-premio{display:inline-block;margin-left:0.4rem;font-size:0.62rem;font-weight:700;
+  border-radius:4px;padding:0.08rem 0.35rem;vertical-align:middle;white-space:nowrap;}
+.fh-badge-premio.meia{background:rgba(0,196,216,0.14);border:1px solid rgba(0,196,216,0.35);color:var(--pool);}
+.fh-badge-premio.gratis{background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.4);color:#FCD34D;}
+.fh-badge-streak{display:inline-block;margin-left:0.3rem;font-size:0.65rem;background:rgba(0,196,216,0.12);border:1px solid rgba(0,196,216,0.25);color:var(--pool);border-radius:4px;padding:0.05rem 0.35rem;vertical-align:middle;}
+.fh-empty{text-align:center;padding:1.5rem 0;color:var(--text-2);font-size:0.84rem;}
+
+/* ===== INDICAÇÕES ===== */
+.ref-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;}
+.ref-earned{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:6px;padding:0.35rem 0.75rem;font-size:0.82rem;color:#34D399;font-weight:700;}
+/* Cartão do código de indicação */
+.ref-card{
+  background:linear-gradient(135deg,#041825 0%,#061e2e 60%,#031219 100%);
+  border:1px solid rgba(0,196,216,0.22);
+  border-radius:14px;padding:1.1rem 1.2rem;margin-bottom:1rem;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.ref-card::before{content:'';position:absolute;top:-50px;right:-50px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(0,196,216,0.12) 0%,transparent 70%);pointer-events:none;}
+.ref-card-label{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.18em;color:rgba(0,196,216,0.5);margin-bottom:0.5rem;}
+.ref-code-display{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;}
+.ref-code{font-family:'Courier New',monospace;font-size:1.9rem;font-weight:900;color:var(--pool);letter-spacing:0.18em;text-shadow:0 0 20px rgba(0,196,216,0.45);line-height:1;}
+.ref-code-hint{font-size:0.72rem;color:rgba(0,196,216,0.4);margin-top:0.2rem;}
+.ref-actions{display:flex;gap:0.5rem;flex-wrap:wrap;}
+.copy-btn{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,196,216,0.08);border:1.5px solid rgba(0,196,216,0.3);border-radius:7px;color:var(--pool);padding:0.5rem 1rem;font-size:0.83rem;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap;font-family:inherit;}
+.copy-btn:hover{background:rgba(0,196,216,0.15);border-color:var(--pool);}
+.ref-share{display:inline-flex;align-items:center;gap:0.45rem;padding:0.5rem 1rem;background:#25D366;color:#fff;border:none;border-radius:7px;font-size:0.83rem;font-weight:700;cursor:pointer;transition:opacity 0.15s;font-family:inherit;text-decoration:none;white-space:nowrap;}
+.ref-share:hover{opacity:0.88;}
+.ref-form{display:flex;gap:0.5rem;margin:0.75rem 0;flex-wrap:wrap;}
+.ref-form .f-input{flex:1;min-width:110px;padding:0.65rem 0.85rem;font-size:0.9rem;}
+.ref-submit{padding:0.65rem 1rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity 0.15s;}
+.ref-submit:hover:not(:disabled){opacity:0.85;}
+.ref-submit:disabled{opacity:0.5;cursor:default;}
+.ref-msg{font-size:0.84rem;margin:0.3rem 0 0.6rem;display:none;}
+.ref-list{display:flex;flex-direction:column;gap:0.45rem;margin-top:0.5rem;}
+.ref-item{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.9rem;background:var(--surface);border-radius:7px;border:1px solid var(--border);}
+.ref-name{font-size:0.88rem;font-weight:600;}
+.ref-date{font-size:0.73rem;color:var(--text-2);}
+.ref-bonus{font-size:0.72rem;margin-top:0.2rem;}
+.ref-bonus.earned{color:#34D399;}
+.ref-bonus.pending{color:#FCD34D;}
+
+/* ===== REGRAS (accordion) ===== */
+.rules-toggle{display:flex;align-items:center;gap:0.4rem;background:transparent;border:none;color:var(--text-2);font-size:0.78rem;cursor:pointer;padding:0;font-family:inherit;margin-top:1rem;transition:color 0.15s;}
+.rules-toggle:hover{color:var(--pool);}
+.rules-toggle .arrow{display:inline-block;transition:transform 0.2s;font-style:normal;}
+.rules-toggle.open .arrow{transform:rotate(90deg);}
+.rules-box{display:none;margin-top:0.6rem;background:rgba(0,196,216,0.04);border:1px solid var(--border);border-radius:8px;padding:1rem 1.1rem;}
+.rules-box.show{display:block;}
+.rules-box ol,.rules-box ul{padding-left:1.2rem;display:flex;flex-direction:column;gap:0.35rem;}
+.rules-box li{font-size:0.82rem;color:var(--text-2);line-height:1.55;}
+.rules-box li strong{color:var(--text);}
+.rules-box .rules-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--pool);margin-bottom:0.5rem;font-weight:700;}
+
+/* upgrade btn */
+.upgrade-btn{display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.55rem 1.1rem;background:rgba(0,196,216,0.1);border:1px solid rgba(0,196,216,0.35);border-radius:6px;color:var(--pool);font-size:0.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s,border-color 0.15s;}
+.upgrade-btn:hover:not(:disabled){background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
+.upgrade-btn:disabled{opacity:0.55;cursor:default;}
+
+/* promoções */
+.promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:640px){.promo-grid{grid-template-columns:1fr;}}
+.promo-item{background:rgba(0,196,216,0.04);border:1px solid rgba(0,196,216,0.18);border-radius:10px;padding:1rem 1.1rem;}
+.promo-icon{font-size:1.6rem;margin-bottom:0.4rem;}
+.promo-nome{font-size:0.94rem;font-weight:700;color:var(--text);margin-bottom:0.2rem;}
+.promo-tagline{font-size:0.81rem;color:var(--pool);font-weight:600;margin-bottom:0.75rem;line-height:1.4;}
+.promo-rules{padding-left:1.1rem;display:flex;flex-direction:column;gap:0.3rem;margin:0 0 0.9rem;}
+.promo-rules li{font-size:0.8rem;color:var(--text-2);line-height:1.5;}
+.promo-rules li strong{color:var(--text);}
+.promo-prize{font-weight:700;}
+.promo-prize.gold{color:#FCD34D;}
+.promo-prize.green{color:#34D399;}
+.promo-link{display:inline-block;font-size:0.78rem;color:var(--pool);text-decoration:none;opacity:0.8;transition:opacity 0.15s;}
+.promo-link:hover{opacity:1;text-decoration:underline;}
+
+/* chamado */
+.ticket-form{display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;}
+.ticket-select,.ticket-input,.ticket-textarea{padding:0.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
+.ticket-select:focus,.ticket-input:focus,.ticket-textarea:focus{border-color:var(--pool);}
+.ticket-textarea{resize:vertical;min-height:80px;}
+.ticket-btn{padding:0.75rem 1.5rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;align-self:flex-start;}
+.ticket-btn:hover:not(:disabled){opacity:0.85;}
+.ticket-btn:disabled{opacity:0.55;cursor:default;}
+.ticket-ok{display:none;color:#34D399;font-size:0.88rem;margin-top:0.5rem;}
+
+/* meus dados */
+.dados-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;}
+@media(max-width:640px){.dados-grid{grid-template-columns:1fr;}}
+.dados-btn{padding:0.75rem 1.5rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;}
+.dados-btn:hover:not(:disabled){opacity:0.85;}
+.dados-btn:disabled{opacity:0.55;cursor:default;}
+.dados-ok{font-size:0.88rem;font-weight:600;}
+.dados-ok.ok{color:#34D399;}
+.dados-ok.err{color:#FCA5A5;}
+
+/* aviso boleto */
+.boleto-notice{display:flex;align-items:center;gap:0.55rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.22);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1.1rem;font-size:0.8rem;color:#FCD34D;}
+.boleto-notice svg{flex-shrink:0;opacity:0.85;}
+
+/* utils */
+.muted{color:var(--text-2);font-size:0.9rem;line-height:1.65;}
+.spin{width:18px;height:18px;border:2px solid rgba(0,196,216,0.3);border-top-color:var(--pool);border-radius:50%;display:inline-block;animation:sp 0.7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.loading-center{text-align:center;padding:2rem;color:var(--text-2);}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div class="login-screen" id="loginScreen">
+  <a href="index.html" class="login-back">← Voltar ao site</a>
+  <div class="login-logo">SERV<span>NET</span></div>
+  <div class="login-sub">Área do Cliente</div>
+  <div class="login-card">
+    <h2>Acesso ao portal</h2>
+    <p>Informe seu CPF e data de nascimento para entrar.</p>
+    <div class="f-group">
+      <label class="f-label" for="cpf">CPF</label>
+      <input class="f-input" type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" autocomplete="off" inputmode="numeric">
+    </div>
+    <div class="f-group">
+      <label class="f-label" for="nasc">Data de nascimento</label>
+      <input class="f-input" type="text" id="nasc" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric" autocomplete="bday">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=5511954490001">Fale pelo WhatsApp</a></div>
+  </div>
+  <div style="text-align:center;margin-top:1rem;font-size:0.68rem;color:#aaa;opacity:0.6;letter-spacing:0.04em;">v2026.08.17</div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dash-screen" id="dashScreen">
+  <nav class="topbar">
+    <a href="index.html" class="topbar-logo">SERV<span>NET</span></a>
+    <div class="topbar-right">
+      <div class="topbar-user">Olá, <strong id="dashNome">—</strong></div>
+      <button class="logout-btn" onclick="doLogout()">Sair</button>
+    </div>
+  </nav>
+  <div class="dash-body">
+    <div class="dash-greet">Área do Cliente <span style="opacity:0.4;font-size:0.68rem;letter-spacing:0.08em;margin-left:0.4rem">v4.1</span></div>
+    <div class="dash-title" id="dashTitle">Bem-vindo!</div>
+
+    <!-- Banner WhatsApp — aparece só quando o cliente não tem telefone cadastrado -->
+    <div id="waBanner" style="display:none">
+      <div class="wa-banner">
+        <div class="wa-banner-icon">📱</div>
+        <div class="wa-banner-body">
+          <div class="wa-banner-title">Receba alertas de vencimento pelo WhatsApp!</div>
+          <div class="wa-banner-sub">Cadastre seu número e te avisamos antes do vencimento — de graça.</div>
+          <div class="wa-banner-form">
+            <input class="wa-banner-input" id="waBannerTel" type="tel" placeholder="(11) 99999-9999 ou +1..." maxlength="19" oninput="mascaraTelBanner(this)">
+            <button class="wa-banner-btn" id="waBannerBtn" onclick="salvarWhatsAppBanner()">Salvar</button>
+          </div>
+          <div class="wa-banner-ok" id="waBannerOk"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status da Rede — fora do grid, largura total, só visível quando há problema -->
+    <div class="card status-card" id="statusCard" style="margin-bottom:1.2rem">
+      <div class="card-lbl" id="statusLbl">📡 Status da Rede</div>
+      <div id="statusBanner"></div>
+    </div>
+
+    <div class="cards">
+
+      <!-- Plano + Próxima Fatura + Fidelidade — 3 cards por contrato, mesma linha -->
+      <div id="contratosSlot" style="display:contents">
+        <div class="card">
+          <div class="card-lbl">Meu Plano</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
+        <div class="card glow">
+          <div class="card-lbl">Próxima Fatura</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
+        <div class="card">
+          <div class="card-lbl">🏆 Fidelidade</div>
+          <div class="loading-center"><span class="spin"></span></div>
+        </div>
+      </div>
+
+      <!-- Promoções -->
+      <div class="card span2" id="promoCard">
+        <div class="card-lbl">🎁 Promoções &amp; Benefícios</div>
+        <div class="promo-grid">
+
+          <!-- Fidelidade -->
+          <div class="promo-item">
+            <div class="promo-icon">🏆</div>
+            <div class="promo-nome">Programa Fidelidade</div>
+            <div class="promo-tagline">Pague em dia e acumule recompensas!</div>
+            <ul class="promo-rules">
+              <li>Mantenha <strong>6 meses de pagamento em dia</strong> → <span class="promo-prize gold">50% de desconto</span> 🎁</li>
+              <li>Mantenha <strong>12 meses de pagamento em dia</strong> → <span class="promo-prize green">100% de desconto</span> 🎉</li>
+              <li>Cada mês pago até o vencimento = 1 selo ✅</li>
+              <li>Pagou depois do vencimento? Aquele mês não vale selo</li>
+              <li><strong>Cada contrato tem seu próprio cartão</strong> e seus próprios prêmios</li>
+              <li>Desconto aplicado automaticamente na fatura seguinte</li>
+            </ul>
+            <a class="promo-link" href="#" onclick="irParaFidelidade(event)">Ver meu progresso ↓</a>
+          </div>
+
+          <!-- Indique e Ganhe -->
+          <div class="promo-item">
+            <div class="promo-icon">👥</div>
+            <div class="promo-nome">Indique e Ganhe</div>
+            <div class="promo-tagline">Cada amigo que assinar vale 1 mês grátis pra você!</div>
+            <ul class="promo-rules">
+              <li>Compartilhe seu link de indicação com um amigo</li>
+              <li>Quando ele assinar e pagar o 1º mês → confirmado</li>
+              <li><strong>1 mês grátis</strong> descontado na sua próxima fatura</li>
+              <li>Sem limite de indicações — quanto mais, melhor!</li>
+              <li>Não acumula com outras promoções ativas</li>
+            </ul>
+            <a class="promo-link" href="#refCard">Indicar um amigo ↓</a>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Indique e Ganhe -->
+      <div class="card span2" id="refCard">
+        <div class="card-lbl">👥 Indique e Ganhe</div>
+        <div id="refContent" class="loading-center"><span class="spin"></span></div>
+      </div>
+
+      <!-- Meus Dados -->
+      <div class="card span2" id="dadosCard">
+        <div class="card-lbl">✏️ Meus Dados</div>
+        <div class="dados-form" id="dadosForm">
+          <div class="dados-grid">
+            <div class="f-group">
+              <label class="f-label">E-mail</label>
+              <input class="f-input" type="email" id="dadosEmail" placeholder="seu@email.com" autocomplete="email">
+            </div>
+            <div class="f-group">
+              <label class="f-label">Telefone / WhatsApp</label>
+              <input class="f-input" type="tel" id="dadosTelefone" placeholder="(00) 00000-0000" autocomplete="tel">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem;flex-wrap:wrap;">
+            <button class="dados-btn" id="dadosBtn" onclick="salvarDados()">💾 Salvar alterações</button>
+            <span class="dados-ok" id="dadosOk"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suporte / Chamado -->
+      <div class="card span2">
+        <div class="card-lbl">🎫 Abrir Chamado</div>
+        <p class="sup-desc">Descreva o problema e abrimos o chamado direto pelo WhatsApp — respondemos rápido.</p>
+        <div class="ticket-form" id="ticketForm">
+          <select class="ticket-select" id="ticketTipo">
+            <option value="">Selecione o tipo de problema</option>
+            <option value="Sem conexão / queda de internet">Sem conexão / queda de internet</option>
+            <option value="Lentidão na internet">Lentidão na internet</option>
+            <option value="Problema com fatura / cobrança">Problema com fatura / cobrança</option>
+            <option value="Solicitar mudança de plano">Solicitar mudança de plano</option>
+            <option value="Dúvida geral">Dúvida geral</option>
+            <option value="Outro">Outro</option>
+          </select>
+          <textarea class="ticket-textarea" id="ticketDesc" placeholder="Descreva o problema com mais detalhes (opcional)…"></textarea>
+          <button class="ticket-btn" id="ticketBtn" onclick="abrirChamado()">
+            📲 Abrir Chamado pelo WhatsApp
+          </button>
+          <div class="ticket-ok" id="ticketOk">✅ Redirecionando para o WhatsApp…</div>
+        </div>
+        <div class="sup-info" style="margin-top:1rem">Ou ligue: <a href="tel:+5511954490001">(11) 95449-0001</a></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let session = null;
+let faturasList = [];        // todas as faturas do cliente, de todos os contratos
+let contratos = [];          // contratos ativos de Provedor
+let faturasPorContrato = {}; // chave do contrato → faturas daquele contrato
+
+// chave estável para montar ids de DOM por contrato
+function ctKey(ct, i){
+  const raw = ct && ct.contrato_id ? String(ct.contrato_id) : `idx${i}`;
+  return raw.replace(/[^A-Za-z0-9_-]/g,'');
+}
+function esc(s){
+  return String(s??'').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+// nome curto do contrato, para rotular cartões quando há mais de um
+function ctNome(ct, i){
+  return (ct && ct.plano && ct.plano.nome) ? ct.plano.nome : `Contrato ${i+1}`;
+}
+
+// CPF mask
+document.getElementById('cpf').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+  else if(v.length>6) v=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+  else if(v.length>3) v=v.slice(0,3)+'.'+v.slice(3);
+  e.target.value=v;
+});
+
+// Data de nascimento mask — DD/MM/AAAA
+document.getElementById('nasc').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g,'').slice(0,8);
+  if(v.length>4) v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2);
+  e.target.value=v;
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
+});
+
+async function solicitarUpgrade(tipo, key){
+  if(!session) return;
+  const btn = document.getElementById(key?`upgradeBtn-${key}`:'upgradeBtn');
+  const msg = document.getElementById(key?`upgradeMsg-${key}`:'upgradeMsg');
+  if(!btn || !msg) return;
+
+  // com mais de um contrato, o chamado precisa dizer de qual deles se trata
+  const i  = contratos.findIndex((ct,n)=>ctKey(ct,n)===key);
+  const ct = i>=0 ? contratos[i] : null;
+  const descricao = (ct && contratos.length>1)
+    ? `Contrato: ${ctNome(ct,i)}${ct.diaVencimento?` (vencimento dia ${ct.diaVencimento})`:''}`
+    : '';
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  msg.style.display = 'none';
+  try{
+    const {data:res,error} = await sb.rpc('portal_servnet_solicitar',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_tipo:       tipo,
+      p_descricao:  descricao
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao enviar.');
+    btn.textContent = '✅ Solicitação enviada!';
+    msg.style.display = 'block';
+    msg.style.color = '#34D399';
+    msg.textContent = `Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`;
+  }catch(e){
+    btn.disabled = false;
+    btn.textContent = tipo==='upgrade' ? '⚡ Solicitar Upgrade de Plano' : '💬 Falar com Suporte';
+    msg.style.display = 'block';
+    msg.style.color = '#F87171';
+    msg.textContent = 'Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.';
+    console.error(e);
+  }
+}
+
+async function doLogin(){
+  const cpf = document.getElementById('cpf').value.replace(/\D/g,'');
+  const nascRaw = document.getElementById('nasc').value.replace(/\D/g,'');
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if(cpf.length!==11){ showErr('Informe um CPF válido.'); return; }
+  if(nascRaw.length!==8){ showErr('Informe uma data de nascimento válida (DD/MM/AAAA).'); return; }
+  // converte DD/MM/AAAA → AAAA-MM-DD para o Supabase
+  const nasc = `${nascRaw.slice(4,8)}-${nascRaw.slice(2,4)}-${nascRaw.slice(0,2)}`;
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_login',{p_cpf:cpf,p_nascimento:nasc});
+    if(error) throw error;
+    if(!data||!data.ok){ showErr(data?.msg||'CPF ou data de nascimento incorretos.'); return; }
+    session=data;
+    sessionStorage.setItem('sn_sess',JSON.stringify(data));
+    enterDash(data);
+  }catch(e){
+    showErr('Erro de conexão — tente novamente em instantes.');
+    console.error(e);
+  }finally{
+    btn.disabled=false; btn.innerHTML='Entrar';
+  }
+}
+
+function showErr(msg){
+  const el=document.getElementById('loginErr');
+  el.textContent=msg; el.classList.add('show');
+}
+
+function doLogout(){
+  sessionStorage.removeItem('sn_sess');
+  session=null;
+  document.getElementById('dashScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+
+async function enterDash(data){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashScreen').style.display='block';
+  const nome=data.nome||'Cliente';
+  const first=nome.split(' ')[0];
+  document.getElementById('dashNome').textContent=first;
+  document.getElementById('dashTitle').textContent=`Olá, ${first}! 👋`;
+
+  // A RPC nova devolve `contratos`. Se vier de uma versão antiga do banco,
+  // cai no formato legado de contrato único.
+  contratos = (Array.isArray(data.contratos) && data.contratos.length)
+    ? data.contratos
+    : [{
+        contrato_id:   null,
+        plano:         data.plano,
+        diaVencimento: data.diaVencimento,
+        dataContrato:  data.data_adesao,
+        status:        data.status
+      }];
+
+  renderContratos();
+  await loadFaturas(data);
+  loadFidelidades();
+  loadIndicacoes(data);
+  preencherDados(data);
+  loadStatus();
+  // Mostra banner de WhatsApp se cliente não tem telefone cadastrado
+  if(!data.telefone || data.telefone.trim()===''){
+    document.getElementById('waBanner').style.display='block';
+  }
+}
+
+function preencherDados(data){
+  const email = document.getElementById('dadosEmail');
+  const tel   = document.getElementById('dadosTelefone');
+  if(email) email.value = data.email    || '';
+  if(tel)   tel.value   = data.telefone || '';
+}
+
+async function loadStatus(){
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_status');
+    if(error) return; // silencioso: não exibe erro ao cliente
+    renderStatus(data);
+  }catch{ /* sem rede: ignora */ }
+}
+
+function renderStatus(s){
+  const card   = document.getElementById('statusCard');
+  const banner = document.getElementById('statusBanner');
+  if(!card||!banner) return;
+  if(!s || s.status === 'ok'){
+    card.classList.remove('vis');
+    return;
+  }
+  const MAP = {
+    lentidao:  { cls:'s-lentidao',   icon:'🟡', label:'Lentidão na Rede'  },
+    queda:     { cls:'s-queda',      icon:'🔴', label:'Queda de Sinal'     },
+    manutencao:{ cls:'s-manutencao', icon:'🔧', label:'Manutenção Programada' }
+  };
+  const m = MAP[s.status] || { cls:'s-lentidao', icon:'⚠️', label:'Aviso' };
+
+  let atualizado = '';
+  if(s.updated_at){
+    try{
+      const d = new Date(s.updated_at);
+      atualizado = `Atualizado em ${d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+    }catch{}
+  }
+
+  banner.innerHTML = `
+    <div class="status-banner ${m.cls}">
+      <div class="status-icon">${m.icon}</div>
+      <div class="status-body">
+        <div class="status-titulo">${esc(s.titulo||m.label)}</div>
+        ${s.descricao ? `<div class="status-desc">${esc(s.descricao)}</div>` : ''}
+        ${atualizado ? `<div class="status-atualizado">${atualizado}</div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('statusLbl').textContent = `📡 Status da Rede — ${m.label}`;
+  card.classList.add('vis');
+}
+
+function mascaraTelBanner(el){
+  // Número internacional: começa com "+" — sem máscara brasileira
+  if(el.value.trim().startsWith('+')){
+    el.value='+'+el.value.replace(/[^\d ]/g,'').slice(0,18);
+    return;
+  }
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3');
+  else if(v.length>6) v=v.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');
+  else if(v.length>2) v=v.replace(/^(\d{2})(\d*)$/,'($1) $2');
+  el.value=v;
+}
+
+async function salvarWhatsAppBanner(){
+  const btn=document.getElementById('waBannerBtn');
+  const ok=document.getElementById('waBannerOk');
+  const telInp=(document.getElementById('waBannerTel')?.value||'').trim();
+  const telIntl=telInp.startsWith('+');
+  const telDigits=telInp.replace(/\D/g,'');
+  if(telDigits.length<10){ ok.textContent='⚠ Informe um número válido com DDD (ou +código do país).'; ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5'; return; }
+  const telRaw=telIntl?'+'+telDigits:telDigits;
+  btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_email:      session.email||'',
+      p_telefone:   telRaw
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao salvar.');
+    session.telefone=telRaw;
+    sessionStorage.setItem('sn_sess',JSON.stringify(session));
+    // Atualiza campo Meus Dados também
+    const dadosTel=document.getElementById('dadosTelefone');
+    if(dadosTel) dadosTel.value=telRaw;
+    ok.textContent='✅ WhatsApp cadastrado! Você receberá alertas a partir de agora.';
+    ok.className='wa-banner-ok show'; ok.style.color='#34D399';
+    btn.textContent='Salvo ✓';
+    // Esconde banner após 3 segundos
+    setTimeout(()=>{ document.getElementById('waBanner').style.display='none'; },3000);
+  }catch(e){
+    ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.');
+    ok.className='wa-banner-ok show'; ok.style.color='#FCA5A5';
+    btn.disabled=false; btn.textContent='Salvar';
+  }
+}
+
+async function salvarDados(){
+  const btn = document.getElementById('dadosBtn');
+  const ok  = document.getElementById('dadosOk');
+  const email = (document.getElementById('dadosEmail')?.value||'').trim();
+  const tel   = (document.getElementById('dadosTelefone')?.value||'').trim();
+
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    ok.textContent='⚠ E-mail inválido.'; ok.className='dados-ok err'; return;
+  }
+  if(!tel){
+    ok.textContent='⚠ Informe o telefone.'; ok.className='dados-ok err'; return;
+  }
+
+  btn.disabled=true; ok.textContent='Salvando…'; ok.className='dados-ok';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_atualizar_contato',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id,
+      p_email:      email,
+      p_telefone:   tel
+    });
+    if(error) throw error;
+    if(!res?.ok) throw new Error(res?.msg||'Erro ao salvar.');
+    // Atualiza sessão local
+    session.email    = email;
+    session.telefone = tel;
+    sessionStorage.setItem('sn_sess', JSON.stringify(session));
+    ok.textContent='✅ Dados atualizados!'; ok.className='dados-ok ok';
+  }catch(e){
+    ok.textContent='❌ '+(e.message||'Erro ao salvar. Tente novamente.'); ok.className='dados-ok err';
+    console.error(e);
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function badgeClass(s){
+  const m={ativo:'b-ativo',suspenso:'b-suspenso',cancelado:'b-cancelado',pago:'b-pago',pendente:'b-pendente',vencido:'b-vencido'};
+  return m[(s||'').toLowerCase()]||'b-pendente';
+}
+
+function fmtDate(d){
+  if(!d) return '—';
+  try{ const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }catch{ return d; }
+}
+function fmtVal(v){
+  return 'R$ '+Number(v||0).toFixed(2).replace('.',',');
+}
+
+const MESES_ABREV=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+// "2026-08" → "Ago/2026"
+function fmtMesRef(m){
+  if(!m) return null;
+  const [y,mm]=String(m).split('-');
+  const nome=MESES_ABREV[Number(mm)-1];
+  if(!nome||!y) return m;
+  return nome.charAt(0).toUpperCase()+nome.slice(1)+'/'+y;
+}
+
+function fmtDateBR(iso){
+  if(!iso) return null;
+  // aceita YYYY-MM-DD ou DD/MM/YYYY
+  if(iso.includes('/')){
+    const [d,m,y]=iso.split('/');
+    return `${d}/${m}/${y}`;
+  }
+  const [y,m,d]=iso.split('T')[0].split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// Monta o miolo do cartão de plano de UM contrato
+function planoHTML(ct, i){
+  const key=ctKey(ct,i);
+  const p=ct.plano;
+  const st=ct.status||'Ativo';
+  const dv=ct.diaVencimento;
+  const adesao=ct.dataContrato ? fmtDateBR(ct.dataContrato) : null;
+  if(p){
+    const vel=p.velocidade||p.nome||'';
+    const spd=vel.match(/\d+/)?.[0]||'';
+    const unit=vel.toLowerCase().includes('gbps')?'Gbps':'Mbps';
+    return `
+      <div class="plan-speed">${esc(spd)}<span> ${unit}</span></div>
+      <div class="plan-name">${esc(p.nome||'Fibra Óptica')}</div>
+      <div class="plan-detail">📡 ${esc(p.tecnologia||'Fibra Óptica')}</div>
+      ${dv?`<div class="plan-detail">📅 Vencimento todo dia ${esc(dv)}</div>`:''}
+      ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
+      <div style="margin-top:0.5rem"><span class="badge ${badgeClass(st)}">${esc(st)}</span></div>
+      ${p.valor?`<div class="plan-price">${fmtVal(p.valor)} <span>/mês</span></div>`:''}
+      <button class="upgrade-btn" id="upgradeBtn-${key}" onclick="solicitarUpgrade('upgrade','${key}')">⚡ Solicitar Upgrade de Plano</button>
+      <div id="upgradeMsg-${key}" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
+  }
+  return `
+    <span class="badge ${badgeClass(st)}">${esc(st)}</span>
+    ${dv?`<div class="plan-detail" style="margin-top:0.5rem">📅 Vencimento todo dia ${esc(dv)}</div>`:''}
+    ${adesao?`<div class="plan-detail">📆 Cliente desde ${adesao}</div>`:''}
+    <div class="muted" style="margin-top:0.75rem">Plano não identificado.<br>Fale conosco para mais detalhes.</div>
+    <button class="upgrade-btn" id="upgradeBtn-${key}" onclick="solicitarUpgrade('suporte','${key}')" style="background:rgba(0,196,216,0.15);color:var(--pool);">💬 Falar com Suporte</button>
+    <div id="upgradeMsg-${key}" style="display:none;font-size:0.8rem;margin-top:0.5rem;text-align:center;"></div>`;
+}
+
+// Três cartões por contrato (plano + próxima fatura + fidelidade) na mesma linha
+function renderContratos(){
+  const multi = contratos.length > 1;
+  document.getElementById('contratosSlot').innerHTML = contratos.map((ct,i)=>{
+    const key=ctKey(ct,i);
+    const sufixo = multi ? ` — ${esc(ctNome(ct,i))}` : '';
+    return `
+      <div class="card">
+        <div class="card-lbl">Meu Plano${sufixo}</div>
+        <div id="plan-${key}">${planoHTML(ct,i)}</div>
+      </div>
+      <div class="card glow">
+        <div class="card-lbl">Minhas Faturas${sufixo}</div>
+        <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
+      </div>
+      <div class="card span2" id="fidelCard-${key}">
+        <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
+        <div id="fidel-${key}" class="loading-center"><span class="spin"></span></div>
+      </div>`;
+  }).join('');
+}
+
+async function loadFaturas(data){
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_faturas',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
+    if(error) throw error;
+    faturasList=(res?.faturas||[]).sort((a,b)=>new Date(b.vencimento)-new Date(a.vencimento));
+    agruparFaturas();
+    contratos.forEach((ct,i)=>renderNextFatura(ctKey(ct,i), faturasPorContrato[ctKey(ct,i)]||[]));
+  }catch(e){
+    faturasList=[]; agruparFaturas();
+    contratos.forEach((ct,i)=>{
+      const el=document.getElementById('inv-'+ctKey(ct,i));
+      if(el) el.innerHTML=`<div class="muted">Erro ao carregar fatura. Fale com o suporte.</div>`;
+    });
+    console.error(e);
+  }
+}
+
+// Distribui as faturas entre os contratos. Com um contrato só (ou quando o
+// lançamento não traz contratoId), tudo cai no primeiro.
+function agruparFaturas(){
+  faturasPorContrato={};
+  contratos.forEach((ct,i)=>{ faturasPorContrato[ctKey(ct,i)]=[]; });
+  const soUm = contratos.length===1;
+  const primeira = contratos.length ? ctKey(contratos[0],0) : null;
+  for(const f of faturasList){
+    let key=null;
+    if(!soUm && f.contrato_id){
+      const i=contratos.findIndex(ct=>String(ct.contrato_id)===String(f.contrato_id));
+      if(i>=0) key=ctKey(contratos[i],i);
+    }else{
+      key=primeira;
+    }
+    if(key && faturasPorContrato[key]) faturasPorContrato[key].push(f);
+  }
+}
+
+function renderNextFatura(key, fat){
+  const el=document.getElementById('inv-'+key);
+  if(!el) return;
+  el.classList.remove('loading-center');
+
+  const hoje=new Date().toISOString().slice(0,10);
+  const abertas=fat.filter(f=>(f.status||'').toLowerCase()!=='pago')
+                   .sort((a,b)=>a.vencimento<b.vencimento?-1:1);
+
+  if(!abertas.length){
+    el.innerHTML=`<div class="muted">Nenhuma cobrança registrada ainda.<br>Seu primeiro boleto chegará em breve.</div>`;
+    return;
+  }
+
+  // Separa vencidas (em atraso) das próximas
+  const vencidas = abertas.filter(x=>x.vencimento < hoje);
+  const proximas  = abertas.filter(x=>x.vencimento >= hoje);
+
+  let html = '';
+
+  // ── Faturas em atraso (vermelho) ──────────────────────────────
+  if(vencidas.length){
+    html += `<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.1rem;">
+      <div style="color:#FCA5A5;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.65rem;">
+        ⚠️ Em atraso — ${vencidas.length} fatura${vencidas.length>1?'s':''}
+      </div>`;
+    html += vencidas.map((v,i)=>{
+      const st=v.status||'Vencido';
+      return `
+      ${i>0?'<hr style="border:none;border-top:1px solid rgba(239,68,68,0.2);margin:0.6rem 0;">':''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+        <div>
+          <div style="font-size:0.88rem;font-weight:700;color:#FCA5A5;">${esc(fmtMesRef(v.mes_referencia)||v.vencimento)}</div>
+          <div style="font-size:0.75rem;color:rgba(252,165,165,0.65);margin-bottom:0.4rem;">Venceu em ${fmtDate(v.vencimento)}</div>
+          <button class="pdf-btn" style="width:auto;padding:0.3rem 0.65rem;font-size:0.75rem;" id="pdfbtn-${esc(v.id)}" onclick="abrirSegundaVia('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}','${esc(v.vencimento||'')}',true,this)">📄 2ª via do boleto</button>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:1.15rem;font-weight:800;color:#FCA5A5;">${fmtVal(v.valor)}</div>
+          <button class="pix-btn" style="margin-top:0.3rem;padding:0.35rem 0.85rem;font-size:0.8rem;" id="pixbtn-${esc(v.id)}" onclick="gerarPixPortal('${esc(v.id)}','${esc(String(v.valor))}','${esc(v.mes_referencia||'')}','${esc(v.contrato_id||'')}',this)">⚡ Pagar</button>
+        </div>
+      </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  // ── Próxima fatura principal ──────────────────────────────────
+  if(proximas.length){
+    const f=proximas[0];
+    const st=f.status||'Pendente';
+    html += `
+      <div class="inv-month">${esc(fmtMesRef(f.mes_referencia)||'Fatura atual')}</div>
+      <div class="inv-due">Vencimento: ${fmtDate(f.vencimento)}</div>
+      <div class="inv-val">${fmtVal(f.valor)}</div>
+      <span class="badge ${badgeClass(st)}">${esc(st)}</span>
+      ${f.link_boleto&&st.toLowerCase()!=='pago'?`<br><a class="boleto-btn" href="${esc(f.link_boleto)}" target="_blank" rel="noopener">📄 Ver boleto / Pagar</a>`:''}
+      ${st.toLowerCase()!=='pago'?`<br><button class="pix-btn" id="pixbtn-${esc(f.id)}" onclick="gerarPixPortal('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}',this)">⚡ Pagar com Pix</button>`:''}
+      <br><button class="pdf-btn" id="pdfbtn-${esc(f.id)}" onclick="abrirSegundaVia('${esc(f.id)}','${esc(String(f.valor))}','${esc(f.mes_referencia||'')}','${esc(f.contrato_id||'')}','${esc(f.vencimento||'')}',${st.toLowerCase()!=='pago'},this)">${st.toLowerCase()!=='pago'?'📄 2ª via do boleto':'🧾 Comprovante de pagamento'}</button>`;
+
+    // Demais faturas a vencer (a partir da 2ª)
+    if(proximas.length > 1){
+      html += `<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.75rem;">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);font-weight:700;margin-bottom:0.5rem;">Próximas faturas</div>`;
+      html += proximas.slice(1,4).map(p=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:0.84rem;font-weight:600;">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</div>
+            <div style="font-size:0.73rem;color:var(--text-2);">Vence em ${fmtDate(p.vencimento)}</div>
+          </div>
+          <div style="font-size:0.95rem;font-weight:700;">${fmtVal(p.valor)}</div>
+        </div>`).join('');
+      html += '</div>';
+    }
+  }
+
+  // ── Últimos pagamentos ────────────────────────────────────────
+  const pagas=fat.filter(x=>(x.status||'').toLowerCase()==='pago')
+                  .sort((a,b)=>b.vencimento<a.vencimento?-1:1)
+                  .slice(0,3);
+  if(pagas.length){
+    const rows=pagas.map(p=>`
+      <tr>
+        <td class="fh-mes">${esc(fmtMesRef(p.mes_referencia)||p.vencimento)}</td>
+        <td class="fh-data">${fmtDate(p.vencimento)}</td>
+        <td class="fh-data">${p.data_pagamento?fmtDate(p.data_pagamento):'—'}</td>
+        <td class="fh-status"><span class="fh-pill emdia">✓ Pago</span></td>
+      </tr>`).join('');
+    html += `<div class="fh-wrap" style="margin-top:1.25rem;">
+      <div class="fh-title">Últimos pagamentos</div>
+      <table class="fh-table">
+        <thead><tr>
+          <th>Mês</th><th>Vencimento</th><th>Pago em</th><th>Situação</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ===== FIDELIDADE =====
+// Um cartão por contrato: cada contrato tem a sua própria série de faturas,
+// logo o seu próprio streak e os seus próprios prêmios (7ª e 13ª).
+
+// Período de validade do cartão.
+// O cliente só começa a pagar no mês SEGUINTE ao cadastro, então a 1ª
+// fatura do cartão é cadastro + 1 mês. Cada cartão cobre 12 faturas, e os
+// cartões se sucedem de 12 em 12 meses — devolvemos o que contém hoje.
+const mesEmIndice = ym => { const [y,m]=ym.split('-').map(Number); return y*12 + (m-1); };
+const indiceEmMes = k => `${Math.floor(k/12)}-${String(k%12 + 1).padStart(2,'0')}`;
+const somaMeses   = (ym,n) => indiceEmMes(mesEmIndice(ym) + n);
+
+function periodoCartao(ct){
+  const adesao = ct && ct.dataContrato;
+  if(!adesao) return null;
+  const [ay, am] = String(adesao).slice(0,7).split('-').map(Number);
+  if(!ay || !am) return null;
+
+  const hoje = new Date();
+  const hojeK = hoje.getFullYear()*12 + hoje.getMonth();
+
+  const cadastroK = ay*12 + (am-1);
+  let iniK = cadastroK + 1;                          // 1ª fatura: mês seguinte
+  while(iniK + 12 <= hojeK) iniK += 12;              // avança até o cartão atual
+
+  return {
+    ini:   indiceEmMes(iniK),
+    fim:   indiceEmMes(iniK + 11),
+    ciclo: Math.floor((iniK - cadastroK - 1) / 12) + 1
+  };
+}
+
+// As 12 posições do cartão. Cada uma é um MÊS FIXO do período, não uma
+// posição numa sequência: se o cliente atrasou o 5º mês, é o slot 5 que
+// fica marcado como atraso — os outros meses seguem valendo selo.
+// Não existe reinício de contagem; o cartão é o período, e ponto.
+function slotsDoCartao(periodo, fat){
+  const hoje = new Date().toISOString().slice(0,10);
+  const porMes = new Map();
+  for(const f of (fat||[])) porMes.set(f.mes_referencia, f);
+
+  const base = periodo ? periodo.ini : null;
+  const slots = [];
+  for(let i=0;i<12;i++){
+    const mes = base ? somaMeses(base, i) : null;
+    const f   = mes ? porMes.get(mes) : (fat||[])[i];
+    let estado = 'vazio';
+    if(f){
+      const st = (f.status||'').toLowerCase();
+      if(st === 'pago'){
+        const emDia = f.data_pagamento && f.data_pagamento <= f.vencimento;
+        estado = emDia ? 'ok' : 'atraso';
+      }else{
+        estado = f.vencimento < hoje ? 'vencida' : 'aberto';
+      }
+    }
+    slots.push({ n:i+1, mes, fatura:f, estado });
+  }
+  return slots;
+}
+
+// Só vale selo quem paga até o vencimento. Pagar depois quita a fatura,
+// mas não recupera o selo daquele mês.
+const SELO_VALE = new Set(['ok']);
+
+// Prêmios são EVENTOS, não consequência do contador atual.
+// Quem pagou 6 faturas em dia já recebeu 50% OFF na 7ª — isso aconteceu, e um
+// atraso meses depois não desfaz um desconto concedido. O contador zerado
+// governa o PRÓXIMO prêmio, não os passados. Por isso este percurso vai do
+// mais antigo para o mais recente e registra cada prêmio conquistado.
+function premiosGanhos(periodo, fat){
+  const slots = slotsDoCartao(periodo, fat);
+  const ganhos = [];
+  let n = 0;
+  for(let i=0;i<slots.length;i++){
+    if(!SELO_VALE.has(slots[i].estado)) continue;     // esse mês não deu selo
+    n++;
+    const seguinte = slots[i+1];                      // o prêmio cai no mês seguinte
+    if(n===6)  ganhos.push({tipo:'meia',   mes:seguinte?seguinte.mes:null});
+    if(n===12) ganhos.push({tipo:'gratis', mes:seguinte?seguinte.mes:null});
+  }
+  return ganhos;
+}
+
+// O cartão de fidelidade agora é um por contrato, então o link da promoção
+// rola até o primeiro deles em vez de apontar para um id fixo.
+function irParaFidelidade(ev){
+  if(ev) ev.preventDefault();
+  const alvo=document.querySelector('[id^="fidelCard-"]');
+  if(alvo) alvo.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function loadFidelidades(){
+  // Os cards já foram criados em renderContratos() — só preenche o conteúdo
+  contratos.forEach((ct,i)=>{
+    const key=ctKey(ct,i);
+    const fat=faturasPorContrato[key]||[];
+    renderFidelidade(session?.nome, ct, i, fat);
+  });
+}
+
+function renderHistoricoFidelidade(fatContrato){
+  const today = new Date().toISOString().slice(0,10);
+  const fonte = fatContrato || faturasList;
+
+  // A cobrança automática provisiona anos de mensalidades à frente; o
+  // histórico só olha o que já venceu (ou já foi pago).
+  const passadas = fonte.filter(f =>
+    f.vencimento <= today || (f.status||'').toLowerCase()==='pago'
+  );
+
+  if(!passadas.length){
+    return `<div class="fh-wrap">
+      <div class="fh-title">Histórico de Pagamentos</div>
+      <div class="fh-empty">Nenhuma fatura vencida ainda.<br>Seu histórico aparecerá aqui após o primeiro vencimento.</div>
+    </div>`;
+  }
+
+  // Ordena do mais recente pro mais antigo, limita a 12 meses
+  const lista = [...passadas]
+    .sort((a,b)=> b.vencimento > a.vencimento ? 1 : -1)
+    .slice(0,12)
+    .reverse(); // volta a ordem cronológica para a tabela
+
+  let streakRunning = 0; // marca o streak atual a partir do mês mais recente
+  // Calcula quais faturas contribuem pro streak (do mais recente pro mais antigo)
+  const streakSet = new Set();
+  let broken = false;
+  for(const f of [...lista].reverse()){
+    const st = (f.status||'').toLowerCase();
+    if(st === 'pendente' && f.vencimento >= today){ continue; } // mês atual no prazo, ignora
+    if(st === 'pago' && f.data_pagamento && f.data_pagamento <= f.vencimento){
+      if(!broken) streakSet.add(f.id);
+    } else {
+      broken = true;
+    }
+  }
+
+  // Faturas que receberam prêmio. O cartão reinicia a cada atraso, então é
+  // aqui — no histórico — que o desconto já concedido fica registrado.
+  const premiadas = new Map();
+  for(const g of premiosGanhos(null, fonte)){
+    if(g.mes) premiadas.set(g.mes, g.tipo);
+  }
+
+  const rows = lista.map((f,i)=>{
+    const st = (f.status||'').toLowerCase();
+    const pago   = st === 'pago';
+    const emDia  = pago && f.data_pagamento && f.data_pagamento <= f.vencimento;
+    const atraso = pago && f.data_pagamento && f.data_pagamento > f.vencimento;
+    const vencido= !pago && f.vencimento < today;
+    const emAberto = !pago && f.vencimento >= today;
+
+    let rowClass = '';
+    let pill = '';
+    if(emDia){
+      pill = `<span class="fh-pill emdia">✓ Pago em dia</span>${streakSet.has(f.id)?'<span class="fh-badge-streak">streak</span>':''}`;
+    } else if(atraso){
+      rowClass = 'atraso';
+      const diasAtraso = Math.round((new Date(f.data_pagamento)-new Date(f.vencimento))/(1000*60*60*24));
+      pill = `<span class="fh-pill atraso">⚠ Pago com ${diasAtraso}d de atraso</span>`;
+    } else if(vencido){
+      rowClass = 'vencido';
+      const diasVencido = Math.round((new Date(today)-new Date(f.vencimento))/(1000*60*60*24));
+      pill = `<span class="fh-pill vencido">✗ Vencida há ${diasVencido}d</span>`;
+    } else {
+      pill = `<span class="fh-pill aberto">Em aberto</span>`;
+    }
+
+    const premio = premiadas.get(f.mes_referencia);
+    const selo = premio === 'meia'
+      ? '<span class="fh-badge-premio meia">🎁 50% OFF</span>'
+      : premio === 'gratis'
+        ? '<span class="fh-badge-premio gratis">🏅 grátis</span>'
+        : '';
+
+    return `<tr class="${rowClass}">
+      <td class="fh-mes">${esc(fmtMesRef(f.mes_referencia)||'—')}${selo}</td>
+      <td class="fh-data">${fmtDate(f.vencimento)}</td>
+      <td class="fh-data">${f.data_pagamento ? fmtDate(f.data_pagamento) : '—'}</td>
+      <td class="fh-status">${pill}</td>
+    </tr>`;
+  }).join('');
+
+  // Mês pago em atraso não vale selo. O aviso mostra quais foram.
+  const atrasos = lista.filter(f=>{
+    const st=(f.status||'').toLowerCase();
+    return st==='pago' && f.data_pagamento && f.data_pagamento > f.vencimento;
+  });
+  const avisoAtraso = atrasos.length
+    ? `${atrasos.length===1?'A fatura de':'As faturas de'} <strong>${atrasos.map(f=>esc(fmtMesRef(f.mes_referencia)||fmtDate(f.vencimento))).join(', ')}</strong> ${atrasos.length===1?'foi paga':'foram pagas'} depois do vencimento e ${atrasos.length===1?'não valeu selo':'não valeram selo'}.`
+    : '';
+
+  return `<div class="fh-wrap">
+    <div class="fh-title">Histórico de Pagamentos</div>
+    ${avisoAtraso?`<p style="font-size:0.78rem;color:#FCD34D;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:0.5rem 0.8rem;margin-bottom:0.75rem">
+      ⚠ ${avisoAtraso}</p>`:''}
+    <div style="overflow-x:auto">
+      <table class="fh-table">
+        <thead>
+          <tr>
+            <th>Mês de referência</th>
+            <th>Vencimento</th>
+            <th>Data pagamento</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderFidelidade(nomeCliente, ct, idx, fatContrato){
+  const key = ctKey(ct||{}, idx||0);
+  const alvo = document.getElementById('fidel-'+key) || document.getElementById('fidelContent');
+  if(!alvo) return;
+
+  // O cartão é amarrado a 12 faturas a partir do mês seguinte ao cadastro.
+  // Selos, prêmios e histórico olham só esse período — fora dele é outro
+  // cartão. Sem data de cadastro, cai no comportamento antigo (tudo).
+  const periodo = periodoCartao(ct);
+  const doPeriodo = periodo
+    ? (fatContrato||[]).filter(f => f.mes_referencia >= periodo.ini && f.mes_referencia <= periodo.fim)
+    : (fatContrato||[]);
+  fatContrato = doPeriodo;
+
+  // Cada slot é um mês fixo do cartão. Os selos são a contagem de meses
+  // pagos em dia — um atraso custa aquele selo e nada mais.
+  const slots = slotsDoCartao(periodo, doPeriodo);
+  const atrasados   = slots.filter(s => s.estado === 'atraso');
+  const inelegiveis = slots.filter(s => s.estado === 'atraso' || s.estado === 'vencida');
+  const streakReal = slots.filter(s => SELO_VALE.has(s.estado)).length;
+
+  // O cartão tem 12 posições. Quem passa disso (cliente antigo, sempre em
+  // dia) fica com o cartão cheio — o streak real segue guardado para a
+  // regra do prêmio, mas a tela não mostra "17/12".
+  const streak = Math.min(streakReal, 12);
+
+
+  // 12 selos, um por mês do cartão. Os prêmios ficam FORA da grade, na
+  // faixa logo abaixo: eles não ocupam um mês, são o que o cartão paga.
+  // Cada mês do cartão diz o que aconteceu com ele. Os dois estados que já
+  // perderam o selo — pago depois do vencimento e vencido sem pagar —
+  // aparecem marcados como inelegíveis, para o cliente saber por quê.
+  const DESENHO = {
+    ok:      {cls:'ok',        icone:'✓', rotulo:'em dia',      dica:'pago até o vencimento — selo garantido'},
+    atraso:  {cls:'inelegivel',icone:'✕', rotulo:'inelegível',  dica:'pago depois do vencimento — não vale selo'},
+    vencida: {cls:'inelegivel',icone:'✕', rotulo:'inelegível',  dica:'venceu sem pagamento — não vale selo'},
+    aberto:  {cls:'aberto',    icone:'•', rotulo:'em aberto',   dica:'ainda dentro do prazo — pague até o vencimento e o selo é seu'},
+    vazio:   {cls:'empty',     icone:'',  rotulo:'',            dica:'sem fatura neste mês'}
+  };
+  const selos = slots.map(sl => {
+    const d = DESENHO[sl.estado] || DESENHO.vazio;
+    const quando = sl.mes ? esc(fmtMesRef(sl.mes)) : `Mês ${sl.n}`;
+    // Mostra o vencimento da fatura daquele mês — é o que o cliente
+    // reconhece. Sem fatura emitida, mostra só o mês.
+    const marca = sl.fatura
+      ? fmtDate(sl.fatura.vencimento).slice(0,5)        // dd/mm
+      : (sl.mes ? esc(fmtMesRef(sl.mes)) : sl.n);
+    return `<div class="fcs ${d.cls}" title="${quando}${d.rotulo?` — ${d.rotulo}`:''}: ${d.dica}">
+      ${d.icone?`<span class="fcs-check">${d.icone}</span>`:''}
+      <span class="fcs-n">${marca}</span>
+    </div>`;
+  });
+
+  // Prêmios. Os SELOS medem o ciclo atual (um atraso reinicia o cartão),
+  // mas o chip do prêmio precisa dizer também o que já foi conquistado
+  // antes — o desconto foi aplicado de verdade naquela fatura, e sumir
+  // com ele faz o cliente achar que perdeu o que já recebeu.
+  const premio1 = streak >= 6;
+  const premio2 = streak >= 12;
+  const ganhos  = premiosGanhos(periodo, doPeriodo);
+  const antes1  = ganhos.find(g => g.tipo === 'meia');
+  const antes2  = ganhos.find(g => g.tipo === 'gratis');
+
+  // liberado agora → "✓ liberado"; conquistado num cartão anterior →
+  // "✓ recebido em Fev/2026"; nada ainda → quantas faltam
+  // Quantos selos ainda cabem no cartão: só os meses cuja fatura ainda não
+  // venceu. Mês em atraso ou vencido em aberto já não rende selo — se o que
+  // sobra não alcança a meta, o prêmio está fora deste cartão e prometer
+  // "faltam N" seria mentira.
+  const aindaPossiveis = slots.filter(s => s.estado === 'aberto' || s.estado === 'vazio').length;
+  const teto = streak + aindaPossiveis;
+
+  const chip = (aceso, antes, meta) =>
+    aceso  ? '✓ liberado'
+    : antes ? `✓ ${antes.mes ? esc(fmtMesRef(antes.mes)) : 'recebido'}`
+    : teto < meta ? '✕ não liberado'
+    : `faltam ${meta - streak}`;
+
+  const foraDeAlcance = meta => teto < meta;
+
+  const aceso1 = premio1 || !!antes1;
+  const aceso2 = premio2 || !!antes2;
+
+  const premios = `
+    <div class="fc-premios">
+      <div class="fp ${aceso1?'p1ok':(foraDeAlcance(6)?'impossivel':'p1e')}${!premio1&&antes1?' passado':''}"
+           title="${aceso1?'Ganhou 50% de desconto por manter 6 meses de pagamento em dia':(foraDeAlcance(6)?'Não é mais possível somar 6 selos neste cartão':'Mantenha 6 meses de pagamento em dia para ganhar 50% de desconto')}">
+        <span class="fp-ico">🎁</span>
+        <span class="fp-val">50% de desconto</span>
+        <span class="fp-onde">por 6 faturas pagas até o vencimento, dentro deste cartão</span>
+        <span class="fp-st">${chip(premio1, antes1, 6)}</span>
+      </div>
+      <div class="fp ${aceso2?'p2ok':(foraDeAlcance(12)?'impossivel':'p2e')}${!premio2&&antes2?' passado':''}"
+           title="${aceso2?'Ganhou 100% de desconto por manter 12 meses de pagamento em dia':(foraDeAlcance(12)?'Não é mais possível somar 12 selos neste cartão':'Mantenha 12 meses de pagamento em dia para ganhar 100% de desconto')}">
+        <span class="fp-ico">🏅</span>
+        <span class="fp-val">100% de desconto</span>
+        <span class="fp-onde">por 12 faturas pagas até o vencimento, dentro deste cartão</span>
+        <span class="fp-st">${chip(premio2, antes2, 12)}</span>
+      </div>
+    </div>`;
+
+  // Progresso e próximo prêmio.
+  // A barra mede o cartão inteiro (0→12), não a fase atual: medindo por fase
+  // ela zerava ao bater 6 selos e o cliente via o progresso sumir justo na
+  // hora em que ganhou o primeiro prêmio.
+  let faltam, proximoPremio;
+  const pct = (streak / 12) * 100;
+  if(streak >= 12){
+    faltam = 0;            proximoPremio = '100% de desconto 🎉';
+  } else if(streak >= 6){
+    faltam = 12 - streak;  proximoPremio = '100% de desconto';
+  } else {
+    faltam = 6 - streak;   proximoPremio = '50% de desconto';
+  }
+  // Se o prêmio já não cabe no que sobrou do cartão, para de cobrar por ele.
+  const metaAtual = streak >= 6 ? 12 : 6;
+  const semAlcance = faltam > 0 && foraDeAlcance(metaAtual);
+  if(semAlcance) faltam = 0;
+
+  const pctTotal = Math.round((streak/12)*100);
+  const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
+
+  alvo.innerHTML=`
+    <div class="fc-wrap">
+
+      <!-- Cartão físico -->
+      <div class="fc">
+        <div class="fc-top">
+          <div class="fc-brand">SERV<span>NET</span></div>
+          <div class="fc-title-col">
+            <div class="fc-title">Programa</div>
+            <div class="fc-subtitle">${contratos.length>1 ? esc(ctNome(ct||{}, idx||0)) : 'Cartão Fidelidade'}</div>
+            ${periodo?`<div class="fc-validade">Faturas de <strong>${esc(fmtMesRef(periodo.ini))}</strong> a <strong>${esc(fmtMesRef(periodo.fim))}</strong></div>`:''}
+          </div>
+        </div>
+
+        <!-- 12 selos; prêmios logo abaixo, fora da grade -->
+        <div class="fc-stamps">${selos.join('')}</div>
+        ${inelegiveis.length?`<div class="fc-tropeco">✕ <strong>${inelegiveis.length} ${inelegiveis.length===1?'mês inelegível':'meses inelegíveis'}</strong> neste cartão: ${inelegiveis.map(a=>`${esc(fmtMesRef(a.mes)||('mês '+a.n))} <em style="font-style:normal;opacity:0.75">(${a.estado==='atraso'?'pago com atraso':'vencida sem pagamento'})</em>`).join(', ')}. O selo é só de quem paga até o vencimento.</div>`:''}
+        ${premios}
+
+        <div class="fc-footer">
+          <div class="fc-cliente">
+            Cliente
+            <strong>${nome}</strong>
+          </div>
+          <div class="fc-progress-col">
+            <div class="fc-pct">${streak}<small style="font-size:0.9rem;opacity:0.7">/12</small></div>
+            <div class="fc-pct-label">${streak===1?'fatura em dia':'faturas em dia'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legenda -->
+      <div class="fc-legend">
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.55);border:1.5px solid var(--pool)"></div>
+          Pago em dia — vale selo
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.6)"></div>
+          Inelegível — pago com atraso ou vencido
+        </div>
+        <div class="fc-leg-item">
+          <div class="fc-leg-dot" style="background:rgba(0,196,216,0.12);border:1.5px solid rgba(0,196,216,0.3)"></div>
+          Em aberto — ainda dá tempo
+        </div>
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="fidel-bar-wrap">
+        <div class="fidel-bar-labels">
+          <span>Progresso total</span>
+          <span>${faltam>0
+            ? `Faltam ${faltam} ${faltam===1?'fatura paga':'faturas pagas'} em dia`
+            : semAlcance ? `${streak} de 12 selos neste cartão` : '🎉 Prêmio disponível!'}</span>
+        </div>
+        <div class="fidel-bar"><div class="fidel-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
+      </div>
+
+      <!-- Prêmio do ciclo atual -->
+      ${premio2
+        ?`<div class="premio-pill earned">🏅 Parabéns! Você ganhou <strong>100% de desconto</strong> por manter <strong>12 meses de pagamento em dia</strong> — aplicado automaticamente na sua fatura.</div>`
+        :premio1
+          ?`<div class="premio-pill earned">🎁 Parabéns! Você ganhou <strong>50% de desconto</strong> por manter <strong>6 meses de pagamento em dia</strong> — aplicado automaticamente na sua fatura.</div>`
+          :''
+      }
+
+      <!-- Próximo prêmio -->
+      ${faltam>0
+        ?`<div class="premio-pill next">🎯 Próximo prêmio: <strong>${proximoPremio}</strong> — pague mais ${faltam} ${faltam===1?'fatura':'faturas'} <strong>até o vencimento</strong>, dentro deste cartão</div>`
+        : semAlcance
+          ?`<div class="premio-pill neutro">Este cartão não alcança mais o <strong>${proximoPremio}</strong> — não sobram meses suficientes. Seu próximo cartão começa em <strong>${esc(fmtMesRef(somaMeses(periodo?periodo.fim:'', 1)))}</strong>, com 12 chances novas.</div>`
+          :''
+      }
+
+    </div>
+
+    ${renderHistoricoFidelidade(fatContrato)}
+
+    <button class="rules-toggle" onclick="toggleRules('fidelRules-${key}',this)" style="margin-top:1rem">
+      <em class="arrow">▶</em> Ver regras do programa
+    </button>
+    <div class="rules-box" id="fidelRules-${key}">
+      <div class="rules-title">📋 Regras — Programa de Fidelidade</div>
+      <ol>
+        <li>Cada fatura paga <strong>até a data de vencimento</strong> conta como 1 selo ✅.</li>
+        <li>O cartão é seu e tem validade própria: começa no mês seguinte ao seu cadastro e vale por 12 meses. A validade aparece no topo do cartão.</li>
+        <li>Manteve <strong>6 meses de pagamento em dia</strong>? Você ganha <strong>50% de desconto</strong> na fatura seguinte.</li>
+        <li>Manteve <strong>12 meses de pagamento em dia</strong>? A fatura seguinte sai com <strong>100% de desconto</strong> — ou seja, de graça.</li>
+        <li>O mês em que você recebe o desconto <strong>continua valendo selo</strong> normalmente.</li>
+        <li>Tem mais de um contrato? <strong>Cada um tem seu próprio cartão</strong> — os selos não se misturam, e cada contrato ganha o seu prêmio.</li>
+
+        <li>Cada mês do cartão vale <strong>um selo</strong>, e o cartão dura <strong>12 meses</strong> a partir da sua primeira fatura.</li>
+        <li>Pagou <strong>depois do vencimento</strong>? A fatura fica quitada, mas <strong>aquele mês não vale selo</strong>.</li>
+        <li>A fatura do mês atual, ainda dentro do prazo, não afeta o contador.</li>
+        <li>Os descontos são aplicados <strong>automaticamente</strong> na fatura seguinte — você não precisa pedir.</li>
+        <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
+      </ol>
+    </div>`;
+}
+
+// ===== INDIQUE E GANHE =====
+function gerarCodigo(nome, clienteId){
+  const prefix=(nome||'CLIENTE')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^A-Za-z]/g,'').slice(0,5).toUpperCase();
+  // Pega apenas chars alfanuméricos do ID e usa os últimos 4 (mais aleatórios, evita prefixos como "cli_")
+  const clean=(clienteId||'').replace(/[^A-Za-z0-9]/g,'');
+  const suffix=clean.slice(-6,-2).toUpperCase(); // 4 chars do meio-final do UUID
+  return `${prefix}-${suffix}`;
+}
+
+async function loadIndicacoes(data){
+  const codigo=gerarCodigo(data.nome,data.cliente_id);
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_indicacoes',{p_cliente_id:data.cliente_id,p_master_id:data.master_id});
+    if(error) throw error;
+    renderIndicacoes(res,data,codigo);
+  }catch(e){
+    // Mesmo com erro no RPC, exibe a seção com 0 indicações
+    renderIndicacoes(null, data, codigo);
+  }
+}
+
+function renderIndicacoes(res,data,codigo){
+  const lista=res?.indicacoes||[];
+  const totalAtivos=res?.total_ativos||0;
+  const waMsg=encodeURIComponent(`Olá! Assine a internet da Servnet e diz que fui eu que te indiquei! Meu código: *${codigo}*. Entre em contato pelo WhatsApp: wa.me/5511954490001`);
+
+  const listHtml=lista.length
+    ?lista.map(i=>`
+      <div class="ref-item">
+        <div>
+          <div class="ref-name">${i.nome}</div>
+          <div class="ref-date">Indicado em ${i.data}</div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge ${i.status==='Ativo'?'b-ativo':'b-pendente'}">${i.status}</span>
+          ${i.status==='Ativo'&&!i.desconto_aplicado
+            ?'<div class="ref-bonus pending">🎁 1 mês grátis — pendente</div>'
+            :i.desconto_aplicado?'<div class="ref-bonus earned">✅ Desconto aplicado</div>':''
+          }
+        </div>
+      </div>`).join('')
+    :'<div class="muted" style="text-align:center;padding:0.75rem 0">Nenhuma indicação ainda — convide seus amigos!</div>';
+
+  // Mensagem pré-definida para compartilhar
+  const linkRef=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const mensagemCompleta=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\n🔗 Conheça: ${linkRef}`;
+  const waMsgEnc=encodeURIComponent(mensagemCompleta);
+
+  document.getElementById('refContent').innerHTML=`
+    <div class="ref-header">
+      <p class="muted">Indique amigos e ganhe <strong style="color:var(--pool)">1 mês grátis</strong> para cada um que assinar!</p>
+      ${totalAtivos>0?`<div class="ref-earned">🎉 ${totalAtivos} mês${totalAtivos>1?'es':''} grátis ganho${totalAtivos>1?'s':''}!</div>`:''}
+    </div>
+
+    <!-- Cartão do código -->
+    <div class="ref-card">
+      <div class="ref-card-label">Seu código de indicação</div>
+      <div class="ref-code-display">
+        <div>
+          <div class="ref-code">${codigo}</div>
+          <div class="ref-code-hint">Compartilhe esse código com seus amigos</div>
+        </div>
+      </div>
+      <div class="ref-actions">
+        <button class="copy-btn" onclick="copiarMensagem(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar mensagem
+        </button>
+        <a class="ref-share" href="https://wa.me/?text=${waMsgEnc}" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Compartilhar no WhatsApp
+        </a>
+      </div>
+    </div>
+    <div style="font-size:0.78rem;color:var(--text-2);font-weight:600;margin:0.5rem 0 0.4rem">Minhas indicações (${lista.length}):</div>
+    <div class="ref-list">${listHtml}</div>
+    <button class="rules-toggle" onclick="toggleRules('refRules',this)" style="margin-top:0.75rem">
+      <em class="arrow">▶</em> Ver regras do programa
+    </button>
+    <div class="rules-box" id="refRules">
+      <div class="rules-title">📋 Regras — Indique e Ganhe</div>
+      <ul>
+        <li>Compartilhe seu <strong>link de indicação</strong> com amigos pelo WhatsApp ou onde quiser.</li>
+        <li>Assim que o amigo indicado <strong>assinar um plano e efetuar o primeiro pagamento</strong>, a indicação é confirmada.</li>
+        <li>A cada indicação confirmada, você ganha <strong>1 mês grátis</strong> descontado automaticamente na sua próxima fatura.</li>
+        <li><strong>Não há limite</strong> de indicações — quanto mais amigos você trouxer, mais meses grátis você ganha.</li>
+        <li>Você pode acompanhar o status de cada indicação aqui no portal: <strong>Pendente</strong> (aguardando assinatura) ou <strong>Ativo</strong> (confirmado).</li>
+        <li>O desconto é aplicado após a confirmação da indicação — não é cumulativo com outras promoções ativas.</li>
+        <li>Dúvidas? Fale com nosso suporte pelo WhatsApp.</li>
+      </ul>
+    </div>`;
+
+}
+
+function copiarMensagem(btn){
+  // Pega o código do card mais próximo
+  const card=btn.closest('.ref-card');
+  const codigo=card?.querySelector('.ref-code')?.textContent?.trim()||'';
+  const linkRefCopy=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const msg=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\n🔗 Conheça: ${linkRefCopy}`;
+  navigator.clipboard.writeText(msg).then(()=>{
+    const orig=btn.innerHTML;
+    btn.innerHTML='✅ Copiado!';
+    setTimeout(()=>btn.innerHTML=orig,2200);
+  }).catch(()=>{
+    // fallback para navegadores sem clipboard API
+    const ta=document.createElement('textarea');
+    ta.value=msg; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig=btn.innerHTML;
+    btn.innerHTML='✅ Copiado!';
+    setTimeout(()=>btn.innerHTML=orig,2200);
+  });
+}
+
+async function doIndicar(){
+  const nome=document.getElementById('refNome').value.trim();
+  const tel=document.getElementById('refTel').value.replace(/\D/g,'');
+  const btn=document.getElementById('refBtn');
+  const msg=document.getElementById('refMsg');
+  if(!nome){showRefMsg('Informe o nome do amigo.','err');return;}
+  if(tel.length<10){showRefMsg('Informe um telefone válido.','err');return;}
+  btn.disabled=true;btn.textContent='...';
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_indicar',{
+      p_referrer_id:session.cliente_id,
+      p_master_id:session.master_id,
+      p_nome:nome,
+      p_telefone:tel
+    });
+    if(error) throw error;
+    if(!res?.ok){showRefMsg(res?.msg||'Erro ao registrar.','err');return;}
+    showRefMsg('✅ Indicação registrada! Assim que seu amigo assinar você ganha 1 mês grátis.','ok');
+    document.getElementById('refNome').value='';
+    document.getElementById('refTel').value='';
+    setTimeout(()=>loadIndicacoes(session),1500);
+  }catch(e){
+    showRefMsg('Erro de conexão. Tente novamente.','err');
+  }finally{
+    btn.disabled=false;btn.textContent='Indicar';
+  }
+}
+
+function toggleRules(id,btn){
+  const box=document.getElementById(id);
+  const open=box.classList.toggle('show');
+  btn.classList.toggle('open',open);
+}
+
+function abrirChamado(){
+  const tipo = document.getElementById('ticketTipo').value;
+  const desc = document.getElementById('ticketDesc').value.trim();
+  const btn  = document.getElementById('ticketBtn');
+  const ok   = document.getElementById('ticketOk');
+  if(!tipo){ alert('Selecione o tipo de problema.'); return; }
+  const nome = session?.nome ? session.nome.split(' ')[0] : 'Cliente';
+  let msg = `Olá! Sou ${nome}, cliente da Servnet, e preciso de suporte.\n\n*Tipo:* ${tipo}`;
+  if(desc) msg += `\n*Detalhes:* ${desc}`;
+  btn.disabled = true;
+  ok.style.display = 'block';
+  setTimeout(() => {
+    window.open(`https://wa.me/5511954490001?text=${encodeURIComponent(msg)}`, '_blank');
+    btn.disabled = false;
+    ok.style.display = 'none';
+    document.getElementById('ticketTipo').value = '';
+    document.getElementById('ticketDesc').value = '';
+  }, 800);
+}
+
+function showRefMsg(text,type){
+  const el=document.getElementById('refMsg');
+  el.textContent=text;
+  el.style.color=type==='ok'?'#34D399':'#FCA5A5';
+  el.style.display='block';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
+}
+
+// Restore session.
+// A sessão guardada é a foto do momento do login. Contrato criado, alterado
+// ou cancelado depois disso não apareceria nunca — por isso reconsultamos a
+// lista de contratos a cada carregamento, antes de montar a tela.
+window.addEventListener('DOMContentLoaded', async ()=>{
+  const s=sessionStorage.getItem('sn_sess');
+  if(!s) return;
+  try{ session=JSON.parse(s); }
+  catch{ sessionStorage.removeItem('sn_sess'); return; }
+
+  try{
+    const {data:res,error}=await sb.rpc('portal_servnet_contratos',{
+      p_cliente_id: session.cliente_id,
+      p_master_id:  session.master_id
+    });
+    if(!error && Array.isArray(res)){
+      if(!res.length){                       // não é mais cliente do portal
+        sessionStorage.removeItem('sn_sess');
+        location.reload();
+        return;
+      }
+      session.contratos = res;
+      sessionStorage.setItem('sn_sess', JSON.stringify(session));
+    }
+  }catch(e){
+    // servidor fora do ar: segue com a lista guardada em vez de travar
+    console.error(e);
+  }
+
+  enterDash(session);
+});
+
+// ===== PIX PORTAL =====
+const FN_PIX = SB_URL + '/functions/v1/mp-gerar-pix';
+
+async function gerarPixPortal(lancId, valor, mesRef, contratoId, btn){
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando…';
+  try {
+    const res = await fetch(FN_PIX, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY
+      },
+      body: JSON.stringify({
+        cliente_id: session.cliente_id,
+        contrato_id: contratoId || null,
+        lancamento_id: lancId,
+        valor: parseFloat(valor),
+        descricao: 'Mensalidade Servnet',
+        mes_ref: mesRef
+      })
+    });
+    const d = await res.json();
+    if (!d.ok) { alert('Erro ao gerar Pix: ' + (d.msg||'')); return; }
+    abrirModalPix(d.copia_cola || d.qr_code || '', parseFloat(valor), lancId);
+  } catch(e) {
+    alert('Erro de conexão. Tente novamente.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Pagar com Pix';
+  }
+}
+
+function abrirModalPix(pixStr, valor, lancId){
+  const ov = document.createElement('div');
+  ov.className = 'pix-overlay';
+  ov.innerHTML = `
+    <div class="pix-modal" id="pixModalContent">
+      <h3>💳 Pague com Pix</h3>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(pixStr)}" alt="QR Code Pix">
+      <div class="pix-val">R$ ${valor.toFixed(2).replace('.',',')}</div>
+      <div class="pix-copy-label">Pix Copia e Cola</div>
+      <div class="pix-copy-wrap">
+        <input class="pix-copy-input" id="pixCopiaInp" type="text" readonly value="${pixStr.replace(/"/g,'&quot;')}">
+        <button class="pix-copy-btn" onclick="copiarPix()">Copiar</button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-2);display:flex;align-items:center;gap:0.4rem;">
+        <span class="spin" style="width:12px;height:12px;border-width:2px;"></span> Aguardando pagamento…
+      </div>
+      <button class="pix-close" onclick="pararPollPix();this.closest('.pix-overlay').remove()">Fechar</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if(e.target===ov){ pararPollPix(); ov.remove(); } });
+  iniciarPollPix(lancId, ov);
+}
+
+let _pollTimer = null;
+
+function pararPollPix(){
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+function iniciarPollPix(lancId, ov){
+  pararPollPix();
+  _pollTimer = setInterval(async () => {
+    try {
+      const { data, error } = await sb.rpc('portal_verificar_pix', { p_lancamento_id: String(lancId) });
+      if(error || !data) return;
+      if((data||'').toLowerCase() === 'pago'){
+        pararPollPix();
+        const modal = document.getElementById('pixModalContent');
+        if(modal){
+          modal.innerHTML = `
+            <div style="font-size:3rem;margin-bottom:0.5rem;">✅</div>
+            <h3 style="color:#34D399;font-size:1.1rem;">Pagamento confirmado!</h3>
+            <p style="color:var(--text-2);font-size:0.85rem;margin:0.5rem 0 1.5rem;">Obrigado! Seu pagamento foi recebido.</p>
+            <button class="pix-close" onclick="this.closest('.pix-overlay').remove();location.reload();">Fechar</button>
+          `;
+        }
+      }
+    } catch(e){ /* ignora */ }
+  }, 5000);
+}
+
+function copiarPix(){
+  const el = document.getElementById('pixCopiaInp');
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const btn = document.querySelector('.pix-copy-btn');
+    btn.textContent = '✓ Copiado';
+    setTimeout(()=>btn.textContent='Copiar', 2000);
+  });
+}
+
+async function abrirSegundaVia(lancId, valor, mesRef, contratoId, vencimento, isPendente, btn){
+  btn.disabled = true;
+  btn.textContent = '⏳ Aguarde…';
+  try {
+    if(isPendente){
+      const res = await fetch(FN_PIX, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+        body: JSON.stringify({ cliente_id: session.cliente_id, contrato_id: contratoId||null, lancamento_id: lancId, valor: parseFloat(valor), descricao: 'Mensalidade Servnet', mes_ref: mesRef })
+      });
+      const d = await res.json();
+      if(!d.ok){ alert('Erro ao gerar Pix: ' + (d.msg||'')); return; }
+      imprimirFatura(lancId, valor, mesRef, vencimento, true, d.copia_cola||d.qr_code||'');
+    } else {
+      imprimirFatura(lancId, valor, mesRef, vencimento, false, '');
+    }
+  } catch(e){ alert('Erro de conexão. Tente novamente.'); }
+  finally { btn.disabled = false; btn.textContent = isPendente ? '📄 2ª via do boleto' : '🧾 Comprovante de pagamento'; }
+}
+
+function imprimirFatura(lancId, valor, mesRef, vencimento, isPendente, pixStr){
+  const nome = session?.nome || 'Cliente';
+  const val = parseFloat(valor).toFixed(2).replace('.', ',');
+  const fmtVenc = vencimento ? vencimento.split('-').reverse().join('/') : '—';
+  const qrUrl = pixStr ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixStr)}` : '';
+  const agora = new Date().toLocaleDateString('pt-BR');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Fatura Servnet ${mesRef}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;padding:2.5rem;color:#1a1a1a;max-width:600px;margin:0 auto;}
+.logo{font-size:2rem;font-weight:900;color:#00C4D8;letter-spacing:0.1em;}
+.logo span{color:#555;}
+.header{border-bottom:2.5px solid #00C4D8;padding-bottom:1rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;}
+.doc-title{font-size:0.8rem;color:#888;text-transform:uppercase;letter-spacing:0.1em;}
+.info-row{display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;font-size:0.93rem;}
+.info-label{color:#666;}
+.info-value{font-weight:600;}
+.amount{font-size:2.2rem;font-weight:900;color:#00C4D8;margin:1.25rem 0 0.25rem;}
+.status{display:inline-block;padding:0.3rem 0.9rem;border-radius:100px;font-size:0.8rem;font-weight:700;letter-spacing:0.05em;}
+.status.pendente{background:#FEF3C7;color:#92400E;}
+.status.pago{background:#D1FAE5;color:#065F46;}
+.qr-section{text-align:center;margin:1.5rem 0;padding:1.25rem;background:#f8f8f8;border-radius:10px;}
+.qr-section p{font-weight:700;margin-bottom:0.75rem;font-size:0.9rem;}
+.qr-section img{width:200px;height:200px;display:block;margin:0 auto 0.75rem;}
+.pix-code{background:#fff;border:1px solid #ddd;border-radius:6px;padding:0.6rem 0.75rem;font-family:monospace;font-size:0.68rem;word-break:break-all;color:#333;margin-top:0.5rem;text-align:left;}
+.pix-label{font-size:0.75rem;color:#666;margin-bottom:0.25rem;font-weight:600;}
+.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-size:0.75rem;color:#aaa;text-align:center;}
+@media print{body{padding:1rem;} .no-print{display:none;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="logo">SERV<span>NET</span></div>
+    <div class="doc-title" style="margin-top:0.3rem;">${isPendente?'Fatura':'Comprovante de Pagamento'}</div>
+  </div>
+  <div style="text-align:right;font-size:0.8rem;color:#888;">Emitido em ${agora}</div>
+</div>
+
+<div class="info-row"><span class="info-label">Cliente</span><span class="info-value">${nome}</span></div>
+<div class="info-row"><span class="info-label">Referência</span><span class="info-value">${mesRef}</span></div>
+<div class="info-row"><span class="info-label">Vencimento</span><span class="info-value">${fmtVenc}</span></div>
+<div class="info-row" style="border:none;"><span class="info-label">Situação</span><span><span class="status ${isPendente?'pendente':'pago'}">${isPendente?'PENDENTE':'✓ PAGO'}</span></span></div>
+
+<div class="amount">R$ ${val}</div>
+
+${isPendente && pixStr ? `
+<div class="qr-section">
+  <p>📱 Pague com Pix — escaneie o QR Code</p>
+  <img src="${qrUrl}" alt="QR Code Pix">
+  <div class="pix-label">Pix Copia e Cola</div>
+  <div class="pix-code">${pixStr}</div>
+</div>` : ''}
+
+${!isPendente ? `<p style="margin-top:1rem;font-size:0.9rem;color:#065F46;font-weight:600;">✅ Pagamento recebido com sucesso.</p>` : ''}
+
+<div class="footer">Servnet Telecom &bull; suporte@servnet.com.br &bull; www.servnet.net.br</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if(!win){ alert('Permita pop-ups para gerar o PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+</script>
+</body>
+</html>
