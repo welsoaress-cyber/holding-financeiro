@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.7 — 2026-08-19
+
+### Alterado
+- Saudação fixada no topo da tela, centralizada logo abaixo do título
+  "Painel de Gestão" — longe dos cards/colmeia.
+
 ## v2.4.6 — 2026-08-19
 
 ### Adicionado

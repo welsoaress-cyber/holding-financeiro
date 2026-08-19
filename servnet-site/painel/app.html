@@ -172,7 +172,10 @@
       padding: 14px 24px 20px;
       overflow-y: auto;
     }
-    .home-greeting { text-align: center; margin-bottom: 12px; }
+    .home-greeting {
+      position: fixed; top: 62px; left: 0; right: 0;
+      text-align: center; margin: 0; z-index: 5; pointer-events: none;
+    }
     .home-greeting h1 {
       font-family: var(--font-head); font-size: 16px; font-weight: 600;
       color: var(--text-2); margin-bottom: 0; display: inline;
@@ -562,7 +565,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.6</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.7</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
