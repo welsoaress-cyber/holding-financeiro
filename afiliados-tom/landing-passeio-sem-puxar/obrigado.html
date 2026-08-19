@@ -4,8 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Redirecionando...</title>
-  <!-- Google Ads conversion event — dispare aqui o evento de lead -->
-  <!-- <script>gtag('event', 'conversion', { send_to: 'AW-XXXXXXXXX/YYYYYYY' });</script> -->
+  <!-- Google Ads base tag -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18399063975"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-18399063975');
+  </script>
+  <!-- Google Ads conversion event — lead capturado -->
+  <script>
+    gtag('event', 'conversion', {
+      'send_to': 'AW-18399063975/FopPCLzXqOQcEKffrcVE',
+      'value': 1.0,
+      'currency': 'BRL',
+      'transaction_id': ''
+    });
+  </script>
   <style>
     body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0a1f0d; color: #fff; text-align: center; padding: 20px; }
     h1 { font-size: 1.5rem; margin-bottom: 12px; }
