@@ -35,7 +35,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,32 +42,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import br.com.limpezastom.AppViewModel
+import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.model.BackupProgress
 import br.com.limpezastom.model.BackupSummary
 import br.com.limpezastom.model.JunkFile
 import br.com.limpezastom.model.JunkGroup
 import br.com.limpezastom.model.ScanReport
 import br.com.limpezastom.model.UiState
-import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun AppRoot(
-    viewModel: AppViewModel,
+    logic: AppLogic,
     onScanRequested: () -> Unit,
     onBackupRequested: () -> Unit,
     onDeleteBackedUp: () -> Unit,
-    onOpenAllFilesSettings: () -> Unit,
+    onOpenDeepCleanSettings: () -> Unit,
 ) {
     MaterialTheme {
-        val state by viewModel.state.collectAsState()
-        val message by viewModel.message.collectAsState()
+        val state by logic.state.collectAsState()
+        val message by logic.message.collectAsState()
         val snackbar = remember { SnackbarHostState() }
 
         LaunchedEffect(message) {
             message?.let {
                 snackbar.showSnackbar(it)
-                viewModel.clearMessage()
+                logic.clearMessage()
             }
         }
 
@@ -81,8 +80,8 @@ fun AppRoot(
                         .fillMaxSize()
                         .padding(padding)
                         .padding(horizontal = 20.dp),
-                    onConfirm = viewModel::confirmJunkCleanup,
-                    onCancel = viewModel::cancelJunkReview,
+                    onConfirm = logic::confirmJunkCleanup,
+                    onCancel = logic::cancelJunkReview,
                 )
                 else -> Column(
                     modifier = Modifier
@@ -106,17 +105,17 @@ fun AppRoot(
                         is UiState.Scanning -> ScanningView()
                         is UiState.Results -> ResultsView(
                             report = s.report,
-                            hasAllFiles = viewModel.hasAllFilesAccess(),
+                            hasDeepClean = logic.hasDeepCleanAccess(),
                             onBackup = onBackupRequested,
-                            onReviewJunk = viewModel::requestJunkReview,
+                            onReviewJunk = logic::requestJunkReview,
                             onRescan = onScanRequested,
-                            onOpenAllFilesSettings = onOpenAllFilesSettings,
+                            onOpenDeepCleanSettings = onOpenDeepCleanSettings,
                         )
                         is UiState.Working -> WorkingView(s.progress)
                         is UiState.Done -> DoneView(
                             summary = s.summary,
                             onDeleteBackedUp = onDeleteBackedUp,
-                            onFinish = viewModel::reset,
+                            onFinish = logic::reset,
                         )
                         is UiState.JunkReview -> Unit // tratado acima
                     }
@@ -172,11 +171,11 @@ private fun ScanningView() {
 @Composable
 private fun ResultsView(
     report: ScanReport,
-    hasAllFiles: Boolean,
+    hasDeepClean: Boolean,
     onBackup: () -> Unit,
     onReviewJunk: () -> Unit,
     onRescan: () -> Unit,
-    onOpenAllFilesSettings: () -> Unit,
+    onOpenDeepCleanSettings: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         StatCard("📸 Fotos e vídeos", "${report.photosCount} fotos · ${report.videosCount} vídeos", report.mediaBytes)
@@ -184,7 +183,7 @@ private fun ResultsView(
         StatCard("🗑️ Sujeira", "${report.junk.size} arquivos inúteis", report.junkBytes)
         StatCard("👯 Duplicados", "${report.duplicates.size} cópias repetidas", report.duplicateBytes)
 
-        if (!hasAllFiles) {
+        if (!hasDeepClean) {
             Card {
                 Column(Modifier.padding(14.dp)) {
                     Text("Quer uma limpeza mais profunda?", fontWeight = FontWeight.Bold)
@@ -194,7 +193,7 @@ private fun ResultsView(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    TextButton(onClick = onOpenAllFilesSettings) {
+                    TextButton(onClick = onOpenDeepCleanSettings) {
                         Text("Conceder acesso total")
                     }
                 }
@@ -353,7 +352,7 @@ private fun JunkGroupCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                f.file.absolutePath,
+                                f.path,
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -431,11 +430,11 @@ private fun DoneView(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        if (summary.deletableUris.isNotEmpty()) {
+        if (summary.deletable.isNotEmpty()) {
             Text(
                 "Tudo o que foi enviado já está seguro na nuvem. Se quiser, você pode " +
                     "liberar ${formatBytes(summary.deletableBytes)} apagando esses arquivos " +
-                    "do aparelho — o Android vai mostrar a lista e pedir sua confirmação.",
+                    "do aparelho — o sistema vai mostrar a lista e pedir sua confirmação.",
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -469,5 +468,10 @@ fun formatBytes(bytes: Long): String {
         value /= 1024
         unit++
     }
-    return String.format(Locale("pt", "BR"), if (value >= 100) "%.0f %s" else "%.1f %s", value, units[unit])
+    return if (value >= 100 || unit == 0) {
+        "${value.roundToInt()} ${units[unit]}"
+    } else {
+        val tenths = (value * 10).roundToInt()
+        "${tenths / 10},${tenths % 10} ${units[unit]}"
+    }
 }

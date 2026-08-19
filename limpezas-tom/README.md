@@ -1,7 +1,8 @@
 # 🧹 Limpezas Tom
 
-App Android **básico e extremamente funcional** que organiza de verdade a bagunça
-acumulada ao longo dos anos no celular:
+App **Android + iOS** (Kotlin Multiplatform + Compose Multiplatform), básico e
+extremamente funcional, que organiza de verdade a bagunça acumulada ao longo
+dos anos no celular:
 
 1. **📸 Fotos e vídeos → Google Fotos** — envia tudo para a nuvem
 2. **📄 Documentos → Google Drive** — organizados automaticamente por **tipo e ano**:
@@ -17,77 +18,86 @@ O app **nunca exclui nada sozinho**. Toda exclusão passa por dupla proteção:
 - **Sujeira**: tela de revisão onde os grupos começam **desmarcados** — você vê
   cada arquivo (caminho completo e tamanho), marca só o que pode ir embora e confirma
 - **Fotos/documentos já enviados**: só saem do aparelho pelo **diálogo oficial do
-  Android**, que mostra a lista e pede sua confirmação
+  sistema** (Android e iOS), que mostra a lista e pede sua confirmação
 - O backup em si **só envia** arquivos — não altera nem apaga nada
-- Arquivos de sistema como `.nomedia` nunca entram na lista de sujeira
+- Arquivos de sistema (como `.nomedia`) nunca entram na lista de sujeira
 
-## Como funciona (fluxo do app)
+## 🏗️ Arquitetura multiplataforma
+
+Um único código para os dois sistemas — só o que é obrigatoriamente nativo é separado:
 
 ```
-Analisar celular → Resultado (fotos/docs/sujeira/duplicados)
-      ├─ Backup: conectar Google → Fotos → Google Fotos · Docs → Drive (por tipo/ano)
-      │       → "Liberar X GB?" → confirmação do Android → exclusão
-      └─ Sujeira: tela de revisão (tudo desmarcado) → você marca → confirma → exclusão
+limpezas-tom/
+├── composeApp/
+│   └── src/
+│       ├── commonMain/   # COMPARTILHADO Android + iOS
+│       │   ├── model/            # tipos (FileRef, ScanReport, UiState…)
+│       │   ├── logic/            # AppLogic (análise → backup → limpeza) + duplicados
+│       │   ├── cloud/            # Google Fotos + Drive via Ktor (REST puro)
+│       │   ├── ui/               # todas as telas (Compose Multiplatform)
+│       │   └── platform/         # contratos expect (scanner, leitura de arquivos)
+│       ├── androidMain/  # SÓ ANDROID
+│       │   ├── MainActivity, permissões, login Google (Play Services)
+│       │   └── scanner MediaStore + exclusão via createDeleteRequest
+│       └── iosMain/      # SÓ iOS
+│           ├── MainViewController (hospeda a UI Compose)
+│           └── scanner PhotoKit + exclusão via PHAssetChangeRequest
+└── iosApp/               # projeto Xcode (SwiftUI, gerado com XcodeGen)
 ```
 
-## Tecnologia
+## Status por plataforma
 
-- **Kotlin + Jetpack Compose** (Material 3), single-activity
-- **Play Services AuthorizationClient** para OAuth (sem bibliotecas pesadas)
-- **OkHttp** direto nas APIs REST:
-  - Google Photos Library API (`/v1/uploads` + `mediaItems:batchCreate`, escopo `photoslibrary.appendonly`)
-  - Google Drive API v3 (upload multipart, escopo `drive.file` — o app só enxerga o que ele mesmo criou)
-- **MediaStore** para varrer fotos/vídeos/documentos
-- Exclusão segura via `MediaStore.createDeleteRequest` (o Android pede confirmação ao usuário)
+| Funcionalidade | Android | iOS |
+| --- | --- | --- |
+| Análise de fotos/vídeos | ✅ MediaStore | ✅ PhotoKit |
+| Documentos | ✅ MediaStore | — (iOS não expõe arquivos de outros apps) |
+| Sujeira | ✅ caches + acesso total opcional | ✅ caches do app (sandbox) |
+| Duplicados por conteúdo | ✅ | ✅ (código comum) |
+| Upload Google Fotos/Drive | ✅ | ✅ (código comum — falta só o login) |
+| Login Google | ✅ Play Services | 🔜 GIDSignIn (TODO marcado no código) |
+| Liberar espaço com confirmação | ✅ diálogo do Android | ✅ diálogo do iOS |
 
 ## Como compilar
 
-1. Abra a pasta `limpezas-tom/` no **Android Studio** (Hedgehog ou mais novo)
-2. Aguarde o Gradle sincronizar
-3. `Run ▶` num aparelho Android 8+ (API 26+)
+### Android
+1. Abra a pasta `limpezas-tom/` no **Android Studio** e rode o app (`composeApp`)
+2. Ou: `./gradlew :composeApp:assembleDebug`
 
-Ou por linha de comando: `./gradlew assembleDebug`
+### iOS (precisa de um Mac com Xcode)
+1. `brew install xcodegen`
+2. `cd iosApp && xcodegen generate`
+3. Abra `LimpezasTom.xcodeproj` no Xcode e rode — o Xcode compila o código
+   Kotlin automaticamente (script `embedAndSignAppleFrameworkForXcode`)
 
 ## ⚠️ Configuração obrigatória no Google Cloud (uma vez só)
 
 Sem isso o botão de backup não funciona — o Google exige que o app seja registrado:
 
 1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e crie um projeto (ex.: "Limpezas Tom")
-2. Em **APIs e serviços → Biblioteca**, ative:
-   - **Photos Library API**
-   - **Google Drive API**
-3. Em **APIs e serviços → Tela de consentimento OAuth**: configure como *Externo*, adicione seu e-mail como usuário de teste
-4. Em **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**:
-   - Tipo: **Android**
-   - Nome do pacote: `br.com.limpezastom`
-   - SHA-1: pegue com `./gradlew signingReport` (use o do build `debug`)
+2. Em **APIs e serviços → Biblioteca**, ative **Photos Library API** e **Google Drive API**
+3. Em **Tela de consentimento OAuth**: configure como *Externo* e adicione seu e-mail como usuário de teste
+4. Em **Credenciais → Criar credenciais → ID do cliente OAuth**:
+   - **Android**: pacote `br.com.limpezastom` + SHA-1 (`./gradlew signingReport`, build `debug`)
+   - **iOS**: bundle id `br.com.limpezastom.LimpezasTom` (necessário quando for integrar o GIDSignIn)
 
-Não precisa colocar nenhuma chave no código — o Android identifica o app pelo pacote + SHA-1.
+No Android não é preciso colocar nenhuma chave no código — o sistema identifica
+o app pelo pacote + SHA-1.
 
 ## Notas importantes
 
-- **Google Fotos**: desde 2025 a API só permite que apps **enviem** mídia (escopo `appendonly`) — exatamente o que precisamos. Os uploads via API contam no armazenamento da conta Google.
-- **Acesso total a arquivos**: a limpeza profunda de sujeira (fora das pastas de mídia) pede a permissão "Acesso a todos os arquivos", concedida manualmente pelo usuário. Sem ela, o app limpa só os caches próprios e o que está visível.
-- **Versão 0.1**: o backup roda com o app aberto em primeiro plano. Próximo passo natural: mover para `WorkManager` com notificação, para rodar em segundo plano.
-
-## Estrutura
-
-```
-app/src/main/java/br/com/limpezastom/
-├── MainActivity.kt          # permissões, consentimento Google, diálogo de exclusão
-├── AppViewModel.kt          # orquestra: análise → backup → limpeza
-├── model/Models.kt          # tipos (ScanReport, BackupSummary, UiState…)
-├── scan/DeviceScanner.kt    # varredura: mídia, docs, sujeira, duplicados (hash)
-├── cloud/GoogleAuth.kt      # OAuth via Play Services
-├── cloud/PhotosUploader.kt  # upload p/ Google Fotos
-├── cloud/DriveUploader.kt   # upload p/ Drive organizado por tipo e ano
-└── ui/Screens.kt            # telas Compose (análise, resultado, revisão, progresso, resumo)
-```
+- **Google Fotos**: desde 2025 a API só permite que apps **enviem** mídia (escopo
+  `appendonly`) — exatamente o que precisamos. Uploads contam no armazenamento da conta.
+- **Acesso total a arquivos (Android)**: a limpeza profunda pede a permissão
+  "Acesso a todos os arquivos", concedida manualmente. Sem ela, o app limpa só o visível.
+- **Versão 0.2**: o backup roda com o app aberto em primeiro plano.
+- **iOS**: o código nativo (PhotoKit) foi escrito mas ainda não foi compilado num
+  Mac — ajustes pequenos podem ser necessários no primeiro build.
 
 ## Roadmap
 
-- [ ] Backup em segundo plano (WorkManager + notificação de progresso)
+- [ ] Login Google no iOS (GIDSignIn) — único bloqueio para o backup no iPhone
+- [ ] Backup em segundo plano (WorkManager no Android / BGTaskScheduler no iOS)
 - [ ] Seleção manual do que enviar/apagar
 - [ ] Agendamento de faxina automática (ex.: toda semana)
 - [ ] Ícone e identidade visual próprios
-- [ ] Publicação na Play Store (exige justificativa para "Acesso a todos os arquivos")
+- [ ] Publicação (Play Store exige justificativa para "Acesso a todos os arquivos")

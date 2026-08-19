@@ -1,4 +1,4 @@
-package br.com.limpezastom.scan
+package br.com.limpezastom.platform
 
 import android.content.ContentUris
 import android.content.Context
@@ -6,36 +6,60 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import br.com.limpezastom.model.DocumentInfo
+import br.com.limpezastom.model.FileKind
+import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.model.JunkFile
-import br.com.limpezastom.model.MediaItemInfo
-import br.com.limpezastom.model.ScanReport
+import br.com.limpezastom.model.RawScan
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okio.Source
+import okio.source
 import java.io.File
-import java.security.MessageDigest
+
+actual typealias PlatformContext = Context
+
+/** Abre content:// URIs (mídia e documentos) via ContentResolver. */
+actual fun openFileSource(context: PlatformContext, ref: FileRef): Source? = runCatching {
+    context.contentResolver.openInputStream(Uri.parse(ref.id))?.source()
+}.getOrNull()
 
 /**
- * Varre o aparelho em busca de fotos/vídeos, documentos, sujeira e duplicados.
+ * Varredura Android: MediaStore para mídia e documentos; sistema de
+ * arquivos para sujeira (com acesso total, quando concedido).
  */
-class DeviceScanner(private val context: Context) {
+actual class DeviceScanner actual constructor(private val context: PlatformContext) {
 
-    fun fullScan(): ScanReport {
-        val media = scanMedia()
-        return ScanReport(
-            media = media,
+    actual suspend fun scanRaw(): RawScan = withContext(Dispatchers.IO) {
+        RawScan(
+            media = scanMedia(),
             documents = scanDocuments(),
             junk = scanJunk(),
-            duplicates = findDuplicates(media),
         )
+    }
+
+    actual fun hasDeepCleanAccess(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
+    actual fun deleteJunk(files: List<JunkFile>): Pair<Int, Long> {
+        var count = 0
+        var bytes = 0L
+        for (j in files) {
+            if (runCatching { File(j.path).delete() }.getOrDefault(false)) {
+                count++
+                bytes += j.size
+            }
+        }
+        return count to bytes
     }
 
     // ── Fotos e vídeos ────────────────────────────────────────────────
 
-    fun scanMedia(): List<MediaItemInfo> =
-        queryMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, isVideo = false) +
-            queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, isVideo = true)
+    private fun scanMedia(): List<FileRef> =
+        queryMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, FileKind.PHOTO) +
+            queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, FileKind.VIDEO)
 
-    private fun queryMedia(collection: Uri, isVideo: Boolean): List<MediaItemInfo> {
-        val out = mutableListOf<MediaItemInfo>()
+    private fun queryMedia(collection: Uri, kind: FileKind): List<FileRef> {
+        val out = mutableListOf<FileRef>()
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
@@ -54,13 +78,13 @@ class DeviceScanner(private val context: Context) {
                 while (c.moveToNext()) {
                     val size = c.getLong(sizeCol)
                     if (size <= 0) continue
-                    out += MediaItemInfo(
-                        uri = ContentUris.withAppendedId(collection, c.getLong(idCol)),
+                    out += FileRef(
+                        id = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
                         name = c.getString(nameCol) ?: "sem_nome",
                         size = size,
                         mime = c.getString(mimeCol)
-                            ?: if (isVideo) "video/mp4" else "image/jpeg",
-                        isVideo = isVideo,
+                            ?: if (kind == FileKind.VIDEO) "video/mp4" else "image/jpeg",
+                        kind = kind,
                     )
                 }
             }
@@ -75,8 +99,8 @@ class DeviceScanner(private val context: Context) {
         "txt", "csv", "odt", "ods", "odp", "rtf", "epub",
     )
 
-    fun scanDocuments(): List<DocumentInfo> {
-        val out = mutableListOf<DocumentInfo>()
+    private fun scanDocuments(): List<FileRef> {
+        val out = mutableListOf<FileRef>()
         val collection = MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
@@ -98,11 +122,12 @@ class DeviceScanner(private val context: Context) {
                     if (ext !in docExtensions) continue
                     val size = c.getLong(sizeCol)
                     if (size <= 0) continue
-                    out += DocumentInfo(
-                        uri = ContentUris.withAppendedId(collection, c.getLong(idCol)),
+                    out += FileRef(
+                        id = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
                         name = name,
                         size = size,
                         mime = c.getString(mimeCol) ?: "application/octet-stream",
+                        kind = FileKind.DOCUMENT,
                         modifiedEpochSeconds = c.getLong(dateCol),
                     )
                 }
@@ -115,21 +140,17 @@ class DeviceScanner(private val context: Context) {
 
     private val junkExtensions = setOf("tmp", "log", "bak", "old", "part", "crdownload", "download")
 
-    /** Sujeira fora das pastas do app só é visível com acesso total a arquivos. */
-    fun hasAllFilesAccess(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
-
-    fun scanJunk(): List<JunkFile> {
+    private fun scanJunk(): List<JunkFile> {
         val out = mutableListOf<JunkFile>()
 
         // Cache do próprio app — sempre acessível
         for (dir in listOfNotNull(context.cacheDir, context.externalCacheDir)) {
             dir.walkTopDown().filter { it.isFile }.forEach {
-                out += JunkFile(it, it.length(), "Cache do app")
+                out += JunkFile(it.absolutePath, it.length(), "Cache do app")
             }
         }
 
-        if (!hasAllFilesAccess()) return out
+        if (!hasDeepCleanAccess()) return out
 
         val root = Environment.getExternalStorageDirectory() ?: return out
         runCatching {
@@ -151,61 +172,9 @@ class DeviceScanner(private val context: Context) {
                         f.length() == 0L -> "Arquivos vazios"
                         else -> null
                     }
-                    if (reason != null) out += JunkFile(f, f.length(), reason)
+                    if (reason != null) out += JunkFile(f.absolutePath, f.length(), reason)
                 }
         }
         return out
     }
-
-    /**
-     * Apaga os arquivos de sujeira JÁ REVISADOS E APROVADOS pelo usuário.
-     * Nunca deve ser chamado sem confirmação explícita na tela de revisão.
-     * Retorna (quantidade, bytes liberados).
-     */
-    fun deleteJunk(junk: List<JunkFile>): Pair<Int, Long> {
-        var count = 0
-        var bytes = 0L
-        for (j in junk) {
-            if (runCatching { j.file.delete() }.getOrDefault(false)) {
-                count++
-                bytes += j.size
-            }
-        }
-        return count to bytes
-    }
-
-    // ── Duplicados ────────────────────────────────────────────────────
-
-    /**
-     * Fotos/vídeos com mesmo tamanho e mesmo conteúdo (hash dos primeiros
-     * 256 KB). O primeiro de cada grupo é mantido; os demais são duplicatas.
-     */
-    fun findDuplicates(media: List<MediaItemInfo>): List<MediaItemInfo> {
-        val duplicates = mutableListOf<MediaItemInfo>()
-        val bySize = media.groupBy { it.size }.filterValues { it.size > 1 }
-        for (group in bySize.values) {
-            val byHash = mutableMapOf<String, MediaItemInfo>()
-            for (item in group) {
-                val hash = contentHash(item.uri) ?: continue
-                if (byHash.containsKey(hash)) duplicates += item
-                else byHash[hash] = item
-            }
-        }
-        return duplicates
-    }
-
-    private fun contentHash(uri: Uri): String? = runCatching {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            val digest = MessageDigest.getInstance("SHA-256")
-            val buffer = ByteArray(64 * 1024)
-            var remaining = 256 * 1024
-            while (remaining > 0) {
-                val read = input.read(buffer, 0, minOf(buffer.size, remaining))
-                if (read <= 0) break
-                digest.update(buffer, 0, read)
-                remaining -= read
-            }
-            digest.digest().joinToString("") { "%02x".format(it) }
-        }
-    }.getOrNull()
 }

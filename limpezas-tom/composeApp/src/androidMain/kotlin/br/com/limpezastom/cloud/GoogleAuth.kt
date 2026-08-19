@@ -8,7 +8,7 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 
 /**
- * Autorização Google via Play Services (AuthorizationClient).
+ * Autorização Google no Android via Play Services (AuthorizationClient).
  * Escopos: enviar mídia ao Google Fotos e criar arquivos no Drive.
  */
 object GoogleAuth {

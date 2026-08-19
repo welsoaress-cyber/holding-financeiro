@@ -13,22 +13,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import br.com.limpezastom.cloud.GoogleAuth
+import br.com.limpezastom.logic.AppLogic
+import br.com.limpezastom.logic.LogicHolder
 import br.com.limpezastom.model.UiState
 import br.com.limpezastom.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: AppViewModel by viewModels()
+    private val logic: AppLogic by lazy { LogicHolder.get(applicationContext) }
 
     // Permissões de leitura de mídia → dispara a análise
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        if (grants.values.any { it }) viewModel.scan()
-        else viewModel.notify("Sem permissão de acesso às fotos, não dá para analisar.")
+        if (grants.values.any { it }) logic.scan()
+        else logic.notify("Sem permissão de acesso às fotos, não dá para analisar.")
     }
 
     // Tela de consentimento do Google → segue com o backup
@@ -37,10 +38,10 @@ class MainActivity : ComponentActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val token = GoogleAuth.tokenFromResult(this, result.data)
-            if (token != null) viewModel.startBackup(token)
-            else viewModel.notify("Não foi possível obter autorização do Google.")
+            if (token != null) logic.startBackup(token)
+            else logic.notify("Não foi possível obter autorização do Google.")
         } else {
-            viewModel.notify("Autorização do Google cancelada.")
+            logic.notify("Autorização do Google cancelada.")
         }
     }
 
@@ -48,19 +49,19 @@ class MainActivity : ComponentActivity() {
     private val deleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) viewModel.onDeviceCleanupDone()
-        else viewModel.notify("Exclusão cancelada — os arquivos continuam no celular.")
+        if (result.resultCode == Activity.RESULT_OK) logic.onDeviceCleanupDone()
+        else logic.notify("Exclusão cancelada — os arquivos continuam no celular.")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AppRoot(
-                viewModel = viewModel,
+                logic = logic,
                 onScanRequested = ::scanWithPermissions,
                 onBackupRequested = ::startAuthorization,
                 onDeleteBackedUp = ::requestDeviceCleanup,
-                onOpenAllFilesSettings = ::openAllFilesSettings,
+                onOpenDeepCleanSettings = ::openAllFilesSettings,
             )
         }
     }
@@ -74,17 +75,17 @@ class MainActivity : ComponentActivity() {
         val missing = needed.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing.isEmpty()) viewModel.scan()
+        if (missing.isEmpty()) logic.scan()
         else permissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun startAuthorization() {
         GoogleAuth.requestAuthorization(
             activity = this,
-            onToken = { viewModel.startBackup(it) },
+            onToken = { logic.startBackup(it) },
             onResolutionNeeded = { authLauncher.launch(it) },
             onError = {
-                viewModel.notify(
+                logic.notify(
                     "Falha ao conectar com o Google: ${it.message ?: "erro desconhecido"}"
                 )
             },
@@ -93,8 +94,8 @@ class MainActivity : ComponentActivity() {
 
     /** Pede ao sistema a exclusão (com confirmação) dos itens já salvos na nuvem. */
     private fun requestDeviceCleanup() {
-        val summary = (viewModel.state.value as? UiState.Done)?.summary ?: return
-        val uris: List<Uri> = summary.deletableUris
+        val summary = (logic.state.value as? UiState.Done)?.summary ?: return
+        val uris: List<Uri> = summary.deletable.map { Uri.parse(it.id) }
         if (uris.isEmpty()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val pending = MediaStore.createDeleteRequest(contentResolver, uris)
@@ -105,8 +106,8 @@ class MainActivity : ComponentActivity() {
                 runCatching { contentResolver.delete(uri, null, null) }
                     .onSuccess { if (it > 0) deleted++ }
             }
-            viewModel.notify("$deleted arquivos removidos do celular.")
-            viewModel.reset()
+            logic.notify("$deleted arquivos removidos do celular.")
+            logic.reset()
         }
     }
 

@@ -20,4 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Limpezas Tom"
-include(":app")
+include(":composeApp")

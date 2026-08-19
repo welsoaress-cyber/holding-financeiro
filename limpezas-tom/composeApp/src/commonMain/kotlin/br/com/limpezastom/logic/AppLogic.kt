@@ -1,41 +1,40 @@
-package br.com.limpezastom
+package br.com.limpezastom.logic
 
-import android.app.Application
-import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import br.com.limpezastom.cloud.DriveUploader
-import br.com.limpezastom.cloud.PhotosUploader
+import br.com.limpezastom.cloud.GoogleDriveApi
+import br.com.limpezastom.cloud.GooglePhotosApi
 import br.com.limpezastom.model.BackupProgress
 import br.com.limpezastom.model.BackupSummary
+import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.model.JunkFile
 import br.com.limpezastom.model.ScanReport
 import br.com.limpezastom.model.UiState
-import br.com.limpezastom.scan.DeviceScanner
+import br.com.limpezastom.platform.DeviceScanner
+import br.com.limpezastom.platform.PlatformContext
 import br.com.limpezastom.ui.formatBytes
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
 
 /**
+ * Lógica compartilhada entre Android e iOS.
+ *
  * Regra de ouro do Limpezas Tom: o app NUNCA apaga nada sozinho.
  * Toda exclusão passa por revisão e confirmação explícita do usuário —
  * a sujeira pela tela de revisão, e as mídias já salvas na nuvem pelo
- * diálogo de confirmação do próprio Android.
+ * diálogo de confirmação do próprio sistema (Android ou iOS).
  */
-class AppViewModel(app: Application) : AndroidViewModel(app) {
+class AppLogic(private val context: PlatformContext) {
 
-    private val scanner = DeviceScanner(app)
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
-        .writeTimeout(300, TimeUnit.SECONDS)
-        .build()
-    private val photosUploader = PhotosUploader(app, httpClient)
-    private val driveUploader = DriveUploader(app, httpClient)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scanner = DeviceScanner(context)
+    private val duplicateFinder = DuplicateFinder(context)
+    private val http = HttpClient()
+    private val photosApi = GooglePhotosApi(http, context)
+    private val driveApi = GoogleDriveApi(http, context)
 
     private val _state = MutableStateFlow<UiState>(UiState.Idle)
     val state: StateFlow<UiState> = _state
@@ -45,7 +44,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private var lastReport: ScanReport? = null
 
-    fun hasAllFilesAccess(): Boolean = scanner.hasAllFilesAccess()
+    fun hasDeepCleanAccess(): Boolean = scanner.hasDeepCleanAccess()
 
     fun clearMessage() {
         _message.value = null
@@ -60,8 +59,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun scan() {
         if (_state.value is UiState.Scanning || _state.value is UiState.Working) return
         _state.value = UiState.Scanning
-        viewModelScope.launch(Dispatchers.IO) {
-            val report = scanner.fullScan()
+        scope.launch {
+            val raw = scanner.scanRaw()
+            val report = ScanReport(
+                media = raw.media,
+                documents = raw.documents,
+                junk = raw.junk,
+                duplicates = duplicateFinder.find(raw.media),
+            )
             lastReport = report
             _state.value = UiState.Results(report)
         }
@@ -81,22 +86,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (_state.value is UiState.Working) return
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val duplicateUris = report.duplicates.map { it.uri }.toSet()
-            val toUpload = report.media.filter { it.uri !in duplicateUris }
+        scope.launch {
+            val duplicateIds = report.duplicates.map { it.id }.toSet()
+            val toUpload = report.media.filter { it.id !in duplicateIds }
 
             var photosSent = 0
             var photosFailed = 0
-            val deletable = mutableListOf<Uri>()
+            val deletable = mutableListOf<FileRef>()
             var deletableBytes = 0L
 
             toUpload.forEachIndexed { index, item ->
                 _state.value = UiState.Working(
                     BackupProgress("Enviando fotos e vídeos ao Google Fotos", index, toUpload.size, item.name)
                 )
-                if (photosUploader.upload(accessToken, item)) {
+                if (photosApi.upload(accessToken, item)) {
                     photosSent++
-                    deletable += item.uri
+                    deletable += item
                     deletableBytes += item.size
                 } else {
                     photosFailed++
@@ -109,9 +114,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = UiState.Working(
                     BackupProgress("Organizando documentos no Google Drive", index, report.documents.size, doc.name)
                 )
-                if (driveUploader.upload(accessToken, doc)) {
+                if (driveApi.upload(accessToken, doc)) {
                     docsSent++
-                    deletable += doc.uri
+                    deletable += doc
                     deletableBytes += doc.size
                 } else {
                     docsFailed++
@@ -121,7 +126,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Duplicatas: o conteúdo já está na nuvem via original — o usuário
             // decide se apaga as cópias (nada é apagado sem confirmação).
             report.duplicates.forEach {
-                deletable += it.uri
+                deletable += it
                 deletableBytes += it.size
             }
 
@@ -131,7 +136,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     photosFailed = photosFailed,
                     docsSent = docsSent,
                     docsFailed = docsFailed,
-                    deletableUris = deletable,
+                    deletable = deletable,
                     deletableBytes = deletableBytes,
                 )
             )
@@ -161,12 +166,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (_state.value is UiState.Working) return
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch {
             _state.value = UiState.Working(BackupProgress("Removendo a sujeira aprovada", 0, approved.size))
             val (count, bytes) = scanner.deleteJunk(approved)
             notify("Sujeira removida: $count arquivos · ${formatBytes(bytes)} liberados.")
             // Re-analisa para atualizar os números
-            val fresh = scanner.fullScan()
+            val raw = scanner.scanRaw()
+            val fresh = ScanReport(
+                media = raw.media,
+                documents = raw.documents,
+                junk = raw.junk,
+                duplicates = duplicateFinder.find(raw.media),
+            )
             lastReport = fresh
             _state.value = UiState.Results(fresh)
         }
@@ -174,7 +185,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Pós-backup ────────────────────────────────────────────────────
 
-    /** Chamado quando o usuário confirmou, no diálogo do Android, a exclusão dos itens já salvos. */
+    /** Chamado quando o usuário confirmou, no diálogo do sistema, a exclusão dos itens já salvos. */
     fun onDeviceCleanupDone() {
         notify("Itens salvos na nuvem foram removidos do celular. 🎉")
         reset()
@@ -184,4 +195,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         lastReport = null
         _state.value = UiState.Idle
     }
+}
+
+/** Mantém uma única instância da lógica viva enquanto o app existe. */
+object LogicHolder {
+    private var instance: AppLogic? = null
+
+    fun get(context: PlatformContext): AppLogic =
+        instance ?: AppLogic(context).also { instance = it }
 }
