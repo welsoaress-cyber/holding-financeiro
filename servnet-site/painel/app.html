@@ -169,15 +169,15 @@
       position: fixed; inset: 0; z-index: 10;
       display: none; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 52px 24px 20px;
+      padding: 14px 24px 20px;
       overflow-y: auto;
     }
     .home-greeting { text-align: center; margin-bottom: 12px; }
     .home-greeting h1 {
-      font-family: var(--font-head); font-size: 26px; font-weight: 700;
-      color: var(--text-1); margin-bottom: 4px;
+      font-family: var(--font-head); font-size: 16px; font-weight: 600;
+      color: var(--text-2); margin-bottom: 0; display: inline;
     }
-    .home-greeting p { font-size: 13px; color: var(--text-2); }
+    .home-greeting p { font-size: 12px; color: var(--text-3); display: inline; margin-left: 8px; }
     .home-greeting .accent { color: var(--accent); }
 
     /* ═══ HEX GRID ══════════════════════════════════════════ */
@@ -210,13 +210,10 @@
     @media (min-width: 1200px) {
       .hex-icon { font-size: 40px; }
       .hex-label { font-size: 12px; max-width: 130px; }
-      .home-greeting h1 { font-size: 34px; }
-      .home-greeting p { font-size: 15px; }
     }
     @media (min-width: 1600px) {
       .hex-icon { font-size: 48px; }
       .hex-label { font-size: 14px; max-width: 150px; }
-      .home-greeting h1 { font-size: 40px; }
     }
     .hex-label {
       font-family: var(--font-head); font-size: 10px; font-weight: 600;
@@ -565,7 +562,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.4</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.5</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>

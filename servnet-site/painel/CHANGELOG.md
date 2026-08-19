@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.5 — 2026-08-19
+
+### Alterado
+- Saudação da home discreta: "Bom dia, Wellington · Selecione um módulo"
+  em linha única, pequena, logo abaixo da topbar — a colmeia vira o
+  destaque da tela.
+
 ## v2.4.4 — 2026-08-19
 
 ### Alterado
