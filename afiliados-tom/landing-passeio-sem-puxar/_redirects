@@ -1,0 +1,5 @@
+# Cloudflare Pages / Redirects
+# (Cloudflare Pages usa este arquivo para redirects no lado do servidor)
+
+/privacidade  /index.html  200
+/termos       /index.html  200
