@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.5 — 2026-08-19
+
+### Adicionado
+- Dashboard de Clientes clicável: os cartões (Total, Ativos,
+  Inadimplentes, Bloqueados) e os chips da Distribuição por Status
+  levam à lista de clientes já filtrada pelo status escolhido.
+
 ## v2.5.4 — 2026-08-19
 
 ### Corrigido

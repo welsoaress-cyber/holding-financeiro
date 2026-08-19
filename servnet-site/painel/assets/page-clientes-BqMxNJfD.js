@@ -76,11 +76,11 @@ import{i as J,s as v,u as G,j as Q,t as h,f as $,b as _,e as F}from"./page-dashb
 
     <!-- KPIs principais -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;">
-      ${A("Total de Clientes",i.total,"👥","var(--bg-card,#fff)","var(--text-1,#111)")}
-      ${A("Clientes Ativos",i.ativo,"✅","#d1fae5","#065f46")}
+      <div data-kpi="todos" style="cursor:pointer;">${A("Total de Clientes",i.total,"👥","var(--bg-card,#fff)","var(--text-1,#111)")}</div>
+      <div data-kpi="ativo" style="cursor:pointer;">${A("Clientes Ativos",i.ativo,"✅","#d1fae5","#065f46")}</div>
       ${A("Novos este mês",i.novosMes,"🆕","#eff6ff","#1d4ed8")}
-      ${A("Inadimplentes",n,"⚠️","#fef3c7","#92400e")}
-      ${A("Bloqueados",i.bloqueado,"🔒","#fee2e2","#991b1b")}
+      <div data-kpi="vencido" style="cursor:pointer;">${A("Inadimplentes",n,"⚠️","#fef3c7","#92400e")}</div>
+      <div data-kpi="bloqueado" style="cursor:pointer;">${A("Bloqueados",i.bloqueado,"🔒","#fee2e2","#991b1b")}</div>
       ${A("MRR",$(i.mrr),"💰","#f5f3ff","#6d28d9",!0)}
     </div>
 
@@ -111,14 +111,14 @@ import{i as J,s as v,u as G,j as Q,t as h,f as $,b as _,e as F}from"./page-dashb
     <div style="background:var(--bg-card,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
       <div style="font-size:13px;font-weight:700;color:var(--text-1,#111);margin-bottom:12px;">Distribuição por Status</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${[["Ativos",i.ativo,"#d1fae5","#065f46"],["Vencidos",i.vencido,"#fef3c7","#92400e"],["Bloqueados",i.bloqueado,"#fee2e2","#991b1b"],["Inativos",i.inativo,"#f3f4f6","#6b7280"],["Sem contrato",i.semContrato,"#eff6ff","#1d4ed8"]].map(([b,g,y,w])=>i.total?`
-          <div style="background:${y};border-radius:8px;padding:10px 14px;flex:1;min-width:80px;text-align:center;">
+        ${[["Ativos",i.ativo,"#d1fae5","#065f46","ativo"],["Vencidos",i.vencido,"#fef3c7","#92400e","vencido"],["Bloqueados",i.bloqueado,"#fee2e2","#991b1b","bloqueado"],["Inativos",i.inativo,"#f3f4f6","#6b7280","inativo"],["Sem contrato",i.semContrato,"#eff6ff","#1d4ed8","sem-contrato"]].map(([b,g,y,w,fk])=>i.total?`
+          <div data-kpi="${fk}" style="cursor:pointer;background:${y};border-radius:8px;padding:10px 14px;flex:1;min-width:80px;text-align:center;">
             <div style="font-size:20px;font-weight:700;color:${w};">${g}</div>
             <div style="font-size:11px;color:${w};opacity:.8;margin-top:2px;">${b}</div>
           </div>`:"").join("")}
       </div>
     </div>
-  `}function A(t,d,e,a,r,i=!1){return`
+  `;t.querySelectorAll("[data-kpi]").forEach(el=>el.addEventListener("click",()=>{S=el.dataset.kpi;E="lista";Z()}))}function A(t,d,e,a,r,i=!1){return`
     <div style="background:${a};border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
       <div style="font-size:20px;margin-bottom:6px;">${e}</div>
       <div style="font-size:${i?"16px":"26px"};font-weight:700;color:${r};">${d}</div>
