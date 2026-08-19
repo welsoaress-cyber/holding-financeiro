@@ -18,6 +18,8 @@ data class DocumentInfo(
     val name: String,
     val size: Long,
     val mime: String,
+    /** Última modificação, em segundos (epoch). Usado para organizar por ano no Drive. */
+    val modifiedEpochSeconds: Long,
 )
 
 /** Arquivo considerado sujeira, com o motivo da classificação. */
@@ -26,6 +28,14 @@ data class JunkFile(
     val size: Long,
     val reason: String,
 )
+
+/** Grupo de sujeira por motivo, para a tela de revisão. */
+data class JunkGroup(
+    val reason: String,
+    val files: List<JunkFile>,
+) {
+    val bytes: Long get() = files.sumOf { it.size }
+}
 
 /** Resultado completo de uma análise do aparelho. */
 data class ScanReport(
@@ -40,6 +50,11 @@ data class ScanReport(
     val duplicateBytes: Long get() = duplicates.sumOf { it.size }
     val photosCount: Int get() = media.count { !it.isVideo }
     val videosCount: Int get() = media.count { it.isVideo }
+
+    fun junkGroups(): List<JunkGroup> =
+        junk.groupBy { it.reason }
+            .map { (reason, files) -> JunkGroup(reason, files.sortedByDescending { it.size }) }
+            .sortedByDescending { it.bytes }
 }
 
 /** Progresso da fase atual do backup/limpeza. */
@@ -50,15 +65,13 @@ data class BackupProgress(
     val currentFile: String = "",
 )
 
-/** Resumo final após backup e limpeza. */
+/** Resumo final após o backup. Nada foi apagado ainda neste ponto. */
 data class BackupSummary(
     val photosSent: Int = 0,
     val photosFailed: Int = 0,
     val docsSent: Int = 0,
     val docsFailed: Int = 0,
-    val junkDeleted: Int = 0,
-    val junkBytesFreed: Long = 0,
-    /** Itens já salvos na nuvem que podem ser apagados do celular. */
+    /** Itens já salvos na nuvem que PODEM ser apagados — só com confirmação do usuário. */
     val deletableUris: List<Uri> = emptyList(),
     val deletableBytes: Long = 0,
 )
@@ -67,6 +80,10 @@ sealed interface UiState {
     data object Idle : UiState
     data object Scanning : UiState
     data class Results(val report: ScanReport) : UiState
+
+    /** Revisão da sujeira: o usuário vê e escolhe o que apagar antes de qualquer exclusão. */
+    data class JunkReview(val groups: List<JunkGroup>) : UiState
+
     data class Working(val progress: BackupProgress) : UiState
     data class Done(val summary: BackupSummary) : UiState
 }

@@ -83,6 +83,7 @@ class DeviceScanner(private val context: Context) {
             MediaStore.Files.FileColumns.DISPLAY_NAME,
             MediaStore.Files.FileColumns.SIZE,
             MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
         )
         runCatching {
             context.contentResolver.query(collection, projection, null, null, null)?.use { c ->
@@ -90,6 +91,7 @@ class DeviceScanner(private val context: Context) {
                 val nameCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
                 val sizeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
                 val mimeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val dateCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
                 while (c.moveToNext()) {
                     val name = c.getString(nameCol) ?: continue
                     val ext = name.substringAfterLast('.', "").lowercase()
@@ -101,6 +103,7 @@ class DeviceScanner(private val context: Context) {
                         name = name,
                         size = size,
                         mime = c.getString(mimeCol) ?: "application/octet-stream",
+                        modifiedEpochSeconds = c.getLong(dateCol),
                     )
                 }
             }
@@ -140,10 +143,12 @@ class DeviceScanner(private val context: Context) {
                 .forEach { f ->
                     val ext = f.extension.lowercase()
                     val reason = when {
-                        ext in junkExtensions -> "Arquivo temporário"
+                        // .nomedia é um marcador do Android — nunca é sujeira
+                        f.name == ".nomedia" -> null
+                        ext in junkExtensions -> "Arquivos temporários"
                         f.name.startsWith(".trashed-") -> "Lixeira do sistema"
                         f.parentFile?.name == ".thumbnails" -> "Miniaturas antigas"
-                        f.length() == 0L -> "Arquivo vazio"
+                        f.length() == 0L -> "Arquivos vazios"
                         else -> null
                     }
                     if (reason != null) out += JunkFile(f, f.length(), reason)
@@ -152,7 +157,11 @@ class DeviceScanner(private val context: Context) {
         return out
     }
 
-    /** Apaga os arquivos de sujeira. Retorna (quantidade, bytes liberados). */
+    /**
+     * Apaga os arquivos de sujeira JÁ REVISADOS E APROVADOS pelo usuário.
+     * Nunca deve ser chamado sem confirmação explícita na tela de revisão.
+     * Retorna (quantidade, bytes liberados).
+     */
     fun deleteJunk(junk: List<JunkFile>): Pair<Int, Long> {
         var count = 0
         var bytes = 0L

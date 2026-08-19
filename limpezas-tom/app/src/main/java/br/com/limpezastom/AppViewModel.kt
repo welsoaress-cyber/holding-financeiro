@@ -8,9 +8,11 @@ import br.com.limpezastom.cloud.DriveUploader
 import br.com.limpezastom.cloud.PhotosUploader
 import br.com.limpezastom.model.BackupProgress
 import br.com.limpezastom.model.BackupSummary
+import br.com.limpezastom.model.JunkFile
 import br.com.limpezastom.model.ScanReport
 import br.com.limpezastom.model.UiState
 import br.com.limpezastom.scan.DeviceScanner
+import br.com.limpezastom.ui.formatBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,12 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
+/**
+ * Regra de ouro do Limpezas Tom: o app NUNCA apaga nada sozinho.
+ * Toda exclusão passa por revisão e confirmação explícita do usuário —
+ * a sujeira pela tela de revisão, e as mídias já salvas na nuvem pelo
+ * diálogo de confirmação do próprio Android.
+ */
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val scanner = DeviceScanner(app)
@@ -59,12 +67,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ── Backup + limpeza ──────────────────────────────────────────────
+    // ── Backup (só envia — não apaga nada) ────────────────────────────
 
     /**
-     * Envia fotos/vídeos ao Google Fotos e documentos ao Drive, depois
-     * apaga a sujeira. Duplicatas não são enviadas (o original já vai),
-     * mas entram na lista de itens que podem ser apagados do celular.
+     * Envia fotos/vídeos ao Google Fotos e documentos ao Drive.
+     * Duplicatas não são reenviadas (o original já vai), mas entram na
+     * lista de itens que o usuário PODE apagar depois, se confirmar.
      */
     fun startBackup(accessToken: String) {
         val report = lastReport ?: run {
@@ -99,7 +107,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var docsFailed = 0
             report.documents.forEachIndexed { index, doc ->
                 _state.value = UiState.Working(
-                    BackupProgress("Enviando documentos ao Google Drive", index, report.documents.size, doc.name)
+                    BackupProgress("Organizando documentos no Google Drive", index, report.documents.size, doc.name)
                 )
                 if (driveUploader.upload(accessToken, doc)) {
                     docsSent++
@@ -110,12 +118,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            _state.value = UiState.Working(
-                BackupProgress("Limpando sujeira", 0, report.junk.size)
-            )
-            val (junkDeleted, junkBytes) = scanner.deleteJunk(report.junk)
-
-            // Duplicatas: já existem na nuvem via original, podem ser apagadas
+            // Duplicatas: o conteúdo já está na nuvem via original — o usuário
+            // decide se apaga as cópias (nada é apagado sem confirmação).
             report.duplicates.forEach {
                 deletable += it.uri
                 deletableBytes += it.size
@@ -127,8 +131,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     photosFailed = photosFailed,
                     docsSent = docsSent,
                     docsFailed = docsFailed,
-                    junkDeleted = junkDeleted,
-                    junkBytesFreed = junkBytes,
                     deletableUris = deletable,
                     deletableBytes = deletableBytes,
                 )
@@ -136,14 +138,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Só limpa a sujeira, sem backup. */
-    fun cleanJunkOnly() {
+    // ── Sujeira: revisar antes, apagar só o aprovado ──────────────────
+
+    fun requestJunkReview() {
         val report = lastReport ?: return
+        if (report.junk.isEmpty()) {
+            notify("Nenhuma sujeira encontrada. 🎉")
+            return
+        }
+        _state.value = UiState.JunkReview(report.junkGroups())
+    }
+
+    fun cancelJunkReview() {
+        val report = lastReport
+        _state.value = if (report != null) UiState.Results(report) else UiState.Idle
+    }
+
+    /** Apaga somente os arquivos que o usuário marcou e confirmou na revisão. */
+    fun confirmJunkCleanup(approved: List<JunkFile>) {
+        if (approved.isEmpty()) {
+            cancelJunkReview()
+            return
+        }
         if (_state.value is UiState.Working) return
         viewModelScope.launch(Dispatchers.IO) {
-            _state.value = UiState.Working(BackupProgress("Limpando sujeira", 0, report.junk.size))
-            val (count, bytes) = scanner.deleteJunk(report.junk)
-            notify("Sujeira removida: $count arquivos.")
+            _state.value = UiState.Working(BackupProgress("Removendo a sujeira aprovada", 0, approved.size))
+            val (count, bytes) = scanner.deleteJunk(approved)
+            notify("Sujeira removida: $count arquivos · ${formatBytes(bytes)} liberados.")
             // Re-analisa para atualizar os números
             val fresh = scanner.fullScan()
             lastReport = fresh
@@ -151,7 +172,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Chamado quando o usuário confirma a exclusão dos itens já salvos. */
+    // ── Pós-backup ────────────────────────────────────────────────────
+
+    /** Chamado quando o usuário confirmou, no diálogo do Android, a exclusão dos itens já salvos. */
     fun onDeviceCleanupDone() {
         notify("Itens salvos na nuvem foram removidos do celular. 🎉")
         reset()

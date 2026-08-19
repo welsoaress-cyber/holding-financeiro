@@ -1,21 +1,33 @@
 # 🧹 Limpezas Tom
 
-App Android que faz uma **faxina completa no celular**:
+App Android **básico e extremamente funcional** que organiza de verdade a bagunça
+acumulada ao longo dos anos no celular:
 
 1. **📸 Fotos e vídeos → Google Fotos** — envia tudo para a nuvem
-2. **📄 Documentos → Google Drive** — PDFs, Word, planilhas etc. vão para a pasta "Limpezas Tom" no Drive
-3. **🗑️ Sujeira → lixo** — apaga temporários, caches, arquivos vazios, sobras de apps
-4. **👯 Duplicados** — detecta cópias repetidas de fotos (mesmo conteúdo) e sugere apagar
-5. **🧹 Liberar espaço** — depois que tudo está seguro na nuvem, oferece apagar do celular (com confirmação do sistema)
+2. **📄 Documentos → Google Drive** — organizados automaticamente por **tipo e ano**:
+   `Limpezas Tom/Planilhas/2023/orcamento.xlsx`, `Limpezas Tom/PDFs/2021/contrato.pdf`…
+3. **🗑️ Sujeira** — encontra temporários, caches, arquivos vazios, sobras de apps
+4. **👯 Duplicados** — detecta cópias repetidas de fotos (pelo conteúdo, não pelo nome)
+5. **🧹 Liberar espaço** — depois que tudo está seguro na nuvem, oferece apagar do celular
+
+## 🔒 Regra de ouro: nada é apagado sem você aprovar
+
+O app **nunca exclui nada sozinho**. Toda exclusão passa por dupla proteção:
+
+- **Sujeira**: tela de revisão onde os grupos começam **desmarcados** — você vê
+  cada arquivo (caminho completo e tamanho), marca só o que pode ir embora e confirma
+- **Fotos/documentos já enviados**: só saem do aparelho pelo **diálogo oficial do
+  Android**, que mostra a lista e pede sua confirmação
+- O backup em si **só envia** arquivos — não altera nem apaga nada
+- Arquivos de sistema como `.nomedia` nunca entram na lista de sujeira
 
 ## Como funciona (fluxo do app)
 
 ```
 Analisar celular → Resultado (fotos/docs/sujeira/duplicados)
-      → Conectar conta Google (consentimento)
-      → Backup (Fotos → Google Fotos, Docs → Drive)
-      → Limpeza da sujeira
-      → "Liberar X GB do celular?" (exclusão com confirmação do Android)
+      ├─ Backup: conectar Google → Fotos → Google Fotos · Docs → Drive (por tipo/ano)
+      │       → "Liberar X GB?" → confirmação do Android → exclusão
+      └─ Sujeira: tela de revisão (tudo desmarcado) → você marca → confirma → exclusão
 ```
 
 ## Tecnologia
@@ -68,8 +80,8 @@ app/src/main/java/br/com/limpezastom/
 ├── scan/DeviceScanner.kt    # varredura: mídia, docs, sujeira, duplicados (hash)
 ├── cloud/GoogleAuth.kt      # OAuth via Play Services
 ├── cloud/PhotosUploader.kt  # upload p/ Google Fotos
-├── cloud/DriveUploader.kt   # upload p/ Drive (pasta "Limpezas Tom")
-└── ui/Screens.kt            # telas Compose (análise, resultado, progresso, resumo)
+├── cloud/DriveUploader.kt   # upload p/ Drive organizado por tipo e ano
+└── ui/Screens.kt            # telas Compose (análise, resultado, revisão, progresso, resumo)
 ```
 
 ## Roadmap
