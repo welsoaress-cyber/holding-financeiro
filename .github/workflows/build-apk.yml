@@ -96,6 +96,16 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+      - name: Distribuir APK no Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1.4.0
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          testers: welsoaress@gmail.com
+          file: limpezas-tom/${{ steps.apk_path.outputs.path }}
+          releaseNotes: "Build #${{ github.run_number }} — branch ${{ github.ref_name }}"
+
       - name: Resumo do build
         run: |
           APK="${{ steps.apk_path.outputs.path }}"
@@ -109,4 +119,4 @@ jobs:
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Para instalar:** baixe o artefato acima, copie o APK para o celular e instale habilitando 'Fontes desconhecidas' nas configurações." >> $GITHUB_STEP_SUMMARY
+          echo "**Para instalar via Firebase:** você receberá um e-mail em welsoaress@gmail.com com o link de instalação." >> $GITHUB_STEP_SUMMARY
