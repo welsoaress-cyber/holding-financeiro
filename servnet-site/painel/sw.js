@@ -7,7 +7,7 @@
 //   5. Primeira visita (sem cache): aguarda a rede normalmente
 const CACHE_NAME = "holding-app-shell-v3";
 const APP_SHELL = [
-  "./sistema-financeiro-holding.html",
+  "./index.html",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
