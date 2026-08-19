@@ -37,18 +37,14 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.ktor.client.core)
             implementation(libs.okio)
         }
         androidMain.dependencies {
             implementation(libs.activity.compose)
             implementation(libs.core.ktx)
-            implementation(libs.play.services.auth)
-            implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
         }
         iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

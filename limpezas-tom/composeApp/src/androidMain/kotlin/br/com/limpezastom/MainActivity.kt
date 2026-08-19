@@ -1,23 +1,18 @@
 package br.com.limpezastom
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import br.com.limpezastom.cloud.GoogleAuth
 import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.logic.LogicHolder
-import br.com.limpezastom.model.UiState
 import br.com.limpezastom.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
@@ -32,35 +27,13 @@ class MainActivity : ComponentActivity() {
         else logic.notify("Sem permissão de acesso às fotos, não dá para analisar.")
     }
 
-    // Tela de consentimento do Google → segue com o backup
-    private val authLauncher = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val token = GoogleAuth.tokenFromResult(this, result.data)
-            if (token != null) logic.startBackup(token)
-            else logic.notify("Não foi possível obter autorização do Google.")
-        } else {
-            logic.notify("Autorização do Google cancelada.")
-        }
-    }
-
-    // Diálogo do sistema confirmando exclusão dos itens já salvos na nuvem
-    private val deleteLauncher = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) logic.onDeviceCleanupDone()
-        else logic.notify("Exclusão cancelada — os arquivos continuam no celular.")
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AppRoot(
                 logic = logic,
                 onScanRequested = ::scanWithPermissions,
-                onBackupRequested = ::startAuthorization,
-                onDeleteBackedUp = ::requestDeviceCleanup,
+                onOpenGooglePhotos = ::openGooglePhotos,
                 onOpenDeepCleanSettings = ::openAllFilesSettings,
             )
         }
@@ -97,35 +70,24 @@ class MainActivity : ComponentActivity() {
         logic.refreshDeepCleanStatus()
     }
 
-    private fun startAuthorization() {
-        GoogleAuth.requestAuthorization(
-            activity = this,
-            onToken = { logic.startBackup(it) },
-            onResolutionNeeded = { authLauncher.launch(it) },
-            onError = {
-                logic.notify(
-                    "Falha ao conectar com o Google: ${it.message ?: "erro desconhecido"}"
-                )
-            },
-        )
-    }
-
-    /** Pede ao sistema a exclusão (com confirmação) dos itens já salvos na nuvem. */
-    private fun requestDeviceCleanup() {
-        val summary = (logic.state.value as? UiState.Done)?.summary ?: return
-        val uris: List<Uri> = summary.deletable.map { Uri.parse(it.id) }
-        if (uris.isEmpty()) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val pending = MediaStore.createDeleteRequest(contentResolver, uris)
-            deleteLauncher.launch(IntentSenderRequest.Builder(pending.intentSender).build())
+    /** Abre o Google Fotos para que o usuário faça backup e, depois, libere espaço no celular. */
+    private fun openGooglePhotos() {
+        val pm = packageManager
+        val photosPackage = "com.google.android.apps.photos"
+        val intent = pm.getLaunchIntentForPackage(photosPackage)
+        if (intent != null) {
+            startActivity(intent)
         } else {
-            var deleted = 0
-            for (uri in uris) {
-                runCatching { contentResolver.delete(uri, null, null) }
-                    .onSuccess { if (it > 0) deleted++ }
+            // Google Fotos não instalado — abre Play Store
+            runCatching {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$photosPackage"))
+                )
+            }.onFailure {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$photosPackage"))
+                )
             }
-            logic.notify("$deleted arquivos removidos do celular.")
-            logic.reset()
         }
     }
 

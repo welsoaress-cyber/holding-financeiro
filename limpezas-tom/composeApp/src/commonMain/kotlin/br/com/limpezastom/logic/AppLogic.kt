@@ -1,9 +1,5 @@
 package br.com.limpezastom.logic
 
-import br.com.limpezastom.cloud.GoogleDriveApi
-import br.com.limpezastom.cloud.GooglePhotosApi
-import br.com.limpezastom.model.BackupProgress
-import br.com.limpezastom.model.BackupSummary
 import br.com.limpezastom.model.DuplicateShortcutGroup
 import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.model.JunkFile
@@ -13,12 +9,12 @@ import br.com.limpezastom.model.Suggestion
 import br.com.limpezastom.model.SuggestionLayer
 import br.com.limpezastom.model.TrustProfile
 import br.com.limpezastom.model.UiState
+import br.com.limpezastom.model.WorkProgress
 import kotlinx.datetime.Clock
 import br.com.limpezastom.platform.DeviceScanner
 import br.com.limpezastom.platform.LauncherScanner
 import br.com.limpezastom.platform.PlatformContext
 import br.com.limpezastom.ui.formatBytes
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,9 +40,6 @@ class AppLogic(private val context: PlatformContext) {
     private val duplicateFinder = DuplicateFinder(context)
     private val suggestionEngine = SuggestionEngine()
     private val scoreCalculator = ScoreCalculator()
-    private val http = HttpClient()
-    private val photosApi = GooglePhotosApi(http, context)
-    private val driveApi = GoogleDriveApi(http, context)
 
     private val _state = MutableStateFlow<UiState>(UiState.Idle)
     val state: StateFlow<UiState> = _state
@@ -237,7 +230,7 @@ class AppLogic(private val context: PlatformContext) {
         }
         if (_state.value is UiState.Working) return
         scope.launch {
-            _state.value = UiState.Working(BackupProgress("Removendo a sujeira aprovada", 0, approved.size))
+            _state.value = UiState.Working(WorkProgress("Removendo a sujeira aprovada", 0, approved.size))
             val (count, bytes) = scanner.deleteJunk(approved)
             notify("Sujeira removida: $count arquivos · ${formatBytes(bytes)} liberados.")
             // Re-analisa para atualizar os números
@@ -254,83 +247,6 @@ class AppLogic(private val context: PlatformContext) {
             lastReport = fresh
             _state.value = UiState.Results(fresh)
         }
-    }
-
-    // ── Backup (só envia — não apaga nada) ────────────────────────────────────
-
-    /**
-     * Envia fotos/vídeos ao Google Fotos e documentos ao Drive.
-     * Duplicatas não são reenviadas (o original já vai), mas entram na
-     * lista de itens que o usuário PODE apagar depois, se confirmar.
-     */
-    fun startBackup(accessToken: String) {
-        val report = lastReport ?: run {
-            notify("Faça a análise do celular primeiro.")
-            return
-        }
-        if (_state.value is UiState.Working) return
-
-        scope.launch {
-            val duplicateIds = report.duplicates.map { it.id }.toSet()
-            val toUpload = report.media.filter { it.id !in duplicateIds }
-
-            var photosSent = 0
-            var photosFailed = 0
-            val deletable = mutableListOf<FileRef>()
-            var deletableBytes = 0L
-
-            toUpload.forEachIndexed { index, item ->
-                _state.value = UiState.Working(
-                    BackupProgress("Enviando fotos e vídeos ao Google Fotos", index, toUpload.size, item.name)
-                )
-                if (photosApi.upload(accessToken, item)) {
-                    photosSent++
-                    deletable += item
-                    deletableBytes += item.size
-                } else {
-                    photosFailed++
-                }
-            }
-
-            var docsSent = 0
-            var docsFailed = 0
-            report.documents.forEachIndexed { index, doc ->
-                _state.value = UiState.Working(
-                    BackupProgress("Organizando documentos no Google Drive", index, report.documents.size, doc.name)
-                )
-                if (driveApi.upload(accessToken, doc)) {
-                    docsSent++
-                    deletable += doc
-                    deletableBytes += doc.size
-                } else {
-                    docsFailed++
-                }
-            }
-
-            report.duplicates.forEach {
-                deletable += it
-                deletableBytes += it.size
-            }
-
-            _state.value = UiState.Done(
-                BackupSummary(
-                    photosSent = photosSent,
-                    photosFailed = photosFailed,
-                    docsSent = docsSent,
-                    docsFailed = docsFailed,
-                    deletable = deletable,
-                    deletableBytes = deletableBytes,
-                )
-            )
-        }
-    }
-
-    // ── Pós-backup ────────────────────────────────────────────────────────────
-
-    /** Chamado quando o usuário confirmou, no diálogo do sistema, a exclusão dos itens já salvos. */
-    fun onDeviceCleanupDone() {
-        notify("Itens salvos na nuvem foram removidos do celular. 🎉")
-        reset()
     }
 
     fun reset() {

@@ -52,8 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.platform.nowMs
-import br.com.limpezastom.model.BackupProgress
-import br.com.limpezastom.model.BackupSummary
 import br.com.limpezastom.model.DuplicateShortcutGroup
 import br.com.limpezastom.model.JunkFile
 import br.com.limpezastom.model.JunkGroup
@@ -62,14 +60,14 @@ import br.com.limpezastom.model.StorageScore
 import br.com.limpezastom.model.Suggestion
 import br.com.limpezastom.model.SuggestionLayer
 import br.com.limpezastom.model.UiState
+import br.com.limpezastom.model.WorkProgress
 import kotlin.math.roundToInt
 
 @Composable
 fun AppRoot(
     logic: AppLogic,
     onScanRequested: () -> Unit,
-    onBackupRequested: () -> Unit,
-    onDeleteBackedUp: () -> Unit,
+    onOpenGooglePhotos: () -> Unit,
     onOpenDeepCleanSettings: () -> Unit,
 ) {
     MaterialTheme {
@@ -130,7 +128,7 @@ fun AppRoot(
                         is UiState.Results -> ResultsView(
                             report = s.report,
                             hasDeepClean = hasDeepClean,
-                            onBackup = onBackupRequested,
+                            onOpenGooglePhotos = onOpenGooglePhotos,
                             onReviewJunk = logic::requestJunkReview,
                             onReviewLayer = logic::requestLayerReview,
                             onReviewShortcuts = logic::requestShortcutsReview,
@@ -138,11 +136,6 @@ fun AppRoot(
                             onOpenDeepCleanSettings = onOpenDeepCleanSettings,
                         )
                         is UiState.Working -> WorkingView(s.progress)
-                        is UiState.Done    -> DoneView(
-                            summary = s.summary,
-                            onDeleteBackedUp = onDeleteBackedUp,
-                            onFinish = logic::reset,
-                        )
                         // Treated above — included for exhaustiveness
                         is UiState.JunkReview, is UiState.LayerReview, is UiState.ShortcutsReview -> Unit
                     }
@@ -166,9 +159,8 @@ private fun IdleView(onScan: () -> Unit) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "O Tom analisa seu celular, envia fotos e vídeos para o Google Fotos, " +
-                "organiza documentos por tipo e ano no Google Drive e encontra a " +
-                "sujeira acumulada. Nada é apagado sem a sua aprovação.",
+            "O Tom analisa seu celular e encontra fotos, vídeos, documentos, " +
+                "sujeira e duplicatas. Nada é apagado sem a sua aprovação.",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -199,7 +191,7 @@ private fun ScanningView() {
 private fun ResultsView(
     report: ScanReport,
     hasDeepClean: Boolean,
-    onBackup: () -> Unit,
+    onOpenGooglePhotos: () -> Unit,
     onReviewJunk: () -> Unit,
     onReviewLayer: (SuggestionLayer) -> Unit,
     onReviewShortcuts: () -> Unit,
@@ -309,23 +301,24 @@ private fun ResultsView(
         }
 
         Spacer(Modifier.height(4.dp))
-        Button(onClick = onBackup, modifier = Modifier.fillMaxWidth()) {
-            Text("☁️ Fazer backup na nuvem")
+        Button(onClick = onOpenGooglePhotos, modifier = Modifier.fillMaxWidth()) {
+            Text("📷 Abrir Google Fotos")
         }
+        Text(
+            "O Google Fotos faz o backup automático e avisa quando é seguro " +
+                "liberar espaço — sem risco de perder nada.",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
         OutlinedButton(onClick = onReviewJunk, modifier = Modifier.fillMaxWidth()) {
             Text("🔍 Revisar sujeira (avançado)")
         }
         TextButton(onClick = onRescan, modifier = Modifier.fillMaxWidth()) {
             Text("Analisar de novo")
         }
-        Text(
-            "O backup só envia arquivos — não apaga nada. Toda exclusão " +
-                "passa pela sua revisão e confirmação.",
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -917,7 +910,7 @@ private fun JunkGroupCard(
 // ── Progresso e conclusão ─────────────────────────────────────────────
 
 @Composable
-private fun WorkingView(progress: BackupProgress) {
+private fun WorkingView(progress: WorkProgress) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(48.dp))
         Text(progress.phase, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
@@ -947,61 +940,6 @@ private fun WorkingView(progress: BackupProgress) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun DoneView(
-    summary: BackupSummary,
-    onDeleteBackedUp: () -> Unit,
-    onFinish: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("☁️", fontSize = 56.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        Text(
-            "Backup concluído!",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
-        SummaryLine("Fotos e vídeos no Google Fotos", "${summary.photosSent} enviados" +
-            if (summary.photosFailed > 0) " · ${summary.photosFailed} falharam" else "")
-        SummaryLine("Documentos organizados no Drive (por tipo e ano)", "${summary.docsSent} enviados" +
-            if (summary.docsFailed > 0) " · ${summary.docsFailed} falharam" else "")
-
-        Text(
-            "Nada foi apagado do seu celular até agora.",
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        if (summary.deletable.isNotEmpty()) {
-            Text(
-                "Tudo o que foi enviado já está seguro na nuvem. Se quiser, você pode " +
-                    "liberar ${formatBytes(summary.deletableBytes)} apagando esses arquivos " +
-                    "do aparelho — o sistema vai mostrar a lista e pedir sua confirmação.",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onDeleteBackedUp, modifier = Modifier.fillMaxWidth()) {
-                Text("🧹 Revisar e liberar ${formatBytes(summary.deletableBytes)}")
-            }
-        }
-        OutlinedButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) {
-            Text("Concluir sem apagar nada")
-        }
-    }
-}
-
-@Composable
-private fun SummaryLine(title: String, value: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 

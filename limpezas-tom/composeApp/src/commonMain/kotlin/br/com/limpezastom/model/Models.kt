@@ -210,20 +210,12 @@ data class TrustProfile(
 
 // ── Progresso e resumo ─────────────────────────────────────────────────────────
 
-data class BackupProgress(
+/** Progresso genérico de operações longas (limpeza, varredura). */
+data class WorkProgress(
     val phase: String,
     val done: Int,
     val total: Int,
     val currentFile: String = "",
-)
-
-data class BackupSummary(
-    val photosSent: Int = 0,
-    val photosFailed: Int = 0,
-    val docsSent: Int = 0,
-    val docsFailed: Int = 0,
-    val deletable: List<FileRef> = emptyList(),
-    val deletableBytes: Long = 0,
 )
 
 // ── Estado de UI ───────────────────────────────────────────────────────────────
@@ -246,6 +238,5 @@ sealed interface UiState {
     /** Revisão de atalhos duplicados. */
     data class ShortcutsReview(val groups: List<DuplicateShortcutGroup>) : UiState
 
-    data class Working(val progress: BackupProgress) : UiState
-    data class Done(val summary: BackupSummary) : UiState
+    data class Working(val progress: WorkProgress) : UiState
 }
