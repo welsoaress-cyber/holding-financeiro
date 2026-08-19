@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passeio Sem Puxar — Método Passo a Passo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Google Ads / GTM — substitua pela sua tag -->
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=AW-XXXXXXXXX"></script> -->
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --verde:    #2e8b3e;
+      --verde-esc:#1d6129;
+      --verde-cl: #e8f5eb;
+      --amarelo:  #f5c518;
+      --preto:    #111;
+      --cinza:    #555;
+      --bg:       #fff;
+      --raio:     10px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--preto);
+      line-height: 1.6;
+    }
+
+    /* ── TOPO ── */
+    .topo {
+      background: var(--preto);
+      color: #fff;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(160deg, #0a1f0d 0%, #1a3d1f 100%);
+      color: #fff;
+      padding: 48px 20px 40px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--amarelo);
+      color: #111;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(1.6rem, 5vw, 2.5rem);
+      font-weight: 900;
+      line-height: 1.2;
+      max-width: 700px;
+      margin: 0 auto 16px;
+    }
+    .hero h1 span { color: var(--amarelo); }
+    .hero p.sub {
+      font-size: clamp(1rem, 3vw, 1.15rem);
+      opacity: 0.85;
+      max-width: 580px;
+      margin: 0 auto 32px;
+    }
+    .btn-hero {
+      display: inline-block;
+      background: var(--verde);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 18px 36px;
+      border-radius: var(--raio);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-hero:hover { background: var(--verde-esc); transform: translateY(-2px); }
+    .garantia-mini {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+
+    /* ── SEÇÕES ── */
+    section { padding: 56px 20px; }
+    .container { max-width: 680px; margin: 0 auto; }
+    h2 {
+      font-size: clamp(1.35rem, 4vw, 1.9rem);
+      font-weight: 800;
+      margin-bottom: 24px;
+      line-height: 1.3;
+    }
+    h2 span { color: var(--verde); }
+
+    /* ── DOR ── */
+    .dor { background: #f9f9f9; }
+    .dor-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .dor-lista li {
+      background: #fff;
+      border-left: 4px solid #cc2222;
+      padding: 14px 16px;
+      border-radius: 0 var(--raio) var(--raio) 0;
+      font-size: 1rem;
+    }
+    .dor-lista li::before { content: "😤 "; }
+
+    /* ── MECANISMO ── */
+    .mec { background: var(--verde-cl); }
+    .mec-box {
+      background: #fff;
+      border: 2px solid var(--verde);
+      border-radius: var(--raio);
+      padding: 28px 24px;
+    }
+    .mec-box p { font-size: 1.05rem; }
+
+    /* ── BENEFÍCIOS ── */
+    .ben-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .ben-lista li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 1rem;
+    }
+    .ben-lista li .ic {
+      background: var(--verde);
+      color: #fff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* ── PROVA SOCIAL ── */
+    .prova { background: #f9f9f9; }
+    .depoimentos { display: flex; flex-direction: column; gap: 20px; }
+    .dep-card {
+      background: #fff;
+      border-radius: var(--raio);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .dep-card p { font-size: 0.97rem; font-style: italic; margin-bottom: 10px; }
+    .dep-autor { font-weight: 700; font-size: 0.85rem; color: var(--verde); }
+    .estrelas { color: var(--amarelo); margin-bottom: 6px; }
+
+    /* ── GARANTIA ── */
+    .garantia { background: var(--verde-cl); text-align: center; }
+    .garantia-icon { font-size: 3.5rem; margin-bottom: 12px; }
+    .garantia h2 { margin-bottom: 12px; }
+    .garantia p { max-width: 520px; margin: 0 auto; font-size: 1rem; color: var(--cinza); }
+
+    /* ── FAQ ── */
+    .faq-lista { display: flex; flex-direction: column; gap: 0; border: 1px solid #e0e0e0; border-radius: var(--raio); overflow: hidden; }
+    .faq-item { border-bottom: 1px solid #e0e0e0; }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      width: 100%;
+      background: #fff;
+      border: none;
+      text-align: left;
+      padding: 18px 20px;
+      font-size: 0.97rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: inherit;
+    }
+    .faq-q:hover { background: #f5f5f5; }
+    .faq-q .arrow { transition: transform 0.2s; font-style: normal; }
+    .faq-q.open .arrow { transform: rotate(180deg); }
+    .faq-a {
+      display: none;
+      padding: 0 20px 18px;
+      font-size: 0.95rem;
+      color: var(--cinza);
+      background: #fff;
+    }
+    .faq-a.open { display: block; }
+
+    /* ── CAPTURA ── */
+    .captura { background: linear-gradient(160deg, #0a1f0d 0%, #1a3d1f 100%); color: #fff; text-align: center; }
+    .captura h2 { color: #fff; }
+    .captura h2 span { color: var(--amarelo); }
+    .captura p.sub2 { opacity: 0.8; margin-bottom: 32px; font-size: 1rem; }
+
+    .form-card {
+      background: #fff;
+      border-radius: var(--raio);
+      padding: 32px 28px;
+      max-width: 460px;
+      margin: 0 auto;
+      color: var(--preto);
+    }
+    .form-card h3 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .campo { margin-bottom: 16px; }
+    .campo label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #333;
+    }
+    .campo input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #ddd;
+      border-radius: var(--raio);
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border 0.2s;
+      outline: none;
+    }
+    .campo input:focus { border-color: var(--verde); }
+    .btn-form {
+      width: 100%;
+      background: var(--verde);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      padding: 16px;
+      border: none;
+      border-radius: var(--raio);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 8px;
+      transition: background 0.2s;
+      font-family: inherit;
+    }
+    .btn-form:hover { background: var(--verde-esc); }
+    .form-nota {
+      font-size: 0.78rem;
+      color: #888;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .link-direto {
+      display: block;
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link-direto:hover { color: #fff; }
+
+    /* ── RODAPÉ ── */
+    footer {
+      background: #111;
+      color: #aaa;
+      font-size: 0.78rem;
+      text-align: center;
+      padding: 32px 20px;
+      line-height: 1.8;
+    }
+    footer a { color: #aaa; }
+
+    /* ── BARRA FLUTUANTE MOBILE ── */
+    .barra-flutuante {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--verde);
+      padding: 14px 20px;
+      z-index: 999;
+    }
+    .barra-flutuante a {
+      display: block;
+      color: #fff;
+      font-weight: 800;
+      text-align: center;
+      font-size: 1rem;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    @media (max-width: 600px) {
+      .barra-flutuante { display: block; }
+      body { padding-bottom: 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPO -->
+<div class="topo">
+  🐾 Método usado por tutores em todo o Brasil · Garantia de 7 dias
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <span class="hero-badge">Curso Online · Resultado Imediato</span>
+    <h1>Descubra Como Fazer Seu Cão<br><span>Passear ao Seu Lado Sem Puxar</span><br>— Começando no 1º Exercício</h1>
+    <p class="sub">Método passo a passo em vídeo-aulas curtas. Funciona com qualquer raça, tamanho ou idade — sem punição e sem equipamentos caros.</p>
+    <a href="#captura" class="btn-hero">Quero Transformar Meu Passeio →</a>
+    <p class="garantia-mini">🔒 Garantia incondicional de 7 dias · Acesso imediato</p>
+  </div>
+</header>
+
+<!-- DOR -->
+<section class="dor">
+  <div class="container">
+    <h2>Você se identifica com <span>alguma dessas situações?</span></h2>
+    <ul class="dor-lista">
+      <li>Seu cão te arrasta pela rua e o passeio vira uma batalha todo dia</li>
+      <li>Já tentou puxar de volta, dar comandos, usar petisco — e nada funcionou</li>
+      <li>Fica com vergonha quando passa outro cão e o seu enlouquece na coleira</li>
+      <li>Sente dor no braço/ombro de tanto segurar a guia com força</li>
+      <li>O passeio que deveria ser prazeroso se tornou algo que você evita</li>
+    </ul>
+    <p style="margin-top:24px; font-size:1rem; color:var(--cinza);">
+      Se você marcou qualquer uma dessas, saiba: <strong>o problema não é seu cão</strong>.
+      É que ninguém te ensinou o método certo. E isso tem solução simples.
+    </p>
+  </div>
+</section>
+
+<!-- MECANISMO -->
+<section class="mec">
+  <div class="container">
+    <h2>O que é o <span>Curso Passeio Sem Puxar</span>?</h2>
+    <div class="mec-box">
+      <p>
+        É um curso online em vídeo-aulas curtas e práticas da <strong>Faculdade Canina</strong> que ensina
+        qualquer tutor — sem experiência com adestramento — a fazer seu cão andar ao lado sem puxar,
+        usando exercícios simples aplicados no próprio passeio diário.<br><br>
+        Sem gritar. Sem punir. Sem equipamentos especiais.<br>
+        <strong>Com resultado já no primeiro exercício — em muitos casos o cão para de puxar na hora.</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- BENEFÍCIOS -->
+<section>
+  <div class="container">
+    <h2>O que você vai conquistar</h2>
+    <ul class="ben-lista">
+      <li><span class="ic">✓</span><span>Cão andando ao seu lado sem puxar — de forma consistente</span></li>
+      <li><span class="ic">✓</span><span>Funciona com qualquer raça, tamanho ou idade do animal</span></li>
+      <li><span class="ic">✓</span><span>Exercícios simples que você aplica no próprio passeio diário</span></li>
+      <li><span class="ic">✓</span><span>Vídeo-aulas curtas: assista pelo celular, quando e onde quiser</span></li>
+      <li><span class="ic">✓</span><span>Sem punição, sem coleira de choque, sem equipamentos caros</span></li>
+      <li><span class="ic">✓</span><span>Suporte com profissional de comportamento canino</span></li>
+      <li><span class="ic">✓</span><span>Certificado de conclusão incluso</span></li>
+      <li><span class="ic">✓</span><span>Acesso vitalício — revise quando precisar</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- PROVA SOCIAL -->
+<section class="prova">
+  <div class="container">
+    <h2>O que dizem quem já aplicou</h2>
+    <div class="depoimentos">
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Meu Labrador de 4 anos puxava tanto que eu mal conseguia passear. Depois do curso, já na primeira semana ele estava andando ao meu lado. Não acreditei que seria tão rápido!"</p>
+        <span class="dep-autor">— Mariana S., tutora de Labrador</span>
+      </div>
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Tentei de tudo: petisco, coleira diferente, videozinho do YouTube. Nada funcionava. O curso me ensinou a técnica certa e minha cadela parou de puxar no terceiro exercício."</p>
+        <span class="dep-autor">— Carlos R., tutor de Golden Retriever</span>
+      </div>
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Achei que cachorro velho não aprendia mais. Minha pitbull de 7 anos aprendeu em menos de uma semana. O método realmente funciona, independente da idade."</p>
+        <span class="dep-autor">— Ana Paula M., tutora de Pitbull</span>
+      </div>
+    </div>
+    <p style="margin-top:16px;font-size:0.82rem;color:#999;text-align:center;">
+      * Resultados individuais podem variar conforme dedicação e prática.
+    </p>
+  </div>
+</section>
+
+<!-- GARANTIA -->
+<section class="garantia">
+  <div class="container">
+    <div class="garantia-icon">🛡️</div>
+    <h2>Garantia Incondicional de <span>7 Dias</span></h2>
+    <p>Acesse o curso, aplique os exercícios e, se por qualquer motivo não ficar satisfeito, basta solicitar o reembolso em até 7 dias. Você recebe 100% do valor de volta — sem perguntas, sem burocracia. O risco é totalmente nosso.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="container">
+    <h2>Dúvidas frequentes</h2>
+    <div class="faq-lista">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Funciona com cão velho? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Sim. O método funciona com qualquer idade. Cães mais velhos podem levar um pouquinho mais de prática, mas o resultado aparece igualmente.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Quanto tempo vou gastar por dia? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Poucos minutos de prática, integrados ao próprio passeio diário que você já faz. Não é necessário tempo extra separado.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          E se não funcionar para o meu cão? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Aí você aciona a garantia de 7 dias e recebe 100% do valor de volta. Sem perguntas. Mas pelo histórico do curso, isso raramente acontece.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Como recebo o acesso ao curso? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Na hora, por e-mail, após a confirmação do pagamento pela Hotmart (plataforma 100% segura). Você acessa pelo celular, tablet ou computador.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Precisa de equipamento especial? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Não. Você usa a coleira e guia que seu cão já tem. Nenhum equipamento adicional é necessário.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAPTURA -->
+<section class="captura" id="captura">
+  <div class="container">
+    <h2>Pronto para <span>transformar seus passeios?</span></h2>
+    <p class="sub2">Deixe seu nome e WhatsApp abaixo para receber o acesso e informações exclusivas antes de comprar.</p>
+
+    <!-- Netlify Forms -->
+    <form
+      class="form-card"
+      name="leads-passeio"
+      method="POST"
+      data-netlify="true"
+      action="/obrigado.html"
+      netlify-honeypot="bot-field"
+    >
+      <input type="hidden" name="form-name" value="leads-passeio" />
+      <input type="hidden" name="produto" value="Passeio Sem Puxar" />
+      <p hidden><input name="bot-field" /></p>
+
+      <h3>📩 Receba as informações agora</h3>
+
+      <div class="campo">
+        <label for="nome">Seu nome</label>
+        <input type="text" id="nome" name="nome" placeholder="Como posso te chamar?" required />
+      </div>
+      <div class="campo">
+        <label for="whatsapp">WhatsApp (com DDD)</label>
+        <input type="tel" id="whatsapp" name="whatsapp" placeholder="(11) 99999-9999" required />
+      </div>
+
+      <button type="submit" class="btn-form">QUERO TRANSFORMAR MEU PASSEIO →</button>
+      <p class="form-nota">🔒 Seus dados estão seguros. Sem spam.</p>
+    </form>
+
+    <a
+      class="link-direto"
+      href="https://go.hotmart.com/E107232370I?ap=9996"
+      target="_blank"
+      rel="noopener"
+    >
+      Já quero comprar direto →
+    </a>
+  </div>
+</section>
+
+<!-- RODAPÉ -->
+<footer>
+  <p>
+    <strong>Aviso:</strong> Este site é de um divulgador independente e pode receber comissão pelas indicações realizadas.<br>
+    Os resultados apresentados não são garantia de resultados futuros — variam conforme dedicação e prática individual.<br>
+    Este produto é comercializado pela plataforma Hotmart. Compra 100% segura.
+  </p>
+  <br>
+  <p>
+    <a href="/privacidade.html">Política de Privacidade</a> · <a href="/termos.html">Termos de Uso</a><br>
+    Para dúvidas ou descadastro: contato@passeiosempuxar.com.br
+  </p>
+</footer>
+
+<!-- BARRA FLUTUANTE MOBILE -->
+<div class="barra-flutuante">
+  <a href="#captura">QUERO TRANSFORMAR MEU PASSEIO →</a>
+</div>
+
+<script>
+  // FAQ accordion
+  function toggleFaq(btn) {
+    const answer = btn.nextElementSibling;
+    const isOpen = answer.classList.contains('open');
+    document.querySelectorAll('.faq-a.open').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.faq-q.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) {
+      answer.classList.add('open');
+      btn.classList.add('open');
+    }
+  }
+
+  // Smooth scroll para âncoras
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Máscara de WhatsApp
+  document.getElementById('whatsapp').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+    if (v.length >= 7) v = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7);
+    else if (v.length >= 3) v = '(' + v.substring(0,2) + ') ' + v.substring(2);
+    else if (v.length > 0) v = '(' + v;
+    e.target.value = v;
+  });
+
+  // Após submit: redireciona para a página do produto
+  // (Netlify processa o form e redireciona para /obrigado.html — configure lá o redirect para o link de afiliado)
+</script>
+
+</body>
+</html>
