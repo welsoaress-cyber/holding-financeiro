@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.10 — 2026-08-19
+
+### Corrigido
+- Filtro "Pendentes" do Financeiro não retornava nada: o rótulo
+  Pendente é calculado (não pago, não cancelado, não vencido), mas o
+  filtro comparava com o texto gravado no banco. Agora o filtro usa o
+  mesmo critério do rótulo.
+
 ## v2.4.9 — 2026-08-19
 
 ### Removido
