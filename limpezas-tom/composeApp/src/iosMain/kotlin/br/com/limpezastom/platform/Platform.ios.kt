@@ -38,7 +38,7 @@ import platform.darwin.dispatch_semaphore_wait
 import platform.posix.memcpy
 
 /** iOS não precisa de contexto — classe vazia só para satisfazer o contrato. */
-actual class PlatformContext
+actual open class PlatformContext
 
 private const val ASSET_PREFIX = "phasset:"
 

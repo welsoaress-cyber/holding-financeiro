@@ -6,7 +6,7 @@ import br.com.limpezastom.model.RawScan
 import okio.Source
 
 /** Contexto de plataforma: Context no Android, vazio no iOS. */
-expect class PlatformContext
+expect open class PlatformContext
 
 /**
  * Varredura e limpeza específicas de cada sistema.
