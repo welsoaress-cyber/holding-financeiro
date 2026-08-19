@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.11 — 2026-08-19
+
+### Corrigido
+- Correções não chegavam ao navegador sem atualização forçada: assets
+  com hash eram editados mantendo o nome e o cache servia a versão
+  antiga. Assets alterados renomeados e cache de /painel/assets
+  limitado a 60 segundos.
+
 ## v2.4.10 — 2026-08-19
 
 ### Corrigido
