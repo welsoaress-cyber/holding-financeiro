@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.2 — 2026-08-19
+
+### Corrigido
+- Busca "1 letra por vez" corrigida em TODAS as telas (Financeiro,
+  Clientes, Contas e demais): a lista atualiza 350ms após parar de
+  digitar e o cursor permanece na caixa de busca. Cobranças já havia
+  sido corrigida na v2.4.12.
+
 ## v2.5.1 — 2026-08-19
 
 ### Adicionado
