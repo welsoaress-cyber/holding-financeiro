@@ -410,6 +410,8 @@
       color: var(--text);
     }
     .win-body > div { height: 100%; overflow-y: auto; overflow-x: hidden; }
+    /* Conteúdo das janelas centralizado — sem sobrar vazio só à direita */
+    .win-body > div > * { max-width: 1100px; margin-left: auto; margin-right: auto; }
     /* O modal abre fora de .win-body — precisa dos mesmos tokens claros,
        senão os campos ficam texto branco em fundo branco (invisíveis). */
     #modal-overlay {
@@ -563,7 +565,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.3</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.4</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>

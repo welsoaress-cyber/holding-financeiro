@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.4 — 2026-08-19
+
+### Alterado
+- Conteúdo das janelas centralizado (máx. 1100px) — telas como
+  Relatórios não ficam mais coladas à esquerda com vazio à direita.
+
 ## v2.4.3 — 2026-08-19
 
 ### Adicionado
