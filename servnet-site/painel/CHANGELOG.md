@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.3 — 2026-08-19
+
+### Alterado
+- Calibragem do visual clean: as cores dos módulos e chips voltam
+  (hexágonos coloridos, ícones coloridos), apenas ~20% mais suaves que
+  o original. Emojis fora dos textos e glifos de ação permanecem.
+
 ## v2.5.2 — 2026-08-19
 
 ### Corrigido

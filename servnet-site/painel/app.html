@@ -184,14 +184,11 @@
     .home-greeting .accent { color: var(--accent); }
 
 
-    /* ═══ v2.5.0 — visual clean/minimalista ═══════════════════ */
-    .win-body { filter: saturate(.55); }
-    .win-titlebar { filter: saturate(.35); }
-    .hex-icon, .alt-icon { filter: grayscale(1) opacity(.8); }
-    #hex-grid .hex-outer { background: rgba(148,163,184,0.16) !important; }
-    [data-theme="light"] #hex-grid .hex-outer { background: rgba(15,23,42,0.10) !important; }
-    .alt-card-bar { background: var(--border) !important; }
-    .alt-card { border-color: var(--border) !important; }
+    /* ═══ v2.5.3 — clean com vida: cores suavizadas ~20% ══════ */
+    .win-body { filter: saturate(.8); }
+    .win-titlebar { filter: saturate(.75); }
+    .hex-icon, .alt-icon { filter: saturate(.85); }
+    #hex-grid, #alt-grid { filter: saturate(.85); }
     /* ═══ HEX GRID ══════════════════════════════════════════ */
     #hex-grid {
       position: relative;
@@ -574,7 +571,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.5.2</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.5.3</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
