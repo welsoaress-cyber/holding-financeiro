@@ -1,0 +1,10 @@
+# Bloqueia acesso direto ao CSV de leads
+<Files "leads.csv">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Força HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]

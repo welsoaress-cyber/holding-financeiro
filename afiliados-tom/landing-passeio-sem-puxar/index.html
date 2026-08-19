@@ -459,18 +459,14 @@
     <h2>Pronto para <span>transformar seus passeios?</span></h2>
     <p class="sub2">Deixe seu nome e WhatsApp abaixo para receber o acesso e informações exclusivas antes de comprar.</p>
 
-    <!-- Netlify Forms -->
     <form
       class="form-card"
-      name="leads-passeio"
       method="POST"
-      data-netlify="true"
-      action="/obrigado.html"
-      netlify-honeypot="bot-field"
+      action="salvar-lead.php"
     >
-      <input type="hidden" name="form-name" value="leads-passeio" />
       <input type="hidden" name="produto" value="Passeio Sem Puxar" />
-      <p hidden><input name="bot-field" /></p>
+      <!-- honeypot anti-bot -->
+      <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off" />
 
       <h3>📩 Receba as informações agora</h3>
 
