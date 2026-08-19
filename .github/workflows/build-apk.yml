@@ -96,14 +96,23 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Distribuir APK no Firebase App Distribution
-        uses: wzieba/Firebase-Distribution-Github-Action@v1.4.0
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          testers: welsoaress@gmail.com
-          file: limpezas-tom/${{ steps.apk_path.outputs.path }}
-          releaseNotes: "Build #${{ github.run_number }} — branch ${{ github.ref_name }}"
+          node-version: '20'
+
+      - name: Distribuir APK no Firebase App Distribution
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf '%s' "$FIREBASE_SA" > /tmp/firebase-sa.json
+          npm install -g firebase-tools@latest --silent
+          firebase appdistribution:distribute "limpezas-tom/${{ steps.apk_path.outputs.path }}" \
+            --app "${{ secrets.FIREBASE_APP_ID }}" \
+            --testers "welsoaress@gmail.com" \
+            --release-notes "Build #${{ github.run_number }} — branch ${{ github.ref_name }}"
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Resumo do build
         run: |
