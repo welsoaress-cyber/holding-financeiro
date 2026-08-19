@@ -257,7 +257,8 @@ private fun ResultsView(
         if (report.shortcuts.isNotEmpty()) {
             val totalExtras = report.shortcuts.sumOf { it.extras }
             ElevatedCard(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onReviewShortcuts),
+                onClick = onReviewShortcuts,
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(14.dp),
@@ -391,7 +392,7 @@ private fun LayerCard(
     bytes: Long,
     onClick: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    ElevatedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -402,6 +403,7 @@ private fun LayerCard(
                 Column {
                     Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Toque para revisar →", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
