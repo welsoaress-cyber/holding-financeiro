@@ -995,7 +995,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         </div>
         <div class="f-group">
           <label class="f-label" for="f-tel">Telefone</label>
-          <input class="f-input" type="tel" id="f-tel" name="tel" autocomplete="tel" placeholder="(XX) 9XXXX-XXXX">
+          <input class="f-input" type="tel" id="f-tel" name="tel" autocomplete="tel" placeholder="(XX) 9XXXX-XXXX" required>
         </div>
       </div>
       <div class="f-group">
@@ -1157,6 +1157,12 @@ async function handleSubmit(e) {
   const tel  = document.getElementById('f-tel').value.replace(/\D/g,'');
   const end  = document.getElementById('f-end').value.trim();
   const plano= document.getElementById('f-plano').value;
+  if (tel.length < 10) {
+    document.getElementById('f-tel').focus();
+    btn.textContent = 'Informe um telefone válido com DDD';
+    setTimeout(() => { btn.textContent = 'Enviar e falar no WhatsApp'; }, 2500);
+    return;
+  }
   btn.disabled = true;
   btn.textContent = 'Enviando…';
   try {
