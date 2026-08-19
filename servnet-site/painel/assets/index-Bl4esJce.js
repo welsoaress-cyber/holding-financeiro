@@ -71,7 +71,7 @@ import{j as g,s as u,t as c,f as D,b as z}from"./page-dashboard-Dbqm2OjX.js";imp
             </tr>
           </thead>
           <tbody>
-            ${e.length?e.map(t=>_(t)).join(""):`<tr><td colspan="8" style="padding:48px;text-align:center;color:#9ca3af;">
+            ${e.length?e.slice(0,300).map(t=>_(t)).join("")+(e.length>300?'<tr><td colspan="7" style="padding:14px;text-align:center;color:#64748b;font-size:12px;">Mostrando 300 de '+e.length+' — use a busca ou os filtros para refinar</td></tr>':""):`<tr><td colspan="8" style="padding:48px;text-align:center;color:#9ca3af;">
                   Nenhuma fatura pendente encontrada.
                 </td></tr>`}
           </tbody>

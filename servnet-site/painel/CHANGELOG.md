@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.8 — 2026-08-19
+
+### Corrigido
+- Lentidão (lag) na tela de Cobranças: a tabela renderizava as 5.000+
+  faturas de uma vez a cada clique. Agora exibe as 300 mais urgentes
+  (mais atrasadas primeiro) com aviso do total — busca, filtros, KPIs e
+  "Selecionar todos" continuam considerando a lista completa.
+
 ## v2.4.7 — 2026-08-19
 
 ### Alterado
