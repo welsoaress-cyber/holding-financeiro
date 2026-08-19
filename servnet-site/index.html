@@ -670,6 +670,13 @@ button, input, select { font-family: inherit; font-size: inherit; }
   .section { padding: 3.25rem 1.25rem; }
   .section-head { margin-bottom: 2rem; }
 }
+
+/* ===== Fundo animado — rede de particulas (tema claro/escuro) ===== */
+#bg-net { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main, section, nav, footer, header { position: relative; z-index: 1; }
+.plans-section, .contact-section { background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.diffs-section, .about-section, .coverage-section, .promos-section { background: color-mix(in srgb, var(--surface) 84%, transparent); }
+@media (prefers-reduced-motion: reduce){ #bg-net { display:none; } }
 </style>
 
 <!-- BANNER INDICAÇÃO (oculto por padrão, aparece via JS quando ?ref= detectado) -->
@@ -1318,4 +1325,50 @@ async function submitLead(e) {
   setTimeout(closeModal, 5000);
 }
 
+</script>
+
+<canvas id="bg-net" aria-hidden="true"></canvas>
+<script>
+(function(){
+  const c = document.getElementById('bg-net');
+  if (!c || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ctx = c.getContext('2d');
+  let W, H, pts = [];
+  const N = 70, DIST = 150, SPD = 0.35;
+  const isLight = () => {
+    const t = document.documentElement.dataset.theme;
+    if (t) return t === 'light';
+    return !matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+  function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
+  function mk(){ return { x:Math.random()*W, y:Math.random()*H, vx:(Math.random()-.5)*SPD, vy:(Math.random()-.5)*SPD, r:Math.random()*1.6+0.5 }; }
+  function frame(){
+    const light = isLight();
+    const CLR = light ? [13,116,130] : [0,196,216];
+    ctx.fillStyle = light ? '#F1FAFB' : '#030F18';
+    ctx.fillRect(0,0,W,H);
+    const g = ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,Math.max(W,H)*0.7);
+    g.addColorStop(0, light ? 'rgba(0,196,216,0.10)' : 'rgba(0,80,96,0.20)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    for (const p of pts){
+      p.x += p.vx; p.y += p.vy;
+      if (p.x<0||p.x>W) p.vx*=-1;
+      if (p.y<0||p.y>H) p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(${CLR},${light?0.4:0.65})`; ctx.fill();
+    }
+    for (let i=0;i<pts.length;i++) for (let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.hypot(dx,dy);
+      if (d<DIST){
+        ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y);
+        ctx.strokeStyle = `rgba(${CLR},${(1-d/DIST)*(light?0.20:0.32)})`;
+        ctx.lineWidth = 0.6; ctx.stroke();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  resize(); pts = Array.from({length:N}, mk); frame();
+  addEventListener('resize', () => { resize(); pts.forEach(p=>{p.x=Math.min(p.x,W);p.y=Math.min(p.y,H);}); });
+})();
 </script>
