@@ -291,6 +291,45 @@
     }
     footer a { color: #aaa; }
 
+    /* ── OFERTA / PREÇO ── */
+    .oferta { background: #fff; text-align: center; }
+    .preco-card {
+      background: linear-gradient(135deg, #0a1f0d 0%, #1a3d1f 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 36px 28px;
+      max-width: 400px;
+      margin: 0 auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      position: relative;
+      overflow: hidden;
+    }
+    .preco-card::before {
+      content: "🏆 MELHOR CUSTO-BENEFÍCIO";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: var(--amarelo);
+      color: #111;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 6px;
+      text-align: center;
+    }
+    .preco-card .de { margin-top: 20px; font-size: 0.95rem; opacity: 0.7; }
+    .preco-card .de s { color: #ff8080; }
+    .preco-card .por { font-size: 0.9rem; opacity: 0.8; margin-top: 4px; }
+    .preco-card .valor {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--amarelo);
+      line-height: 1;
+      margin-top: 4px;
+    }
+    .preco-card .valor strong { font-size: 3.5rem; }
+    .preco-card .centavos { font-size: 1.5rem; vertical-align: super; }
+    .preco-card .parcelas { font-size: 0.85rem; opacity: 0.75; margin-top: 6px; }
+
     /* ── BARRA FLUTUANTE MOBILE ── */
     .barra-flutuante {
       display: none;
@@ -319,7 +358,7 @@
 
 <!-- TOPO -->
 <div class="topo">
-  🐾 Método usado por tutores em todo o Brasil · Garantia de 7 dias
+  🐾 Método usado por tutores em todo o Brasil · De R$197 por R$47 · Garantia de 7 dias
 </div>
 
 <!-- HERO -->
@@ -459,6 +498,26 @@
   </div>
 </section>
 
+<!-- PREÇO / OFERTA -->
+<section class="oferta" id="oferta">
+  <div class="container" style="text-align:center;">
+    <span class="hero-badge" style="background:#cc2222;color:#fff;">⏰ Oferta por tempo limitado</span>
+    <h2 style="margin-top:16px;">Investimento <span>único e acessível</span></h2>
+    <p style="color:var(--cinza);margin-bottom:28px;">Sem mensalidade. Você paga uma vez e tem acesso vitalício ao curso.</p>
+
+    <div class="preco-card">
+      <p class="de">De <s>R$ 197</s></p>
+      <p class="por">Por apenas</p>
+      <p class="valor">R$ <strong>47</strong><span class="centavos">,00</span></p>
+      <p class="parcelas">ou 12x de R$ 4,58 no cartão</p>
+      <a href="https://go.hotmart.com/E107232370I?ap=9996" class="btn-hero" target="_blank" rel="noopener" style="margin-top:24px;display:inline-block;">
+        QUERO O CURSO AGORA →
+      </a>
+      <p class="garantia-mini" style="margin-top:12px;">🔒 Compra 100% segura pela Hotmart · Garantia de 7 dias</p>
+    </div>
+  </div>
+</section>
+
 <!-- CAPTURA -->
 <section class="captura" id="captura">
   <div class="container">
@@ -554,8 +613,8 @@
     e.target.value = v;
   });
 
-  // Após submit: redireciona para a página do produto
-  // (Netlify processa o form e redireciona para /obrigado.html — configure lá o redirect para o link de afiliado)
+  // Após submit: Web3Forms processa e redireciona para /obrigado.html
+  // que por sua vez redireciona automaticamente para o link de afiliado Hotmart
 </script>
 
 </body>
