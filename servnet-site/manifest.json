@@ -2,7 +2,7 @@
   "name": "Holding — Financeiro",
   "short_name": "Holding",
   "description": "Sistema de gestão financeira e operacional da holding",
-  "start_url": "./",
+  "start_url": "sistema-financeiro-holding.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
