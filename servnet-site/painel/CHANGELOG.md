@@ -2,6 +2,18 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.1 — 2026-08-19
+
+### Adicionado
+- Campo Negócio no editor de lançamento do Financeiro (lista os
+  negócios cadastrados e os já usados nos lançamentos).
+
+### Corrigido
+- BUG GRAVE: salvar um lançamento pelo Financeiro descartava os campos
+  que não estavam no formulário (negócio, data de pagamento etc.).
+  Agora a edição preserva todos os dados originais e altera apenas o
+  que foi mexido.
+
 ## v2.5.0 — 2026-08-19
 
 ### Alterado
