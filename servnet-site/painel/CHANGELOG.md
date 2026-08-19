@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.9 — 2026-08-19
+
+### Removido
+- Frase "Selecione um módulo para começar." da home — fica só a
+  saudação com o nome.
+
 ## v2.4.8 — 2026-08-19
 
 ### Corrigido
