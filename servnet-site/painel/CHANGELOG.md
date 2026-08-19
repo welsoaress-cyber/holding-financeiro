@@ -2,6 +2,16 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.0 — 2026-08-19
+
+### Alterado
+- Visual clean/minimalista em todas as telas: cores dessaturadas nas
+  janelas e barras de título, ícones dos módulos em tom neutro
+  (grayscale), hexágonos com fundo uniforme discreto e cards sem
+  bordas coloridas.
+- Emojis removidos dos textos, avisos e botões — ações usam glifos
+  neutros (✆ cobrar, ✓ pago, ✎ editar, ⊘ bloquear; toasts ✓ ✕ i !).
+
 ## v2.4.13 — 2026-08-19
 
 ### Adicionado

@@ -183,6 +183,15 @@
     .home-greeting p { font-size: 12px; color: var(--text-3); display: inline; margin-left: 8px; }
     .home-greeting .accent { color: var(--accent); }
 
+
+    /* ═══ v2.5.0 — visual clean/minimalista ═══════════════════ */
+    .win-body { filter: saturate(.55); }
+    .win-titlebar { filter: saturate(.35); }
+    .hex-icon, .alt-icon { filter: grayscale(1) opacity(.8); }
+    #hex-grid .hex-outer { background: rgba(148,163,184,0.16) !important; }
+    [data-theme="light"] #hex-grid .hex-outer { background: rgba(15,23,42,0.10) !important; }
+    .alt-card-bar { background: var(--border) !important; }
+    .alt-card { border-color: var(--border) !important; }
     /* ═══ HEX GRID ══════════════════════════════════════════ */
     #hex-grid {
       position: relative;
@@ -565,7 +574,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.13</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.5.0</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
@@ -603,7 +612,7 @@
 <!-- Tela principal: hex + alt grid -->
 <div id="main-screen">
   <div class="home-greeting">
-    <h1>Bom dia, <span class="accent" id="greeting-name">Gestor</span> 👋</h1>
+    <h1>Bom dia, <span class="accent" id="greeting-name">Gestor</span></h1>
   </div>
   <!-- Hex navigation grid -->
   <div id="hex-grid"></div>
@@ -1102,7 +1111,7 @@ document.addEventListener('click', () => {
   const h = new Date().getHours();
   const greeting = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
   const el = document.querySelector('.home-greeting h1');
-  if (el) el.innerHTML = `${greeting}, <span class="accent" id="greeting-name">Gestor</span> 👋`;
+  if (el) el.innerHTML = `${greeting}, <span class="accent" id="greeting-name">Gestor</span>`;
 })();
 
 /* ══════════════════════════════════════════════════════════
