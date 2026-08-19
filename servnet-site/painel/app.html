@@ -537,6 +537,13 @@
 
   <div class="tb-right">
     <!-- Theme toggle -->
+    <div style="position:relative;">
+      <button id="btn-hexsize" title="Tamanho da colmeia" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-2);font-size:15px;cursor:pointer;padding:6px 9px;line-height:1;">📐</button>
+      <div id="hexsize-pop" hidden style="position:absolute;top:42px;right:0;background:var(--surface,#0d1526);border:1px solid var(--border,#233);border-radius:10px;padding:12px 14px;z-index:500;min-width:210px;box-shadow:0 8px 30px rgba(0,0,0,.4);">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">Tamanho da colmeia: <b id="hexsize-val">100%</b></div>
+        <input id="hexsize-range" type="range" min="70" max="150" step="5" value="100" style="width:100%;accent-color:#3fd68e;">
+      </div>
+    </div>
     <button id="btn-theme" title="Alternar tema">🌙</button>
 
     <div class="tb-user" id="tb-user-menu">
@@ -928,6 +935,32 @@ window.applyLayout = applyLayout;
 window.renderGrid = function() {
   applyLayout(localStorage.getItem('gt_layout') || 'hex');
 };
+
+// ── Tamanho da colmeia (ajustável pelo usuário) ─────────────
+function aplicarHexScale() {
+  const s = (parseInt(localStorage.getItem('gt_hex_scale') || '100', 10)) / 100;
+  ['hex-grid','alt-grid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.transform = s === 1 ? '' : `scale(${s})`; el.style.transformOrigin = 'center top'; }
+  });
+}
+(function initHexSize(){
+  const btn = document.getElementById('btn-hexsize');
+  const pop = document.getElementById('hexsize-pop');
+  const rng = document.getElementById('hexsize-range');
+  const val = document.getElementById('hexsize-val');
+  if (!btn || !pop || !rng) return;
+  const salvo = localStorage.getItem('gt_hex_scale') || '100';
+  rng.value = salvo; val.textContent = salvo + '%';
+  aplicarHexScale();
+  btn.addEventListener('click', e => { e.stopPropagation(); pop.hidden = !pop.hidden; });
+  document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) pop.hidden = true; });
+  rng.addEventListener('input', () => {
+    localStorage.setItem('gt_hex_scale', rng.value);
+    val.textContent = rng.value + '%';
+    aplicarHexScale();
+  });
+})();
 
 // Re-renderiza hex em resize
 window.addEventListener('resize', () => {
