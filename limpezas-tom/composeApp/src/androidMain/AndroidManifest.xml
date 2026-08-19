@@ -7,6 +7,8 @@
     <!-- Leitura de fotos e vídeos (Android 13+) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Acesso parcial à galeria (Android 14+): permite varrer as fotos que o usuário selecionar -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- Leitura de arquivos em versões antigas (até Android 12) -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"

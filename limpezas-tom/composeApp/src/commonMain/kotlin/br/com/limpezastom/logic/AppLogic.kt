@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -42,9 +43,25 @@ class AppLogic(private val context: PlatformContext) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
+    /**
+     * Indica se a plataforma tem acesso para limpeza profunda fora das pastas
+     * de mídia. Exposto como StateFlow para que a UI reaja quando o usuário
+     * concede a permissão nas configurações e volta para o app.
+     */
+    private val _deepCleanAccess = MutableStateFlow(scanner.hasDeepCleanAccess())
+    val deepCleanAccess: StateFlow<Boolean> = _deepCleanAccess.asStateFlow()
+
     private var lastReport: ScanReport? = null
 
-    fun hasDeepCleanAccess(): Boolean = scanner.hasDeepCleanAccess()
+    fun hasDeepCleanAccess(): Boolean = _deepCleanAccess.value
+
+    /**
+     * Chamado pelo Android em onResume() — reavalia se o acesso total a
+     * arquivos foi concedido enquanto o app estava em segundo plano.
+     */
+    fun refreshDeepCleanStatus() {
+        _deepCleanAccess.value = scanner.hasDeepCleanAccess()
+    }
 
     fun clearMessage() {
         _message.value = null

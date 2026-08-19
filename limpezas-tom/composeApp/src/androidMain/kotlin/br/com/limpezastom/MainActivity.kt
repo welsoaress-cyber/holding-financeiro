@@ -67,16 +67,34 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scanWithPermissions() {
-        val needed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        // Android 14+: solicita acesso parcial à galeria além do acesso total,
+        // para que o app funcione mesmo quando o usuário concede acesso seletivo.
+        val needed = when {
+            Build.VERSION.SDK_INT >= 34 -> arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            )
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+            else ->
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         val missing = needed.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isEmpty()) logic.scan()
         else permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    /**
+     * Ao retornar da tela de configurações (após o usuário conceder o acesso
+     * total a arquivos), atualiza a tela de resultados para refletir o novo
+     * estado sem forçar uma re-análise completa.
+     */
+    override fun onResume() {
+        super.onResume()
+        logic.refreshDeepCleanStatus()
     }
 
     private fun startAuthorization() {

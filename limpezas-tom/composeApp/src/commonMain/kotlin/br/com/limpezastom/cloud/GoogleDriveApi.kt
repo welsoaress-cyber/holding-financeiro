@@ -48,9 +48,16 @@ class GoogleDriveApi(
         val parent = ensurePath(accessToken, ROOT_FOLDER, typeLabel(doc.name), yearOf(doc))
             ?: return@runCatching false
 
-        // 1) Cria o arquivo (só metadados) na pasta certa
+        // Tipo MIME seguro: garante que o Drive identifique o arquivo corretamente
+        // (PDFs abrem no visualizador do Drive, planilhas no Sheets, etc.)
+        val docMime = doc.mime.ifBlank { "application/octet-stream" }
+        val docContentType = runCatching { ContentType.parse(docMime) }
+            .getOrDefault(ContentType.Application.OctetStream)
+
+        // 1) Cria o arquivo (só metadados) na pasta certa, já com o tipo correto
         val metadata = buildJsonObject {
             put("name", doc.name)
+            put("mimeType", docMime)
             put("parents", buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive(parent)) })
         }.toString()
         val created = http.post("https://www.googleapis.com/drive/v3/files") {
@@ -64,13 +71,13 @@ class GoogleDriveApi(
             ?.takeIf { it.isNotBlank() }
             ?: return@runCatching false
 
-        // 2) Envia o conteúdo em streaming
+        // 2) Envia o conteúdo em streaming com o Content-Type correto
         val uploaded = http.patch(
             "https://www.googleapis.com/upload/drive/v3/files/$fileId"
         ) {
             parameter("uploadType", "media")
             header("Authorization", "Bearer $accessToken")
-            setBody(StreamContent(context, doc))
+            setBody(StreamContent(context, doc, docContentType))
         }
         uploaded.status.isSuccess()
     }.getOrDefault(false)

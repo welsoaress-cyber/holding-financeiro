@@ -62,6 +62,7 @@ fun AppRoot(
     MaterialTheme {
         val state by logic.state.collectAsState()
         val message by logic.message.collectAsState()
+        val hasDeepClean by logic.deepCleanAccess.collectAsState()
         val snackbar = remember { SnackbarHostState() }
 
         LaunchedEffect(message) {
@@ -105,7 +106,7 @@ fun AppRoot(
                         is UiState.Scanning -> ScanningView()
                         is UiState.Results -> ResultsView(
                             report = s.report,
-                            hasDeepClean = logic.hasDeepCleanAccess(),
+                            hasDeepClean = hasDeepClean,
                             onBackup = onBackupRequested,
                             onReviewJunk = logic::requestJunkReview,
                             onRescan = onScanRequested,
