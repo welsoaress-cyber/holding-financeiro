@@ -68,7 +68,8 @@ p { color: var(--text-2); line-height: 1.7; font-size: 0.98rem; margin-bottom: 1
   const url = 'https://wa.me/5511954490001' + (m ? '?text=' + encodeURIComponent(m) : '');
   const btn = document.getElementById('btn-wa');
   btn.href = url;
-  setTimeout(() => { window.open(url, '_blank'); }, 1200);
+  // navegação na mesma aba não é bloqueada como popup
+  setTimeout(() => { window.location.href = url; }, 1500);
 })();
 </script>
 </html>
