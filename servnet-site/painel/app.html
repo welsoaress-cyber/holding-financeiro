@@ -562,7 +562,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.1</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.2</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
@@ -1122,6 +1122,46 @@ function buildWin({ view, label, icon, color, offset }) {
   return el;
 }
 
+// ── Snap de janelas (estilo Windows): borda esquerda/direita = metade,
+//    topo = maximizar. Prévia translúcida mostra onde a janela vai encaixar.
+function _snapZone(e) {
+  const m = 16;
+  if (e.clientY <= 64) return 'top';
+  if (e.clientX <= m) return 'left';
+  if (e.clientX >= window.innerWidth - m) return 'right';
+  return null;
+}
+function _snapPreviewEl() {
+  let p = document.getElementById('snap-preview');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'snap-preview';
+    p.style.cssText = 'position:fixed;display:none;background:rgba(63,214,142,0.12);border:2px solid rgba(63,214,142,0.5);border-radius:10px;z-index:900;pointer-events:none;transition:all 0.12s ease;';
+    document.body.appendChild(p);
+  }
+  return p;
+}
+function _showSnapPreview(zone) {
+  const p = _snapPreviewEl();
+  if (!zone) { p.style.display = 'none'; return; }
+  const T = 58, H = window.innerHeight - T, W = window.innerWidth;
+  p.style.display = 'block';
+  if (zone === 'top')   { p.style.left = '0px';        p.style.top = T+'px'; p.style.width = W+'px';    p.style.height = H+'px'; }
+  if (zone === 'left')  { p.style.left = '0px';        p.style.top = T+'px'; p.style.width = (W/2)+'px'; p.style.height = H+'px'; }
+  if (zone === 'right') { p.style.left = (W/2)+'px';   p.style.top = T+'px'; p.style.width = (W/2)+'px'; p.style.height = H+'px'; }
+}
+function _applySnap(win, zone) {
+  const zi = win.style.zIndex || '';
+  if (zone === 'top') {
+    win.dataset.prevStyle = win.getAttribute('style');
+    win.dataset.maximized = '1';
+    win.style.cssText = `left:0;top:58px;width:100%;height:calc(100% - 58px);border-radius:0;transform:none;z-index:${zi};`;
+    return;
+  }
+  win.dataset.maximized = '0';
+  const lado = zone === 'left' ? '0' : '50%';
+  win.style.cssText = `left:${lado};top:58px;width:50%;height:calc(100% - 58px);border-radius:0;transform:none;z-index:${zi};`;
+}
 function makeDraggable(win) {
   const bar = win.querySelector('.win-titlebar');
   let dragging = false, ox, oy, sx, sy;
@@ -1141,8 +1181,16 @@ function makeDraggable(win) {
     if (!dragging) return;
     win.style.left = (ox + e.clientX - sx) + 'px';
     win.style.top  = (oy + e.clientY - sy) + 'px';
+    _showSnapPreview(_snapZone(e));
   });
-  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('mouseup', e => {
+    if (dragging) {
+      const z = _snapZone(e);
+      _showSnapPreview(null);
+      if (z) _applySnap(win, z);
+    }
+    dragging = false;
+  });
 }
 
 function makePullToDismiss(win, view) {

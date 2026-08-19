@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.2 — 2026-08-19
+
+### Adicionado
+- Snap de janelas estilo Windows: arraste a janela pela barra de título
+  até a borda esquerda ou direita para encaixá-la em meia tela, ou até o
+  topo para maximizar. Uma prévia translúcida mostra onde ela vai
+  encaixar antes de soltar.
+
 ## v2.4.1 — 2026-08-19
 
 ### Corrigido
