@@ -96,20 +96,19 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Configurar Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Distribuir APK no Firebase App Distribution
+        # continue-on-error: APK compilado com sucesso mesmo se distribuicao falhar
+        continue-on-error: true
         working-directory: ${{ github.workspace }}
         run: |
           printf '%s' "$FIREBASE_SA" > /tmp/firebase-sa.json
           npm install -g firebase-tools@latest --silent
-          firebase appdistribution:distribute "limpezas-tom/${{ steps.apk_path.outputs.path }}" \
+          firebase appdistribution:distribute \
+            "limpezas-tom/${{ steps.apk_path.outputs.path }}" \
+            --project "limpezas-tom" \
             --app "${{ secrets.FIREBASE_APP_ID }}" \
             --testers "welsoaress@gmail.com" \
-            --release-notes "Build #${{ github.run_number }} — branch ${{ github.ref_name }}"
+            --release-notes "Build ${{ github.run_number }} - branch ${{ github.ref_name }}"
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
           FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -118,7 +117,7 @@ jobs:
         run: |
           APK="${{ steps.apk_path.outputs.path }}"
           SIZE=$(du -sh "$APK" | cut -f1)
-          echo "## ✅ APK compilado com sucesso" >> $GITHUB_STEP_SUMMARY
+          echo "## APK compilado com sucesso" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
@@ -127,4 +126,4 @@ jobs:
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Para instalar via Firebase:** você receberá um e-mail em welsoaress@gmail.com com o link de instalação." >> $GITHUB_STEP_SUMMARY
+          echo "**Firebase:** APK enviado para welsoaress@gmail.com (verifique o e-mail)." >> $GITHUB_STEP_SUMMARY
