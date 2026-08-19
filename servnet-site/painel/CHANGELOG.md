@@ -2,6 +2,16 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.3 — 2026-08-19
+
+### Adicionado
+- Hexágonos da colmeia arrastáveis: arraste um módulo em cima de outro
+  e eles trocam de lugar. A ordem fica salva no navegador. O hexágono
+  central GT permanece fixo.
+
+### Corrigido
+- Nome do usuário espremido na topbar (agora com respiro e sem quebra).
+
 ## v2.4.2 — 2026-08-19
 
 ### Adicionado

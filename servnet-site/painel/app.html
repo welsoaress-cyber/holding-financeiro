@@ -137,7 +137,8 @@
       font-size: 13px; font-weight: 700; color: #fff;
       font-family: var(--font-head); flex-shrink: 0;
     }
-    .tb-username { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .tb-username { font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+    #topbar { padding-right: 18px; }
     .tb-chevron { font-size: 10px; color: var(--text-3); }
 
     .tb-dropdown {
@@ -562,7 +563,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.2</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.3</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
@@ -799,6 +800,17 @@ function getHexSize() {
   return                { HW: 220, HH: 238 };
 }
 
+function getModulesOrdenados() {
+  const mods = getModules();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('gt_hex_order') || 'null'); } catch(e){}
+  if (!Array.isArray(saved)) return mods;
+  const byView = Object.fromEntries(mods.map(m => [m.view, m]));
+  const out = saved.map(v => byView[v]).filter(Boolean);
+  mods.forEach(m => { if (!out.includes(m)) out.push(m); });
+  return out;
+}
+
 function renderHexGrid() {
   const container = document.getElementById('hex-grid');
   if (!container) return;
@@ -877,7 +889,7 @@ function renderHexGrid() {
         _wins.forEach((_, v) => window.closeModule(v));
       });
     } else {
-      const visibleMods = getModules();
+      const visibleMods = getModulesOrdenados();
       const mod = visibleMods[key];
       if (!mod) return; // slot sem módulo visível — deixa vazio
       el.className = 'hex-cell';
@@ -889,7 +901,54 @@ function renderHexGrid() {
           </div>
         </div>`;
       el.addEventListener('click', () => {
+        if (el._moved) { el._moved = false; return; }
         window.openModule(mod.view, mod.label, mod.icon, mod.color);
+      });
+
+      // Arrastar para reordenar (desktop): solta em cima de outro hexágono
+      // e os dois trocam de lugar. Ordem salva no navegador.
+      if (!mob) el.addEventListener('mousedown', eDown => {
+        if (eDown.button !== 0) return;
+        const scale = (parseInt(localStorage.getItem('gt_hex_scale') || '100', 10)) / 100;
+        const sx = eDown.clientX, sy = eDown.clientY;
+        let moving = false;
+        const onMove = eMv => {
+          const dx = eMv.clientX - sx, dy = eMv.clientY - sy;
+          if (!moving && Math.hypot(dx, dy) > 6) {
+            moving = true;
+            el.style.zIndex = '50';
+            el.style.transition = 'none';
+            el.style.filter = 'drop-shadow(0 10px 30px rgba(63,214,142,0.4))';
+          }
+          if (moving) el.style.transform = `translate(${dx/scale}px, ${dy/scale}px) scale(1.05)`;
+        };
+        const onUp = eUp => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+          if (!moving) return;
+          el._moved = true;
+          const rect = container.getBoundingClientRect();
+          const px = (eUp.clientX - rect.left) / scale;
+          const py = (eUp.clientY - rect.top) / scale;
+          let alvo = null, melhor = Infinity;
+          slots.forEach(s => {
+            if (s.key === 'gt' || s.key === key) return;
+            const d = Math.hypot(px - (s.x + HW/2), py - (s.y + HH/2));
+            if (d < melhor) { melhor = d; alvo = s; }
+          });
+          if (alvo && melhor < HH) {
+            const ordem = getModulesOrdenados().map(m => m.view);
+            const i = key, j = alvo.key;
+            if (ordem[i] !== undefined && ordem[j] !== undefined) {
+              [ordem[i], ordem[j]] = [ordem[j], ordem[i]];
+              localStorage.setItem('gt_hex_order', JSON.stringify(ordem));
+            }
+          }
+          renderHexGrid();
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        eDown.preventDefault();
       });
     }
 
