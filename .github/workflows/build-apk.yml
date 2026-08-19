@@ -45,9 +45,9 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('limpezas-tom/**/*.gradle*', 'limpezas-tom/**/libs.versions.toml') }}
+          key: v3-gradle-${{ hashFiles('limpezas-tom/**/*.gradle*', 'limpezas-tom/**/libs.versions.toml') }}
           restore-keys: |
-            gradle-
+            v3-gradle-
 
       - name: Permissão no Gradle wrapper
         run: chmod +x gradlew
@@ -56,7 +56,7 @@ jobs:
         if: ${{ github.event.inputs.variant != 'release' }}
         run: |
           set -o pipefail
-          ./gradlew :composeApp:assembleDebug --no-daemon 2>&1 | tee /tmp/build.log
+          ./gradlew :composeApp:assembleDebug --no-daemon --no-build-cache 2>&1 | tee /tmp/build.log
           EXIT=${PIPESTATUS[0]}
           if [ $EXIT -ne 0 ]; then
             echo ""
@@ -70,7 +70,7 @@ jobs:
         if: ${{ github.event.inputs.variant == 'release' }}
         run: |
           set -o pipefail
-          ./gradlew :composeApp:assembleRelease --no-daemon 2>&1 | tee /tmp/build.log
+          ./gradlew :composeApp:assembleRelease --no-daemon --no-build-cache 2>&1 | tee /tmp/build.log
           EXIT=${PIPESTATUS[0]}
           if [ $EXIT -ne 0 ]; then
             echo ""
