@@ -181,27 +181,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
 
 /* ===== PLANS ===== */
 .plans-section { background: var(--bg); }
-
-/* ===== Destaque Programa Fidelidade ===== */
-.fideli-banner {
-  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
-  background: linear-gradient(120deg, var(--pool-dim), var(--card));
-  border: 1px solid var(--pool); border-radius: 12px;
-  padding: 1.5rem 1.75rem; margin-bottom: 2rem;
-}
-.fideli-icon { font-size: 2.6rem; line-height: 1; }
-.fideli-body { flex: 1; min-width: 240px; }
-.fideli-title { font-weight: 800; font-size: 1.25rem; color: var(--text); margin-bottom: 0.35rem; }
-.fideli-title span { color: var(--pool); }
-.fideli-desc { color: var(--text-2); font-size: 0.98rem; line-height: 1.6; }
-.fideli-prizes { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.fideli-prize {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-  padding: 0.7rem 1rem; text-align: center; min-width: 130px;
-}
-.fideli-prize b { display: block; font-size: 1.05rem; color: var(--pool); }
-.fideli-prize small { color: var(--text-2); font-size: 0.8rem; }
-@media (max-width: 640px){ .fideli-banner { padding: 1.2rem; gap: 1rem; } }
 .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
 .plan-card {
   background: var(--card); border: 1px solid var(--border);
@@ -786,19 +765,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
     <h2 class="section-title" id="plans-h">Escolha a sua velocidade</h2>
     <p class="section-sub">Todos os planos incluem fibra óptica 100%, roteador Wi-Fi, instalação e suporte técnico — sem cobranças extras.</p>
   </div>
-
-  <div class="fideli-banner" aria-label="Programa Fidelidade">
-    <div class="fideli-icon">🏆</div>
-    <div class="fideli-body">
-      <div class="fideli-title">Programa <span>Fidelidade</span> — em todos os planos</div>
-      <div class="fideli-desc">Pague suas mensalidades em dia e ganhe recompensas automáticas: cada mês pago até o vencimento vale 1 selo no seu cartão fidelidade.</div>
-    </div>
-    <div class="fideli-prizes">
-      <div class="fideli-prize"><b>50% OFF</b><small>6 meses em dia</small></div>
-      <div class="fideli-prize"><b>Mês grátis</b><small>12 meses em dia</small></div>
-    </div>
-  </div>
-
   <div class="plans-grid">
 
     <article class="plan-card" aria-label="Plano Bronze 100 Mbps">
