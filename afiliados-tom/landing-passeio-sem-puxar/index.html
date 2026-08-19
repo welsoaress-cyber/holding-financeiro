@@ -462,11 +462,15 @@
     <form
       class="form-card"
       method="POST"
-      action="salvar-lead.php"
+      action="https://api.web3forms.com/submit"
     >
-      <input type="hidden" name="produto" value="Passeio Sem Puxar" />
+      <!-- Web3Forms: substitua pelo seu Access Key em web3forms.com (grátis) -->
+      <input type="hidden" name="access_key" value="SEU-ACCESS-KEY-AQUI" />
+      <input type="hidden" name="subject" value="🐾 Novo lead — Passeio Sem Puxar" />
+      <input type="hidden" name="redirect" value="https://passeiosempuxar.com.br/obrigado.html" />
+      <input type="hidden" name="from_name" value="Landing Passeio Sem Puxar" />
       <!-- honeypot anti-bot -->
-      <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off" />
+      <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" />
 
       <h3>📩 Receba as informações agora</h3>
 
