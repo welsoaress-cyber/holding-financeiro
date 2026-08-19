@@ -1,4 +1,4 @@
-import{s as n,i as f,u as x,t as s,e as m,g as v}from"./page-dashboard-Dbqm2OjX.js";import{m as l,u as b}from"./page-lancamentos-BfWtlLw7.js";import"./supabase-DthfXWp1.js";let d=null;async function y(){try{const e=await f("categorias"),t=x("categorias",e);n.set("categorias",t)}catch(e){s.err("Erro ao carregar categorias: "+e.message)}p()}function p(){var t;if(!d)return;const e=(n.get("categorias")??[]).sort((a,r)=>(a.nome||"").localeCompare(r.nome||"","pt-BR"));d.innerHTML=`
+import{s as n,i as f,u as x,t as s,e as m,g as v}from"./page-dashboard-Dbqm2OjXb.js";import{m as l,u as b}from"./page-lancamentos-BfWtlLw7b.js";import"./supabase-DthfXWp1.js";let d=null;async function y(){try{const e=await f("categorias"),t=x("categorias",e);n.set("categorias",t)}catch(e){s.err("Erro ao carregar categorias: "+e.message)}p()}function p(){var t;if(!d)return;const e=(n.get("categorias")??[]).sort((a,r)=>(a.nome||"").localeCompare(r.nome||"","pt-BR"));d.innerHTML=`
     <div style="padding:16px;max-width:680px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <div>

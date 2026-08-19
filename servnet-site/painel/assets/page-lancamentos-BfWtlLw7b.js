@@ -1,4 +1,4 @@
-import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e as G,g as Q}from"./page-dashboard-Dbqm2OjX.js";let a=null,D=null;function J(){var e;return a||(a=document.createElement("div"),a.id="modal-overlay",a.setAttribute("aria-modal","true"),a.setAttribute("role","dialog"),Object.assign(a.style,{position:"fixed",inset:"0",background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"1000",padding:"16px",overflowY:"auto",opacity:"0",transition:"opacity .18s ease"}),a.innerHTML=`
+import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e as G,g as Q}from"./page-dashboard-Dbqm2OjXb.js";let a=null,D=null;function J(){var e;return a||(a=document.createElement("div"),a.id="modal-overlay",a.setAttribute("aria-modal","true"),a.setAttribute("role","dialog"),Object.assign(a.style,{position:"fixed",inset:"0",background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"1000",padding:"16px",overflowY:"auto",opacity:"0",transition:"opacity .18s ease"}),a.innerHTML=`
     <div id="modal-box" style="
       background: var(--bg-card, #fff);
       border-radius: 14px;
