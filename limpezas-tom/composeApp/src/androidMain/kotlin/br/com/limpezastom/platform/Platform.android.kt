@@ -19,6 +19,8 @@ import java.io.File
 
 actual typealias PlatformContext = Context
 
+actual fun nowMs(): Long = System.currentTimeMillis()
+
 /** Abre content:// URIs (mídia e documentos) via ContentResolver. */
 actual fun openFileSource(context: PlatformContext, ref: FileRef): Source? = runCatching {
     context.contentResolver.openInputStream(Uri.parse(ref.id))?.source()

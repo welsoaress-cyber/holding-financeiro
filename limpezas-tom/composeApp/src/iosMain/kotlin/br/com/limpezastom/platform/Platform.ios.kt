@@ -40,6 +40,8 @@ import platform.posix.memcpy
 /** iOS não precisa de contexto — classe vazia só para satisfazer o contrato. */
 actual open class PlatformContext
 
+actual fun nowMs(): Long = (platform.Foundation.NSDate().timeIntervalSince1970 * 1000).toLong()
+
 private const val ASSET_PREFIX = "phasset:"
 
 /**

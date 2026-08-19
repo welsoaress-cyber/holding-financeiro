@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.limpezastom.logic.AppLogic
+import br.com.limpezastom.platform.nowMs
 import br.com.limpezastom.model.BackupProgress
 import br.com.limpezastom.model.BackupSummary
 import br.com.limpezastom.model.DuplicateShortcutGroup
@@ -420,6 +423,8 @@ private fun LayerReviewView(
     onCancel: () -> Unit,
 ) {
     val checked = remember { mutableStateOf(setOf<String>()) }
+    val showConfirmDialog = remember { mutableStateOf(false) }
+    val now = remember { nowMs() }
 
     val title = when (layer) {
         SuggestionLayer.L1_OBVIOUS  -> "✅ Camada 1 — Lixo Óbvio"
@@ -427,66 +432,176 @@ private fun LayerReviewView(
         SuggestionLayer.L3_CAUTIOUS -> "⚠️ Camada 3 — Cautela"
     }
     val hint = when (layer) {
-        SuggestionLayer.L1_OBVIOUS  -> "Esses arquivos são sempre seguros para remover. Você pode aprovar tudo de uma vez."
-        SuggestionLayer.L2_CRITERIA -> "Revise item a item. Itens borrados, duplicados e screenshots velhos costumam ser desnecessários."
-        SuggestionLayer.L3_CAUTIOUS -> "Verifique cada item com cuidado. São arquivos pessoais antigos — confirme antes de aprovar."
+        SuggestionLayer.L1_OBVIOUS  -> "Cache, arquivos temporários e APKs — sempre seguros para remover."
+        SuggestionLayer.L2_CRITERIA -> "Fotos borradas, screenshots velhos e duplicatas. Revise cada item antes de marcar."
+        SuggestionLayer.L3_CAUTIOUS -> "⚠️ Documentos e mídias pessoais antigas. Verifique cada arquivo com muito cuidado antes de marcar."
     }
+    val isRisky = layer != SuggestionLayer.L1_OBVIOUS
 
     val approved = suggestions.filter { it.id in checked.value }
     val approvedBytes = approved.sumOf { it.file.size }
+
+    // Diálogo de confirmação — lista os arquivos antes de excluir
+    if (showConfirmDialog.value && approved.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog.value = false },
+            title = {
+                Text(
+                    "⚠️ Confirmar exclusão permanente",
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFDC2626),
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "${approved.size} arquivo(s) serão removidos do celular. Esta ação não pode ser desfeita.",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    HorizontalDivider()
+                    Text("Arquivos a excluir:", style = MaterialTheme.typography.labelMedium)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        approved.take(15).forEach { s ->
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    "• ${s.file.name}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    formatBytes(s.file.size),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                        if (approved.size > 15) {
+                            Text(
+                                "... e mais ${approved.size - 15} arquivo(s) — total: ${formatBytes(approvedBytes)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showConfirmDialog.value = false; onConfirm(approved) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                ) { Text("Sim, EXCLUIR ${approved.size} arquivo(s)") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showConfirmDialog.value = false }) { Text("Cancelar") }
+            },
+        )
+    }
 
     LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Spacer(Modifier.height(20.dp))
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
-            Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
-            // Select all (only for L1)
+            Text(hint, color = if (isRisky) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(6.dp))
+
+            // Aviso vermelho para camadas 2 e 3
+            if (isRisky) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            "🔒 Nenhum item marcado por padrão",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            "Toque no checkbox de cada arquivo que deseja excluir. Veja o nome, motivo e data antes de marcar. Arquivos marcados serão EXCLUÍDOS PERMANENTEMENTE do celular após sua confirmação.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            // Contador de marcados
+            if (checked.value.isNotEmpty()) {
+                Text(
+                    "${checked.value.size} de ${suggestions.size} marcado(s) — ${formatBytes(approvedBytes)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFDC2626),
+                )
+                Spacer(Modifier.height(2.dp))
+            }
+
+            // Selecionar tudo — apenas para L1 (cache/temporários, nunca dados pessoais)
             if (layer == SuggestionLayer.L1_OBVIOUS) {
                 val allSelected = checked.value.size == suggestions.size
                 TextButton(onClick = {
                     checked.value = if (allSelected) emptySet() else suggestions.map { it.id }.toSet()
                 }) {
-                    Text(if (allSelected) "Desmarcar tudo" else "Selecionar tudo (${suggestions.size} itens)")
+                    Text(if (allSelected) "Desmarcar tudo" else "Selecionar tudo (${suggestions.size} itens de cache)")
                 }
             }
-            Spacer(Modifier.height(4.dp))
         }
 
         items(suggestions, key = { it.id }) { suggestion ->
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            val isSelected = suggestion.id in checked.value
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Row(
                     Modifier.fillMaxWidth().clickable {
-                        checked.value = if (suggestion.id in checked.value)
+                        checked.value = if (isSelected)
                             checked.value - suggestion.id else checked.value + suggestion.id
                     }.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Checkbox(
-                        checked = suggestion.id in checked.value,
+                        checked = isSelected,
                         onCheckedChange = {
-                            checked.value = if (suggestion.id in checked.value)
+                            checked.value = if (isSelected)
                                 checked.value - suggestion.id else checked.value + suggestion.id
-                        }
+                        },
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                     Column(Modifier.weight(1f)) {
+                        // Nome do arquivo
                         Text(
                             suggestion.file.name,
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        // Motivo completo (2 linhas)
                         Text(
                             suggestion.reason,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        // Data e tamanho
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val age = fileAge(suggestion.file.lastModifiedMs, now)
+                            if (age.isNotEmpty()) {
+                                Text(
+                                    age,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isRisky) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                formatBytes(suggestion.file.size),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
-                    Text(formatBytes(suggestion.file.size), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -494,20 +609,39 @@ private fun LayerReviewView(
         item {
             Spacer(Modifier.height(10.dp))
             Button(
-                onClick = { onConfirm(approved) },
+                onClick = {
+                    if (isRisky) showConfirmDialog.value = true
+                    else onConfirm(approved)
+                },
                 enabled = approved.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth(),
+                colors = if (isRisky && approved.isNotEmpty())
+                    ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                else ButtonDefaults.buttonColors(),
             ) {
                 Text(
-                    if (approved.isEmpty()) "Selecione itens para enviar à lixeira segura"
-                    else "Enviar ${approved.size} itens à lixeira segura (${formatBytes(approvedBytes)})"
+                    when {
+                        approved.isEmpty() -> "Marque os itens que deseja excluir"
+                        isRisky -> "Revisar e EXCLUIR ${approved.size} arquivo(s) (${formatBytes(approvedBytes)})"
+                        else    -> "Excluir ${approved.size} arquivo(s) de cache (${formatBytes(approvedBytes)})"
+                    }
                 )
             }
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-                Text("Voltar sem nenhuma ação")
+                Text("Voltar sem excluir nada")
+            }
+            if (isRisky) {
+                Text(
+                    "⚠️ A exclusão é permanente. Revise cada item antes de marcar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFFB45309),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             Text(
-                "Itens enviados à lixeira ficam lá por 7 dias antes de serem definitivamente excluídos. Você pode desfazer a qualquer momento.",
+                "Nada é excluído sem sua confirmação explícita nesta tela.",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -515,6 +649,22 @@ private fun LayerReviewView(
             )
             Spacer(Modifier.height(28.dp))
         }
+    }
+}
+
+/** Retorna tempo relativo legível: "há 3 meses", "há 2 anos", etc. */
+private fun fileAge(lastModifiedMs: Long, nowMs: Long): String {
+    if (lastModifiedMs <= 0) return ""
+    val diffMs = nowMs - lastModifiedMs
+    if (diffMs <= 0) return ""
+    val days = diffMs / 86_400_000L
+    return when {
+        days < 1   -> "hoje"
+        days == 1L -> "ontem"
+        days < 7   -> "há $days dias"
+        days < 30  -> "há ${days / 7} semana(s)"
+        days < 365 -> "há ${days / 30} mês/meses"
+        else       -> "há ${days / 365} ano(s)"
     }
 }
 

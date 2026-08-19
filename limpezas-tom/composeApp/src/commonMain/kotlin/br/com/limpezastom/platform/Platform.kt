@@ -48,3 +48,6 @@ expect class LauncherScanner(context: PlatformContext) {
 
 /** Abre o conteúdo de um arquivo para leitura em streaming (upload/hash). */
 expect fun openFileSource(context: PlatformContext, ref: br.com.limpezastom.model.FileRef): Source?
+
+/** Retorna o tempo atual em milissegundos (epoch). Usado para calcular "há quanto tempo" nos arquivos. */
+expect fun nowMs(): Long
