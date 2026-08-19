@@ -562,7 +562,7 @@
 <header id="topbar">
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
-    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.5</span>
+    GrupoTom <span style="opacity:.45;font-weight:400;font-size:11px;margin-left:6px;">v2.4.6</span>
   </div>
 
   <div id="tb-page-title">Painel de Gestão</div>
@@ -964,10 +964,37 @@ function renderAltGrid(mode) {
   grid.innerHTML = '';
   grid.className = 'mode-' + mode;
 
-  getModules().forEach(mod => {
+  getModulesOrdenados().forEach((mod, idx) => {
     const card = document.createElement('div');
     card.className = 'alt-card';
     card.style.setProperty('--card-color', mod.color);
+
+    // Arrastar para reordenar — mesma ordem salva da colmeia
+    if (!isMobile()) {
+      card.draggable = true;
+      card.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', String(idx));
+        e.dataTransfer.effectAllowed = 'move';
+        card.style.opacity = '0.4';
+      });
+      card.addEventListener('dragend', () => { card.style.opacity = ''; });
+      card.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        card.style.outline = '2px solid rgba(63,214,142,0.6)';
+      });
+      card.addEventListener('dragleave', () => { card.style.outline = ''; });
+      card.addEventListener('drop', e => {
+        e.preventDefault();
+        card.style.outline = '';
+        const de = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (isNaN(de) || de === idx) return;
+        const ordem = getModulesOrdenados().map(m => m.view);
+        [ordem[de], ordem[idx]] = [ordem[idx], ordem[de]];
+        localStorage.setItem('gt_hex_order', JSON.stringify(ordem));
+        renderAltGrid(mode);
+      });
+    }
 
     if (mode === 'rect') {
       card.innerHTML = `

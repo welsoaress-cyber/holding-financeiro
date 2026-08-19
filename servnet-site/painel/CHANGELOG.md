@@ -2,6 +2,16 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.6 — 2026-08-19
+
+### Adicionado
+- Arrastar para reordenar módulos em TODOS os layouts (quadrado,
+  círculo e retângulo, além da colmeia). A ordem é uma só, compartilhada
+  entre os layouts e salva no navegador.
+
+### Corrigido
+- Layouts alternativos ignoravam a ordem personalizada salva.
+
 ## v2.4.5 — 2026-08-19
 
 ### Alterado
