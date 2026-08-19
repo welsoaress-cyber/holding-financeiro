@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Break-Even — Afiliados Tom</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--txt:#e2e8f0;--mut:#94a3b8;--acc:#22c55e;--warn:#ef4444;--inp:#334155}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif}
+  body{background:var(--bg);color:var(--txt);min-height:100vh;padding:24px;display:flex;justify-content:center}
+  .wrap{width:100%;max-width:560px}
+  h1{font-size:1.3rem;margin-bottom:4px}
+  p.sub{color:var(--mut);font-size:.85rem;margin-bottom:20px}
+  .card{background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px}
+  label{display:block;font-size:.8rem;color:var(--mut);margin:10px 0 4px}
+  input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--inp);background:var(--inp);color:var(--txt);font-size:1rem}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .res{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--inp);font-size:.92rem}
+  .res:last-child{border:none}
+  .res b{font-variant-numeric:tabular-nums}
+  .ok{color:var(--acc)} .bad{color:var(--warn)}
+  .verdict{margin-top:12px;padding:12px;border-radius:8px;font-weight:600;text-align:center}
+  .v-ok{background:rgba(34,197,94,.15);color:var(--acc)} .v-bad{background:rgba(239,68,68,.15);color:var(--warn)}
+  h2{font-size:.95rem;margin-bottom:8px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💰 Calculadora Break-Even — Afiliados Tom</h1>
+  <p class="sub">Preencha os campos: os resultados atualizam sozinhos. Regra: só anuncie se o CPC real do nicho couber no CPC máximo.</p>
+
+  <div class="card">
+    <h2>Dados do produto</h2>
+    <div class="grid">
+      <div><label>Comissão por venda (R$)</label><input type="number" id="com" value="150"></div>
+      <div><label>CPC real do nicho (R$) — Planejador Google</label><input type="number" id="cpc" value="1.50" step="0.05"></div>
+      <div><label>Conversão landing → checkout (%)</label><input type="number" id="clp" value="30"></div>
+      <div><label>Conversão checkout → venda (%)</label><input type="number" id="cvd" value="2" step="0.1"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Break-even</h2>
+    <div class="res"><span>CPC máximo para empatar</span><b id="cpcmax">—</b></div>
+    <div class="res"><span>EPC estimado</span><b id="epc">—</b></div>
+    <div class="res"><span>Cliques necessários por venda</span><b id="cliques">—</b></div>
+    <div class="res"><span>Custo por venda (CPA) no CPC atual</span><b id="cpa">—</b></div>
+    <div class="res"><span>ROAS projetado</span><b id="roas">—</b></div>
+    <div id="verdict" class="verdict">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Projeção mensal</h2>
+    <div class="grid">
+      <div><label>Orçamento diário (R$)</label><input type="number" id="orc" value="40"></div>
+      <div><label>Custo mensal de ferramentas (R$)</label><input type="number" id="fer" value="100"></div>
+    </div>
+    <div class="res"><span>Gasto em tráfego / mês</span><b id="gasto">—</b></div>
+    <div class="res"><span>Vendas estimadas / mês</span><b id="vendas">—</b></div>
+    <div class="res"><span>Comissões / mês</span><b id="rec">—</b></div>
+    <div class="res"><span>Lucro líquido / mês</span><b id="lucro">—</b></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function calc(){
+  const com=+$('com').value||0, cpc=+$('cpc').value||0,
+        clp=(+$('clp').value||0)/100, cvd=(+$('cvd').value||0)/100;
+  const convTotal=clp*cvd;                 // clique na landing → venda
+  const cpcMax=com*convTotal;
+  const epc=cpcMax;                        // EPC estimado = comissão × conversão total
+  const cliquesPorVenda=convTotal>0?1/convTotal:0;
+  const cpa=cliquesPorVenda*cpc;
+  const roas=cpc>0?epc/cpc:0;
+  $('cpcmax').textContent=fmt(cpcMax);
+  $('epc').textContent=fmt(epc);
+  $('cliques').textContent=cliquesPorVenda?Math.round(cliquesPorVenda):'—';
+  $('cpa').textContent=fmt(cpa);
+  $('roas').textContent=roas.toFixed(2);
+  $('roas').className=roas>=1.3?'ok':'bad';
+  const v=$('verdict');
+  if(roas>=1.8){v.textContent='✅ VIÁVEL — margem confortável, pronto para testar';v.className='verdict v-ok';}
+  else if(roas>=1.3){v.textContent='🟡 VIÁVEL COM ATENÇÃO — testa, mas otimize CPC e landing';v.className='verdict v-ok';}
+  else if(roas>=1){v.textContent='⚠️ NO LIMITE — só empata; precisa melhorar conversão ou CPC antes';v.className='verdict v-bad';}
+  else{v.textContent='❌ NÃO FECHA A CONTA — descarte o produto ou renegocie as premissas';v.className='verdict v-bad';}
+  const orc=+$('orc').value||0, fer=+$('fer').value||0, gasto=orc*30;
+  const cliquesMes=cpc>0?gasto/cpc:0, vendasMes=cliquesMes*convTotal, recMes=vendasMes*com;
+  $('gasto').textContent=fmt(gasto);
+  $('vendas').textContent=vendasMes.toFixed(1);
+  $('rec').textContent=fmt(recMes);
+  const lucro=recMes-gasto-fer;
+  $('lucro').textContent=fmt(lucro);
+  $('lucro').className=lucro>=0?'ok':'bad';
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));
+calc();
+</script>
+</body>
+</html>
