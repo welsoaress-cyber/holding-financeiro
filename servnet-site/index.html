@@ -1017,7 +1017,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 </section>
 
 <!-- MODAL LEAD -->
-<div class="modal-ov" id="leadOv" role="dialog" aria-modal="true" aria-labelledby="modalH" onclick="if(event.target===this)closeModal()">
+<div class="modal-ov" id="leadOv" role="dialog" aria-modal="true" aria-labelledby="modalH" onmousedown="this._downFora=(event.target===this)" onclick="if(this._downFora&&event.target===this)closeModal()">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
     <div class="modal-tag" id="modalTag">Quero assinar</div>
