@@ -1812,7 +1812,10 @@ function abrirModalPix(pixStr, valor, lancId){
       <button class="pix-close" onclick="pararPollPix();this.closest('.pix-overlay').remove()">Fechar</button>
     </div>`;
   document.body.appendChild(ov);
-  ov.addEventListener('click', e => { if(e.target===ov){ pararPollPix(); ov.remove(); } });
+  // Só fecha se o clique começar E terminar no fundo (selecionar texto não fecha)
+  let downFora = false;
+  ov.addEventListener('mousedown', e => { downFora = (e.target===ov); });
+  ov.addEventListener('click', e => { if(e.target===ov && downFora){ pararPollPix(); ov.remove(); } downFora = false; });
   iniciarPollPix(lancId, ov);
 }
 

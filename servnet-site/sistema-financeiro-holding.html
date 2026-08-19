@@ -8717,7 +8717,10 @@ function modalNotificacoes(){
   document.body.appendChild(overlay);
 
   const fechar = () => overlay.remove();
-  overlay.addEventListener("click", e => { if(e.target === overlay) fechar(); });
+  // Só fecha se o clique começar E terminar no fundo (selecionar texto não fecha)
+  let downNoFundo = false;
+  overlay.addEventListener("mousedown", e => { downNoFundo = (e.target === overlay); });
+  overlay.addEventListener("click", e => { if(e.target === overlay && downNoFundo) fechar(); downNoFundo = false; });
   document.getElementById("notifClose")?.addEventListener("click", fechar);
 
   // Navegação ao clicar num item
