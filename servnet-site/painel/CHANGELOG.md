@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.4.13 — 2026-08-19
+
+### Adicionado
+- Botão ✏️ Editar em cada linha de Cobranças: edita descrição, valor,
+  vencimento, negócio e situação da fatura, ou exclui — direto na tela,
+  sem precisar caçar o mês no Financeiro. Alterar o vencimento atualiza
+  o mes_ref automaticamente (mantém o Relatórios correto).
+
 ## v2.4.12 — 2026-08-19
 
 ### Corrigido
