@@ -95,8 +95,8 @@ class GoogleDriveApi(
         }
 
     private fun yearOf(doc: FileRef): String {
-        if (doc.modifiedEpochSeconds <= 0) return "Sem data"
-        return Instant.fromEpochSeconds(doc.modifiedEpochSeconds)
+        if (doc.lastModifiedMs <= 0) return "Sem data"
+        return Instant.fromEpochMilliseconds(doc.lastModifiedMs)
             .toLocalDateTime(TimeZone.currentSystemDefault())
             .year
             .toString()

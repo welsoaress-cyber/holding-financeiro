@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.StatFs
 import android.provider.MediaStore
 import br.com.limpezastom.model.FileKind
 import br.com.limpezastom.model.FileRef
@@ -24,16 +25,24 @@ actual fun openFileSource(context: PlatformContext, ref: FileRef): Source? = run
 }.getOrNull()
 
 /**
- * Varredura Android: MediaStore para mídia e documentos; sistema de
- * arquivos para sujeira (com acesso total, quando concedido).
+ * Varredura Android: MediaStore para mídia (fotos, vídeos, áudios) e
+ * documentos; sistema de arquivos para sujeira (com acesso total, quando concedido).
  */
 actual class DeviceScanner actual constructor(private val context: PlatformContext) {
 
     actual suspend fun scanRaw(): RawScan = withContext(Dispatchers.IO) {
+        val stat = runCatching {
+            StatFs(Environment.getExternalStorageDirectory().absolutePath)
+        }.getOrNull()
+        val total = stat?.totalBytes ?: 0L
+        val free  = stat?.freeBytes  ?: 0L
+
         RawScan(
             media = scanMedia(),
             documents = scanDocuments(),
             junk = scanJunk(),
+            totalStorageBytes = total,
+            freeStorageBytes = free,
         )
     }
 
@@ -52,39 +61,63 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
         return count to bytes
     }
 
-    // ── Fotos e vídeos ────────────────────────────────────────────────
+    // ── Fotos e vídeos e áudios ───────────────────────────────────────────────
 
     private fun scanMedia(): List<FileRef> =
         queryMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, FileKind.PHOTO) +
-            queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, FileKind.VIDEO)
+            queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, FileKind.VIDEO) +
+            queryAudio()
 
     private fun queryMedia(collection: Uri, kind: FileKind): List<FileRef> {
         val out = mutableListOf<FileRef>()
-        val projection = arrayOf(
-            MediaStore.MediaColumns._ID,
-            MediaStore.MediaColumns.DISPLAY_NAME,
-            MediaStore.MediaColumns.SIZE,
-            MediaStore.MediaColumns.MIME_TYPE,
-        )
+        val hasDuration = kind == FileKind.VIDEO
+        val projection = buildList {
+            add(MediaStore.MediaColumns._ID)
+            add(MediaStore.MediaColumns.DISPLAY_NAME)
+            add(MediaStore.MediaColumns.SIZE)
+            add(MediaStore.MediaColumns.MIME_TYPE)
+            add(MediaStore.MediaColumns.DATE_MODIFIED)
+            add(MediaStore.MediaColumns.RELATIVE_PATH)
+            if (hasDuration) add(MediaStore.Video.Media.DURATION)
+        }.toTypedArray()
+
         runCatching {
             context.contentResolver.query(
                 collection, projection, null, null,
                 "${MediaStore.MediaColumns.DATE_ADDED} DESC",
             )?.use { c ->
-                val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val nameCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                val mimeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val idCol       = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameCol     = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val sizeCol     = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                val mimeCol     = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val dateCol     = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                val pathCol     = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                val durationCol = if (hasDuration) c.getColumnIndex(MediaStore.Video.Media.DURATION) else -1
+
                 while (c.moveToNext()) {
                     val size = c.getLong(sizeCol)
                     if (size <= 0) continue
+
+                    val name = c.getString(nameCol) ?: "sem_nome"
+                    val relativePath = if (pathCol >= 0) c.getString(pathCol) ?: "" else ""
+                    val isScreenshot = relativePath.contains("screenshot", ignoreCase = true)
+                        || name.contains("screenshot", ignoreCase = true)
+                        || name.startsWith("SCR_", ignoreCase = true)
+
+                    val durationMs = if (durationCol >= 0 && !c.isNull(durationCol))
+                        c.getLong(durationCol).takeIf { it > 0 } else null
+
                     out += FileRef(
-                        id = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
-                        name = c.getString(nameCol) ?: "sem_nome",
+                        id   = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
+                        name = name,
                         size = size,
                         mime = c.getString(mimeCol)
                             ?: if (kind == FileKind.VIDEO) "video/mp4" else "image/jpeg",
                         kind = kind,
+                        lastModifiedMs = c.getLong(dateCol) * 1000L,  // epoch seconds → ms
+                        isScreenshot   = isScreenshot,
+                        durationMs     = durationMs,
+                        isNomedia      = false,   // MediaStore não indexa dirs com .nomedia
                     )
                 }
             }
@@ -92,7 +125,52 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
         return out
     }
 
-    // ── Documentos ────────────────────────────────────────────────────
+    private fun queryAudio(): List<FileRef> {
+        val out = mutableListOf<FileRef>()
+        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.DISPLAY_NAME,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.MIME_TYPE,
+            MediaStore.Audio.Media.DATE_MODIFIED,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.IS_MUSIC,
+        )
+        runCatching {
+            context.contentResolver.query(collection, projection, null, null, null)?.use { c ->
+                val idCol       = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val nameCol     = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                val sizeCol     = c.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+                val mimeCol     = c.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+                val dateCol     = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+                val durCol      = c.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val musicCol    = c.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+
+                while (c.moveToNext()) {
+                    val size = c.getLong(sizeCol)
+                    if (size <= 0) continue
+                    // Músicas conhecidas do usuário não são sugeridas para exclusão
+                    val isMusic = musicCol >= 0 && c.getInt(musicCol) != 0
+                    if (isMusic) continue
+
+                    out += FileRef(
+                        id           = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
+                        name         = c.getString(nameCol) ?: "audio",
+                        size         = size,
+                        mime         = c.getString(mimeCol) ?: "audio/mpeg",
+                        kind         = FileKind.AUDIO,
+                        lastModifiedMs = c.getLong(dateCol) * 1000L,
+                        durationMs   = if (durCol >= 0) c.getLong(durCol).takeIf { it > 0 } else null,
+                        wasPlayed    = false,   // MediaStore não expõe histórico de reprodução
+                    )
+                }
+            }
+        }
+        return out
+    }
+
+    // ── Documentos ────────────────────────────────────────────────────────────
 
     private val docExtensions = setOf(
         "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
@@ -111,24 +189,24 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
         )
         runCatching {
             context.contentResolver.query(collection, projection, null, null, null)?.use { c ->
-                val idCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val idCol   = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
                 val sizeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
                 val mimeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
                 val dateCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
                 while (c.moveToNext()) {
                     val name = c.getString(nameCol) ?: continue
-                    val ext = name.substringAfterLast('.', "").lowercase()
+                    val ext  = name.substringAfterLast('.', "").lowercase()
                     if (ext !in docExtensions) continue
                     val size = c.getLong(sizeCol)
                     if (size <= 0) continue
                     out += FileRef(
-                        id = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
+                        id   = ContentUris.withAppendedId(collection, c.getLong(idCol)).toString(),
                         name = name,
                         size = size,
                         mime = c.getString(mimeCol) ?: "application/octet-stream",
                         kind = FileKind.DOCUMENT,
-                        modifiedEpochSeconds = c.getLong(dateCol),
+                        lastModifiedMs = c.getLong(dateCol) * 1000L,
                     )
                 }
             }
@@ -136,7 +214,7 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
         return out
     }
 
-    // ── Sujeira ───────────────────────────────────────────────────────
+    // ── Sujeira ───────────────────────────────────────────────────────────────
 
     private val junkExtensions = setOf("tmp", "log", "bak", "old", "part", "crdownload", "download")
 
@@ -156,7 +234,6 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
         runCatching {
             root.walkTopDown()
                 .onEnter { dir ->
-                    // Android/data e Android/obb são bloqueados pelo sistema
                     !(dir.name == "data" || dir.name == "obb") ||
                         dir.parentFile?.name != "Android"
                 }
@@ -164,13 +241,14 @@ actual class DeviceScanner actual constructor(private val context: PlatformConte
                 .forEach { f ->
                     val ext = f.extension.lowercase()
                     val reason = when {
-                        // .nomedia é um marcador do Android — nunca é sujeira
-                        f.name == ".nomedia" -> null
-                        ext in junkExtensions -> "Arquivos temporários"
-                        f.name.startsWith(".trashed-") -> "Lixeira do sistema"
+                        f.name == ".nomedia"              -> null   // marcador do Android — nunca é sujeira
+                        ext in junkExtensions             -> "Arquivos temporários"
+                        f.name.startsWith(".trashed-")   -> "Lixeira do sistema"
                         f.parentFile?.name == ".thumbnails" -> "Miniaturas antigas"
-                        f.length() == 0L -> "Arquivos vazios"
-                        else -> null
+                        f.length() == 0L                 -> "Arquivos vazios"
+                        f.name == ".DS_Store"            -> "Artefato macOS"
+                        f.name.startsWith("._")          -> "Metadado macOS"
+                        else                             -> null
                     }
                     if (reason != null) out += JunkFile(f.absolutePath, f.length(), reason)
                 }
