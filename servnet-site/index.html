@@ -1333,11 +1333,10 @@ async function submitLead(e) {
     `. Gostaria de agendar a instalação! 😊`
   );
 
-  // Abre WhatsApp após 1s
+  // Página de obrigado (conversão Google Ads) — ela abre o WhatsApp com a mensagem
   if (typeof gtag === 'function') gtag('event', 'conversion_lead_whatsapp', { event_category: 'lead', event_label: plano || 'sem-plano' });
-  setTimeout(() => window.open(`https://wa.me/${WA_NUM}?text=${msg}`, '_blank'), 900);
-  // Fecha modal após 5s
-  setTimeout(closeModal, 5000);
+  const msgTxt = decodeURIComponent(msg);
+  setTimeout(() => { window.location.href = 'obrigado.html?m=' + encodeURIComponent(msgTxt); }, 900);
 }
 
 </script>
