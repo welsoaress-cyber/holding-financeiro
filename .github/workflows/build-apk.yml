@@ -54,11 +54,31 @@ jobs:
 
       - name: Compilar APK debug
         if: ${{ github.event.inputs.variant != 'release' }}
-        run: ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew :composeApp:assembleDebug --no-daemon 2>&1 | tee /tmp/build.log
+          EXIT=${PIPESTATUS[0]}
+          if [ $EXIT -ne 0 ]; then
+            echo ""
+            echo "=== ERROS DE COMPILAÇÃO KOTLIN ==="
+            grep -E "(error:|w: error|e: error|\.kt:[0-9])" /tmp/build.log | head -80 || true
+            echo "==================================="
+            exit $EXIT
+          fi
 
       - name: Compilar APK release (sem assinatura)
         if: ${{ github.event.inputs.variant == 'release' }}
-        run: ./gradlew :composeApp:assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew :composeApp:assembleRelease --no-daemon 2>&1 | tee /tmp/build.log
+          EXIT=${PIPESTATUS[0]}
+          if [ $EXIT -ne 0 ]; then
+            echo ""
+            echo "=== ERROS DE COMPILAÇÃO KOTLIN ==="
+            grep -E "(error:|w: error|e: error|\.kt:[0-9])" /tmp/build.log | head -80 || true
+            echo "==================================="
+            exit $EXIT
+          fi
 
       - name: Localizar APK gerado
         id: apk_path
