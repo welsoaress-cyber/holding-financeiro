@@ -1592,7 +1592,7 @@ function renderIndicacoes(res,data,codigo){
     :'<div class="muted" style="text-align:center;padding:0.75rem 0">Nenhuma indicação ainda — convide seus amigos!</div>';
 
   // Mensagem pré-definida para compartilhar
-  const linkRef=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const linkRef=`https://www.servnet.net.br/?ref=${encodeURIComponent(codigo)}`;
   const mensagemCompleta=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\n🔗 Conheça: ${linkRef}`;
   const waMsgEnc=encodeURIComponent(mensagemCompleta);
 
@@ -1646,7 +1646,7 @@ function copiarMensagem(btn){
   // Pega o código do card mais próximo
   const card=btn.closest('.ref-card');
   const codigo=card?.querySelector('.ref-code')?.textContent?.trim()||'';
-  const linkRefCopy=`https://dapper-chaja-75dbae.netlify.app/?ref=${encodeURIComponent(codigo)}`;
+  const linkRefCopy=`https://www.servnet.net.br/?ref=${encodeURIComponent(codigo)}`;
   const msg=`Oi! 👋 Você precisa conhecer a internet da Servnet — fibra óptica de verdade, rápida e sem enrolação.\n\n🔗 Conheça: ${linkRefCopy}`;
   navigator.clipboard.writeText(msg).then(()=>{
     const orig=btn.innerHTML;
