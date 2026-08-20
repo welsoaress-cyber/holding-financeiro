@@ -91,6 +91,15 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
 .slot-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-4)}
 .slot-name{font-size:12.5px;font-weight:500;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 .slot-name.pending{color:var(--ink-4);font-style:italic;font-weight:400}
+.link-badge{font-size:.65rem;background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle;}
+.slot-modified{font-size:.65rem;color:var(--muted);margin-top:2px;}
+.btn-link{background:transparent;border:1px solid var(--accent);color:var(--accent);}
+.btn-link:hover{background:var(--accent);color:#fff;}
+.btn-reload{background:#16a34a;color:#fff;}
+.btn-reload:hover{opacity:.85;}
+.btn-unlink{background:transparent;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);padding:0 7px;min-width:unset;}
+.btn-unlink:hover{background:var(--danger,#ef4444);color:#fff;}
+#slotPlan.linked{cursor:default;}
 .slot-btn{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--border-2);background:var(--surface);color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:all .12s}
 .slot-btn:hover{border-color:var(--accent);color:var(--accent)}
 .upload-sep{color:var(--ink-4);font-size:16px;font-weight:300}
@@ -351,14 +360,31 @@ body[data-print-single] .search-bar,body[data-print-single] .rec-banner{display:
 <!-- upload bar -->
 <div class="upload-bar">
   <!-- Planilha -->
-  <div class="upload-slot" id="slotPlan" onclick="document.getElementById('filePlan').click()">
+  <div class="upload-slot" id="slotPlan" onclick="!S.planLinked&&document.getElementById('filePlan').click()">
     <input type="file" id="filePlan" accept=".xlsx,.xlsm,.xls">
     <span class="slot-ico">📋</span>
     <div class="slot-info">
-      <div class="slot-label">Planilha</div>
+      <div class="slot-label">Planilha
+        <span class="link-badge hidden" id="linkBadge" title="Vinculada à rede">🔗 rede</span>
+      </div>
       <div class="slot-name pending" id="namePlan">Nenhum arquivo</div>
+      <div class="slot-modified hidden" id="modPlan"></div>
     </div>
-    <button class="slot-btn" onclick="event.stopPropagation();document.getElementById('filePlan').click()">Carregar</button>
+    <!-- Normal upload button (shown when not linked) -->
+    <button class="slot-btn" id="btnCarregar"
+      onclick="event.stopPropagation();document.getElementById('filePlan').click()">Carregar</button>
+    <!-- Vincular button (shown when FS Access API available and not linked) -->
+    <button class="slot-btn btn-link hidden" id="btnVincular"
+      onclick="event.stopPropagation();linkPlanFile()"
+      title="Vincular planilha da rede — lê direto do caminho sem precisar escolher de novo">🔗 Vincular à rede</button>
+    <!-- Reload button (shown when linked) -->
+    <button class="slot-btn btn-reload hidden" id="btnReload"
+      onclick="event.stopPropagation();reloadLinkedPlan()"
+      title="Relê o arquivo da rede sem precisar selecionar de novo">↺ Atualizar</button>
+    <!-- Unlink button (shown when linked) -->
+    <button class="slot-btn btn-unlink hidden" id="btnUnlink"
+      onclick="event.stopPropagation();unlinkPlan()"
+      title="Remover vínculo com a planilha da rede">✕</button>
   </div>
 
   <!-- Sheet picker (hidden until planilha loaded) -->
@@ -480,6 +506,7 @@ const S = {
   mesAtual:'',      // YYYY-MM in use
   historico:null,   // loaded from localStorage
   emailTarget:null, // item being emailed
+  planLinked:false, // true quando vinculado via File System Access API
 };
 
 // Column indices for "Dados Trat"
@@ -989,9 +1016,12 @@ function clearAll(){
   ['filePlan','fileSys'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  document.getElementById('namePlan').textContent='Nenhum arquivo'; document.getElementById('namePlan').classList.add('pending');
+  if(!S.planLinked){
+    document.getElementById('namePlan').textContent='Nenhum arquivo'; document.getElementById('namePlan').classList.add('pending');
+    document.getElementById('slotPlan').classList.remove('loaded');
+  }
   document.getElementById('nameSys').textContent='Nenhum arquivo';  document.getElementById('nameSys').classList.add('pending');
-  document.getElementById('slotPlan').classList.remove('loaded');
+  if(!S.planLinked) document.getElementById('slotPlan').classList.remove('loaded');
   document.getElementById('slotSys').classList.remove('loaded');
   document.getElementById('sheetPick').classList.add('hidden');
   // Reset summary + search + cards
@@ -1027,23 +1057,65 @@ function syncExpandBtn(){
 }
 
 /* =========================================================
-   FILE HANDLERS
+   FILE SYSTEM ACCESS API — vínculo com planilha da rede
    ========================================================= */
-document.getElementById('filePlan').addEventListener('change', async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  document.getElementById('namePlan').textContent='Carregando…';
-  try{
-    S.wb=await readXlsx(f);
-  }catch(err){ alert('Erro ao ler planilha: '+err.message); return; }
+const IDB_NAME='servsul_fshandle', IDB_STORE='handles', IDB_KEY='planHandle';
+const FS_SUPPORTED=('showOpenFilePicker' in window);
 
-  document.getElementById('namePlan').textContent=f.name;
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(IDB_NAME,1);
+    req.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbGet(key){
+  const db=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbSet(key,val){
+  const db=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    const req=tx.objectStore(IDB_STORE).put(val,key);
+    req.onsuccess=()=>res();
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbDel(key){
+  const db=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    const req=tx.objectStore(IDB_STORE).delete(key);
+    req.onsuccess=()=>res();
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+async function processXlsxFile(file){
+  // Shared logic: read file → populate planilha slot → parse sheets
+  document.getElementById('namePlan').textContent='Carregando…';
+  try{ S.wb=await readXlsx(file); }
+  catch(err){ alert('Erro ao ler planilha: '+err.message); return; }
+  document.getElementById('namePlan').textContent=file.name;
   document.getElementById('namePlan').classList.remove('pending');
   document.getElementById('slotPlan').classList.add('loaded');
-
+  // Modified date
+  if(file.lastModified){
+    const d=new Date(file.lastModified);
+    document.getElementById('modPlan').textContent=
+      'Modificado: '+d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('modPlan').classList.remove('hidden');
+  }
   // Populate sheet picker
   const sel=document.getElementById('sheetPick');
   sel.innerHTML=S.wb.SheetNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
-  // Auto-select: current month > Dados Trat > Clientes ativos
   const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const curMonth=MONTHS[new Date().getMonth()];
   const prefs=[curMonth,'Dados Trat','Clientes ativos'];
@@ -1052,6 +1124,100 @@ document.getElementById('filePlan').addEventListener('change', async e=>{
   sel.value=picked;
   sel.classList.remove('hidden');
   loadSheet(picked);
+}
+
+async function linkPlanFile(){
+  if(!FS_SUPPORTED){ alert('Seu navegador não suporta vinculação de arquivo. Use Chrome ou Edge.'); return; }
+  try{
+    const [handle]=await window.showOpenFilePicker({
+      types:[{description:'Planilha',accept:{'application/vnd.ms-excel.sheet.macroenabled.12':['.xlsm'],
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx'],
+        'application/vnd.ms-excel':['.xls']}}],
+      excludeAcceptAllOption:false, multiple:false
+    });
+    await idbSet(IDB_KEY,handle);
+    S.planLinked=true;
+    updateLinkUI(handle.name);
+    const file=await handle.getFile();
+    await processXlsxFile(file);
+  }catch(err){
+    if(err.name!=='AbortError') alert('Erro ao vincular: '+err.message);
+  }
+}
+
+async function reloadLinkedPlan(){
+  const handle=await idbGet(IDB_KEY);
+  if(!handle){ alert('Nenhuma planilha vinculada.'); return; }
+  // Check/request permission
+  let perm=await handle.queryPermission({mode:'read'});
+  if(perm!=='granted') perm=await handle.requestPermission({mode:'read'});
+  if(perm!=='granted'){ alert('Permissão negada para ler o arquivo.'); return; }
+  const file=await handle.getFile();
+  await processXlsxFile(file);
+  // Flash reload button
+  const btn=document.getElementById('btnReload');
+  btn.textContent='✓ Atualizado'; btn.style.background='#16a34a';
+  setTimeout(()=>{btn.textContent='↺ Atualizar'; btn.style.background='';},1800);
+}
+
+async function unlinkPlan(){
+  if(!confirm('Remover vínculo com a planilha da rede?')) return;
+  await idbDel(IDB_KEY);
+  S.planLinked=false;
+  // Reset plan slot to unlinked state
+  document.getElementById('linkBadge').classList.add('hidden');
+  document.getElementById('btnCarregar').classList.remove('hidden');
+  document.getElementById('btnVincular').classList.toggle('hidden',!FS_SUPPORTED);
+  document.getElementById('btnReload').classList.add('hidden');
+  document.getElementById('btnUnlink').classList.add('hidden');
+  document.getElementById('slotPlan').classList.remove('linked');
+  document.getElementById('slotPlan').onclick=()=>document.getElementById('filePlan').click();
+  document.getElementById('modPlan').classList.add('hidden');
+}
+
+function updateLinkUI(filename){
+  document.getElementById('linkBadge').classList.remove('hidden');
+  document.getElementById('btnCarregar').classList.add('hidden');
+  document.getElementById('btnVincular').classList.add('hidden');
+  document.getElementById('btnReload').classList.remove('hidden');
+  document.getElementById('btnUnlink').classList.remove('hidden');
+  document.getElementById('slotPlan').classList.add('linked');
+  // disable click-to-open while linked
+  document.getElementById('slotPlan').onclick=null;
+}
+
+async function initLinked(){
+  // Show "Vincular" button if FS API is available
+  if(FS_SUPPORTED){
+    document.getElementById('btnVincular').classList.remove('hidden');
+    // Try to restore a previously linked handle
+    try{
+      const handle=await idbGet(IDB_KEY);
+      if(!handle) return;
+      // Check if we still have permission (silently, no prompt)
+      const perm=await handle.queryPermission({mode:'read'});
+      S.planLinked=true;
+      updateLinkUI(handle.name);
+      // Show name even if permission needs refresh
+      document.getElementById('namePlan').textContent=handle.name+' (clique ↺ para recarregar)';
+      document.getElementById('namePlan').classList.add('pending');
+      if(perm==='granted'){
+        // Auto-reload silently
+        try{
+          const file=await handle.getFile();
+          await processXlsxFile(file);
+        }catch(e){ /* permission may need user gesture — show reload button */ }
+      }
+    }catch(e){ /* IDB unavailable or no handle */ }
+  }
+}
+
+/* =========================================================
+   FILE HANDLERS
+   ========================================================= */
+document.getElementById('filePlan').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  await processXlsxFile(f);
 });
 
 function onSheetChange(){
@@ -1230,6 +1396,9 @@ function exportCSV(){
   S.mesAtual=pick.value;
   S.historico=lsLoad();
 })();
+
+// Init File System Access API (planilha vinculada à rede)
+initLinked();
 
 /* =========================================================
    LOCAL STORAGE MODULE
