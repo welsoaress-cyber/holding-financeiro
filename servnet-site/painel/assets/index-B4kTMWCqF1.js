@@ -21,8 +21,8 @@ import{t as _,a as B,u as C,N as H,f as l}from"./page-dashboard-Dbqm2OjXbF1.js";
         ${r("dre","📋 DRE")}
       </div>
     </div>
-  `}function j(){n==null||n.querySelectorAll("[data-tab]").forEach(r=>{r.addEventListener("click",()=>{$=r.dataset.tab,$==="fluxo"?h():L()})})}function I(){var y,M,k;if(!n)return;const r=Y(),a=new Date,o=f===a.getFullYear()&&b===a.getMonth(),s=r.map(({ano:t,mes:e})=>{const i=(z.get(D(t,e))??[]).filter(c=>c.status==="pago"&&c.tipo!=="transferencia"),q=i.filter(c=>c.tipo==="receita").reduce((c,T)=>c+(Number(T.valor)||0),0),N=i.filter(c=>c.tipo==="despesa").reduce((c,T)=>c+(Number(T.valor)||0),0);return{ano:t,mes:e,entradas:q,saidas:N,resultado:q-N}}),d=s.reduce((t,e)=>t+e.entradas,0),v=s.reduce((t,e)=>t+e.saidas,0),u=d-v,m=s.map(t=>`
-    <tr style="border-bottom:1px solid var(--border,#f3f4f6);">
+  `}function j(){n==null||n.querySelectorAll("[data-tab]").forEach(r=>{r.addEventListener("click",()=>{$=r.dataset.tab,$==="fluxo"?h():L()})})}function gt_modal(titulo,lancs){const ov=document.createElement("div");ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:16px;padding:20px;width:100%;max-width:560px;max-height:80vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="margin:0;font-size:15px;font-weight:700;">${titulo}</h3><button id="_gtmc" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#111);line-height:1;">✕</button></div>${lancs.length===0?'<p style="color:#9ca3af;text-align:center;padding:24px;">Nenhum lançamento no período.</p>':lancs.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border,#f3f4f6);"><div style="min-width:0;flex:1;margin-right:12px;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.descricao||"—"}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px;">${c.data||c.mes_ref||"—"}${c.categoria?" · "+c.categoria:""}</div></div><div style="font-weight:700;white-space:nowrap;color:${c.tipo==="receita"?"#059669":"#dc2626"};">${l(Number(c.valor)||0)}</div></div>`).join("")}</div>`;document.body.appendChild(ov);ov.querySelector("#_gtmc").addEventListener("click",()=>ov.remove());ov.addEventListener("click",e=>{if(e.target===ov)ov.remove()});}function I(){var y,M,k;if(!n)return;const r=Y(),a=new Date,o=f===a.getFullYear()&&b===a.getMonth(),s=r.map(({ano:t,mes:e})=>{const i=(z.get(D(t,e))??[]).filter(c=>c.status==="pago"&&c.tipo!=="transferencia"),q=i.filter(c=>c.tipo==="receita").reduce((c,T)=>c+(Number(T.valor)||0),0),N=i.filter(c=>c.tipo==="despesa").reduce((c,T)=>c+(Number(T.valor)||0),0);return{ano:t,mes:e,entradas:q,saidas:N,resultado:q-N}}),d=s.reduce((t,e)=>t+e.entradas,0),v=s.reduce((t,e)=>t+e.saidas,0),u=d-v,m=s.map(t=>`
+    <tr data-mes-click="${t.ano}-${t.mes}" style="border-bottom:1px solid var(--border,#f3f4f6);cursor:pointer;" title="Ver lançamentos de ${H[t.mes]}/${t.ano}">
       <td style="padding:10px 12px;font-weight:600;white-space:nowrap;">${H[t.mes]}/${t.ano}</td>
       <td style="padding:10px 12px;text-align:right;color:#059669;font-weight:500;">${l(t.entradas)}</td>
       <td style="padding:10px 12px;text-align:right;color:#dc2626;font-weight:500;">${l(t.saidas)}</td>
@@ -49,11 +49,11 @@ import{t as _,a as B,u as C,N as H,f as l}from"./page-dashboard-Dbqm2OjXbF1.js";
         </div>
       </div>
 
-      <!-- KPIs -->
+      <!-- KPIs clicáveis -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
-        ${w("📈 Total entradas",l(d),"#059669")}
-        ${w("📉 Total saídas",l(v),"#dc2626")}
-        ${w("💰 Resultado",l(u),u>=0?"#059669":"#dc2626")}
+        ${w("📈 Total entradas",l(d),"#059669","receita")}
+        ${w("📉 Total saídas",l(v),"#dc2626","despesa")}
+        ${w("💰 Resultado",l(u),u>=0?"#059669":"#dc2626","todos")}
       </div>
 
       <!-- Tabela -->
@@ -85,7 +85,7 @@ import{t as _,a as B,u as C,N as H,f as l}from"./page-dashboard-Dbqm2OjXbF1.js";
         Mostra somente lançamentos com status "Pago" — receitas e despesas realizadas. Transferências são excluídas.
       </p>
     </div>
-  `,j(),n.querySelectorAll("[data-periodo]").forEach(t=>{t.addEventListener("click",()=>{E=Number(t.dataset.periodo),h()})}),(y=n.querySelector('[data-action="prev"]'))==null||y.addEventListener("click",()=>{const{ano:t,mes:e}=S(f,b,-1);f=t,b=e,h()}),(M=n.querySelector('[data-action="next"]'))==null||M.addEventListener("click",()=>{const{ano:t,mes:e}=S(f,b,1);f=t,b=e,h()}),(k=n.querySelector('[data-action="hoje"]'))==null||k.addEventListener("click",()=>{const t=new Date;f=t.getFullYear(),b=t.getMonth(),h()})}function K(){var M,k,t;if(!n)return;const a=(z.get(D(x,g))??[]).filter(e=>e.status==="pago"&&e.tipo!=="transferencia"),o=new Date,s=x===o.getFullYear()&&g===o.getMonth(),d=a.filter(e=>e.tipo==="receita").reduce((e,p)=>e+(Number(p.valor)||0),0),v=a.filter(e=>e.tipo==="despesa").reduce((e,p)=>e+(Number(p.valor)||0),0),u=d-v,m=d>0?Math.round(u/d*100):null,y=(e,p,i={})=>`
+  `,j(),n.querySelectorAll("[data-periodo]").forEach(t=>{t.addEventListener("click",()=>{E=Number(t.dataset.periodo),h()})}),(y=n.querySelector('[data-action="prev"]'))==null||y.addEventListener("click",()=>{const{ano:t,mes:e}=S(f,b,-1);f=t,b=e,h()}),(M=n.querySelector('[data-action="next"]'))==null||M.addEventListener("click",()=>{const{ano:t,mes:e}=S(f,b,1);f=t,b=e,h()}),(k=n.querySelector('[data-action="hoje"]'))==null||k.addEventListener("click",()=>{const t=new Date;f=t.getFullYear(),b=t.getMonth(),h()});n.querySelectorAll("[data-detalhe]").forEach(el=>{el.addEventListener("click",()=>{const tipo=el.dataset.detalhe,lancs=r.flatMap(({ano,mes})=>(z.get(D(ano,mes))??[]).filter(c=>c.status==="pago"&&c.tipo!=="transferencia")).filter(c=>tipo==="todos"||c.tipo===tipo),titulo=tipo==="receita"?"📈 Entradas do período":tipo==="despesa"?"📉 Saídas do período":"💰 Todas as transações";gt_modal(titulo,lancs)})});n.querySelectorAll("[data-mes-click]").forEach(el=>{el.addEventListener("click",()=>{const[ano,mes]=el.dataset.mesClick.split("-").map(Number),lancs=(z.get(D(ano,mes))??[]).filter(c=>c.status==="pago"&&c.tipo!=="transferencia");gt_modal(H[mes]+" / "+ano,lancs)})});}function K(){var M,k,t;if(!n)return;const a=(z.get(D(x,g))??[]).filter(e=>e.status==="pago"&&e.tipo!=="transferencia"),o=new Date,s=x===o.getFullYear()&&g===o.getMonth(),d=a.filter(e=>e.tipo==="receita").reduce((e,p)=>e+(Number(p.valor)||0),0),v=a.filter(e=>e.tipo==="despesa").reduce((e,p)=>e+(Number(p.valor)||0),0),u=d-v,m=d>0?Math.round(u/d*100):null,y=(e,p,i={})=>`
     <div style="
       display:flex;justify-content:space-between;align-items:center;
       padding:${i.grande?"14px":"10px"} 16px;
@@ -128,10 +128,10 @@ import{t as _,a as B,u as C,N as H,f as l}from"./page-dashboard-Dbqm2OjXbF1.js";
         ${y("= Resultado do período",l(u),{grande:!0,cor:u>=0?"#059669":"#dc2626",destaque:!0})}
       </div>
 
-      <!-- KPIs -->
+      <!-- KPIs clicáveis -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-        ${w("📈 Receita bruta",l(d),"#059669")}
-        ${w("📉 Total despesas",l(v),"#dc2626")}
+        ${w("📈 Receita bruta",l(d),"#059669","receita_dre")}
+        ${w("📉 Total despesas",l(v),"#dc2626","despesa_dre")}
         ${w("📊 Margem",m!==null?m+"%":"—",m===null?"#9ca3af":m>=0?"#059669":"#dc2626")}
       </div>
 
@@ -139,9 +139,10 @@ import{t as _,a as B,u as C,N as H,f as l}from"./page-dashboard-Dbqm2OjXbF1.js";
         Versão simplificada — sem separação de custos diretos vs operacionais. Mostra somente lançamentos pagos.
       </p>
     </div>
-  `,j(),(M=n.querySelector('[data-action="prev"]'))==null||M.addEventListener("click",()=>{const{ano:e,mes:p}=S(x,g,-1);x=e,g=p,L()}),(k=n.querySelector('[data-action="next"]'))==null||k.addEventListener("click",()=>{const{ano:e,mes:p}=S(x,g,1);x=e,g=p,L()}),(t=n.querySelector('[data-action="hoje"]'))==null||t.addEventListener("click",()=>{const e=new Date;x=e.getFullYear(),g=e.getMonth(),L()})}function w(r,a,o){return`
-    <div style="background:var(--bg-card,#fff);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+  `,j(),(M=n.querySelector('[data-action="prev"]'))==null||M.addEventListener("click",()=>{const{ano:e,mes:p}=S(x,g,-1);x=e,g=p,L()}),(k=n.querySelector('[data-action="next"]'))==null||k.addEventListener("click",()=>{const{ano:e,mes:p}=S(x,g,1);x=e,g=p,L()}),(t=n.querySelector('[data-action="hoje"]'))==null||t.addEventListener("click",()=>{const e=new Date;x=e.getFullYear(),g=e.getMonth(),L()});n.querySelectorAll("[data-detalhe]").forEach(el=>{el.addEventListener("click",()=>{const tipo=el.dataset.detalhe,allLanc=(z.get(D(x,g))??[]).filter(e=>e.status==="pago"&&e.tipo!=="transferencia"),lancs=tipo==="receita_dre"?allLanc.filter(e=>e.tipo==="receita"):tipo==="despesa_dre"?allLanc.filter(e=>e.tipo==="despesa"):allLanc,titulo=tipo==="receita_dre"?"📈 Receitas de "+H[g]+" / "+x:"📉 Despesas de "+H[g]+" / "+x;gt_modal(titulo,lancs)})});}function w(r,a,o,tipo){return`
+    <div ${tipo?`data-detalhe="${tipo}"`:""}  style="background:var(--bg-card,#fff);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);${tipo?"cursor:pointer;transition:opacity .15s;":""}">
       <div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-bottom:6px;">${r}</div>
       <div style="font-size:18px;font-weight:700;color:${o};">${a}</div>
+      ${tipo?'<div style="font-size:10px;color:var(--text-muted,#9ca3af);margin-top:4px;">clique para ver detalhes</div>':""}
     </div>
   `}async function G(r){n=r,$="fluxo";const a=new Date;f=a.getFullYear(),b=a.getMonth(),x=a.getFullYear(),g=a.getMonth(),await h()}export{G as initRelatorios};
