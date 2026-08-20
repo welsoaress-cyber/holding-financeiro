@@ -5,7 +5,7 @@
 //   3. Se o arquivo mudou, atualiza o cache — próxima visita já pega a nova versão
 //   4. O app mostra banner "nova versão disponível" via verificarNovaVersao()
 //   5. Primeira visita (sem cache): aguarda a rede normalmente
-const CACHE_NAME = "holding-app-shell-v3";
+const CACHE_NAME = "holding-app-shell-v4";
 const APP_SHELL = [
   "./sistema-financeiro-holding.html",
   "./manifest.json",
@@ -33,6 +33,21 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return; // deixa Supabase/CDNs passarem direto
+
+  // Painel: SEMPRE network-first. Os bundles do painel já foram atualizados
+  // mantendo o mesmo nome de arquivo, e o stale-while-revalidate servia a
+  // versão velha do cache — deixando o painel preso em builds quebrados.
+  // Rede primeiro; cache só como fallback offline.
+  if (url.pathname.startsWith("/painel/")) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-cache" }).catch(() =>
+        caches.open(CACHE_NAME)
+          .then((cache) => cache.match(event.request))
+          .then((cached) => cached || new Response("", { status: 503 }))
+      )
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
