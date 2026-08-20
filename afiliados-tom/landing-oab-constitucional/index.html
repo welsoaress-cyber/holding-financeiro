@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2ª Fase OAB Constitucional — Método IR Curso</title>
+  <title>2ª Fase OAB Constitucional — Método IR</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
@@ -19,306 +19,207 @@
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --azul:     #1a3a6b;
       --azul-esc: #0f2347;
       --azul-cl:  #e8eef8;
       --dourado:  #c9a227;
       --dourado-cl:#fdf6e3;
+      --vermelho: #cc2222;
       --preto:    #111;
       --cinza:    #555;
       --bg:       #fff;
       --raio:     10px;
     }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--preto); line-height: 1.6; }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--preto);
-      line-height: 1.6;
-    }
+    /* TOPO */
+    .topo { background: var(--vermelho); color: #fff; text-align: center; padding: 10px 20px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; }
 
-    /* ── TOPO ── */
-    .topo {
-      background: var(--azul-esc);
-      color: #fff;
-      text-align: center;
-      padding: 10px 20px;
-      font-size: 0.85rem;
-      letter-spacing: 0.5px;
-    }
-
-    /* ── HERO ── */
-    .hero {
-      background: linear-gradient(160deg, #0a1628 0%, #1a3a6b 100%);
-      color: #fff;
-      padding: 52px 20px 44px;
-      text-align: center;
-    }
-    .hero-badge {
-      display: inline-block;
-      background: var(--dourado);
-      color: #111;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      padding: 5px 14px;
-      border-radius: 20px;
-      margin-bottom: 20px;
-    }
-    .hero h1 {
-      font-size: clamp(1.6rem, 5vw, 2.6rem);
-      font-weight: 900;
-      line-height: 1.2;
-      max-width: 720px;
-      margin: 0 auto 16px;
-    }
+    /* HERO */
+    .hero { background: linear-gradient(160deg, #0a1628 0%, #1a3a6b 100%); color: #fff; padding: 52px 20px 44px; text-align: center; }
+    .hero-badge { display: inline-block; background: var(--dourado); color: #111; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 900; line-height: 1.2; max-width: 720px; margin: 0 auto 16px; }
     .hero h1 span { color: var(--dourado); }
-    .hero p.sub {
-      font-size: clamp(1rem, 3vw, 1.15rem);
-      opacity: 0.85;
-      max-width: 600px;
-      margin: 0 auto 32px;
-    }
-    .btn-hero {
-      display: inline-block;
-      background: var(--dourado);
-      color: #111;
-      font-size: 1.1rem;
-      font-weight: 800;
-      padding: 18px 36px;
-      border-radius: var(--raio);
-      text-decoration: none;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: none;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.15s;
-    }
+    .hero p.sub { font-size: clamp(1rem, 3vw, 1.15rem); opacity: 0.85; max-width: 600px; margin: 0 auto 28px; }
+    .stats-row { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; margin-bottom: 32px; }
+    .stat { text-align: center; }
+    .stat .num { font-size: 2rem; font-weight: 900; color: var(--dourado); line-height: 1; }
+    .stat .label { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn-hero { display: inline-block; background: var(--dourado); color: #111; font-size: 1.1rem; font-weight: 800; padding: 18px 36px; border-radius: var(--raio); text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; transition: background 0.2s, transform 0.15s; }
     .btn-hero:hover { background: #b8911f; transform: translateY(-2px); }
-    .garantia-mini {
-      margin-top: 12px;
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
+    .garantia-mini { margin-top: 12px; font-size: 0.8rem; opacity: 0.7; }
 
-    /* ── SEÇÕES ── */
+    /* VIDEO */
+    .video-section { background: #0a1628; padding: 48px 20px; text-align: center; }
+    .video-section h2 { color: #fff; font-size: clamp(1.2rem, 4vw, 1.8rem); font-weight: 800; margin-bottom: 8px; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .video-section h2 span { color: var(--dourado); }
+    .video-section p { color: rgba(255,255,255,0.75); margin-bottom: 24px; font-size: 0.95rem; }
+    .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; max-width: 720px; margin: 0 auto 28px; border-radius: var(--raio); overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+    .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+
+    /* SEÇÕES */
     section { padding: 56px 20px; }
-    .container { max-width: 680px; margin: 0 auto; }
-    h2 {
-      font-size: clamp(1.35rem, 4vw, 1.9rem);
-      font-weight: 800;
-      margin-bottom: 24px;
-      line-height: 1.3;
-    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h2 { font-size: clamp(1.35rem, 4vw, 1.9rem); font-weight: 800; margin-bottom: 24px; line-height: 1.3; }
     h2 span { color: var(--azul); }
 
-    /* ── DOR ── */
+    /* DOR */
     .dor { background: #f9f9f9; }
     .dor-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
-    .dor-lista li {
-      background: #fff;
-      border-left: 4px solid #cc2222;
-      padding: 14px 16px;
-      border-radius: 0 var(--raio) var(--raio) 0;
-      font-size: 1rem;
-    }
+    .dor-lista li { background: #fff; border-left: 4px solid var(--vermelho); padding: 14px 16px; border-radius: 0 var(--raio) var(--raio) 0; font-size: 1rem; }
     .dor-lista li::before { content: "😤 "; }
 
-    /* ── MECANISMO ── */
-    .mec { background: var(--azul-cl); }
-    .mec-box {
-      background: #fff;
-      border: 2px solid var(--azul);
-      border-radius: var(--raio);
-      padding: 28px 24px;
-    }
-    .mec-box p { font-size: 1.05rem; margin-bottom: 12px; }
-    .mec-box p:last-child { margin-bottom: 0; }
+    /* VS */
+    .vs-section { background: var(--azul-esc); color: #fff; }
+    .vs-section h2 { color: #fff; text-align: center; }
+    .vs-section h2 span { color: var(--dourado); }
+    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+    @media (max-width: 560px) { .vs-grid { grid-template-columns: 1fr; } }
+    .vs-col { border-radius: var(--raio); padding: 20px; }
+    .vs-col.ruim { background: rgba(204,34,34,0.15); border: 1px solid rgba(204,34,34,0.4); }
+    .vs-col.bom { background: rgba(201,162,39,0.15); border: 1px solid rgba(201,162,39,0.5); }
+    .vs-titulo { font-weight: 800; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .vs-col.ruim .vs-titulo { color: #ff6b6b; }
+    .vs-col.bom .vs-titulo { color: var(--dourado); }
+    .vs-lista { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .vs-lista li { font-size: 0.9rem; display: flex; gap: 8px; align-items: flex-start; }
+    .vs-lista li .ico { flex-shrink: 0; margin-top: 2px; }
 
-    /* ── O QUE INCLUI ── */
-    .inclui-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
-    .inclui-lista li {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      font-size: 1rem;
-      background: var(--azul-cl);
-      border-radius: var(--raio);
-      padding: 14px 16px;
-    }
-    .inclui-lista li .ic {
-      background: var(--azul);
-      color: #fff;
-      border-radius: 50%;
-      width: 26px;
-      height: 26px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 700;
-      margin-top: 1px;
-    }
-
-    /* ── MÉTODO ── */
+    /* MÉTODO PILARES */
     .metodo { background: var(--dourado-cl); }
-    .metodo-cards { display: flex; flex-direction: column; gap: 16px; }
-    .metodo-card {
-      background: #fff;
-      border-left: 5px solid var(--dourado);
-      border-radius: 0 var(--raio) var(--raio) 0;
-      padding: 18px 20px;
-    }
-    .metodo-card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 6px; color: var(--azul-esc); }
-    .metodo-card p { font-size: 0.93rem; color: var(--cinza); }
+    .pilares { display: flex; flex-direction: column; gap: 14px; }
+    .pilar { background: #fff; border-left: 5px solid var(--dourado); border-radius: 0 var(--raio) var(--raio) 0; padding: 16px 20px; }
+    .pilar .num-pilar { font-size: 0.7rem; font-weight: 800; color: var(--dourado); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .pilar h3 { font-size: 1rem; font-weight: 800; color: var(--azul-esc); margin-bottom: 4px; }
+    .pilar p { font-size: 0.9rem; color: var(--cinza); }
 
-    /* ── PROVA SOCIAL ── */
-    .prova { background: #f9f9f9; }
+    /* INCLUI */
+    .inclui-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .inclui-lista li { display: flex; gap: 12px; background: var(--azul-cl); border-radius: var(--raio); padding: 14px 16px; font-size: 0.97rem; align-items: flex-start; }
+    .inclui-lista li .ic { background: var(--azul); color: #fff; border-radius: 50%; width: 26px; height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; margin-top: 1px; }
+
+    /* PROFESSOR */
+    .prof { background: #f9f9f9; }
+    .prof-box { background: #fff; border-radius: var(--raio); padding: 28px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); }
+    .prof-box h3 { font-size: 1.2rem; font-weight: 800; color: var(--azul); margin-bottom: 12px; }
+    .prof-box p { font-size: 0.97rem; color: var(--cinza); margin-bottom: 10px; }
+    .prof-box p:last-child { margin-bottom: 0; }
+    .prof-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .prof-badge { background: var(--azul-cl); color: var(--azul); font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
+
+    /* PROVA SOCIAL */
+    .prova { background: var(--azul-cl); }
     .depoimentos { display: flex; flex-direction: column; gap: 20px; }
-    .dep-card {
-      background: #fff;
-      border-radius: var(--raio);
-      padding: 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-    }
+    .dep-card { background: #fff; border-radius: var(--raio); padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
     .dep-card p { font-size: 0.97rem; font-style: italic; margin-bottom: 10px; }
     .dep-autor { font-weight: 700; font-size: 0.85rem; color: var(--azul); }
-    .estrelas { color: var(--dourado); margin-bottom: 6px; font-size: 1rem; }
+    .estrelas { color: var(--dourado); margin-bottom: 6px; }
 
-    /* ── PREÇO ── */
+    /* ACOMPANHAMENTO */
+    .acomp { background: var(--azul-esc); color: #fff; }
+    .acomp h2 { color: #fff; }
+    .acomp h2 span { color: var(--dourado); }
+    .acomp-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .acomp-lista li { display: flex; gap: 12px; font-size: 0.97rem; align-items: flex-start; }
+    .acomp-lista li::before { content: "👉"; flex-shrink: 0; }
+
+    /* PREÇO */
     .oferta { background: #fff; text-align: center; }
-    .preco-card {
-      background: linear-gradient(135deg, #0a1628 0%, #1a3a6b 100%);
-      color: #fff;
-      border-radius: 16px;
-      padding: 40px 28px 32px;
-      max-width: 420px;
-      margin: 0 auto;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      position: relative;
-      overflow: hidden;
-    }
-    .preco-card::before {
-      content: "🏆 MELHOR CUSTO-BENEFÍCIO PARA A OAB";
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      background: var(--dourado);
-      color: #111;
-      font-size: 0.7rem;
-      font-weight: 800;
-      letter-spacing: 1px;
-      padding: 7px;
-      text-align: center;
-    }
+    .vagas-badge { display: inline-block; background: var(--vermelho); color: #fff; font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 16px; }
+    .preco-card { background: linear-gradient(135deg, #0a1628 0%, #1a3a6b 100%); color: #fff; border-radius: 16px; padding: 40px 28px 32px; max-width: 420px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); position: relative; overflow: hidden; }
+    .preco-card::before { content: "🏆 MÉTODO IR — CONSTITUCIONAL 2ª FASE OAB"; position: absolute; top: 0; left: 0; right: 0; background: var(--dourado); color: #111; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.5px; padding: 7px; text-align: center; }
     .preco-card .por { font-size: 0.9rem; opacity: 0.8; margin-top: 8px; }
-    .preco-card .valor {
-      font-size: 3rem;
-      font-weight: 900;
-      color: var(--dourado);
-      line-height: 1;
-      margin-top: 6px;
-    }
+    .preco-card .valor { font-size: 3rem; font-weight: 900; color: var(--dourado); line-height: 1; margin-top: 6px; }
     .preco-card .valor strong { font-size: 3.5rem; }
     .preco-card .centavos { font-size: 1.5rem; vertical-align: super; }
     .preco-card .parcelas { font-size: 0.85rem; opacity: 0.75; margin-top: 6px; }
     .preco-card .btn-hero { margin-top: 24px; display: inline-block; }
+    .preco-inclui { list-style: none; text-align: left; margin: 18px 0; display: flex; flex-direction: column; gap: 8px; }
+    .preco-inclui li { font-size: 0.85rem; opacity: 0.9; display: flex; gap: 8px; }
+    .preco-inclui li::before { content: "✓"; color: var(--dourado); font-weight: 900; }
 
-    /* ── GARANTIA ── */
-    .garantia { background: var(--azul-cl); text-align: center; }
+    /* GARANTIA */
+    .garantia { background: var(--dourado-cl); text-align: center; }
     .garantia-icon { font-size: 3.5rem; margin-bottom: 12px; }
     .garantia p { max-width: 520px; margin: 0 auto; font-size: 1rem; color: var(--cinza); }
 
-    /* ── FAQ ── */
+    /* FAQ */
     .faq-lista { display: flex; flex-direction: column; border: 1px solid #e0e0e0; border-radius: var(--raio); overflow: hidden; }
     .faq-item { border-bottom: 1px solid #e0e0e0; }
     .faq-item:last-child { border-bottom: none; }
-    .faq-q {
-      width: 100%; background: #fff; border: none; text-align: left;
-      padding: 18px 20px; font-size: 0.97rem; font-weight: 700;
-      cursor: pointer; display: flex; justify-content: space-between;
-      align-items: center; font-family: inherit;
-    }
+    .faq-q { width: 100%; background: #fff; border: none; text-align: left; padding: 18px 20px; font-size: 0.97rem; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-family: inherit; }
     .faq-q:hover { background: #f5f5f5; }
-    .faq-q .arrow { transition: transform 0.2s; font-style: normal; }
+    .faq-q .arrow { transition: transform 0.2s; }
     .faq-q.open .arrow { transform: rotate(180deg); }
     .faq-a { display: none; padding: 0 20px 18px; font-size: 0.95rem; color: var(--cinza); background: #fff; }
     .faq-a.open { display: block; }
 
-    /* ── CAPTURA ── */
+    /* CAPTURA */
     .captura { background: linear-gradient(160deg, #0a1628 0%, #1a3a6b 100%); color: #fff; text-align: center; }
     .captura h2 { color: #fff; }
     .captura h2 span { color: var(--dourado); }
     .captura p.sub2 { opacity: 0.8; margin-bottom: 32px; font-size: 1rem; }
-    .form-card {
-      background: #fff; border-radius: var(--raio); padding: 32px 28px;
-      max-width: 460px; margin: 0 auto; color: var(--preto);
-    }
+    .form-card { background: #fff; border-radius: var(--raio); padding: 32px 28px; max-width: 460px; margin: 0 auto; color: var(--preto); }
     .form-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; text-align: center; }
     .campo { margin-bottom: 16px; }
     .campo label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #333; }
-    .campo input {
-      width: 100%; padding: 14px 16px; border: 2px solid #ddd;
-      border-radius: var(--raio); font-size: 1rem; font-family: inherit;
-      transition: border 0.2s; outline: none;
-    }
+    .campo input { width: 100%; padding: 14px 16px; border: 2px solid #ddd; border-radius: var(--raio); font-size: 1rem; font-family: inherit; transition: border 0.2s; outline: none; }
     .campo input:focus { border-color: var(--azul); }
-    .btn-form {
-      width: 100%; background: var(--azul); color: #fff; font-size: 1.05rem;
-      font-weight: 800; padding: 16px; border: none; border-radius: var(--raio);
-      cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
-      margin-top: 8px; transition: background 0.2s; font-family: inherit;
-    }
+    .btn-form { width: 100%; background: var(--azul); color: #fff; font-size: 1.05rem; font-weight: 800; padding: 16px; border: none; border-radius: var(--raio); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px; transition: background 0.2s; font-family: inherit; }
     .btn-form:hover { background: var(--azul-esc); }
     .form-nota { font-size: 0.78rem; color: #888; text-align: center; margin-top: 10px; }
-    .link-direto {
-      display: block; margin-top: 20px; font-size: 0.85rem;
-      color: rgba(255,255,255,0.6); text-decoration: underline; cursor: pointer;
-    }
+    .link-direto { display: block; margin-top: 20px; font-size: 0.85rem; color: rgba(255,255,255,0.6); text-decoration: underline; cursor: pointer; }
     .link-direto:hover { color: #fff; }
 
-    /* ── RODAPÉ ── */
-    footer {
-      background: #0a1628; color: #aaa; font-size: 0.78rem;
-      text-align: center; padding: 32px 20px; line-height: 1.8;
-    }
+    /* RODAPÉ */
+    footer { background: #0a1628; color: #aaa; font-size: 0.78rem; text-align: center; padding: 32px 20px; line-height: 1.8; }
     footer a { color: #aaa; }
 
-    /* ── BARRA FLUTUANTE MOBILE ── */
-    .barra-flutuante {
-      display: none; position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--dourado); padding: 14px 20px; z-index: 999;
-    }
-    .barra-flutuante a {
-      display: block; color: #111; font-weight: 800; text-align: center;
-      font-size: 1rem; text-decoration: none; text-transform: uppercase;
-    }
-    @media (max-width: 600px) {
-      .barra-flutuante { display: block; }
-      body { padding-bottom: 60px; }
-    }
+    /* MOBILE */
+    .barra-flutuante { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--dourado); padding: 14px 20px; z-index: 999; }
+    .barra-flutuante a { display: block; color: #111; font-weight: 800; text-align: center; font-size: 1rem; text-decoration: none; text-transform: uppercase; }
+    @media (max-width: 600px) { .barra-flutuante { display: block; } body { padding-bottom: 60px; } }
   </style>
 </head>
 <body>
 
 <!-- TOPO -->
 <div class="topo">
-  ⚖️ Método aprovado por mais de 9.000 profissionais · 55h de aulas + ao vivo toda quinta-feira · Garantia de 7 dias
+  ⚠️ VAGAS LIMITADAS · Acesso direto ao Professor via WhatsApp · +1.000 aprovados · Garantia de 7 dias
 </div>
 
 <!-- HERO -->
 <header class="hero">
   <div class="container">
-    <span class="hero-badge">Curso Online · 2ª Fase OAB · Direito Constitucional</span>
-    <h1>Ainda Travando na<br><span>2ª Fase da OAB?</span><br>O Problema Não É Você — É o Método</h1>
-    <p class="sub">Técnica específica para o padrão FGV: identifique a peça, estruture a resposta e redija com velocidade. Resultado já no primeiro treino.</p>
-    <a href="#captura" class="btn-hero">Quero Passar na 2ª Fase →</a>
+    <span class="hero-badge">Método IR · 2ª Fase OAB · Direito Constitucional</span>
+    <h1>Feche o Ciclo.<br><span>Passe na 2ª Fase da OAB</span><br>de uma Vez por Todas.</h1>
+    <p class="sub">É tudo questão de técnica e estratégia. Aprenda a escrever do jeito que a FGV quer e pontua — com o método que aprovou mais de 1.000 alunos.</p>
+    <div class="stats-row">
+      <div class="stat"><div class="num">+1.000</div><div class="label">Aprovados</div></div>
+      <div class="stat"><div class="num">4.9⭐</div><div class="label">Avaliação</div></div>
+      <div class="stat"><div class="num">+55h</div><div class="label">De aulas</div></div>
+      <div class="stat"><div class="num">2-3x</div><div class="label">Ao vivo/semana</div></div>
+    </div>
+    <a href="#captura" class="btn-hero">Quero Minha Aprovação →</a>
     <p class="garantia-mini">🔒 Garantia incondicional de 7 dias · Acesso imediato após o pagamento</p>
   </div>
 </header>
+
+<!-- VIDEO -->
+<div class="video-section">
+  <h2>Fazendo pela primeira ou enésima vez,<br><span>você vai perceber:</span></h2>
+  <p>É tudo questão de técnica e estratégia.</p>
+  <div class="video-wrap">
+    <iframe src="https://www.youtube.com/embed/uMO9uQl0ZKw?si=eu_XOY7I8a7eT_g8&controls=0"
+      title="Método IR — 2ª Fase OAB Constitucional"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  </div>
+  <a href="https://go.hotmart.com/D107244641G?ap=9996" class="btn-hero" target="_blank" rel="noopener">
+    Quero Conquistar Minha Aprovação na OAB →
+  </a>
+</div>
 
 <!-- DOR -->
 <section class="dor">
@@ -326,34 +227,82 @@
     <h2>Você se identifica com <span>alguma dessas situações?</span></h2>
     <ul class="dor-lista">
       <li>Passou na 1ª Fase mas a 2ª parece um muro intransponível</li>
-      <li>Estuda horas de Direito Constitucional mas na prova não sabe como montar a peça</li>
-      <li>Sente que falta uma técnica específica para o padrão de correção da FGV</li>
-      <li>Já reprovou e está com medo de reprovar de novo — e atrasar sua carreira</li>
-      <li>Perde tempo na prova porque não tem uma estrutura definida de resposta</li>
+      <li>Já fez o exame várias vezes e está pensando em desistir</li>
+      <li>Estuda horas de Direito Constitucional mas na hora da prova não sabe montar a peça</li>
+      <li>Falta uma técnica específica para o padrão de correção da FGV</li>
+      <li>Perde tempo na prova porque não tem uma estrutura definida para escrever</li>
     </ul>
     <p style="margin-top:24px; font-size:1rem; color:var(--cinza);">
-      Se você marcou qualquer uma dessas, saiba: <strong>o problema não é falta de conhecimento</strong>.
-      É que ninguém te ensinou a técnica certa para o formato da FGV. E isso tem solução.
+      Se você marcou qualquer uma dessas, saiba: <strong>o único aluno que não consegue com o método IR é o teimoso</strong>.
+      Difícil é estudar sem orientação. Com técnica certa, dá sim — a OAB é passável.
     </p>
   </div>
 </section>
 
-<!-- MECANISMO -->
-<section class="mec">
+<!-- VS -->
+<section class="vs-section">
   <div class="container">
-    <h2>O que é o <span>IR Curso — 2ª Fase OAB Constitucional</span>?</h2>
-    <div class="mec-box">
-      <p>
-        É um preparatório online desenvolvido especificamente para a <strong>2ª Fase da OAB em Direito Constitucional</strong>,
-        com método próprio para o padrão de correção da FGV — a banca que elabora a prova.
-      </p>
-      <p>
-        Mais de <strong>9.000 profissionais</strong> já aplicaram o método. Avaliação <strong>4.9 de 5 estrelas</strong>.
-      </p>
-      <p>
-        Não é mais um curso genérico de Direito Constitucional. É uma técnica cirúrgica para você
-        <strong>identificar a peça, estruturar e redigir no padrão exato que a FGV pontua</strong>.
-      </p>
+    <h2>Outros cursos <span>vs Método IR</span></h2>
+    <div class="vs-grid">
+      <div class="vs-col ruim">
+        <div class="vs-titulo">❌ Outros cursos</div>
+        <ul class="vs-lista">
+          <li><span class="ico">✗</span><span>Cadernos e revisões genéricas</span></li>
+          <li><span class="ico">✗</span><span>Simulados sem correção individualizada</span></li>
+          <li><span class="ico">✗</span><span>Conteúdo sem técnica de prova</span></li>
+          <li><span class="ico">✗</span><span>Sem acesso direto ao professor</span></li>
+          <li><span class="ico">✗</span><span>Você fica sozinho na dúvida</span></li>
+        </ul>
+      </div>
+      <div class="vs-col bom">
+        <div class="vs-titulo">✅ Método IR</div>
+        <ul class="vs-lista">
+          <li><span class="ico">✓</span><span>Rodadas de treinos de peças</span></li>
+          <li><span class="ico">✓</span><span>Simulados com correção individualizada</span></li>
+          <li><span class="ico">✓</span><span>Rota de técnicas e estratégias para FGV</span></li>
+          <li><span class="ico">✓</span><span>WhatsApp direto com o Professor Ítalo</span></li>
+          <li><span class="ico">✓</span><span>Ninguém fica sozinho</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MÉTODO PILARES -->
+<section class="metodo">
+  <div class="container">
+    <h2>O <span>Método IR em 6 pilares</span> — do básico à aprovação</h2>
+    <div class="pilares">
+      <div class="pilar">
+        <div class="num-pilar">Pilar 1</div>
+        <h3>Identificação de Peças (Caminhos)</h3>
+        <p>Técnicas de identificação exata da peça — você nunca mais fica em branco diante do enunciado da FGV.</p>
+      </div>
+      <div class="pilar">
+        <div class="num-pilar">Pilar 2</div>
+        <h3>3 Estruturas Prontas (G1, G2 e G3)</h3>
+        <p>Aprenda 3 modelos que servem para qualquer peça em Direito Constitucional — simples e replicável.</p>
+      </div>
+      <div class="pilar">
+        <div class="num-pilar">Pilar 3</div>
+        <h3>Manuseio do VadeMecum</h3>
+        <p>Encontre as respostas no Vade sem precisar saber tudo sobre o assunto. A técnica certa na hora certa.</p>
+      </div>
+      <div class="pilar">
+        <div class="num-pilar">Pilar 4</div>
+        <h3>Técnica Sanduíche de Redação</h3>
+        <p>Escreva como a FGV exige: apontamento da violação + relação com o caso prático + artigo correto do Vade. Pontuação máxima.</p>
+      </div>
+      <div class="pilar">
+        <div class="num-pilar">Pilar 5</div>
+        <h3>Questões</h3>
+        <p>Compreenda o enunciado, foque na pergunta, faça a busca correta e redija no padrão da FGV. Para todas as questões da prova.</p>
+      </div>
+      <div class="pilar">
+        <div class="num-pilar">Pilar 6</div>
+        <h3>Prova — Execução Final</h3>
+        <p>Todo exame de ordem o Professor acompanha individualmente — correções, feedback e orientação até o dia da prova.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -361,35 +310,35 @@
 <!-- O QUE INCLUI -->
 <section>
   <div class="container">
-    <h2>O que você recebe no curso</h2>
+    <h2>O que você recebe no <span>Método IR</span></h2>
     <ul class="inclui-lista">
-      <li><span class="ic">✓</span><span><strong>55 horas de aulas gravadas</strong> — assista quantas vezes quiser, no celular ou computador</span></li>
-      <li><span class="ic">✓</span><span><strong>Aula ao vivo toda quinta-feira</strong> via Zoom até a data da sua prova</span></li>
-      <li><span class="ic">✓</span><span><strong>Exercícios práticos</strong> com correção detalhada no padrão FGV</span></li>
-      <li><span class="ic">✓</span><span><strong>Revisão de pontos críticos</strong> do direito material que mais caem na prova</span></li>
-      <li><span class="ic">✓</span><span><strong>60 dias de acesso</strong> — tempo suficiente para dominar o método antes da prova</span></li>
-      <li><span class="ic">✓</span><span><strong>Acesso imediato</strong> após a confirmação do pagamento</span></li>
+      <li><span class="ic">✓</span><span><strong>+55 horas de aulas gravadas</strong> — objetivas e direcionadas por temas, parte prática e direito material</span></li>
+      <li><span class="ic">✓</span><span><strong>2 a 3 aulas ao vivo por semana</strong> até a data da sua prova — todas ficam gravadas após a aula</span></li>
+      <li><span class="ic">✓</span><span><strong>Treinos e Simulados com correção individualizada</strong> — você escreve, faz upload, o professor corrige</span></li>
+      <li><span class="ic">✓</span><span><strong>Mentorias e cronograma de estudos</strong> — rota completa de técnicas e estratégias</span></li>
+      <li><span class="ic">✓</span><span><strong>WhatsApp direto com o Professor Ítalo</strong> — tire dúvidas, peça orientações a qualquer momento</span></li>
+      <li><span class="ic">✓</span><span><strong>Grupo de orientações</strong> — comunidade de alunos e equipe de suporte</span></li>
+      <li><span class="ic">✓</span><span><strong>Acesso até o dia seguinte à prova</strong> — tempo exato para dominar o método</span></li>
     </ul>
   </div>
 </section>
 
-<!-- MÉTODO -->
-<section class="metodo">
+<!-- PROFESSOR -->
+<section class="prof">
   <div class="container">
-    <h2>O <span>método em 3 pilares</span> — específico para a FGV</h2>
-    <div class="metodo-cards">
-      <div class="metodo-card">
-        <h3>1. Identificação das Peças</h3>
-        <p>Técnica que organiza qualquer peça cobrada pela FGV em 3 grupos específicos — você nunca mais fica em branco diante do enunciado.</p>
+    <h2>Quem é <span>o Professor Ítalo Rebouças?</span></h2>
+    <div class="prof-box">
+      <div class="prof-badges">
+        <span class="prof-badge">Mestre em Direito Constitucional</span>
+        <span class="prof-badge">Doutor em Ciências Jurídicas</span>
+        <span class="prof-badge">18 anos de docência</span>
+        <span class="prof-badge">+1.000 aprovados</span>
       </div>
-      <div class="metodo-card">
-        <h3>2. Estruturas de Peças Práticas</h3>
-        <p>3 estruturas suficientes para responder qualquer peça prática, no exato padrão do espelho de correção da FGV. Simples e replicável.</p>
-      </div>
-      <div class="metodo-card">
-        <h3>3. Método Sanduíche de Redação</h3>
-        <p>Técnica de redação que otimiza a velocidade e entrega a estrutura esperada pela banca — sem enrolar, sem perder ponto por formatação.</p>
-      </div>
+      <h3>Prof. Dr. Ítalo Rebouças</h3>
+      <p>Graduado em Direito com especialização em Processo Civil e Jurisdição Constitucional, Mestre em Direito Constitucional e <strong>Doutor em Ciências Jurídicas</strong>.</p>
+      <p>Desde 2016 fundou o Curso Preparatório Ítalo Rebouças com as primeiras turmas presenciais com <strong>100% de aprovação</strong>.</p>
+      <p>Lecionou durante <strong>18 anos</strong> nos cursos de graduação em Direito de várias universidades: Universidade Potiguar (UnP), Faculdade Mater Christi, UERN e UFRN. Professor da pós-graduação da UniCatólica do RN.</p>
+      <p style="margin-top:16px;font-weight:700;color:var(--azul);">👉 É tudo questão de técnica e estratégia. Difícil é estudar sem orientação.</p>
     </div>
   </div>
 </section>
@@ -397,39 +346,63 @@
 <!-- PROVA SOCIAL -->
 <section class="prova">
   <div class="container">
-    <h2>O que dizem quem já passou</h2>
+    <h2>O que dizem quem <span>já passou com o Método IR</span></h2>
     <div class="depoimentos">
       <div class="dep-card">
         <div class="estrelas">★★★★★</div>
-        <p>"Reprovei na 2ª Fase duas vezes. Quando entrei no IR Curso entendi que meu problema era técnico, não de conhecimento. O método sanduíche salvou minha prova. Fui aprovado na primeira tentativa depois do curso."</p>
+        <p>"O sanduíche é capaz de fazer qualquer pessoa com o VadeMecum na mão escrever qualquer item da peça e responder qualquer questão da forma que a FGV exige."</p>
+        <span class="dep-autor">— Aluno aprovado, Método IR Constitucional</span>
+      </div>
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Reprovei várias vezes. Quando entrei no Método IR entendi que meu problema era técnico, não de conhecimento. Com as 3 estruturas e o sanduíche passei de primeira depois do curso."</p>
         <span class="dep-autor">— Felipe A., aprovado na 2ª Fase OAB — Constitucional</span>
       </div>
       <div class="dep-card">
         <div class="estrelas">★★★★★</div>
-        <p>"As aulas ao vivo toda quinta fazem toda a diferença. O professor comenta os exercícios e você entende exatamente o que a FGV quer ver. Passei no primeiro exame depois que entrei no curso."</p>
-        <span class="dep-autor">— Mariana C., advogada aprovada na OAB</span>
-      </div>
-      <div class="dep-card">
-        <div class="estrelas">★★★★★</div>
-        <p>"Achei que precisava estudar mais conteúdo. Na verdade precisava de técnica. As 55h de aulas são diretas ao ponto — sem enrolação. Recomendo pra qualquer um que está travado na 2ª Fase."</p>
-        <span class="dep-autor">— Rafael S., aprovado após 2 reprovações</span>
+        <p>"Achei que precisava estudar mais conteúdo. Na verdade precisava de técnica. O Professor Ítalo acompanha direto — pode mandar WhatsApp a qualquer hora. Passei!"</p>
+        <span class="dep-autor">— Mariana C., aprovada após o Método IR</span>
       </div>
     </div>
-    <p style="margin-top:16px;font-size:0.82rem;color:#999;text-align:center;">
-      * Resultados individuais podem variar conforme dedicação e prática.
-    </p>
+    <p style="margin-top:16px;font-size:0.82rem;color:#888;text-align:center;">* Resultados individuais podem variar conforme dedicação e prática.</p>
+  </div>
+</section>
+
+<!-- ACOMPANHAMENTO -->
+<section class="acomp">
+  <div class="container">
+    <h2>O diferencial: <span>Acompanhamento real</span></h2>
+    <ul class="acomp-lista">
+      <li>Todo aluno tem <strong>acesso direto ao Professor Ítalo via WhatsApp</strong> — dúvidas, orientações, cronograma, correções.</li>
+      <li>O curso tem <strong>limite de vagas</strong> exatamente por isso — para garantir atenção individual a cada aluno.</li>
+      <li>O Professor chama individualmente sempre que necessário diante do progresso dos seus estudos.</li>
+      <li><strong>Ninguém fica sozinho</strong> — essa é a filosofia do Método IR desde 2016.</li>
+    </ul>
+    <div style="text-align:center;margin-top:28px;">
+      <a href="https://go.hotmart.com/D107244641G?ap=9996" class="btn-hero" target="_blank" rel="noopener">
+        Faça Parte do Time IR →
+      </a>
+    </div>
   </div>
 </section>
 
 <!-- PREÇO -->
 <section class="oferta" id="oferta">
   <div class="container" style="text-align:center;">
-    <h2>Investimento <span>na sua aprovação</span></h2>
-    <p style="color:var(--cinza);margin-bottom:28px;">Acesso imediato. 60 dias de conteúdo + aulas ao vivo toda quinta até a sua prova.</p>
+    <span class="vagas-badge">⚠️ Vagas Limitadas — Acesso Direto ao Professor</span>
+    <h2>Invista na sua <span>aprovação definitiva</span></h2>
+    <p style="color:var(--cinza);margin-bottom:28px;">Acesso imediato após o pagamento. Suporte direto com o professor até o dia da sua prova.</p>
     <div class="preco-card">
       <p class="por">Valor do curso</p>
       <p class="valor">R$ <strong>797</strong><span class="centavos">,00</span></p>
       <p class="parcelas">ou 12x de R$ 83,76 no cartão</p>
+      <ul class="preco-inclui">
+        <li>+55h de aulas gravadas</li>
+        <li>2-3 aulas ao vivo por semana</li>
+        <li>WhatsApp direto com o Professor</li>
+        <li>Simulados com correção individualizada</li>
+        <li>Acesso até o dia seguinte à prova</li>
+      </ul>
       <a href="https://go.hotmart.com/D107244641G?ap=9996" class="btn-hero" target="_blank" rel="noopener">
         QUERO ME INSCREVER AGORA →
       </a>
@@ -440,47 +413,37 @@
 
 <!-- GARANTIA -->
 <section class="garantia">
-  <div class="container">
+  <div class="container" style="text-align:center;">
     <div class="garantia-icon">🛡️</div>
     <h2>Garantia Incondicional de <span>7 Dias</span></h2>
-    <p>Acesse o curso, assista às aulas e, se por qualquer motivo não ficar satisfeito, basta solicitar o reembolso em até 7 dias. Você recebe 100% do valor de volta — sem perguntas, sem burocracia. O risco é totalmente nosso.</p>
+    <p>Acesse o curso, assista às aulas e, se por qualquer motivo não ficar satisfeito, basta solicitar o reembolso em até 7 dias. Você recebe 100% do valor de volta — sem perguntas, sem burocracia.</p>
   </div>
 </section>
 
 <!-- FAQ -->
 <section>
   <div class="container">
-    <h2>Dúvidas frequentes</h2>
+    <h2>Dúvidas <span>frequentes</span></h2>
     <div class="faq-lista">
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Funciona para qualquer exame da OAB? <span class="arrow">▼</span>
-        </button>
-        <div class="faq-a">O curso é focado na 2ª Fase da OAB em Direito Constitucional, seguindo o padrão de correção da FGV. Se a sua área de atuação é Constitucional, é o curso certo para você.</div>
+        <button class="faq-q" onclick="toggleFaq(this)">Por quanto tempo tenho acesso ao curso? <span class="arrow">▼</span></button>
+        <div class="faq-a">Seu acesso fica liberado até o dia seguinte à prova da 2ª Fase do exame atual. O curso tem aulas gravadas, aulas ao vivo (2-3 por semana) e todas as aulas ao vivo ficam disponíveis gravadas após a transmissão.</div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Por quanto tempo tenho acesso? <span class="arrow">▼</span>
-        </button>
-        <div class="faq-a">60 dias de acesso às aulas gravadas, mais as aulas ao vivo toda quinta-feira via Zoom até a data da sua prova. Tempo mais que suficiente para dominar o método.</div>
+        <button class="faq-q" onclick="toggleFaq(this)">Como funciona o acompanhamento com o Professor? <span class="arrow">▼</span></button>
+        <div class="faq-a">Todo aluno tem acesso direto ao Professor Ítalo via WhatsApp. Pode mandar mensagem a qualquer hora pedindo ajuda — dúvidas sobre aulas, cronograma, treinos, correções. O Professor também chama individualmente quando necessário. Ninguém fica sozinho.</div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          As aulas ao vivo ficam gravadas? <span class="arrow">▼</span>
-        </button>
-        <div class="faq-a">Sim. Todas as aulas ao vivo ficam disponíveis para você assistir dentro dos 60 dias de acesso, caso não consiga participar ao vivo na quinta-feira.</div>
+        <button class="faq-q" onclick="toggleFaq(this)">Já reprovei várias vezes. Vale para mim? <span class="arrow">▼</span></button>
+        <div class="faq-a">Sim, especialmente para você. Quem reprova várias vezes geralmente tem o conhecimento necessário mas não tem a técnica certa para o formato da FGV. Você já conhece a estrutura da prova — agora é hora de escrever do jeito que pontua. O único aluno que não consegue com o Método IR é o teimoso.</div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Já reprovei várias vezes — esse curso é para mim? <span class="arrow">▼</span>
-        </button>
-        <div class="faq-a">Sim, especialmente para você. Quem reprova várias vezes geralmente tem o conhecimento necessário mas não tem a técnica certa para o formato da FGV. Exatamente o que o curso resolve.</div>
+        <button class="faq-q" onclick="toggleFaq(this)">É minha primeira vez na 2ª Fase. O curso serve? <span class="arrow">▼</span></button>
+        <div class="faq-a">Perfeito para você que vai fazer pela primeira vez — já vai começar do jeito certo. O curso tem aulas gravadas, aulas ao vivo e um cronograma de treinos práticos. Você escreve, faz upload, e o professor te acompanha até lá. Execução técnica por técnica, o maior número de vezes possível.</div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Como recebo o acesso? <span class="arrow">▼</span>
-        </button>
-        <div class="faq-a">Imediatamente após a confirmação do pagamento, você recebe um e-mail com o link de acesso. A plataforma Hotmart é 100% segura e aceita cartão, boleto e Pix.</div>
+        <button class="faq-q" onclick="toggleFaq(this)">Como recebo o acesso após o pagamento? <span class="arrow">▼</span></button>
+        <div class="faq-a">Imediatamente após a confirmação do pagamento, você recebe um e-mail com o link de acesso. A plataforma Hotmart é 100% segura e aceita cartão de crédito, boleto bancário e Pix.</div>
       </div>
     </div>
   </div>
@@ -489,18 +452,15 @@
 <!-- CAPTURA -->
 <section class="captura" id="captura">
   <div class="container">
-    <h2>Pronto para <span>passar na 2ª Fase?</span></h2>
-    <p class="sub2">Deixe seu nome e WhatsApp para receber informações exclusivas e tirar dúvidas antes de se inscrever.</p>
-
+    <h2>Pronto para <span>passar de uma vez por todas?</span></h2>
+    <p class="sub2">Deixe seu nome e WhatsApp para receber informações e tirar dúvidas antes de se inscrever.</p>
     <form class="form-card" method="POST" action="https://api.web3forms.com/submit">
       <input type="hidden" name="access_key" value="0e3509a8-7c47-484e-bc09-1b4760b30efd" />
       <input type="hidden" name="subject" value="⚖️ Novo lead — OAB 2ª Fase Constitucional" />
       <input type="hidden" name="redirect" value="https://oab2fase.com.br/obrigado.html" />
       <input type="hidden" name="from_name" value="Landing OAB 2ª Fase" />
       <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" />
-
       <h3>📩 Receba as informações agora</h3>
-
       <div class="campo">
         <label for="nome">Seu nome</label>
         <input type="text" id="nome" name="nome" placeholder="Como posso te chamar?" required />
@@ -509,11 +469,9 @@
         <label for="whatsapp">WhatsApp (com DDD)</label>
         <input type="tel" id="whatsapp" name="whatsapp" placeholder="(11) 99999-9999" required />
       </div>
-
       <button type="submit" class="btn-form">QUERO PASSAR NA 2ª FASE →</button>
       <p class="form-nota">🔒 Seus dados estão seguros. Sem spam.</p>
     </form>
-
     <a class="link-direto" href="https://go.hotmart.com/D107244641G?ap=9996" target="_blank" rel="noopener">
       Já quero me inscrever direto →
     </a>
@@ -533,7 +491,6 @@
   </p>
 </footer>
 
-<!-- BARRA FLUTUANTE MOBILE -->
 <div class="barra-flutuante">
   <a href="#captura">QUERO PASSAR NA 2ª FASE →</a>
 </div>
@@ -546,7 +503,6 @@
     document.querySelectorAll('.faq-q.open').forEach(el => el.classList.remove('open'));
     if (!isOpen) { answer.classList.add('open'); btn.classList.add('open'); }
   }
-
   document.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
@@ -554,7 +510,6 @@
       if (target) target.scrollIntoView({ behavior: 'smooth' });
     });
   });
-
   document.getElementById('whatsapp').addEventListener('input', function(e) {
     let v = e.target.value.replace(/\D/g, '').substring(0, 11);
     if (v.length >= 7) v = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7);
@@ -563,6 +518,5 @@
     e.target.value = v;
   });
 </script>
-
 </body>
 </html>
