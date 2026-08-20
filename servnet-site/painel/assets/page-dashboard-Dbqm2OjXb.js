@@ -118,4 +118,4 @@ import{c as H}from"./supabase-DthfXWp1.js";const G="https://lkymiclirksgqkeiglyw
       <div style="padding:20px;color:var(--text-muted,#6b7280);">
         <p>Erro ao carregar os dados. Tente recarregar a página.</p>
       </div>
-    `}}const wt=Object.freeze(Object.defineProperty({__proto__:null,initDashboard:ft},Symbol.toStringTag,{value:"Module"}));export{xt as A,P as a,at as b,yt as c,Q as d,Z as e,w as f,tt as g,ht as h,j as i,x as j,h as k,mt as l,bt as m,wt as n,nt as r,N as s,X as t,T as u};
+    `}}const wt=Object.freeze(Object.defineProperty({__proto__:null,initDashboard:ft},Symbol.toStringTag,{value:"Module"}));export{xt as A,P as a,at as b,yt as c,Q as d,Z as e,w as f,tt as g,ht as h,j as i,H as j,h as k,mt as l,bt as m,wt as n,nt as r,N as s,X as t,T as u};
