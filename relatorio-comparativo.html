@@ -486,6 +486,7 @@ function detectCols(headers){
     vt:       find(['vt']),
     am:       find(['am']),
     ao:       find(['ao']),
+    redBINSS: find(['% redução base inss','reducao base inss','red. base inss','% red. base','redução base inss','% reducao base']),
     total:    find(['total para faturar','total à faturar','total a faturar','total faturar']),
   };
 }
@@ -521,6 +522,7 @@ function buildItemList(data, cols){
         reaj:0, repasse:0, descFaltas:0, descEquip:0, descPremio:0,
         premio:0, he:0, prop:0, svcExtra:0, eqEsp:0,
         va:0, vr:0, vt:0, am:0, ao:0,
+        redBINSS:null,
         sysBruto:null, status:'only',
       });
     }
@@ -536,6 +538,14 @@ function buildItemList(data, cols){
     item.svcExtra     +=g('svcExtra');   item.eqEsp   +=g('eqEsp');
     item.va+=g('va'); item.vr+=g('vr'); item.vt+=g('vt');
     item.am+=g('am'); item.ao+=g('ao');
+    // % Redução Base INSS — lê só uma vez (é igual em todas as linhas do contrato)
+    if(item.redBINSS===null && cols.redBINSS>=0){
+      const raw=row[cols.redBINSS];
+      if(raw!==null&&raw!==undefined&&String(raw).trim()!==''){
+        const v=typeof raw==='number'?raw:parseFloat(String(raw).replace('%','').replace(',','.').trim());
+        if(isFinite(v)) item.redBINSS=v;
+      }
+    }
     if(nfRaw && !item.nf.includes(nfRaw) && item.nf!==nfRaw)
       item.nf+=(item.nf?', ':'')+nfRaw;
   }
@@ -668,6 +678,19 @@ function renderItemBody(item,hasSys){
       <td class="num">${fmtBRL(item.bruto)}</td>
       <td class="num muted">${hasSys?'—':'N/A'}</td>
       <td class="num muted">—</td>
+    </tr>`;
+  }
+
+  // % Redução Base INSS
+  if(item.redBINSS!==null){
+    // valor pode estar em formato 0-1 (ex: 0.10) ou 0-100 (ex: 10)
+    const pct=item.redBINSS>1?item.redBINSS:item.redBINSS*100;
+    const fmtPct=pct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+    rows+=`<tr>
+      <td class="lbl">% Redução Base INSS</td>
+      <td class="num" style="font-family:var(--mono)">${fmtPct}</td>
+      <td class="num muted">—</td>
+      <td class="num muted">planilha</td>
     </tr>`;
   }
 
