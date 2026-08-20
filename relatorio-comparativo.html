@@ -198,6 +198,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
   <script>document.getElementById('monthLabel').textContent=(['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][new Date().getMonth()])+'/'+new Date().getFullYear();</script>
   <div class="topbar-right">
     <button class="btn btn-sec" id="exportBtn" onclick="exportCSV()" style="display:none">⬇ Exportar</button>
+    <button class="btn btn-sec" id="clearBtn"  onclick="clearAll()"  style="display:none;color:var(--neg)">✕ Limpar</button>
   </div>
 </header>
 
@@ -272,7 +273,7 @@ const S = {
   wb:      null,   // xlsx workbook
   planData:null,   // { headers, rows }  — "Dados Trat" sheet
   sysData: null,   // { headers, rows }  — CSV
-  clients: null,   // Map<vplCode, Client>
+  items:   null,   // Array<Item>  — flat: one per client+contract
   sysMap:  null,   // Map<vplCode, SysEntry>
   filter:  'all',
 };
@@ -401,66 +402,54 @@ function detectCols(headers){
 /* =========================================================
    DATA BUILDING
    ========================================================= */
-function buildClientTree(data, cols){
-  const clients=new Map();
-  const seen=new Set(); // deduplicate NF rows with same (vpl+ctr+bruto)
+// Flat list — one item per (client + contract) pair
+function buildItemList(data, cols){
+  const itemMap=new Map(); // key `${vpl}|${ctrKey}` → item
+  const seen=new Set();    // dedup NF rows
 
   for(const row of data.rows){
-    const vplRaw=String(row[cols.vpl]??'').trim();
-    const vpl=vplRaw||'__UNKNOWN__';
+    const vpl=String(row[cols.vpl]??'').trim()||'__UNKNOWN__';
     const cliName=String(row[cols.cli]??'').trim();
     if(!cliName) continue;
-
-    if(!clients.has(vpl)){
-      clients.set(vpl,{vpl,name:cliName,contracts:new Map(),
-        totalBruto:0,totalFaturar:0,sysTotal:null,status:'only'});
-    }
-    const client=clients.get(vpl);
 
     const ctrRaw=String(row[cols.ctr]??'').trim();
     const svcRaw=String(row[cols.svc]??'').trim();
     const ctrKey=ctrRaw||(svcRaw.slice(0,40));
-
-    // Dedup key: same NF pointing to same contract → skip
     const nfRaw=String(row[cols.nf]??'').trim();
+
     const dd=`${vpl}|${ctrKey}|${nfRaw}`;
     if(seen.has(dd)) continue;
     seen.add(dd);
 
-    if(!client.contracts.has(ctrKey)){
-      client.contracts.set(ctrKey,{
-        num:ctrRaw,svc:svcRaw,nf:nfRaw,
-        bruto:0,totalFaturar:0,
-        reaj:0,repasse:0,descFaltas:0,descEquip:0,descPremio:0,
-        premio:0,he:0,prop:0,svcExtra:0,eqEsp:0,
-        va:0,vr:0,vt:0,am:0,ao:0,
-        sysBruto:null,status:'only',
+    const ik=`${vpl}|${ctrKey}`;
+    if(!itemMap.has(ik)){
+      itemMap.set(ik,{
+        vpl, clientName:cliName, ctrKey,
+        num:ctrRaw, svc:svcRaw, nf:nfRaw,
+        bruto:0, totalFaturar:0,
+        reaj:0, repasse:0, descFaltas:0, descEquip:0, descPremio:0,
+        premio:0, he:0, prop:0, svcExtra:0, eqEsp:0,
+        va:0, vr:0, vt:0, am:0, ao:0,
+        sysBruto:null, status:'only',
       });
     }
-    const ctr=client.contracts.get(ctrKey);
+    const item=itemMap.get(ik);
+    const g=(k)=>cols[k]>=0?parseBR(row[cols[k]]??0):0;
 
-    const g=(i)=>cols[i]>=0?parseBR(row[cols[i]]??0):0;
-    ctr.bruto        +=parseBR(row[cols.bruto]??0);
-    ctr.totalFaturar +=parseBR(row[cols.total]??0);
-    ctr.reaj         +=g('reaj'); ctr.repasse    +=g('repasse');
-    ctr.descFaltas   +=g('descFaltas'); ctr.descEquip  +=g('descEquip');
-    ctr.descPremio   +=g('descPremio'); ctr.premio     +=g('premio');
-    ctr.he           +=g('he');   ctr.prop       +=g('prop');
-    ctr.svcExtra     +=g('svcExtra'); ctr.eqEsp   +=g('eqEsp');
-    ctr.va+=g('va'); ctr.vr+=g('vr'); ctr.vt+=g('vt');
-    ctr.am+=g('am'); ctr.ao+=g('ao');
-
-    // Accumulate NFs
-    if(nfRaw && !ctr.nf.includes(nfRaw) && ctr.nf!==nfRaw) ctr.nf+=(ctr.nf?', ':'')+nfRaw;
+    item.bruto        +=parseBR(row[cols.bruto]??0);
+    item.totalFaturar +=parseBR(row[cols.total]??0);
+    item.reaj         +=g('reaj');   item.repasse    +=g('repasse');
+    item.descFaltas   +=g('descFaltas'); item.descEquip +=g('descEquip');
+    item.descPremio   +=g('descPremio'); item.premio    +=g('premio');
+    item.he           +=g('he');     item.prop       +=g('prop');
+    item.svcExtra     +=g('svcExtra');   item.eqEsp   +=g('eqEsp');
+    item.va+=g('va'); item.vr+=g('vr'); item.vt+=g('vt');
+    item.am+=g('am'); item.ao+=g('ao');
+    if(nfRaw && !item.nf.includes(nfRaw) && item.nf!==nfRaw)
+      item.nf+=(item.nf?', ':'')+nfRaw;
   }
 
-  for(const [,c] of clients){
-    for(const [,ctr] of c.contracts){
-      c.totalBruto   +=ctr.bruto;
-      c.totalFaturar +=ctr.totalFaturar;
-    }
-  }
-  return clients;
+  return [...itemMap.values()];
 }
 
 function buildSysMap(data){
@@ -485,31 +474,22 @@ function buildSysMap(data){
 }
 
 const TOL=0.01;
-function matchAll(clients, sysMap){
-  for(const [vpl,client] of clients){
-    const sysEntry=sysMap?.get(vpl);
-    if(!sysEntry){ client.status='only'; continue; }
-    client.sysTotal=sysEntry.total;
-    let anyDiff=false;
-    for(const [ctrKey,ctr] of client.contracts){
-      const cn=ctr.num;
-      const sv=cn?sysEntry.contracts.get(cn):null;
-      ctr.sysBruto=sv??null;
-      if(sv!==null&&sv!==undefined){
-        ctr.status=Math.abs(ctr.bruto-sv)<=TOL?'ok':'diff';
-        if(ctr.status==='diff') anyDiff=true;
-      } else {
-        ctr.status='no-match';
-        // Client-level fallback: if only one contract, use total
-        if(client.contracts.size===1){
-          ctr.sysBruto=sysEntry.total;
-          ctr.status=Math.abs(ctr.bruto-sysEntry.total)<=TOL?'ok':'diff';
-          if(ctr.status==='diff') anyDiff=true;
-        }
+function matchAll(items, sysMap){
+  for(const item of items){
+    const sysEntry=sysMap?.get(item.vpl);
+    if(!sysEntry){ item.status='only'; item.sysBruto=null; continue; }
+    const sv=item.num?sysEntry.contracts.get(item.num):null;
+    item.sysBruto=sv??null;
+    if(sv!=null){
+      item.status=Math.abs(item.bruto-sv)<=TOL?'ok':'diff';
+    } else {
+      item.status='no-match';
+      // Fallback: client has exactly one contract in sysMap → use total
+      if(sysEntry.contracts.size===1){
+        item.sysBruto=sysEntry.total;
+        item.status=Math.abs(item.bruto-sysEntry.total)<=TOL?'ok':'diff';
       }
     }
-    client.status=anyDiff?'diff':'ok';
-    client.divergences=[...client.contracts.values()].filter(c=>c.status==='diff').length;
   }
 }
 
@@ -517,160 +497,128 @@ function matchAll(clients, sysMap){
    RENDERING
    ========================================================= */
 function render(){
-  if(!S.clients) return;
-  const clients=[...S.clients.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
-  const n=clients.length;
-  const filtered=clients.filter(c=>S.filter==='all'||(S.filter===c.status)||(S.filter==='diff'&&c.status==='diff')||(S.filter==='ok'&&c.status==='ok')||(S.filter==='only'&&c.status==='only'));
-  document.getElementById('cards').innerHTML=filtered.length?filtered.map((c,i)=>renderCard(c,clients.indexOf(c)+1,n)).join(''):`<div class="empty-state" style="padding:40px"><div class="empty-ico">🔍</div><div class="empty-title">Nenhum cliente nesse filtro</div></div>`;
-  updateSummary(clients);
+  if(!S.items) return;
+  const sorted=[...S.items].sort((a,b)=>
+    a.clientName.localeCompare(b.clientName,'pt-BR')||
+    String(a.num).localeCompare(String(b.num),'pt-BR',{numeric:true})
+  );
+  const n=sorted.length;
+  const filtered=sorted.filter(item=>S.filter==='all'||S.filter===item.status||
+    (S.filter==='only'&&(item.status==='only'||item.status==='no-match')));
+  document.getElementById('cards').innerHTML=filtered.length
+    ?filtered.map((item,i)=>renderCard(item,sorted.indexOf(item)+1,n)).join('')
+    :`<div class="empty-state" style="padding:40px"><div class="empty-ico">🔍</div><div class="empty-title">Nenhum item nesse filtro</div></div>`;
+  updateSummary(sorted);
   syncExpandBtn();
 }
 
-function renderCard(client,num,total){
+function renderCard(item,num,total){
   const hasSys=S.sysMap!==null;
-  const st=client.status;
-  const isOpen=st==='diff'||st==='only';
+  const st=item.status;
+  const isOpen=st==='diff'||st==='only'||st==='no-match';
 
-  const badge = st==='ok'
-    ? `<span class="badge ok">✅ Confere</span>`
-    : st==='diff'
-    ? `<span class="badge diff">⚠ ${client.divergences} divergência${client.divergences!==1?'s':''}</span>`
-    : `<span class="badge neu">📋 Sem sistema</span>`;
+  const badge=st==='ok'
+    ?`<span class="badge ok">✅ Confere</span>`
+    :st==='diff'
+    ?`<span class="badge diff">⚠ Divergente</span>`
+    :st==='no-match'
+    ?`<span class="badge warn">? Não localizado</span>`
+    :`<span class="badge neu">📋 Sem sistema</span>`;
 
-  const metaItems=[
-    `<span class="c-metric" title="Bruto (Contrato Mensal)">Bruto ${fmtBRL(client.totalBruto)}</span>`,
-    `<span class="c-meta-sep">·</span>`,
-    `<span class="c-metric" title="Total a faturar">Total ${fmtBRL(client.totalFaturar)}</span>`,
-    hasSys&&client.sysTotal!==null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Total no sistema">Sist. ${fmtBRL(client.sysTotal)}</span>`:''
-  ].filter(Boolean).join('');
+  const metaP=`<span class="c-metric" title="Bruto">Bruto ${fmtBRL(item.bruto)}</span>`;
+  const metaT=`<span class="c-meta-sep">·</span><span class="c-metric" title="Total a faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
+  const metaS=hasSys&&item.sysBruto!=null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Bruto no sistema">Sist. ${fmtBRL(item.sysBruto)}</span>`:'';
+  const nfDisp=item.nf?`<span class="c-meta-sep">·</span><span class="c-metric" style="font-family:var(--mono);font-size:11px">NF ${esc(item.nf.split(',')[0])}${item.nf.includes(',')?'…':''}</span>`:'';
+  const ctrTag=`<span style="font-size:11px;font-weight:700;color:var(--ink-4);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;white-space:nowrap;font-family:var(--mono)">Ctr. ${esc(item.num)||'—'}</span>`;
 
-  const ctrs=[...client.contracts.values()].map(c=>renderCtr(c,hasSys)).join('');
+  const body=renderItemBody(item,hasSys);
 
   return `<div class="c-card ${st} ${isOpen?'open':''}" id="card-${num}">
     <div class="c-head" onclick="toggleCard(this)">
       <div class="c-idx">${String(num).padStart(2,'0')}<br><span style="opacity:.5">/${total}</span></div>
       <div class="c-info">
-        <div class="c-name">${esc(client.name)}</div>
-        <div class="c-meta">${metaItems}</div>
+        <div class="c-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ctrTag}<span>${esc(item.clientName)}</span></div>
+        <div class="c-meta">
+          <span class="c-metric" style="color:var(--ink-3)">${esc(item.svc)}</span>
+          <span class="c-meta-sep">·</span>${metaP}${metaT}${metaS}${nfDisp}
+        </div>
       </div>
       <div class="c-badges">${badge}</div>
       <div class="c-chevron">▼</div>
     </div>
-    <div class="c-body">${ctrs}</div>
+    <div class="c-body"><div class="ctr-row">${body}</div></div>
   </div>`;
 }
 
-function renderCtr(ctr,hasSys){
-  const st=ctr.status;
-  const stBadge={
-    ok:`<span class="badge ok" style="font-size:10px;padding:2px 7px">✅ OK</span>`,
-    diff:`<span class="badge diff" style="font-size:10px;padding:2px 7px">⚠ Divergente</span>`,
-    only:`<span class="badge neu" style="font-size:10px;padding:2px 7px">📋 Só planilha</span>`,
-    'no-match':`<span class="badge warn" style="font-size:10px;padding:2px 7px">? Não localizado</span>`,
-  }[st]||'';
-
+function renderItemBody(item,hasSys){
+  const st=item.status;
   const isDiff=st==='diff';
-
-  // Metrics table
   let rows='';
-  // Row 1: Bruto (Contrato Mensal)
-  if(hasSys&&ctr.sysBruto!==null){
-    const delta=ctr.bruto-ctr.sysBruto;
+
+  // Bruto
+  if(hasSys&&item.sysBruto!=null){
+    const delta=item.bruto-item.sysBruto;
     const deltaCls=Math.abs(delta)<=TOL?'muted':(delta>0?'diff-pos':'diff-neg');
     rows+=`<tr class="${isDiff?'row-diff':'row-ok'}">
       <td class="lbl">Bruto <span style="font-weight:400;color:var(--ink-4)">(Ctr. Mensal)</span></td>
-      <td class="num">${fmtBRL(ctr.bruto)}</td>
-      <td class="num ${isDiff?'row-diff-val':''}">${fmtBRL(ctr.sysBruto)}</td>
+      <td class="num">${fmtBRL(item.bruto)}</td>
+      <td class="num ${isDiff?'row-diff-val':''}">${fmtBRL(item.sysBruto)}</td>
       <td class="num ${deltaCls}">${Math.abs(delta)<=TOL?'R$ 0,00':fmtBRL(delta)}</td>
     </tr>`;
   } else {
     rows+=`<tr>
       <td class="lbl">Bruto <span style="font-weight:400;color:var(--ink-4)">(Ctr. Mensal)</span></td>
-      <td class="num">${fmtBRL(ctr.bruto)}</td>
+      <td class="num">${fmtBRL(item.bruto)}</td>
       <td class="num muted">${hasSys?'—':'N/A'}</td>
       <td class="num muted">—</td>
     </tr>`;
   }
-  // Row 2: Total a faturar
-  const difBrutoTotal=ctr.totalFaturar-ctr.bruto;
+
+  // Total a faturar
+  const difBrutoTotal=item.totalFaturar-item.bruto;
   const totalEqBruto=Math.abs(difBrutoTotal)<=TOL;
   rows+=`<tr>
     <td class="lbl">Total a faturar</td>
-    <td class="num">${fmtBRL(ctr.totalFaturar)}</td>
+    <td class="num">${fmtBRL(item.totalFaturar)}</td>
     <td class="num muted">—</td>
-    <td class="num ${totalEqBruto?'muted':(difBrutoTotal>0?'diff-pos':'diff-neg')}" title="${totalEqBruto?'Igual ao bruto':'Diferença em relação ao bruto'}">
+    <td class="num ${totalEqBruto?'muted':(difBrutoTotal>0?'diff-pos':'diff-neg')}">
       ${totalEqBruto?'= Bruto':fmtBRL(difBrutoTotal)+' vs bruto'}
     </td>
   </tr>`;
-  // Adjustments if relevant
-  const ajusts=[
-    {k:'reaj',l:'Reajuste'},
-    {k:'he',l:'Hora Extra'},
-    {k:'svcExtra',l:'Serviço Extra'},
-    {k:'eqEsp',l:'Eq. Especial (20%)'},
-    {k:'prop',l:'Proporcional'},
-  ].filter(a=>Math.abs(ctr[a.k])>0.009);
-  const descs=[
-    {k:'descFaltas',l:'Desc. Faltas'},
-    {k:'descEquip',l:'Desc. Equipamentos'},
-    {k:'descPremio',l:'Desc. Prêmio'},
-    {k:'repasse',l:'Nota Repasse'},
-  ].filter(a=>Math.abs(ctr[a.k])>0.009);
+
+  // Adjustments
+  const ajusts=[{k:'reaj',l:'Reajuste'},{k:'he',l:'Hora Extra'},{k:'svcExtra',l:'Serviço Extra'},{k:'eqEsp',l:'Eq. Especial (20%)'},{k:'prop',l:'Proporcional'}].filter(a=>Math.abs(item[a.k])>0.009);
+  const descs=[{k:'descFaltas',l:'Desc. Faltas'},{k:'descEquip',l:'Desc. Equipamentos'},{k:'descPremio',l:'Desc. Prêmio'},{k:'repasse',l:'Nota Repasse'}].filter(a=>Math.abs(item[a.k])>0.009);
   if(ajusts.length||descs.length){
     rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Ajustes</td></tr>`;
-    ajusts.forEach(a=>{
-      rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-pos">+${fmtBRL(ctr[a.k])}</td><td class="num muted">—</td><td></td></tr>`;
-    });
-    descs.forEach(a=>{
-      rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-neg">${fmtBRL(-Math.abs(ctr[a.k]))}</td><td class="num muted">—</td><td></td></tr>`;
-    });
+    ajusts.forEach(a=>{rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-pos">+${fmtBRL(item[a.k])}</td><td class="num muted">—</td><td></td></tr>`;});
+    descs.forEach(a=>{rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-neg">${fmtBRL(-Math.abs(item[a.k]))}</td><td class="num muted">—</td><td></td></tr>`;});
   }
 
   const metricsTable=`<div class="metrics-wrap">
     <table class="metrics-t">
-      <thead><tr>
-        <th>Métrica</th>
-        <th class="num">Planilha</th>
-        <th class="num">Sistema</th>
-        <th class="num">Diferença</th>
-      </tr></thead>
+      <thead><tr><th>Métrica</th><th class="num">Planilha</th><th class="num">Sistema</th><th class="num">Diferença</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>
-  </div>`;
+    </table></div>`;
 
-  // Benefits chips
-  const benefits=[
-    {k:'va',l:'VA+Prêmio'},{k:'vr',l:'VR'},{k:'vt',l:'VT'},{k:'am',l:'AM'},{k:'ao',l:'AO'}
-  ].filter(b=>ctr[b.k]>0.009);
-  const totalBen=benefits.reduce((s,b)=>s+ctr[b.k],0);
+  const benefits=[{k:'va',l:'VA+Prêmio'},{k:'vr',l:'VR'},{k:'vt',l:'VT'},{k:'am',l:'AM'},{k:'ao',l:'AO'}].filter(b=>item[b.k]>0.009);
   let benefitsHtml='';
   if(benefits.length){
-    const chips=benefits.map(b=>`<span class="chip hi">${b.l} ${fmtBRL(ctr[b.k])}</span>`).join('');
-    benefitsHtml=`<div class="chips"><span class="chips-label">Benefícios</span>${chips}<span class="chip" style="margin-left:4px;font-weight:700">Total ${fmtBRL(totalBen)}</span></div>`;
+    const tot=benefits.reduce((s,b)=>s+item[b.k],0);
+    benefitsHtml=`<div class="chips"><span class="chips-label">Benefícios</span>${benefits.map(b=>`<span class="chip hi">${b.l} ${fmtBRL(item[b.k])}</span>`).join('')}<span class="chip" style="margin-left:4px;font-weight:700">Total ${fmtBRL(tot)}</span></div>`;
   }
 
-  const nfDisp=ctr.nf?`<span class="ctr-nf">NF ${esc(ctr.nf.split(',')[0])}${ctr.nf.includes(',')?'…':''}</span>`:'';
-
-  return `<div class="ctr-row">
-    <div class="ctr-head">
-      <span class="ctr-num">Ctr. ${esc(ctr.num)||'—'}</span>
-      <span class="ctr-svc">${esc(ctr.svc)}</span>
-      ${nfDisp}
-      <span class="ctr-st">${stBadge}</span>
-    </div>
-    ${metricsTable}
-    ${benefitsHtml}
-  </div>`;
+  return metricsTable+benefitsHtml;
 }
 
 /* =========================================================
    SUMMARY
    ========================================================= */
-function updateSummary(clients){
-  const ok=clients.filter(c=>c.status==='ok').length;
-  const diff=clients.filter(c=>c.status==='diff').length;
-  const only=clients.filter(c=>c.status==='only').length;
-  document.getElementById('kpiTotal').querySelector('.kpi-val').textContent=clients.length;
+function updateSummary(items){
+  const ok=items.filter(i=>i.status==='ok').length;
+  const diff=items.filter(i=>i.status==='diff').length;
+  const only=items.filter(i=>i.status==='only'||i.status==='no-match').length;
+  document.getElementById('kpiTotal').querySelector('.kpi-val').textContent=items.length;
   document.getElementById('kpiOk').querySelector('.kpi-val').textContent=ok;
   document.getElementById('kpiDiff').querySelector('.kpi-val').textContent=diff;
   document.getElementById('kpiOnly').querySelector('.kpi-val').textContent=only;
@@ -678,6 +626,7 @@ function updateSummary(clients){
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('cards').classList.remove('hidden');
   document.getElementById('exportBtn').style.display='';
+  document.getElementById('clearBtn').style.display='';
 }
 
 function setFilter(f){
@@ -689,6 +638,29 @@ function setFilter(f){
 function toggleCard(head){
   head.closest('.c-card').classList.toggle('open');
   syncExpandBtn();
+}
+
+function clearAll(){
+  // Reset state
+  S.wb=null; S.planData=null; S.sysData=null; S.items=null; S.sysMap=null; S.filter='all';
+  // Reset slots
+  ['filePlan','fileSys'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('namePlan').textContent='Nenhum arquivo'; document.getElementById('namePlan').classList.add('pending');
+  document.getElementById('nameSys').textContent='Nenhum arquivo';  document.getElementById('nameSys').classList.add('pending');
+  document.getElementById('slotPlan').classList.remove('loaded');
+  document.getElementById('slotSys').classList.remove('loaded');
+  document.getElementById('sheetPick').classList.add('hidden');
+  // Reset summary + cards
+  document.getElementById('summaryBar').classList.add('hidden');
+  document.getElementById('cards').innerHTML=''; document.getElementById('cards').classList.add('hidden');
+  document.getElementById('emptyState').classList.remove('hidden');
+  document.getElementById('exportBtn').style.display='none';
+  document.getElementById('clearBtn').style.display='none';
+  // Reset filter chips
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c.dataset.f==='all'));
+  S.filter='all';
 }
 
 function toggleAll(){
@@ -770,8 +742,8 @@ function loadSheet(name){
     ao:cols.ao>=0?cols.ao:C.ao,
     total:cols.total>=0?cols.total:C.total,
   };
-  S.clients=buildClientTree(S.planData,finalCols);
-  if(S.sysMap) matchAll(S.clients,S.sysMap);
+  S.items=buildItemList(S.planData,finalCols);
+  if(S.sysMap) matchAll(S.items,S.sysMap);
   render();
 }
 
@@ -784,7 +756,7 @@ document.getElementById('fileSys').addEventListener('change', async e=>{
   document.getElementById('nameSys').classList.remove('pending');
   document.getElementById('slotSys').classList.add('loaded');
   S.sysMap=buildSysMap(S.sysData);
-  if(S.clients){ matchAll(S.clients,S.sysMap); render(); }
+  if(S.items){ matchAll(S.items,S.sysMap); render(); }
 });
 
 // Drag-and-drop
@@ -806,22 +778,20 @@ document.getElementById('fileSys').addEventListener('change', async e=>{
    EXPORT
    ========================================================= */
 function exportCSV(){
-  if(!S.clients) return;
+  if(!S.items) return;
   const rows=['Cliente;VPL;Contrato;Serviço;NF;Bruto Planilha;Total Fat Planilha;Bruto Sistema;Diferença Bruto;VA+Prêmio;VR;VT;AM;AO;Hora Extra;Desc Faltas;Status'];
-  for(const [,c] of S.clients){
-    for(const [,ctr] of c.contracts){
-      const delta=ctr.sysBruto!==null?(ctr.bruto-ctr.sysBruto):null;
-      rows.push([
-        c.name, c.vpl, ctr.num, ctr.svc, ctr.nf,
-        ctr.bruto.toFixed(2), ctr.totalFaturar.toFixed(2),
-        ctr.sysBruto!==null?ctr.sysBruto.toFixed(2):'',
-        delta!==null?delta.toFixed(2):'',
-        ctr.va.toFixed(2), ctr.vr.toFixed(2), ctr.vt.toFixed(2),
-        ctr.am.toFixed(2), ctr.ao.toFixed(2),
-        ctr.he.toFixed(2), ctr.descFaltas.toFixed(2),
-        {ok:'OK',diff:'Divergente',only:'Só planilha','no-match':'Não localizado'}[ctr.status]||'',
-      ].join(';'));
-    }
+  for(const item of S.items){
+    const delta=item.sysBruto!=null?(item.bruto-item.sysBruto):null;
+    rows.push([
+      item.clientName, item.vpl, item.num, item.svc, item.nf,
+      item.bruto.toFixed(2), item.totalFaturar.toFixed(2),
+      item.sysBruto!=null?item.sysBruto.toFixed(2):'',
+      delta!=null?delta.toFixed(2):'',
+      item.va.toFixed(2), item.vr.toFixed(2), item.vt.toFixed(2),
+      item.am.toFixed(2), item.ao.toFixed(2),
+      item.he.toFixed(2), item.descFaltas.toFixed(2),
+      {ok:'OK',diff:'Divergente',only:'Só planilha','no-match':'Não localizado'}[item.status]||'',
+    ].join(';'));
   }
   const b=new Blob(['﻿'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});
   const u=URL.createObjectURL(b);
