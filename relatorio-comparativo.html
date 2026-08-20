@@ -525,11 +525,15 @@ function renderCard(item,num,total){
     ?`<span class="badge warn">? Não localizado</span>`
     :`<span class="badge neu">📋 Sem sistema</span>`;
 
+  // Tags: VPL code + contract number
+  const tag=(label,val)=>`<span style="font-size:10.5px;font-weight:700;color:var(--ink-4);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;white-space:nowrap;font-family:var(--mono)">${label} ${esc(val)||'—'}</span>`;
+  const vplTag=item.vpl&&item.vpl!=='__UNKNOWN__'?tag('CLI',item.vpl):'';
+  const ctrTag=tag('CTR',item.num);
+
   const metaP=`<span class="c-metric" title="Bruto">Bruto ${fmtBRL(item.bruto)}</span>`;
   const metaT=`<span class="c-meta-sep">·</span><span class="c-metric" title="Total a faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
   const metaS=hasSys&&item.sysBruto!=null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Bruto no sistema">Sist. ${fmtBRL(item.sysBruto)}</span>`:'';
   const nfDisp=item.nf?`<span class="c-meta-sep">·</span><span class="c-metric" style="font-family:var(--mono);font-size:11px">NF ${esc(item.nf.split(',')[0])}${item.nf.includes(',')?'…':''}</span>`:'';
-  const ctrTag=`<span style="font-size:11px;font-weight:700;color:var(--ink-4);background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;white-space:nowrap;font-family:var(--mono)">Ctr. ${esc(item.num)||'—'}</span>`;
 
   const body=renderItemBody(item,hasSys);
 
@@ -537,9 +541,11 @@ function renderCard(item,num,total){
     <div class="c-head" onclick="toggleCard(this)">
       <div class="c-idx">${String(num).padStart(2,'0')}<br><span style="opacity:.5">/${total}</span></div>
       <div class="c-info">
-        <div class="c-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ctrTag}<span>${esc(item.clientName)}</span></div>
-        <div class="c-meta">
-          <span class="c-metric" style="color:var(--ink-3)">${esc(item.svc)}</span>
+        <div class="c-name">${esc(item.clientName)}</div>
+        <div class="c-meta" style="margin-top:3px">
+          ${vplTag}${vplTag?'<span class="c-meta-sep">·</span>':''}${ctrTag}
+          <span class="c-meta-sep">·</span>
+          <span class="c-metric" style="color:var(--ink-3)">${esc(item.svc)||'—'}</span>
           <span class="c-meta-sep">·</span>${metaP}${metaT}${metaS}${nfDisp}
         </div>
       </div>
