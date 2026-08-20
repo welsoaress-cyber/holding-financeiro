@@ -184,6 +184,66 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
 .hidden{display:none!important}
 .ml-a{margin-left:auto}
 .gap-6{gap:6px}
+
+/* ── print notes (visible only in print) ──────────── */
+.print-notes{display:none;margin-top:12px;border-top:1.5px dashed #bbb;padding-top:8px}
+.print-notes-lbl{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:6px}
+.print-lines{background-image:repeating-linear-gradient(to bottom,transparent,transparent 23px,#d0d0d0 23px,#d0d0d0 24px);height:72px;width:100%}
+
+/* ── print header (visible only in print) ─────────── */
+.print-hdr{display:none}
+
+/* ── @media print ─────────────────────────────────── */
+@media print{
+  /* force light tokens */
+  :root{
+    --bg:#fff!important;--surface:#fff!important;--surface-2:#f4f4f4!important;
+    --border:#ccc!important;--border-2:#aaa!important;
+    --ink:#111!important;--ink-2:#333!important;--ink-3:#555!important;--ink-4:#777!important;
+    --brand:#0F2045!important;--accent:#008fa0!important;--acc-dim:#e0f7fa!important;--acc-bdr:#b2ebf2!important;
+    --pos:#155724!important;--pos-bg:#d4edda!important;--pos-bdr:#c3e6cb!important;
+    --neg:#721c24!important;--neg-bg:#f8d7da!important;--neg-bdr:#f5c6cb!important;
+    --warn:#856404!important;--warn-bg:#fff3cd!important;--warn-bdr:#ffeeba!important;
+    --neu-bg:#e2e3e5!important;--neu-bdr:#d6d8db!important;
+    --sh-sm:none!important;--sh:none!important;
+  }
+  *{box-shadow:none!important}
+
+  /* hide interactive chrome */
+  .topbar,.upload-bar,.summary-bar,.no-print{display:none!important}
+
+  /* show print-only elements */
+  .print-hdr{display:block!important}
+  .print-notes{display:block!important}
+
+  body{font-size:10.5pt;background:#fff;color:#111}
+  .main{max-width:100%;padding:12px 0 0;margin:0}
+  .cards{gap:10px}
+
+  /* cards */
+  .c-card{
+    page-break-inside:avoid;break-inside:avoid;
+    border-left-width:4px!important;border-radius:4px!important;
+  }
+  .c-card.ok  {border-left-color:#155724!important}
+  .c-card.diff{border-left-color:#721c24!important}
+  .c-card.only,.c-card.no-match{border-left-color:#004085!important}
+
+  /* force all bodies open */
+  .c-body{display:block!important}
+  .c-head{cursor:default!important;pointer-events:none}
+  .c-chevron,.filter-chip,.btn,.slot-btn{display:none!important}
+
+  /* tighter layout */
+  .c-head{padding:8px 12px}
+  .c-name{font-size:12pt;font-weight:800}
+  .ctr-row{padding:10px 12px}
+  .metrics-t th,.metrics-t td{padding:5px 10px}
+  .chips{gap:4px}
+
+  /* page break hints */
+  .c-card{margin-bottom:8px}
+}
 </style>
 </head>
 <body>
@@ -197,8 +257,9 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
   <span class="topbar-sub" id="monthLabel" style="color:rgba(255,255,255,.7);font-weight:600"></span>
   <script>document.getElementById('monthLabel').textContent=(['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][new Date().getMonth()])+'/'+new Date().getFullYear();</script>
   <div class="topbar-right">
-    <button class="btn btn-sec" id="exportBtn" onclick="exportCSV()" style="display:none">⬇ Exportar</button>
-    <button class="btn btn-sec" id="clearBtn"  onclick="clearAll()"  style="display:none;color:var(--neg)">✕ Limpar</button>
+    <button class="btn btn-sec" id="printBtn"  onclick="printReport()" style="display:none">🖨 Imprimir</button>
+    <button class="btn btn-sec" id="exportBtn" onclick="exportCSV()"   style="display:none">⬇ Exportar</button>
+    <button class="btn btn-sec" id="clearBtn"  onclick="clearAll()"    style="display:none;color:var(--neg)">✕ Limpar</button>
   </div>
 </header>
 
@@ -253,6 +314,27 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
   <button class="filter-chip"        data-f="only" onclick="setFilter('only')">📋 Só planilha</button>
   <div class="filter-sep"></div>
   <button class="filter-chip" id="expandAllBtn" onclick="toggleAll()">⊞ Expandir todos</button>
+</div>
+
+<!-- print header (hidden on screen) -->
+<div class="print-hdr" id="printHdr" style="padding:0 22px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:20pt;font-weight:900;letter-spacing:-.5px;color:#0F2045">Servsul</div>
+      <div style="font-size:13pt;font-weight:500;color:#444;margin-top:2px">Conferência de Faturamento — <span id="printMonth"></span></div>
+    </div>
+    <div style="font-size:9pt;color:#666;text-align:right">
+      Emitido em <strong id="printDate"></strong><br>
+      <span style="font-size:8pt">Uso interno — Revisão comercial</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:20px;margin:10px 0 8px;font-size:10pt">
+    <span><strong id="printTotal" style="font-size:14pt">0</strong> <span style="color:#666">contratos</span></span>
+    <span><strong id="printOk" style="color:#155724">0</strong> <span style="color:#666">conferem</span></span>
+    <span><strong id="printDiff" style="color:#721c24">0</strong> <span style="color:#666">divergências</span></span>
+    <span><strong id="printOnly" style="color:#004085">0</strong> <span style="color:#666">só planilha</span></span>
+  </div>
+  <hr style="border:none;border-top:2.5px solid #0F2045;margin-bottom:14px">
 </div>
 
 <!-- main -->
@@ -614,7 +696,12 @@ function renderItemBody(item,hasSys){
     benefitsHtml=`<div class="chips"><span class="chips-label">Benefícios</span>${benefits.map(b=>`<span class="chip hi">${b.l} ${fmtBRL(item[b.k])}</span>`).join('')}<span class="chip" style="margin-left:4px;font-weight:700">Total ${fmtBRL(tot)}</span></div>`;
   }
 
-  return metricsTable+benefitsHtml;
+  const notes=`<div class="print-notes">
+    <div class="print-notes-lbl">Observações / Ajuste comercial</div>
+    <div class="print-lines"></div>
+  </div>`;
+
+  return metricsTable+benefitsHtml+notes;
 }
 
 /* =========================================================
@@ -632,6 +719,7 @@ function updateSummary(items){
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('cards').classList.remove('hidden');
   document.getElementById('exportBtn').style.display='';
+  document.getElementById('printBtn').style.display='';
   document.getElementById('clearBtn').style.display='';
 }
 
@@ -663,6 +751,7 @@ function clearAll(){
   document.getElementById('cards').innerHTML=''; document.getElementById('cards').classList.add('hidden');
   document.getElementById('emptyState').classList.remove('hidden');
   document.getElementById('exportBtn').style.display='none';
+  document.getElementById('printBtn').style.display='none';
   document.getElementById('clearBtn').style.display='none';
   // Reset filter chips
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c.dataset.f==='all'));
@@ -779,6 +868,27 @@ document.getElementById('fileSys').addEventListener('change', async e=>{
     inp.dispatchEvent(new Event('change'));
   });
 });
+
+/* =========================================================
+   PRINT
+   ========================================================= */
+function printReport(){
+  if(!S.items) return;
+  // Populate print header
+  const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const now=new Date();
+  const monthName=MONTHS[now.getMonth()];
+  document.getElementById('printMonth').textContent=monthName+'/'+now.getFullYear();
+  document.getElementById('printDate').textContent=now.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('printTotal').textContent=S.items.length;
+  document.getElementById('printOk').textContent=S.items.filter(i=>i.status==='ok').length;
+  document.getElementById('printDiff').textContent=S.items.filter(i=>i.status==='diff').length;
+  document.getElementById('printOnly').textContent=S.items.filter(i=>i.status==='only'||i.status==='no-match').length;
+  // Expand all cards before printing
+  document.querySelectorAll('#cards .c-card').forEach(c=>c.classList.add('open'));
+  syncExpandBtn();
+  window.print();
+}
 
 /* =========================================================
    EXPORT
