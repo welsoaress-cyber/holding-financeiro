@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                 logic = logic,
                 onScanRequested = ::scanWithPermissions,
                 onOpenGooglePhotos = ::openGooglePhotos,
+                onOpenGoogleDrive = ::openGoogleDrive,
                 onOpenDeepCleanSettings = ::openAllFilesSettings,
             )
         }
@@ -68,6 +69,26 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         logic.refreshDeepCleanStatus()
+    }
+
+    /** Abre o Google Drive para que o usuário salve documentos na nuvem antes de excluir do celular. */
+    private fun openGoogleDrive() {
+        val pm = packageManager
+        val drivePackage = "com.google.android.apps.docs"
+        val intent = pm.getLaunchIntentForPackage(drivePackage)
+        if (intent != null) {
+            startActivity(intent)
+        } else {
+            runCatching {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$drivePackage"))
+                )
+            }.onFailure {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$drivePackage"))
+                )
+            }
+        }
     }
 
     /** Abre o Google Fotos para que o usuário faça backup e, depois, libere espaço no celular. */

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.platform.nowMs
 import br.com.limpezastom.model.DuplicateShortcutGroup
+import br.com.limpezastom.model.FileKind
 import br.com.limpezastom.model.JunkFile
 import br.com.limpezastom.model.JunkGroup
 import br.com.limpezastom.model.ScanReport
@@ -68,6 +69,7 @@ fun AppRoot(
     logic: AppLogic,
     onScanRequested: () -> Unit,
     onOpenGooglePhotos: () -> Unit,
+    onOpenGoogleDrive: () -> Unit,
     onOpenDeepCleanSettings: () -> Unit,
 ) {
     MaterialTheme {
@@ -98,6 +100,8 @@ fun AppRoot(
                     modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
                     onConfirm = logic::confirmLayerSuggestions,
                     onCancel = logic::cancelLayerReview,
+                    onOpenGooglePhotos = onOpenGooglePhotos,
+                    onOpenGoogleDrive = onOpenGoogleDrive,
                 )
                 is UiState.ShortcutsReview -> ShortcutsReviewView(
                     groups = s.groups,
@@ -416,6 +420,8 @@ private fun LayerReviewView(
     modifier: Modifier = Modifier,
     onConfirm: (List<Suggestion>) -> Unit,
     onCancel: () -> Unit,
+    onOpenGooglePhotos: () -> Unit = {},
+    onOpenGoogleDrive: () -> Unit = {},
 ) {
     AppBackHandler(onBack = onCancel)
 
@@ -604,26 +610,70 @@ private fun LayerReviewView(
         }
 
         item {
+            val hasMedia = approved.any { it.file.kind == FileKind.PHOTO || it.file.kind == FileKind.VIDEO }
+            val hasDocs  = approved.any { it.file.kind == FileKind.DOCUMENT }
+            // Para camadas arriscadas com mídia/documentos: backup primeiro, exclusão depois
+            val showBackupFlow = isRisky && approved.isNotEmpty() && (hasMedia || hasDocs)
+
             Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = {
-                    if (isRisky) showConfirmDialog.value = true
-                    else onConfirm(approved)
-                },
-                enabled = approved.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = if (isRisky && approved.isNotEmpty())
-                    ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
-                else ButtonDefaults.buttonColors(),
-            ) {
+
+            if (showBackupFlow) {
+                // ── Fluxo "salvar na nuvem antes" ──────────────────────────
                 Text(
-                    when {
-                        approved.isEmpty() -> "Marque os itens que deseja excluir"
-                        isRisky -> "Revisar e EXCLUIR ${approved.size} arquivo(s) (${formatBytes(approvedBytes)})"
-                        else    -> "Excluir ${approved.size} arquivo(s) de cache (${formatBytes(approvedBytes)})"
-                    }
+                    "☁️ Salve na nuvem antes de excluir",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                Text(
+                    "Após confirmar que o backup está salvo, use o botão de exclusão abaixo.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                if (hasMedia) {
+                    Button(onClick = onOpenGooglePhotos, modifier = Modifier.fillMaxWidth()) {
+                        Text("📷 Abrir Google Fotos — fazer backup")
+                    }
+                }
+                if (hasDocs) {
+                    Button(onClick = onOpenGoogleDrive, modifier = Modifier.fillMaxWidth()) {
+                        Text("📁 Abrir Google Drive — salvar documentos")
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    onClick = { showConfirmDialog.value = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDC2626)),
+                ) {
+                    Text("🗑️ Excluir ${approved.size} arquivo(s) do celular (${formatBytes(approvedBytes)})")
+                }
+            } else {
+                // ── Fluxo original: L1 (cache) ou sem mídia/docs ───────────
+                Button(
+                    onClick = {
+                        if (isRisky) showConfirmDialog.value = true
+                        else onConfirm(approved)
+                    },
+                    enabled = approved.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = if (isRisky && approved.isNotEmpty())
+                        ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    else ButtonDefaults.buttonColors(),
+                ) {
+                    Text(
+                        when {
+                            approved.isEmpty() -> "Marque os itens que deseja excluir"
+                            isRisky -> "Revisar e EXCLUIR ${approved.size} arquivo(s) (${formatBytes(approvedBytes)})"
+                            else    -> "Excluir ${approved.size} arquivo(s) de cache (${formatBytes(approvedBytes)})"
+                        }
+                    )
+                }
             }
+
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
                 Text("Voltar sem excluir nada")
             }

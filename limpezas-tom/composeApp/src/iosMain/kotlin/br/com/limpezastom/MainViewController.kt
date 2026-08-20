@@ -21,6 +21,10 @@ fun MainViewController(): UIViewController {
                 // Deep-link para o app Fotos não é suportado via URL scheme oficial no iOS.
                 logic.notify("Use o app Fotos ou Google Fotos para fazer o backup no iOS.")
             },
+            onOpenGoogleDrive = {
+                // iOS: Google Drive tem URL scheme "googledrive://" mas não é garantido.
+                logic.notify("Abra o app Google Drive para salvar documentos na nuvem.")
+            },
             onOpenDeepCleanSettings = { /* iOS é sandbox — não se aplica */ },
         )
     }
