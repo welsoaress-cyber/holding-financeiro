@@ -250,6 +250,8 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
   <button class="filter-chip"        data-f="diff" onclick="setFilter('diff')">⚠ Divergentes</button>
   <button class="filter-chip"        data-f="ok"   onclick="setFilter('ok')">✅ OK</button>
   <button class="filter-chip"        data-f="only" onclick="setFilter('only')">📋 Só planilha</button>
+  <div class="filter-sep"></div>
+  <button class="filter-chip" id="expandAllBtn" onclick="toggleAll()">⊞ Expandir todos</button>
 </div>
 
 <!-- main -->
@@ -521,6 +523,7 @@ function render(){
   const filtered=clients.filter(c=>S.filter==='all'||(S.filter===c.status)||(S.filter==='diff'&&c.status==='diff')||(S.filter==='ok'&&c.status==='ok')||(S.filter==='only'&&c.status==='only'));
   document.getElementById('cards').innerHTML=filtered.length?filtered.map((c,i)=>renderCard(c,clients.indexOf(c)+1,n)).join(''):`<div class="empty-state" style="padding:40px"><div class="empty-ico">🔍</div><div class="empty-title">Nenhum cliente nesse filtro</div></div>`;
   updateSummary(clients);
+  syncExpandBtn();
 }
 
 function renderCard(client,num,total){
@@ -685,6 +688,22 @@ function setFilter(f){
 
 function toggleCard(head){
   head.closest('.c-card').classList.toggle('open');
+  syncExpandBtn();
+}
+
+function toggleAll(){
+  const cards=[...document.querySelectorAll('#cards .c-card')];
+  const anyCollapsed=cards.some(c=>!c.classList.contains('open'));
+  cards.forEach(c=>c.classList.toggle('open',anyCollapsed));
+  syncExpandBtn();
+}
+
+function syncExpandBtn(){
+  const cards=[...document.querySelectorAll('#cards .c-card')];
+  if(!cards.length) return;
+  const allOpen=cards.every(c=>c.classList.contains('open'));
+  const btn=document.getElementById('expandAllBtn');
+  if(btn) btn.textContent=allOpen?'⊟ Recolher todos':'⊞ Expandir todos';
 }
 
 /* =========================================================
