@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparativo de Faturamento</title>
+<script src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS — light (default) / dark (via media + data-theme)
+   ============================================================ */
+:root {
+  --bg:          #F0F2F5;
+  --surface:     #FFFFFF;
+  --surface-2:   #F7F8FA;
+  --border:      #E2E5EA;
+  --border-2:    #C8CDD8;
+  --ink:         #111827;
+  --ink-2:       #374151;
+  --ink-3:       #6B7280;
+  --ink-4:       #9CA3AF;
+  --brand:       #0F2045;
+  --brand-2:     #162D5C;
+  --accent:      #00C4D8;
+  --accent-dark: #0899A8;
+  --accent-glow: rgba(0,196,216,.12);
+  --pos:         #059669;
+  --pos-bg:      #ECFDF5;
+  --neg:         #DC2626;
+  --neg-bg:      #FEF2F2;
+  --warn:        #D97706;
+  --warn-bg:     #FFFBEB;
+  --info:        #2563EB;
+  --info-bg:     #EFF6FF;
+  --font-ui:     'Inter', -apple-system, sans-serif;
+  --font-mono:   'IBM Plex Mono', 'Fira Mono', monospace;
+  --r:           8px;
+  --r-lg:        12px;
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --shadow:      0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0D1421;
+    --surface:   #14213D;
+    --surface-2: #1A2A4A;
+    --border:    #243354;
+    --border-2:  #2E4070;
+    --ink:       #F1F5F9;
+    --ink-2:     #CBD5E1;
+    --ink-3:     #94A3B8;
+    --ink-4:     #64748B;
+    --pos-bg:    rgba(5,150,105,.15);
+    --neg-bg:    rgba(220,38,38,.15);
+    --warn-bg:   rgba(217,119,6,.15);
+    --info-bg:   rgba(37,99,235,.15);
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #0D1421;
+  --surface:   #14213D;
+  --surface-2: #1A2A4A;
+  --border:    #243354;
+  --border-2:  #2E4070;
+  --ink:       #F1F5F9;
+  --ink-2:     #CBD5E1;
+  --ink-3:     #94A3B8;
+  --ink-4:     #64748B;
+  --pos-bg:    rgba(5,150,105,.15);
+  --neg-bg:    rgba(220,38,38,.15);
+  --warn-bg:   rgba(217,119,6,.15);
+  --info-bg:   rgba(37,99,235,.15);
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.topbar {
+  background: var(--brand);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.topbar-logo {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -.3px;
+  white-space: nowrap;
+}
+.topbar-sep { color: rgba(255,255,255,.2); font-weight: 300; }
+.topbar-sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,.55);
+  white-space: nowrap;
+}
+.topbar-pill {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: rgba(0,196,216,.12);
+  border: 1px solid rgba(0,196,216,.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 24px 56px;
+}
+.page-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.page-sub   { font-size: 13px; color: var(--ink-3); margin-bottom: 24px; }
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.card-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.card-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  flex: 1;
+  min-width: 0;
+}
+.card-status {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.card-status.ok { color: var(--pos); }
+.card-body { padding: 18px; }
+
+/* ============================================================
+   UPLOAD GRID
+   ============================================================ */
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 680px) { .upload-grid { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   DROPZONE
+   ============================================================ */
+.dropzone {
+  border: 2px dashed var(--border-2);
+  border-radius: var(--r-lg);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: var(--surface-2);
+  user-select: none;
+}
+.dropzone:hover, .dropzone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.dropzone.loaded {
+  border-color: var(--pos);
+  border-style: solid;
+  background: var(--pos-bg);
+}
+.dropzone input[type=file] { display: none; }
+.dropzone-ico  { font-size: 26px; margin-bottom: 7px; }
+.dropzone-lbl  { font-size: 14px; font-weight: 700; color: var(--ink-2); margin-bottom: 3px; }
+.dropzone-hint { font-size: 12px; color: var(--ink-4); }
+
+/* ============================================================
+   FIELDS
+   ============================================================ */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink-4);
+  margin-bottom: 5px;
+}
+.field select,
+.field input[type=text],
+.field input[type=number] {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+.field select:focus,
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.field-help {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: var(--r);
+  border: none;
+  cursor: pointer;
+  transition: background .12s, box-shadow .12s, opacity .12s;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-primary  { background: var(--accent); color: var(--brand); }
+.btn-primary:hover  { background: var(--accent-dark); }
+.btn-secondary { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn-lg { padding: 11px 24px; font-size: 14.5px; }
+
+/* ============================================================
+   INFO / ALERT BOXES
+   ============================================================ */
+.info-box {
+  background: var(--accent-glow);
+  border: 1px solid rgba(0,196,216,.25);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* ============================================================
+   SECTION HEADER
+   ============================================================ */
+.section-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-4);
+  margin: 16px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ============================================================
+   KPI CARDS
+   ============================================================ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 580px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.kpi-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-4); margin-bottom: 5px; }
+.kpi-value { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi-note  { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+
+/* ============================================================
+   FILTER BAR
+   ============================================================ */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.filter-bar-label { font-size: 11.5px; font-weight: 700; color: var(--ink-3); margin-right: 2px; white-space: nowrap; }
+.filter-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: all .12s;
+}
+.filter-chip.active, .filter-chip:hover { border-color: var(--accent); background: var(--accent-glow); color: var(--accent); }
+.filter-chip.active { font-weight: 700; }
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap { overflow-x: auto; border-radius: var(--r-lg); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: var(--surface-2); }
+th {
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+}
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface-2); }
+.num {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.td-key { max-width: 340px; word-break: break-word; font-weight: 500; }
+.diff-pos { color: var(--pos); font-weight: 600; }
+.diff-neg { color: var(--neg); font-weight: 600; }
+.diff-zero { color: var(--ink-4); }
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-ok    { background: var(--pos-bg); color: var(--pos); }
+.badge-diff  { background: var(--neg-bg); color: var(--neg); }
+.badge-only-a { background: var(--warn-bg); color: var(--warn); }
+.badge-only-b { background: var(--info-bg); color: var(--info); }
+
+/* ============================================================
+   PREVIEW TABLE
+   ============================================================ */
+.preview-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: auto;
+  max-height: 180px;
+  background: var(--surface);
+}
+.preview-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.preview-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.preview-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preview-table tr:last-child td { border-bottom: none; }
+.preview-table tr:hover td { background: var(--surface-2); }
+
+/* ============================================================
+   ACTION BAR
+   ============================================================ */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+}
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+.option-row input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ink-4);
+}
+.empty-state-ico { font-size: 32px; margin-bottom: 10px; }
+.empty-state-txt { font-size: 13.5px; }
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+.hidden { display: none !important; }
+.mt-16  { margin-top: 16px; }
+.mb-16  { margin-bottom: 16px; }
+.flex   { display: flex; align-items: center; }
+.gap-8  { gap: 8px; }
+.ml-auto{ margin-left: auto; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     TOPBAR
+     ============================================================ -->
+<div class="topbar">
+  <span class="topbar-logo">Servsul</span>
+  <span class="topbar-sep">›</span>
+  <span class="topbar-sub">Comparativo de Faturamento</span>
+  <span class="topbar-pill">Conferência</span>
+</div>
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+<div class="main">
+
+  <!-- Upload de arquivos -->
+  <div class="upload-grid">
+
+    <!-- Sistema (CSV) -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">📄 Sistema — Exportação CSV</span>
+        <span class="card-status" id="csvStatus">aguardando arquivo</span>
+      </div>
+      <div class="card-body">
+        <div class="dropzone" id="csvDrop" onclick="document.getElementById('csvFile').click()">
+          <input type="file" id="csvFile" accept=".csv,.txt">
+          <div class="dropzone-ico">📊</div>
+          <div class="dropzone-lbl">Exportação do sistema</div>
+          <div class="dropzone-hint">Arraste o .csv ou clique para selecionar</div>
+        </div>
+
+        <div id="csvConfig" class="hidden mt-16">
+          <div class="info-box" id="csvInfo"></div>
+
+          <div class="section-head">Parseamento</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Linhas para pular (antes do cabeçalho)</label>
+              <input type="number" id="csvSkip" value="1" min="0" max="20" onchange="reparseCsv()">
+              <div class="field-help">Ex.: 1 pula a linha de resumo do sistema</div>
+            </div>
+            <div class="field">
+              <label>Separador</label>
+              <select id="csvSep" onchange="reparseCsv()">
+                <option value=";">Ponto e vírgula ( ; )</option>
+                <option value=",">Vírgula ( , )</option>
+                <option value="&#9;">Tabulação</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-head">Colunas</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Identificador (chave de comparação)</label>
+              <select id="csvKeyCol" onchange="checkReady()"></select>
+            </div>
+            <div class="field">
+              <label>Valor a comparar</label>
+              <select id="csvValCol" onchange="checkReady()"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Deduplicar também por (elimina linhas repetidas)</label>
+            <select id="csvDedupCol" onchange="checkReady()">
+              <option value="">— Sem deduplicação —</option>
+            </select>
+            <div class="field-help">Use quando o mesmo contrato aparece N vezes (ex.: uma linha por imposto)</div>
+          </div>
+
+          <div id="csvPreview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planilha (XLSM) -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">📋 Planilha — Controle de Faturamento</span>
+        <span class="card-status" id="xlsxStatus">aguardando arquivo</span>
+      </div>
+      <div class="card-body">
+        <div class="dropzone" id="xlsxDrop" onclick="document.getElementById('xlsxFile').click()">
+          <input type="file" id="xlsxFile" accept=".xlsx,.xlsm,.xls,.ods">
+          <div class="dropzone-ico">📋</div>
+          <div class="dropzone-lbl">Controle de faturamento</div>
+          <div class="dropzone-hint">Arraste o .xlsm/.xlsx ou clique para selecionar</div>
+        </div>
+
+        <div id="xlsxConfig" class="hidden mt-16">
+          <div class="info-box" id="xlsxInfo"></div>
+
+          <div class="section-head">Aba e cabeçalho</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Aba da planilha</label>
+              <select id="xlsxSheet" onchange="reparseXlsx()"></select>
+            </div>
+            <div class="field">
+              <label>Linha do cabeçalho (nº da linha)</label>
+              <input type="number" id="xlsxHeaderRow" value="1" min="1" max="30" onchange="reparseXlsx()">
+              <div class="field-help">Ex.: aba Janeiro tem cabeçalho na linha 6</div>
+            </div>
+          </div>
+
+          <div class="section-head">Colunas</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Identificador (chave de comparação)</label>
+              <select id="xlsxKeyCol" onchange="checkReady()"></select>
+            </div>
+            <div class="field">
+              <label>Valor a comparar</label>
+              <select id="xlsxValCol" onchange="checkReady()"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Deduplicar também por (opcional)</label>
+            <select id="xlsxDedupCol" onchange="checkReady()">
+              <option value="">— Sem deduplicação —</option>
+            </select>
+          </div>
+
+          <div id="xlsxPreview"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /upload-grid -->
+
+  <!-- Barra de ação -->
+  <div class="card mb-16 hidden" id="actionBar">
+    <div class="action-bar">
+      <label class="option-row">
+        <input type="checkbox" id="optIgnoreCase" checked>
+        Ignorar maiúsculas/minúsculas
+      </label>
+      <label class="option-row">
+        <input type="checkbox" id="optNormSpaces" checked>
+        Normalizar espaços
+      </label>
+      <div class="field" style="margin:0; display:flex; align-items:center; gap:8px;">
+        <label style="margin:0; white-space:nowrap; font-size:13px; font-weight:500; color:var(--ink-2);">Tolerância R$:</label>
+        <input type="number" id="optTolerance" value="0.01" min="0" step="0.01" style="width:72px;">
+      </div>
+      <button class="btn btn-primary btn-lg ml-auto" id="compareBtn" onclick="runComparison()">
+        ⚡ Comparar agora
+      </button>
+    </div>
+  </div>
+
+  <!-- Resultados -->
+  <div id="results" class="hidden">
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Resultado linha a linha</span>
+        <div style="display:flex; gap:8px; margin-left:auto;">
+          <button class="btn btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:14px 16px;">
+        <div class="filter-bar">
+          <span class="filter-bar-label">Filtrar:</span>
+          <button class="filter-chip active" data-filter="all" onclick="setFilter('all')">Todos</button>
+          <button class="filter-chip" data-filter="ok" onclick="setFilter('ok')">✅ Conferem</button>
+          <button class="filter-chip" data-filter="diff" onclick="setFilter('diff')">⚠ Divergentes</button>
+          <button class="filter-chip" data-filter="only-a" onclick="setFilter('only-a')">📄 Só no sistema</button>
+          <button class="filter-chip" data-filter="only-b" onclick="setFilter('only-b')">📋 Só na planilha</button>
+          <span id="countBadge" style="margin-left:auto; font-size:12px; color:var(--ink-4); font-family:var(--font-mono);"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:200px;">Identificador</th>
+                <th class="num" style="min-width:130px;">Sistema (CSV)</th>
+                <th class="num" style="min-width:130px;">Planilha</th>
+                <th class="num" style="min-width:110px;">Diferença</th>
+                <th style="min-width:120px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /main -->
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  csvRaw:  '',
+  csvData: null,   // { headers:string[], rows:string[][] }
+  xlsxWb:  null,   // XLSX workbook
+  xlsxData: null,  // { headers, rows }
+  results: [],     // comparison rows
+  filter:  'all',
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function normalize(s) {
+  let r = String(s ?? '').trim();
+  if (document.getElementById('optIgnoreCase').checked) r = r.toLowerCase();
+  if (document.getElementById('optNormSpaces').checked)  r = r.replace(/\s+/g, ' ');
+  return r;
+}
+
+function parseBR(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  v = String(v ?? '').trim().replace(/\s/g, '').replace(/R\$\s*/,'');
+  if (!v) return 0;
+  // Brazilian format: 1.234.567,89
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(v)) {
+    v = v.replace(/\./g, '').replace(',', '.');
+  } else {
+    v = v.replace(',', '.');
+  }
+  return parseFloat(v) || 0;
+}
+
+function fmtBRL(n) {
+  return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+
+/* ============================================================
+   CSV PARSING
+   ============================================================ */
+async function readText(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        resolve(new TextDecoder('utf-8', { fatal:true }).decode(e.target.result));
+      } catch {
+        resolve(new TextDecoder('iso-8859-1').decode(e.target.result));
+      }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function splitLine(line, sep) {
+  const res = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === sep && !inQ) {
+      res.push(cur.trim()); cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  res.push(cur.trim());
+  return res;
+}
+
+function parseCsv(text, sep, skip) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length <= skip) return { headers:[], rows:[] };
+  const headers = splitLine(lines[skip], sep);
+  const rows = lines.slice(skip + 1)
+    .map(l => splitLine(l, sep))
+    .filter(r => r.some(v => v.trim()));
+  return { headers, rows };
+}
+
+function reparseCsv() {
+  const sep  = document.getElementById('csvSep').value;
+  const skip = parseInt(document.getElementById('csvSkip').value) || 0;
+  S.csvData  = parseCsv(S.csvRaw, sep, skip);
+  fillSelects('csv', S.csvData.headers);
+  renderPreview('csvPreview', S.csvData.headers, S.csvData.rows.slice(0, 6));
+  document.getElementById('csvInfo').textContent =
+    `✓ ${S.csvData.rows.length.toLocaleString('pt-BR')} linhas · ${S.csvData.headers.length} colunas detectadas`;
+  checkReady();
+}
+
+/* ============================================================
+   XLSX PARSING
+   ============================================================ */
+async function readXlsx(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try { res(XLSX.read(e.target.result, { type:'array', cellDates:false })); }
+      catch(err) { rej(err); }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function parseSheet(wb, name, headerRow) {
+  const ws = wb.Sheets[name];
+  if (!ws) return { headers:[], rows:[] };
+  const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  const hIdx = headerRow - 1;
+  if (hIdx >= raw.length) return { headers:[], rows:[] };
+  const headers = (raw[hIdx] || []).map(h => String(h).trim().replace(/\n/g,' '));
+  const rows = raw.slice(hIdx + 1)
+    .filter(r => r.some(v => String(v).trim()))
+    .map(r => { const a = [...r]; while(a.length < headers.length) a.push(''); return a.map(v => String(v)); });
+  return { headers, rows };
+}
+
+function reparseXlsx() {
+  if (!S.xlsxWb) return;
+  const name = document.getElementById('xlsxSheet').value;
+  const hRow = parseInt(document.getElementById('xlsxHeaderRow').value) || 1;
+  S.xlsxData = parseSheet(S.xlsxWb, name, hRow);
+  fillSelects('xlsx', S.xlsxData.headers);
+  renderPreview('xlsxPreview', S.xlsxData.headers, S.xlsxData.rows.slice(0, 6));
+  document.getElementById('xlsxInfo').textContent =
+    `✓ Aba "${name}" · ${S.xlsxData.rows.length.toLocaleString('pt-BR')} linhas · ${S.xlsxData.headers.length} colunas`;
+  checkReady();
+}
+
+/* ============================================================
+   COLUMN DETECTION
+   ============================================================ */
+const CSV_KEY_HINTS   = ['cliente','razão social','razao social','nome do cliente'];
+const CSV_VAL_HINTS   = ['vlr fixo','valor fixo','valor contrato','vlr. fixo'];
+const CSV_DEDUP_HINTS = ['contrato'];
+const XL_KEY_HINTS    = ['cliente','grupo econômico','grupo economico','razão social','razao social'];
+const XL_VAL_HINTS    = ['contrato mensal','total para faturar','total à faturar','faturado contrato','total faturar'];
+
+function findCol(headers, hints) {
+  const lower = headers.map(h => h.toLowerCase());
+  for (const h of hints) {
+    const i = lower.findIndex(c => c.includes(h));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function fillSelects(prefix, headers) {
+  const opts = headers.map((h,i) =>
+    `<option value="${i}">${i+1}. ${esc(h || '(sem nome)')}</option>`
+  ).join('');
+  const noneOpt = `<option value="">— Nenhuma —</option>`;
+
+  const keySel   = document.getElementById(prefix+'KeyCol');
+  const valSel   = document.getElementById(prefix+'ValCol');
+  const dedupSel = document.getElementById(prefix+'DedupCol');
+
+  keySel.innerHTML   = opts;
+  valSel.innerHTML   = opts;
+  dedupSel.innerHTML = noneOpt + opts;
+
+  // Auto-detect
+  const keyI  = findCol(headers, prefix === 'csv' ? CSV_KEY_HINTS  : XL_KEY_HINTS);
+  const valI  = findCol(headers, prefix === 'csv' ? CSV_VAL_HINTS  : XL_VAL_HINTS);
+  const ddI   = prefix === 'csv' ? findCol(headers, CSV_DEDUP_HINTS) : -1;
+
+  if (keyI  >= 0) keySel.value   = keyI;
+  if (valI  >= 0) valSel.value   = valI;
+  if (ddI   >= 0) dedupSel.value = ddI;
+}
+
+/* ============================================================
+   PREVIEW
+   ============================================================ */
+function renderPreview(containerId, headers, rows) {
+  const MAX_COLS = 8;
+  const cols = headers.slice(0, MAX_COLS);
+  const more = headers.length > MAX_COLS ? `<span style="color:var(--ink-4); font-size:11px;"> + ${headers.length-MAX_COLS} mais</span>` : '';
+  const thead = cols.map(h => `<th>${esc(h||'—')}</th>`).join('');
+  const tbody = rows.map(r =>
+    `<tr>${cols.map((_,i) => `<td title="${esc(String(r[i]||''))}">${esc(String(r[i]||'').slice(0,50))}</td>`).join('')}</tr>`
+  ).join('');
+  document.getElementById(containerId).innerHTML =
+    `<div class="preview-wrap"><table class="preview-table">
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table></div>${more}`;
+}
+
+/* ============================================================
+   DRAG AND DROP
+   ============================================================ */
+function setupDropzone(dropId, inputId) {
+  const drop = document.getElementById(dropId);
+  drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0]; if (!f) return;
+    const inp = document.getElementById(inputId);
+    const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files;
+    inp.dispatchEvent(new Event('change'));
+  });
+}
+setupDropzone('csvDrop', 'csvFile');
+setupDropzone('xlsxDrop', 'xlsxFile');
+
+/* ============================================================
+   FILE INPUT HANDLERS
+   ============================================================ */
+document.getElementById('csvFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  document.getElementById('csvStatus').textContent = 'carregando…';
+  S.csvRaw = await readText(file);
+  document.getElementById('csvStatus').textContent = file.name;
+  document.getElementById('csvStatus').classList.add('ok');
+  document.getElementById('csvDrop').classList.add('loaded');
+  document.getElementById('csvConfig').classList.remove('hidden');
+  reparseCsv();
+});
+
+document.getElementById('xlsxFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  document.getElementById('xlsxStatus').textContent = 'carregando…';
+  try {
+    S.xlsxWb = await readXlsx(file);
+  } catch(err) {
+    alert('Erro ao ler planilha: ' + err.message); return;
+  }
+  document.getElementById('xlsxStatus').textContent = file.name;
+  document.getElementById('xlsxStatus').classList.add('ok');
+  document.getElementById('xlsxDrop').classList.add('loaded');
+  document.getElementById('xlsxConfig').classList.remove('hidden');
+
+  // Populate sheet picker
+  const sel = document.getElementById('xlsxSheet');
+  sel.innerHTML = S.xlsxWb.SheetNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+
+  // Auto-select preferred sheets
+  const prefs = ['Dados Trat', 'Clientes ativos', 'Janeiro'];
+  for (const p of prefs) {
+    if (S.xlsxWb.SheetNames.includes(p)) { sel.value = p; break; }
+  }
+
+  // Adjust header row hint for monthly sheets
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  sel.addEventListener('change', () => {
+    const name = sel.value;
+    if (monthNames.includes(name)) {
+      document.getElementById('xlsxHeaderRow').value = 6;
+    } else {
+      document.getElementById('xlsxHeaderRow').value = 1;
+    }
+    reparseXlsx();
+  });
+  if (monthNames.includes(sel.value)) document.getElementById('xlsxHeaderRow').value = 6;
+
+  reparseXlsx();
+});
+
+function checkReady() {
+  const ok = S.csvData?.headers.length > 0 && S.xlsxData?.headers.length > 0;
+  document.getElementById('actionBar').classList.toggle('hidden', !ok);
+}
+
+/* ============================================================
+   BUILD MAP
+   ============================================================ */
+function buildMap(data, keyI, valI, dedupI) {
+  const map  = new Map();  // normalized key → cumulative value
+  const seen = new Set();  // for dedup: "key\0dedupVal"
+
+  for (const row of data.rows) {
+    const rawKey = String(row[keyI] ?? '').trim();
+    if (!rawKey) continue;
+
+    const key = normalize(rawKey);
+
+    if (dedupI !== '' && dedupI !== null && dedupI !== undefined) {
+      const dv    = String(row[parseInt(dedupI)] ?? '');
+      const token = key + '\x00' + dv;
+      if (seen.has(token)) continue;
+      seen.add(token);
+    }
+
+    const val = parseBR(row[valI] ?? '');
+    map.set(key, (map.get(key) || 0) + val);
+  }
+  return map;
+}
+
+/* ============================================================
+   RUN COMPARISON
+   ============================================================ */
+function runComparison() {
+  const csvKeyI   = parseInt(document.getElementById('csvKeyCol').value);
+  const csvValI   = parseInt(document.getElementById('csvValCol').value);
+  const csvDedupI = document.getElementById('csvDedupCol').value;
+
+  const xlKeyI    = parseInt(document.getElementById('xlsxKeyCol').value);
+  const xlValI    = parseInt(document.getElementById('xlsxValCol').value);
+  const xlDedupI  = document.getElementById('xlsxDedupCol').value;
+
+  const tolerance = parseFloat(document.getElementById('optTolerance').value) || 0;
+
+  const mapA = buildMap(S.csvData, csvKeyI, csvValI, csvDedupI);
+  const mapB = buildMap(S.xlsxData, xlKeyI, xlValI, xlDedupI);
+
+  S.results = [];
+  const allKeys = new Set([...mapA.keys(), ...mapB.keys()]);
+
+  for (const key of [...allKeys].sort()) {
+    const a = mapA.get(key);
+    const b = mapB.get(key);
+    let status;
+    if (a !== undefined && b !== undefined)  status = Math.abs(a - b) <= tolerance ? 'ok' : 'diff';
+    else if (a !== undefined)                status = 'only-a';
+    else                                     status = 'only-b';
+
+    S.results.push({
+      key,
+      a: a ?? null,
+      b: b ?? null,
+      diff: (a ?? 0) - (b ?? 0),
+      status,
+    });
+  }
+
+  S.filter = 'all';
+  renderKPIs();
+  renderTable();
+  document.getElementById('results').classList.remove('hidden');
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+  requestAnimationFrame(() =>
+    document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' })
+  );
+}
+
+/* ============================================================
+   RENDER KPIs
+   ============================================================ */
+function renderKPIs() {
+  const total  = S.results.length;
+  const ok     = S.results.filter(r => r.status === 'ok').length;
+  const diff   = S.results.filter(r => r.status === 'diff').length;
+  const onlyA  = S.results.filter(r => r.status === 'only-a').length;
+  const onlyB  = S.results.filter(r => r.status === 'only-b').length;
+
+  const sumA = S.results.filter(r => r.a !== null).reduce((s,r) => s + r.a, 0);
+  const sumB = S.results.filter(r => r.b !== null).reduce((s,r) => s + r.b, 0);
+
+  const pctOk = total ? Math.round(ok/total*100) : 0;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Total comparado</div>
+      <div class="kpi-value">${total.toLocaleString('pt-BR')}</div>
+      <div class="kpi-note">identificadores únicos</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid var(--pos);">
+      <div class="kpi-label">✅ Conferem</div>
+      <div class="kpi-value" style="color:var(--pos);">${ok.toLocaleString('pt-BR')}</div>
+      <div class="kpi-note">${pctOk}% do total</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid var(--neg);">
+      <div class="kpi-label">⚠ Divergentes</div>
+      <div class="kpi-value" style="color:var(--neg);">${diff.toLocaleString('pt-BR')}</div>
+      <div class="kpi-note">valores diferentes</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid var(--warn);">
+      <div class="kpi-label">Só em um lado</div>
+      <div class="kpi-value" style="color:var(--warn);">${(onlyA+onlyB).toLocaleString('pt-BR')}</div>
+      <div class="kpi-note">${onlyA} sistema · ${onlyB} planilha</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid var(--accent);">
+      <div class="kpi-label">Diferença total</div>
+      <div class="kpi-value" style="font-size:15px; color:${Math.abs(sumA-sumB)<0.05?'var(--ink-3)':sumA>sumB?'var(--neg)':'var(--pos)'};">${fmtBRL(sumA-sumB)}</div>
+      <div class="kpi-note">Sistema − Planilha</div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   RENDER TABLE
+   ============================================================ */
+function renderTable() {
+  const rows = S.filter === 'all'
+    ? S.results
+    : S.results.filter(r => r.status === S.filter);
+
+  document.getElementById('countBadge').textContent =
+    `${rows.length.toLocaleString('pt-BR')} linha${rows.length !== 1 ? 's' : ''}`;
+
+  const tbody = document.getElementById('resultsBody');
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5">
+      <div class="empty-state">
+        <div class="empty-state-ico">🔍</div>
+        <div class="empty-state-txt">Nenhum resultado para esse filtro.</div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+
+  const BADGES = {
+    ok:     '<span class="badge badge-ok">✅ OK</span>',
+    diff:   '<span class="badge badge-diff">⚠ Divergente</span>',
+    'only-a': '<span class="badge badge-only-a">📄 Só no sistema</span>',
+    'only-b': '<span class="badge badge-only-b">📋 Só na planilha</span>',
+  };
+
+  tbody.innerHTML = rows.map(r => {
+    const diffClass = r.a !== null && r.b !== null
+      ? (Math.abs(r.diff) < 0.015 ? 'diff-zero' : r.diff > 0 ? 'diff-pos' : 'diff-neg')
+      : 'diff-zero';
+    const diffTxt = r.a !== null && r.b !== null ? fmtBRL(r.diff) : '—';
+    return `<tr data-status="${r.status}">
+      <td class="td-key">${esc(r.key)}</td>
+      <td class="num">${r.a !== null ? fmtBRL(r.a) : '<span style="color:var(--ink-4)">—</span>'}</td>
+      <td class="num">${r.b !== null ? fmtBRL(r.b) : '<span style="color:var(--ink-4)">—</span>'}</td>
+      <td class="num ${diffClass}">${diffTxt}</td>
+      <td>${BADGES[r.status]}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   FILTER
+   ============================================================ */
+function setFilter(f) {
+  S.filter = f;
+  document.querySelectorAll('.filter-chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.filter === f));
+  renderTable();
+}
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+function exportCSV() {
+  const STATUS_LABEL = {
+    ok: 'OK', diff: 'Divergente', 'only-a': 'Só no sistema', 'only-b': 'Só na planilha',
+  };
+  const rows = S.results.map(r => [
+    r.key,
+    r.a !== null ? r.a.toFixed(2) : '',
+    r.b !== null ? r.b.toFixed(2) : '',
+    (r.a !== null && r.b !== null) ? r.diff.toFixed(2) : '',
+    STATUS_LABEL[r.status],
+  ].join(';'));
+
+  const content = '﻿' + ['Identificador;Sistema (CSV);Planilha;Diferença;Status', ...rows].join('\r\n');
+  const blob    = new Blob([content], { type:'text/csv;charset=utf-8;' });
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href        = url;
+  a.download    = 'comparativo-faturamento.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+</script>
+</body>
+</html>
