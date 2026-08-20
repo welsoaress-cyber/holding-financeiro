@@ -2,6 +2,192 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.5.32 — 2026-08-20
+
+### Adicionado
+- Card **Planos** no menu principal do painel: acesso direto à tela de planos de serviço
+  pela grade hexagonal da home, com ícone 📋, tag PLN e cor âmbar.
+
+---
+
+## v2.5.31 — 2026-08-20
+
+### Adicionado
+- Favicon **"R"** (fundo vermelho, letra branca grande) na página Status da Rede.
+
+### Corrigido
+- Busca de clientes: nomes com acento (João, José, etc.) encontrados corretamente;
+  CPF não gera mais falso-positivo em buscas por nome.
+- Cross-reference de clientes no cache de lançamentos: a coluna "Cliente" e a busca
+  refletem edições feitas na tela de Clientes sem precisar recarregar.
+- Padding-top do `#main-screen` ajustado para dar respiro abaixo da saudação.
+- Campo **Negócio** incluído nos campos de busca de lançamentos.
+
+---
+
+## v2.5.30 — 2026-08-20
+
+### Adicionado
+- Campo **Cliente** na tabela de lançamentos e no modal de edição/criação,
+  com busca na lista de clientes cadastrados.
+
+---
+
+## v2.5.29 — 2026-08-20
+
+### Adicionado
+- Tag **Google Ads** (gtag.js) adicionada a todas as páginas públicas (site, portal, obrigado).
+
+---
+
+## v2.5.28 — 2026-08-20
+
+### Adicionado
+- Campo **Data de Pagamento** no modal de lançamentos: permite registrar a data
+  real do pagamento separada da data de vencimento.
+
+---
+
+## v2.5.22 — 2026-08-20
+
+### Alterado
+- Favicons finalizados: fundo transparente, letra grande e bem centrada, aplicado
+  consistentemente nas três páginas (site, portal do cliente, painel administrativo).
+
+---
+
+## v2.5.21 — 2026-08-20
+
+### Alterado
+- Favicons: fundo escuro restaurado com letra grande para melhor leitura em abas claras.
+
+---
+
+## v2.5.20 — 2026-08-20
+
+### Alterado
+- Favicons: letra ampliada para 96 px, mais legível em abas pequenas.
+
+---
+
+## v2.5.19 — 2026-08-20
+
+### Alterado
+- Favicons: fundo transparente em todas as páginas, adaptando-se ao tema do navegador.
+
+---
+
+## v2.5.18 — 2026-08-20
+
+### Adicionado
+- Home: visual do radar expandido com anéis de pulso e animação de varredura
+  para um efeito mais dinâmico na tela inicial.
+
+---
+
+## v2.5.17 — 2026-08-20
+
+### Alterado
+- Favicons S/C/P: fundo escuro para melhor contraste e visibilidade na barra de abas.
+
+---
+
+## v2.5.16 — 2026-08-20
+
+### Alterado
+- Favicons: mascote faísca removida; adotadas as letras S (site), C (portal cliente)
+  e P (painel) sobre fundo colorido.
+
+---
+
+## v2.5.15 — 2026-08-20
+
+### Adicionado
+- Favicons distintos por página: **S** para o site, **C** para o portal do cliente,
+  **P** para o painel administrativo — facilita identificar abas abertas.
+
+---
+
+## v2.5.14 — 2026-08-20
+
+### Alterado
+- Favicon do portal do cliente: ícone de fone de suporte simplificado sobre fundo teal.
+
+---
+
+## v2.5.13 — 2026-08-20
+
+### Adicionado
+- Favicon de agente de suporte no `/portal` do cliente.
+
+---
+
+## v2.5.12 — 2026-08-20
+
+### Adicionado
+- Favicon com cifrão no `/painel`.
+
+---
+
+## v2.5.11 — 2026-08-20
+
+### Corrigido
+- Hexágonos cortados no topo da home: `justify-content` e `padding-top` ajustados
+  para que toda a grade caiba na tela sem cortes.
+- Redirect infinito no `/portal` com Cloudflare Pages (pretty URLs): regra de redirect
+  removida para evitar loop 301 → 301.
+
+---
+
+## v2.5.10 — 2026-08-20
+
+### Adicionado
+- Curva ABC: cards de classe (A, B, C) clicáveis — abrem modal com a lista de
+  clientes daquela classe já filtrada.
+
+---
+
+## v2.5.9 — 2026-08-20
+
+### Adicionado
+- Relatórios: **Curva ABC** de clientes por receita, com distribuição percentual
+  e classificação automática em A (top 80 %), B (próximos 15 %) e C (demais 5 %).
+
+---
+
+## v2.5.8 — 2026-08-20
+
+### Adicionado
+- Relatórios: modal de detalhes exibe lançamentos agrupados por categoria
+  em accordion expansível, facilitando a análise por tipo de receita/despesa.
+
+---
+
+## v2.5.7 — 2026-08-20
+
+### Adicionado
+- Relatórios: cards de KPI e linhas da tabela clicáveis — abrem modal com os
+  lançamentos que compõem aquele valor, permitindo drill-down direto.
+
+---
+
+## v2.5.6 — 2026-08-20
+
+### Adicionado
+- Dashboard Clientes: card **"Novos este mês"** clicável filtra a lista de clientes
+  para o período atual.
+
+### Corrigido
+- Cache-bust definitivo do painel: bundles renomeados e Service Worker em modo
+  network-first garantem que atualizações cheguem sem Ctrl+F5.
+- Login do painel: corrigida cadeia `const` quebrada e export incorreto no bundle do
+  dashboard (causa raiz da falha de login pós-deploy).
+- Redirects do portal: login e URLs do portal do cliente estabilizados.
+- CI/CD: distribuição automática via Firebase App Distribution adicionada ao
+  workflow de build do APK.
+
+---
+
 ## v2.5.5 — 2026-08-19
 
 ### Adicionado
