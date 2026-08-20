@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2ª Fase OAB Constitucional — Método IR Curso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Google Ads tag -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18399063975"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-18399063975');
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --azul:     #1a3a6b;
+      --azul-esc: #0f2347;
+      --azul-cl:  #e8eef8;
+      --dourado:  #c9a227;
+      --dourado-cl:#fdf6e3;
+      --preto:    #111;
+      --cinza:    #555;
+      --bg:       #fff;
+      --raio:     10px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--preto);
+      line-height: 1.6;
+    }
+
+    /* ── TOPO ── */
+    .topo {
+      background: var(--azul-esc);
+      color: #fff;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(160deg, #0a1628 0%, #1a3a6b 100%);
+      color: #fff;
+      padding: 52px 20px 44px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--dourado);
+      color: #111;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
+      font-weight: 900;
+      line-height: 1.2;
+      max-width: 720px;
+      margin: 0 auto 16px;
+    }
+    .hero h1 span { color: var(--dourado); }
+    .hero p.sub {
+      font-size: clamp(1rem, 3vw, 1.15rem);
+      opacity: 0.85;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    .btn-hero {
+      display: inline-block;
+      background: var(--dourado);
+      color: #111;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 18px 36px;
+      border-radius: var(--raio);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-hero:hover { background: #b8911f; transform: translateY(-2px); }
+    .garantia-mini {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+
+    /* ── SEÇÕES ── */
+    section { padding: 56px 20px; }
+    .container { max-width: 680px; margin: 0 auto; }
+    h2 {
+      font-size: clamp(1.35rem, 4vw, 1.9rem);
+      font-weight: 800;
+      margin-bottom: 24px;
+      line-height: 1.3;
+    }
+    h2 span { color: var(--azul); }
+
+    /* ── DOR ── */
+    .dor { background: #f9f9f9; }
+    .dor-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .dor-lista li {
+      background: #fff;
+      border-left: 4px solid #cc2222;
+      padding: 14px 16px;
+      border-radius: 0 var(--raio) var(--raio) 0;
+      font-size: 1rem;
+    }
+    .dor-lista li::before { content: "😤 "; }
+
+    /* ── MECANISMO ── */
+    .mec { background: var(--azul-cl); }
+    .mec-box {
+      background: #fff;
+      border: 2px solid var(--azul);
+      border-radius: var(--raio);
+      padding: 28px 24px;
+    }
+    .mec-box p { font-size: 1.05rem; margin-bottom: 12px; }
+    .mec-box p:last-child { margin-bottom: 0; }
+
+    /* ── O QUE INCLUI ── */
+    .inclui-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .inclui-lista li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 1rem;
+      background: var(--azul-cl);
+      border-radius: var(--raio);
+      padding: 14px 16px;
+    }
+    .inclui-lista li .ic {
+      background: var(--azul);
+      color: #fff;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    /* ── MÉTODO ── */
+    .metodo { background: var(--dourado-cl); }
+    .metodo-cards { display: flex; flex-direction: column; gap: 16px; }
+    .metodo-card {
+      background: #fff;
+      border-left: 5px solid var(--dourado);
+      border-radius: 0 var(--raio) var(--raio) 0;
+      padding: 18px 20px;
+    }
+    .metodo-card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 6px; color: var(--azul-esc); }
+    .metodo-card p { font-size: 0.93rem; color: var(--cinza); }
+
+    /* ── PROVA SOCIAL ── */
+    .prova { background: #f9f9f9; }
+    .depoimentos { display: flex; flex-direction: column; gap: 20px; }
+    .dep-card {
+      background: #fff;
+      border-radius: var(--raio);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .dep-card p { font-size: 0.97rem; font-style: italic; margin-bottom: 10px; }
+    .dep-autor { font-weight: 700; font-size: 0.85rem; color: var(--azul); }
+    .estrelas { color: var(--dourado); margin-bottom: 6px; font-size: 1rem; }
+
+    /* ── PREÇO ── */
+    .oferta { background: #fff; text-align: center; }
+    .preco-card {
+      background: linear-gradient(135deg, #0a1628 0%, #1a3a6b 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 40px 28px 32px;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .preco-card::before {
+      content: "🏆 MELHOR CUSTO-BENEFÍCIO PARA A OAB";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: var(--dourado);
+      color: #111;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 7px;
+      text-align: center;
+    }
+    .preco-card .por { font-size: 0.9rem; opacity: 0.8; margin-top: 8px; }
+    .preco-card .valor {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--dourado);
+      line-height: 1;
+      margin-top: 6px;
+    }
+    .preco-card .valor strong { font-size: 3.5rem; }
+    .preco-card .centavos { font-size: 1.5rem; vertical-align: super; }
+    .preco-card .parcelas { font-size: 0.85rem; opacity: 0.75; margin-top: 6px; }
+    .preco-card .btn-hero { margin-top: 24px; display: inline-block; }
+
+    /* ── GARANTIA ── */
+    .garantia { background: var(--azul-cl); text-align: center; }
+    .garantia-icon { font-size: 3.5rem; margin-bottom: 12px; }
+    .garantia p { max-width: 520px; margin: 0 auto; font-size: 1rem; color: var(--cinza); }
+
+    /* ── FAQ ── */
+    .faq-lista { display: flex; flex-direction: column; border: 1px solid #e0e0e0; border-radius: var(--raio); overflow: hidden; }
+    .faq-item { border-bottom: 1px solid #e0e0e0; }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      width: 100%; background: #fff; border: none; text-align: left;
+      padding: 18px 20px; font-size: 0.97rem; font-weight: 700;
+      cursor: pointer; display: flex; justify-content: space-between;
+      align-items: center; font-family: inherit;
+    }
+    .faq-q:hover { background: #f5f5f5; }
+    .faq-q .arrow { transition: transform 0.2s; font-style: normal; }
+    .faq-q.open .arrow { transform: rotate(180deg); }
+    .faq-a { display: none; padding: 0 20px 18px; font-size: 0.95rem; color: var(--cinza); background: #fff; }
+    .faq-a.open { display: block; }
+
+    /* ── CAPTURA ── */
+    .captura { background: linear-gradient(160deg, #0a1628 0%, #1a3a6b 100%); color: #fff; text-align: center; }
+    .captura h2 { color: #fff; }
+    .captura h2 span { color: var(--dourado); }
+    .captura p.sub2 { opacity: 0.8; margin-bottom: 32px; font-size: 1rem; }
+    .form-card {
+      background: #fff; border-radius: var(--raio); padding: 32px 28px;
+      max-width: 460px; margin: 0 auto; color: var(--preto);
+    }
+    .form-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; text-align: center; }
+    .campo { margin-bottom: 16px; }
+    .campo label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #333; }
+    .campo input {
+      width: 100%; padding: 14px 16px; border: 2px solid #ddd;
+      border-radius: var(--raio); font-size: 1rem; font-family: inherit;
+      transition: border 0.2s; outline: none;
+    }
+    .campo input:focus { border-color: var(--azul); }
+    .btn-form {
+      width: 100%; background: var(--azul); color: #fff; font-size: 1.05rem;
+      font-weight: 800; padding: 16px; border: none; border-radius: var(--raio);
+      cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+      margin-top: 8px; transition: background 0.2s; font-family: inherit;
+    }
+    .btn-form:hover { background: var(--azul-esc); }
+    .form-nota { font-size: 0.78rem; color: #888; text-align: center; margin-top: 10px; }
+    .link-direto {
+      display: block; margin-top: 20px; font-size: 0.85rem;
+      color: rgba(255,255,255,0.6); text-decoration: underline; cursor: pointer;
+    }
+    .link-direto:hover { color: #fff; }
+
+    /* ── RODAPÉ ── */
+    footer {
+      background: #0a1628; color: #aaa; font-size: 0.78rem;
+      text-align: center; padding: 32px 20px; line-height: 1.8;
+    }
+    footer a { color: #aaa; }
+
+    /* ── BARRA FLUTUANTE MOBILE ── */
+    .barra-flutuante {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--dourado); padding: 14px 20px; z-index: 999;
+    }
+    .barra-flutuante a {
+      display: block; color: #111; font-weight: 800; text-align: center;
+      font-size: 1rem; text-decoration: none; text-transform: uppercase;
+    }
+    @media (max-width: 600px) {
+      .barra-flutuante { display: block; }
+      body { padding-bottom: 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPO -->
+<div class="topo">
+  ⚖️ Método aprovado por mais de 9.000 profissionais · 55h de aulas + ao vivo toda quinta-feira · Garantia de 7 dias
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <span class="hero-badge">Curso Online · 2ª Fase OAB · Direito Constitucional</span>
+    <h1>Ainda Travando na<br><span>2ª Fase da OAB?</span><br>O Problema Não É Você — É o Método</h1>
+    <p class="sub">Técnica específica para o padrão FGV: identifique a peça, estruture a resposta e redija com velocidade. Resultado já no primeiro treino.</p>
+    <a href="#captura" class="btn-hero">Quero Passar na 2ª Fase →</a>
+    <p class="garantia-mini">🔒 Garantia incondicional de 7 dias · Acesso imediato após o pagamento</p>
+  </div>
+</header>
+
+<!-- DOR -->
+<section class="dor">
+  <div class="container">
+    <h2>Você se identifica com <span>alguma dessas situações?</span></h2>
+    <ul class="dor-lista">
+      <li>Passou na 1ª Fase mas a 2ª parece um muro intransponível</li>
+      <li>Estuda horas de Direito Constitucional mas na prova não sabe como montar a peça</li>
+      <li>Sente que falta uma técnica específica para o padrão de correção da FGV</li>
+      <li>Já reprovou e está com medo de reprovar de novo — e atrasar sua carreira</li>
+      <li>Perde tempo na prova porque não tem uma estrutura definida de resposta</li>
+    </ul>
+    <p style="margin-top:24px; font-size:1rem; color:var(--cinza);">
+      Se você marcou qualquer uma dessas, saiba: <strong>o problema não é falta de conhecimento</strong>.
+      É que ninguém te ensinou a técnica certa para o formato da FGV. E isso tem solução.
+    </p>
+  </div>
+</section>
+
+<!-- MECANISMO -->
+<section class="mec">
+  <div class="container">
+    <h2>O que é o <span>IR Curso — 2ª Fase OAB Constitucional</span>?</h2>
+    <div class="mec-box">
+      <p>
+        É um preparatório online desenvolvido especificamente para a <strong>2ª Fase da OAB em Direito Constitucional</strong>,
+        com método próprio para o padrão de correção da FGV — a banca que elabora a prova.
+      </p>
+      <p>
+        Mais de <strong>9.000 profissionais</strong> já aplicaram o método. Avaliação <strong>4.9 de 5 estrelas</strong>.
+      </p>
+      <p>
+        Não é mais um curso genérico de Direito Constitucional. É uma técnica cirúrgica para você
+        <strong>identificar a peça, estruturar e redigir no padrão exato que a FGV pontua</strong>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- O QUE INCLUI -->
+<section>
+  <div class="container">
+    <h2>O que você recebe no curso</h2>
+    <ul class="inclui-lista">
+      <li><span class="ic">✓</span><span><strong>55 horas de aulas gravadas</strong> — assista quantas vezes quiser, no celular ou computador</span></li>
+      <li><span class="ic">✓</span><span><strong>Aula ao vivo toda quinta-feira</strong> via Zoom até a data da sua prova</span></li>
+      <li><span class="ic">✓</span><span><strong>Exercícios práticos</strong> com correção detalhada no padrão FGV</span></li>
+      <li><span class="ic">✓</span><span><strong>Revisão de pontos críticos</strong> do direito material que mais caem na prova</span></li>
+      <li><span class="ic">✓</span><span><strong>60 dias de acesso</strong> — tempo suficiente para dominar o método antes da prova</span></li>
+      <li><span class="ic">✓</span><span><strong>Acesso imediato</strong> após a confirmação do pagamento</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- MÉTODO -->
+<section class="metodo">
+  <div class="container">
+    <h2>O <span>método em 3 pilares</span> — específico para a FGV</h2>
+    <div class="metodo-cards">
+      <div class="metodo-card">
+        <h3>1. Identificação das Peças</h3>
+        <p>Técnica que organiza qualquer peça cobrada pela FGV em 3 grupos específicos — você nunca mais fica em branco diante do enunciado.</p>
+      </div>
+      <div class="metodo-card">
+        <h3>2. Estruturas de Peças Práticas</h3>
+        <p>3 estruturas suficientes para responder qualquer peça prática, no exato padrão do espelho de correção da FGV. Simples e replicável.</p>
+      </div>
+      <div class="metodo-card">
+        <h3>3. Método Sanduíche de Redação</h3>
+        <p>Técnica de redação que otimiza a velocidade e entrega a estrutura esperada pela banca — sem enrolar, sem perder ponto por formatação.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROVA SOCIAL -->
+<section class="prova">
+  <div class="container">
+    <h2>O que dizem quem já passou</h2>
+    <div class="depoimentos">
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Reprovei na 2ª Fase duas vezes. Quando entrei no IR Curso entendi que meu problema era técnico, não de conhecimento. O método sanduíche salvou minha prova. Fui aprovado na primeira tentativa depois do curso."</p>
+        <span class="dep-autor">— Felipe A., aprovado na 2ª Fase OAB — Constitucional</span>
+      </div>
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"As aulas ao vivo toda quinta fazem toda a diferença. O professor comenta os exercícios e você entende exatamente o que a FGV quer ver. Passei no primeiro exame depois que entrei no curso."</p>
+        <span class="dep-autor">— Mariana C., advogada aprovada na OAB</span>
+      </div>
+      <div class="dep-card">
+        <div class="estrelas">★★★★★</div>
+        <p>"Achei que precisava estudar mais conteúdo. Na verdade precisava de técnica. As 55h de aulas são diretas ao ponto — sem enrolação. Recomendo pra qualquer um que está travado na 2ª Fase."</p>
+        <span class="dep-autor">— Rafael S., aprovado após 2 reprovações</span>
+      </div>
+    </div>
+    <p style="margin-top:16px;font-size:0.82rem;color:#999;text-align:center;">
+      * Resultados individuais podem variar conforme dedicação e prática.
+    </p>
+  </div>
+</section>
+
+<!-- PREÇO -->
+<section class="oferta" id="oferta">
+  <div class="container" style="text-align:center;">
+    <h2>Investimento <span>na sua aprovação</span></h2>
+    <p style="color:var(--cinza);margin-bottom:28px;">Acesso imediato. 60 dias de conteúdo + aulas ao vivo toda quinta até a sua prova.</p>
+    <div class="preco-card">
+      <p class="por">Valor do curso</p>
+      <p class="valor">R$ <strong>797</strong><span class="centavos">,00</span></p>
+      <p class="parcelas">ou 12x de R$ 83,76 no cartão</p>
+      <a href="https://go.hotmart.com/D107244641G?ap=9996" class="btn-hero" target="_blank" rel="noopener">
+        QUERO ME INSCREVER AGORA →
+      </a>
+      <p class="garantia-mini" style="margin-top:12px;">🔒 Compra 100% segura pela Hotmart · Garantia de 7 dias</p>
+    </div>
+  </div>
+</section>
+
+<!-- GARANTIA -->
+<section class="garantia">
+  <div class="container">
+    <div class="garantia-icon">🛡️</div>
+    <h2>Garantia Incondicional de <span>7 Dias</span></h2>
+    <p>Acesse o curso, assista às aulas e, se por qualquer motivo não ficar satisfeito, basta solicitar o reembolso em até 7 dias. Você recebe 100% do valor de volta — sem perguntas, sem burocracia. O risco é totalmente nosso.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="container">
+    <h2>Dúvidas frequentes</h2>
+    <div class="faq-lista">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Funciona para qualquer exame da OAB? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">O curso é focado na 2ª Fase da OAB em Direito Constitucional, seguindo o padrão de correção da FGV. Se a sua área de atuação é Constitucional, é o curso certo para você.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Por quanto tempo tenho acesso? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">60 dias de acesso às aulas gravadas, mais as aulas ao vivo toda quinta-feira via Zoom até a data da sua prova. Tempo mais que suficiente para dominar o método.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          As aulas ao vivo ficam gravadas? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Sim. Todas as aulas ao vivo ficam disponíveis para você assistir dentro dos 60 dias de acesso, caso não consiga participar ao vivo na quinta-feira.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Já reprovei várias vezes — esse curso é para mim? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Sim, especialmente para você. Quem reprova várias vezes geralmente tem o conhecimento necessário mas não tem a técnica certa para o formato da FGV. Exatamente o que o curso resolve.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Como recebo o acesso? <span class="arrow">▼</span>
+        </button>
+        <div class="faq-a">Imediatamente após a confirmação do pagamento, você recebe um e-mail com o link de acesso. A plataforma Hotmart é 100% segura e aceita cartão, boleto e Pix.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAPTURA -->
+<section class="captura" id="captura">
+  <div class="container">
+    <h2>Pronto para <span>passar na 2ª Fase?</span></h2>
+    <p class="sub2">Deixe seu nome e WhatsApp para receber informações exclusivas e tirar dúvidas antes de se inscrever.</p>
+
+    <form class="form-card" method="POST" action="https://api.web3forms.com/submit">
+      <input type="hidden" name="access_key" value="0e3509a8-7c47-484e-bc09-1b4760b30efd" />
+      <input type="hidden" name="subject" value="⚖️ Novo lead — OAB 2ª Fase Constitucional" />
+      <input type="hidden" name="redirect" value="https://oab2fase.com.br/obrigado.html" />
+      <input type="hidden" name="from_name" value="Landing OAB 2ª Fase" />
+      <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" />
+
+      <h3>📩 Receba as informações agora</h3>
+
+      <div class="campo">
+        <label for="nome">Seu nome</label>
+        <input type="text" id="nome" name="nome" placeholder="Como posso te chamar?" required />
+      </div>
+      <div class="campo">
+        <label for="whatsapp">WhatsApp (com DDD)</label>
+        <input type="tel" id="whatsapp" name="whatsapp" placeholder="(11) 99999-9999" required />
+      </div>
+
+      <button type="submit" class="btn-form">QUERO PASSAR NA 2ª FASE →</button>
+      <p class="form-nota">🔒 Seus dados estão seguros. Sem spam.</p>
+    </form>
+
+    <a class="link-direto" href="https://go.hotmart.com/D107244641G?ap=9996" target="_blank" rel="noopener">
+      Já quero me inscrever direto →
+    </a>
+  </div>
+</section>
+
+<!-- RODAPÉ -->
+<footer>
+  <p>
+    <strong>Aviso:</strong> Este site é de um divulgador independente e pode receber comissão pelas indicações realizadas.<br>
+    Os resultados apresentados não são garantia de resultados futuros — variam conforme dedicação e prática individual.<br>
+    Este produto é comercializado pela plataforma Hotmart. Compra 100% segura.
+  </p>
+  <br>
+  <p>
+    <a href="/privacidade.html">Política de Privacidade</a> · <a href="/termos.html">Termos de Uso</a>
+  </p>
+</footer>
+
+<!-- BARRA FLUTUANTE MOBILE -->
+<div class="barra-flutuante">
+  <a href="#captura">QUERO PASSAR NA 2ª FASE →</a>
+</div>
+
+<script>
+  function toggleFaq(btn) {
+    const answer = btn.nextElementSibling;
+    const isOpen = answer.classList.contains('open');
+    document.querySelectorAll('.faq-a.open').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.faq-q.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) { answer.classList.add('open'); btn.classList.add('open'); }
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  document.getElementById('whatsapp').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+    if (v.length >= 7) v = '(' + v.substring(0,2) + ') ' + v.substring(2,7) + '-' + v.substring(7);
+    else if (v.length >= 3) v = '(' + v.substring(0,2) + ') ' + v.substring(2);
+    else if (v.length > 0) v = '(' + v;
+    e.target.value = v;
+  });
+</script>
+
+</body>
+</html>
