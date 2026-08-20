@@ -126,14 +126,30 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .hero-visual {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: center;
+  overflow: visible;
 }
-.orb-svg { width: min(380px, 95%); height: auto; }
-.ring-fwd  { transform-origin: 200px 200px; animation: spin-fwd 28s linear infinite; }
-.ring-rev  { transform-origin: 200px 200px; animation: spin-fwd 18s linear infinite reverse; }
-.dot-a     { transform-origin: 200px 200px; animation: spin-fwd  7s linear infinite; }
-.dot-b     { transform-origin: 200px 200px; animation: spin-fwd 11s linear infinite reverse; }
-.dot-c     { transform-origin: 200px 200px; animation: spin-fwd 16s linear infinite; }
+.orb-svg { width: 100%; max-width: 640px; height: auto; overflow: visible; }
+/* Orb rotations — origin at SVG center 300,240 */
+.ring-fwd  { transform-origin: 300px 240px; animation: spin-fwd 28s linear infinite; }
+.ring-rev  { transform-origin: 300px 240px; animation: spin-fwd 18s linear infinite reverse; }
+.ring-slow { transform-origin: 300px 240px; animation: spin-fwd 48s linear infinite; }
+.dot-a     { transform-origin: 300px 240px; animation: spin-fwd  7s linear infinite; }
+.dot-b     { transform-origin: 300px 240px; animation: spin-fwd 11s linear infinite reverse; }
+.dot-c     { transform-origin: 300px 240px; animation: spin-fwd 16s linear infinite; }
+.dot-d     { transform-origin: 300px 240px; animation: spin-fwd  5s linear infinite reverse; }
+.dot-e     { transform-origin: 300px 240px; animation: spin-fwd 22s linear infinite; }
+/* Radar sweep */
+.sweep     { transform-origin: 300px 240px; animation: sweep 4s linear infinite; }
+@keyframes sweep { to { transform: rotate(360deg); } }
 @keyframes spin-fwd { to { transform: rotate(360deg); } }
+/* Pulse rings */
+@keyframes pulse-ring {
+  0%   { r: 90;  opacity: 0.5; }
+  100% { r: 260; opacity: 0; }
+}
+.pulse1 { animation: pulse-ring 3.5s ease-out infinite; }
+.pulse2 { animation: pulse-ring 3.5s ease-out 1.17s infinite; }
+.pulse3 { animation: pulse-ring 3.5s ease-out 2.34s infinite; }
 
 @media (max-width: 820px) {
   .hero { grid-template-columns: 1fr; }
@@ -751,38 +767,105 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
     </div>
   </div>
   <div class="hero-visual" aria-hidden="true">
-    <svg class="orb-svg" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="orb-svg" viewBox="0 0 600 480" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="6" result="blur"/>
+        <!-- Glow forte para o núcleo -->
+        <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="8" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id="glow2" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="14" result="blur"/>
+        <!-- Glow suave para anéis externos -->
+        <filter id="glow2" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="18" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
+        <!-- Glow ultra para núcleo central -->
+        <filter id="glow3" x="-150%" y="-150%" width="400%" height="400%">
+          <feGaussianBlur stdDeviation="28" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <!-- Gradiente da varredura de radar -->
+        <radialGradient id="sweepGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(0,196,216,0)" />
+          <stop offset="100%" stop-color="rgba(0,196,216,0)" />
+        </radialGradient>
+        <!-- Gradiente cônico para sweep (simulado com gradiente linear) -->
+        <linearGradient id="sweepFill" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="rgba(0,196,216,0.35)"/>
+          <stop offset="100%" stop-color="rgba(0,196,216,0)"/>
+        </linearGradient>
       </defs>
-      <circle cx="200" cy="200" r="175" stroke="rgba(0,196,216,0.05)" stroke-width="1"/>
-      <circle class="ring-fwd" cx="200" cy="200" r="148" stroke="rgba(0,196,216,0.1)" stroke-width="1" stroke-dasharray="6 12"/>
-      <circle class="ring-rev" cx="200" cy="200" r="118" stroke="rgba(0,196,216,0.16)" stroke-width="1.5" stroke-dasharray="3 8"/>
-      <circle cx="200" cy="200" r="88" stroke="rgba(0,196,216,0.22)" stroke-width="1.5"/>
-      <circle cx="200" cy="200" r="62" fill="rgba(0,196,216,0.05)" stroke="rgba(0,196,216,0.3)" stroke-width="1.5" filter="url(#glow2)"/>
-      <circle cx="200" cy="200" r="40" fill="rgba(0,196,216,0.12)" stroke="rgba(0,196,216,0.55)" stroke-width="1.5" filter="url(#glow)"/>
-      <circle cx="200" cy="200" r="20" fill="rgba(0,196,216,0.3)" stroke="#00C4D8" stroke-width="1.5" filter="url(#glow)"/>
-      <circle cx="200" cy="200" r="8" fill="#00C4D8" filter="url(#glow)"/>
-      <text x="200" y="193" text-anchor="middle" font-family="'Courier New',monospace" font-size="12" fill="rgba(45,218,232,0.9)" font-weight="700" filter="url(#glow)">300</text>
-      <text x="200" y="208" text-anchor="middle" font-family="system-ui,sans-serif" font-size="6.5" fill="rgba(0,196,216,0.55)" letter-spacing="2.5">Mbps</text>
-      <line x1="219" y1="181" x2="292" y2="108" stroke="rgba(0,196,216,0.18)" stroke-width="1" stroke-dasharray="3 6"/>
-      <circle cx="292" cy="108" r="4" fill="rgba(0,196,216,0.55)" filter="url(#glow)"/>
-      <line x1="181" y1="181" x2="104" y2="104" stroke="rgba(0,196,216,0.13)" stroke-width="1" stroke-dasharray="3 6"/>
-      <circle cx="104" cy="104" r="3" fill="rgba(0,196,216,0.4)"/>
-      <line x1="219" y1="219" x2="298" y2="298" stroke="rgba(0,196,216,0.11)" stroke-width="1" stroke-dasharray="3 6"/>
-      <circle cx="298" cy="298" r="3" fill="rgba(0,196,216,0.35)"/>
-      <line x1="181" y1="219" x2="102" y2="295" stroke="rgba(0,196,216,0.1)" stroke-width="1" stroke-dasharray="3 6"/>
-      <circle cx="102" cy="295" r="2.5" fill="rgba(0,196,216,0.3)"/>
-      <circle class="dot-a" cx="200" cy="52" r="5.5" fill="#00C4D8" filter="url(#glow)"/>
-      <circle class="dot-b" cx="318" cy="200" r="4" fill="rgba(45,218,232,0.8)" filter="url(#glow)"/>
-      <circle class="dot-c" cx="95" cy="282" r="3.5" fill="rgba(0,196,216,0.7)"/>
+
+      <!-- ── Pulsos expandindo do centro ── -->
+      <circle class="pulse1" cx="300" cy="240" r="90" fill="none" stroke="rgba(0,196,216,0.4)" stroke-width="1.5"/>
+      <circle class="pulse2" cx="300" cy="240" r="90" fill="none" stroke="rgba(0,196,216,0.4)" stroke-width="1.5"/>
+      <circle class="pulse3" cx="300" cy="240" r="90" fill="none" stroke="rgba(0,196,216,0.4)" stroke-width="1.5"/>
+
+      <!-- ── Anéis estáticos externos (do maior ao menor) ── -->
+      <circle cx="300" cy="240" r="230" stroke="rgba(0,196,216,0.04)" stroke-width="1"/>
+      <circle cx="300" cy="240" r="205" stroke="rgba(0,196,216,0.06)" stroke-width="1" stroke-dasharray="2 14"/>
+      <circle cx="300" cy="240" r="182" stroke="rgba(0,196,216,0.08)" stroke-width="1"/>
+      <circle cx="300" cy="240" r="160" stroke="rgba(0,196,216,0.10)" stroke-width="1" stroke-dasharray="4 10"/>
+
+      <!-- ── Anéis giratórios ── -->
+      <circle class="ring-fwd" cx="300" cy="240" r="140" stroke="rgba(0,196,216,0.14)" stroke-width="1" stroke-dasharray="6 12"/>
+      <circle class="ring-rev" cx="300" cy="240" r="116" stroke="rgba(0,196,216,0.20)" stroke-width="1.5" stroke-dasharray="3 8"/>
+      <circle class="ring-slow" cx="300" cy="240" r="95"  stroke="rgba(0,196,216,0.18)" stroke-width="1" stroke-dasharray="8 6"/>
+
+      <!-- ── Varredura de radar (sweep) ── -->
+      <g class="sweep">
+        <path d="M300 240 L300 100 A140 140 0 0 1 421 311 Z" fill="url(#sweepFill)" opacity="0.25"/>
+        <line x1="300" y1="240" x2="300" y2="100" stroke="rgba(0,196,216,0.7)" stroke-width="1.5" filter="url(#glow)"/>
+      </g>
+
+      <!-- ── Anel médio sólido ── -->
+      <circle cx="300" cy="240" r="78" stroke="rgba(0,196,216,0.28)" stroke-width="1.5"/>
+
+      <!-- ── Núcleo interno ── -->
+      <circle cx="300" cy="240" r="55" fill="rgba(0,196,216,0.05)" stroke="rgba(0,196,216,0.35)" stroke-width="1.5" filter="url(#glow2)"/>
+      <circle cx="300" cy="240" r="36" fill="rgba(0,196,216,0.14)" stroke="rgba(0,196,216,0.65)" stroke-width="2" filter="url(#glow)"/>
+      <circle cx="300" cy="240" r="18" fill="rgba(0,196,216,0.38)" stroke="#00C4D8" stroke-width="2" filter="url(#glow3)"/>
+      <circle cx="300" cy="240" r="7"  fill="#00C4D8" filter="url(#glow3)"/>
+
+      <!-- ── Texto de velocidade no núcleo ── -->
+      <text x="300" y="234" text-anchor="middle" font-family="'Courier New',monospace" font-size="13" fill="rgba(45,218,232,0.95)" font-weight="700" filter="url(#glow)">300</text>
+      <text x="300" y="250" text-anchor="middle" font-family="system-ui,sans-serif" font-size="7" fill="rgba(0,196,216,0.6)" letter-spacing="2.5">Mbps</text>
+
+      <!-- ── Satélites orbitando ── -->
+      <circle class="dot-a" cx="300" cy="100" r="6"   fill="#00C4D8" filter="url(#glow)"/>
+      <circle class="dot-b" cx="416" cy="240" r="4.5" fill="rgba(45,218,232,0.85)" filter="url(#glow)"/>
+      <circle class="dot-c" cx="188" cy="330" r="4"   fill="rgba(0,196,216,0.75)"/>
+      <circle class="dot-d" cx="300" cy="376" r="5"   fill="rgba(0,196,216,0.6)" filter="url(#glow)"/>
+      <circle class="dot-e" cx="160" cy="150" r="3.5" fill="rgba(45,218,232,0.5)"/>
+
+      <!-- ── Linhas de dados (conectores) ── -->
+      <line x1="314" y1="224" x2="400" y2="120" stroke="rgba(0,196,216,0.15)" stroke-width="1" stroke-dasharray="3 7"/>
+      <circle cx="400" cy="120" r="5" fill="rgba(0,196,216,0.5)" filter="url(#glow)"/>
+      <text x="408" y="115" font-family="'Courier New',monospace" font-size="9" fill="rgba(0,196,216,0.55)" filter="url(#glow)">↑ 120 Mbps</text>
+
+      <line x1="286" y1="224" x2="180" y2="130" stroke="rgba(0,196,216,0.12)" stroke-width="1" stroke-dasharray="3 7"/>
+      <circle cx="180" cy="130" r="3.5" fill="rgba(0,196,216,0.4)"/>
+
+      <line x1="314" y1="256" x2="430" y2="350" stroke="rgba(0,196,216,0.10)" stroke-width="1" stroke-dasharray="3 7"/>
+      <circle cx="430" cy="350" r="4" fill="rgba(0,196,216,0.35)"/>
+      <text x="438" y="346" font-family="'Courier New',monospace" font-size="9" fill="rgba(0,196,216,0.45)">0ms</text>
+
+      <line x1="286" y1="256" x2="120" y2="360" stroke="rgba(0,196,216,0.09)" stroke-width="1" stroke-dasharray="3 7"/>
+      <circle cx="120" cy="360" r="3" fill="rgba(0,196,216,0.3)"/>
+
+      <!-- ── Partículas flutuantes de dados ── -->
+      <circle cx="480" cy="180" r="2.5" fill="rgba(0,196,216,0.4)"/>
+      <circle cx="510" cy="280" r="2"   fill="rgba(0,196,216,0.3)"/>
+      <circle cx="90"  cy="200" r="2.5" fill="rgba(0,196,216,0.35)"/>
+      <circle cx="60"  cy="310" r="2"   fill="rgba(0,196,216,0.25)"/>
+      <circle cx="490" cy="390" r="2"   fill="rgba(0,196,216,0.28)"/>
+      <circle cx="140" cy="80"  r="2.5" fill="rgba(0,196,216,0.32)"/>
+      <circle cx="520" cy="100" r="2"   fill="rgba(0,196,216,0.2)"/>
+
+      <!-- ── Rótulos flutuantes ── -->
+      <text x="72"  y="196" font-family="'Courier New',monospace" font-size="8" fill="rgba(0,196,216,0.35)">fibra</text>
+      <text x="470" y="176" font-family="'Courier New',monospace" font-size="8" fill="rgba(0,196,216,0.3)">ping&lt;1ms</text>
+      <text x="78"  y="315" font-family="'Courier New',monospace" font-size="8" fill="rgba(0,196,216,0.28)">sem fio</text>
     </svg>
   </div>
 </section>
