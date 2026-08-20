@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viva Sempre com Dinheiro — Mentoria com Nádia Pace</title>
+  <meta name="description" content="Saia das dívidas, limpe seu nome e viva sempre com dinheiro. Mentoria individual com Nádia Pace — vagas limitadas." />
+
+  <!-- Facebook Pixel — adicione seu Pixel ID aqui -->
+  <!--
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', 'SEU_PIXEL_ID');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=SEU_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
+  -->
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --verde:#0d3321;
+      --verde-m:#1a5c38;
+      --verde-l:#2d8c56;
+      --ouro:#c9a227;
+      --ouro-l:#f0c93c;
+      --bg:#f5f9f6;
+    }
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;background:#fff}
+
+    /* ── TOP BAR ── */
+    .top-bar{
+      background:var(--ouro);color:#000;text-align:center;
+      padding:10px 20px;font-size:.88rem;font-weight:700;letter-spacing:.3px
+    }
+
+    /* ── HERO ── */
+    .hero{
+      background:linear-gradient(150deg,#0a2218 0%,#1a5c38 100%);
+      color:#fff;text-align:center;padding:70px 20px 60px
+    }
+    .hero-badge{
+      display:inline-block;background:var(--ouro);color:#000;
+      padding:6px 22px;border-radius:30px;font-size:.82rem;
+      font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:22px
+    }
+    .hero h1{
+      font-size:2.6rem;line-height:1.2;max-width:720px;
+      margin:0 auto 22px;font-weight:900
+    }
+    .hero h1 em{color:var(--ouro);font-style:normal}
+    .hero .sub{
+      font-size:1.15rem;opacity:.9;max-width:580px;
+      margin:0 auto 36px;line-height:1.65
+    }
+    .btn-hero{
+      display:inline-block;background:var(--ouro);color:#000;
+      padding:18px 44px;border-radius:8px;font-size:1.1rem;
+      font-weight:800;text-decoration:none;transition:transform .2s,box-shadow .2s;
+      box-shadow:0 4px 20px rgba(201,162,39,.45)
+    }
+    .btn-hero:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(201,162,39,.55)}
+    .hero-note{font-size:.8rem;opacity:.6;margin-top:14px}
+
+    /* ── STATS ── */
+    .stats{
+      display:flex;justify-content:center;flex-wrap:wrap;gap:0;
+      border-bottom:2px solid #e8e8e8
+    }
+    .stat{
+      flex:1;min-width:160px;text-align:center;padding:28px 20px;
+      border-right:1px solid #e8e8e8
+    }
+    .stat:last-child{border-right:none}
+    .stat-n{font-size:2.2rem;font-weight:900;color:var(--verde)}
+    .stat-l{font-size:.82rem;color:#666;margin-top:4px}
+
+    /* ── SECTION BASE ── */
+    section{padding:64px 20px}
+    .container{max-width:880px;margin:0 auto}
+    .sec-title{
+      font-size:2rem;font-weight:900;text-align:center;
+      color:var(--verde);margin-bottom:12px
+    }
+    .sec-title em{color:var(--ouro);font-style:normal}
+    .sec-sub{
+      text-align:center;color:#555;font-size:1.05rem;
+      line-height:1.6;max-width:580px;margin:0 auto 40px
+    }
+
+    /* ── DOR ── */
+    .dor{background:var(--bg)}
+    .dor-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px
+    }
+    .dor-card{
+      background:#fff;border-left:4px solid #c0392b;
+      padding:22px 20px;border-radius:0 10px 10px 0;
+      box-shadow:0 2px 8px rgba(0,0,0,.06)
+    }
+    .dor-icon{font-size:1.6rem;margin-bottom:10px}
+    .dor-card p{font-size:.97rem;line-height:1.55;color:#333}
+
+    /* ── VIRADA ── */
+    .virada-list{
+      list-style:none;
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px
+    }
+    .virada-list li{
+      display:flex;align-items:flex-start;gap:14px;
+      background:#f0faf5;border-radius:10px;padding:18px 16px;
+      font-size:.97rem;line-height:1.55
+    }
+    .virada-list li .ic{font-size:1.4rem;flex-shrink:0;margin-top:1px}
+
+    /* ── SOBRE NÁDIA ── */
+    .sobre{background:var(--verde);color:#fff}
+    .sobre-inner{
+      display:flex;gap:44px;align-items:center;flex-wrap:wrap
+    }
+    .sobre-foto{
+      width:180px;height:180px;border-radius:50%;
+      border:4px solid var(--ouro);flex-shrink:0;
+      background:rgba(255,255,255,.1);display:flex;
+      align-items:center;justify-content:center;font-size:4.5rem
+    }
+    .sobre-texto h3{font-size:1.7rem;color:var(--ouro);margin-bottom:6px}
+    .sobre-texto h4{font-size:.95rem;opacity:.75;font-weight:400;margin-bottom:18px}
+    .sobre-texto p{line-height:1.7;opacity:.9;font-size:.97rem;margin-bottom:12px}
+    .sobre-creds{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    .cred-tag{
+      background:rgba(201,162,39,.2);border:1px solid var(--ouro);
+      color:var(--ouro);padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600
+    }
+
+    /* ── DEPOIMENTOS ── */
+    .depos{background:var(--bg)}
+    .depos-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px
+    }
+    .depo-card{
+      background:#fff;border-radius:14px;padding:26px;
+      box-shadow:0 3px 12px rgba(0,0,0,.08)
+    }
+    .depo-stars{color:var(--ouro);font-size:1rem;margin-bottom:12px}
+    .depo-texto{
+      font-style:italic;color:#444;line-height:1.6;
+      margin-bottom:16px;font-size:.96rem
+    }
+    .depo-autor{font-weight:700;color:var(--verde);font-size:.88rem}
+
+    /* ── FORM ── */
+    .form-sec{
+      background:linear-gradient(150deg,#0a2218 0%,#1a5c38 100%);
+      color:#fff;text-align:center
+    }
+    .form-sec .sec-title{color:#fff}
+    .form-sub{
+      font-size:1.05rem;opacity:.9;line-height:1.65;
+      max-width:520px;margin:0 auto 34px
+    }
+    .form-box{
+      background:#fff;border-radius:18px;padding:38px 36px;
+      max-width:480px;margin:0 auto;text-align:left
+    }
+    .form-box label{
+      display:block;font-size:.88rem;font-weight:700;
+      color:#333;margin-bottom:6px
+    }
+    .form-box input{
+      width:100%;padding:14px 16px;border:2px solid #ddd;
+      border-radius:8px;font-size:1rem;margin-bottom:16px;
+      transition:border-color .2s;color:#333;background:#fff
+    }
+    .form-box input:focus{outline:none;border-color:var(--verde-l)}
+    .btn-form{
+      width:100%;background:var(--ouro);color:#000;border:none;
+      padding:17px;border-radius:8px;font-size:1.1rem;font-weight:800;
+      cursor:pointer;transition:transform .2s;letter-spacing:.2px
+    }
+    .btn-form:hover{transform:translateY(-2px)}
+    .form-disclaimer{font-size:.73rem;color:#999;margin-top:12px;text-align:center;line-height:1.5}
+
+    /* ── GARANTIA ── */
+    .garantia{
+      background:#fffbeb;border-top:3px solid var(--ouro);
+      border-bottom:3px solid var(--ouro);text-align:center;padding:44px 20px
+    }
+    .garantia-icon{font-size:3.5rem;margin-bottom:14px}
+    .garantia h3{font-size:1.5rem;font-weight:900;color:var(--verde);margin-bottom:10px}
+    .garantia p{color:#555;max-width:520px;margin:0 auto;line-height:1.65;font-size:.97rem}
+
+    /* ── FOOTER ── */
+    footer{
+      background:#071910;color:rgba(255,255,255,.45);
+      text-align:center;padding:26px 20px;font-size:.78rem;line-height:1.7
+    }
+    footer a{color:rgba(255,255,255,.45);text-decoration:none}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:640px){
+      .hero h1{font-size:1.75rem}
+      .stat-n{font-size:1.7rem}
+      .sobre-inner{flex-direction:column;text-align:center}
+      .sobre-foto{margin:0 auto}
+      .sobre-creds{justify-content:center}
+      .form-box{padding:26px 18px}
+      .sec-title{font-size:1.6rem}
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  📲 Mentoria Individual com Vagas Limitadas &nbsp;|&nbsp; Resultados Reais em Finanças Pessoais
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">⭐ 4,9 · Mais de 150° de temperatura no Hotmart</div>
+  <h1>Você trabalha o mês inteiro e o <em>dinheiro some</em> antes do fim?</h1>
+  <p class="sub">
+    Descubra o método que já ajudou <strong>milhares de pessoas</strong> a sair das dívidas,
+    limpar o nome e viver sempre com dinheiro — mesmo quem acha que "não tem jeito".
+  </p>
+  <a href="#formulario" class="btn-hero">📩 Quero Sair das Dívidas Agora</a>
+  <p class="hero-note">Preencha o formulário abaixo • Vagas limitadas • Sem compromisso</p>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-n">4,9⭐</div>
+    <div class="stat-l">Avaliação no Hotmart</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n">150°</div>
+    <div class="stat-l">Temperatura do produto</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n">100%</div>
+    <div class="stat-l">Online e no seu ritmo</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n">Individual</div>
+    <div class="stat-l">Mentoria personalizada</div>
+  </div>
+</div>
+
+<!-- DOR -->
+<section class="dor">
+  <div class="container">
+    <h2 class="sec-title">Você se identifica com <em>alguma dessas situações?</em></h2>
+    <p class="sec-sub">Se respondeu sim para pelo menos uma, o Viva Sempre com Dinheiro foi feito para você.</p>
+    <div class="dor-grid">
+      <div class="dor-card">
+        <div class="dor-icon">💸</div>
+        <p>Seu salário entra e já sai — as contas consomem tudo e não sobra <strong>nada para você</strong>.</p>
+      </div>
+      <div class="dor-card">
+        <div class="dor-icon">😰</div>
+        <p>Você tem dívidas que parecem que <strong>nunca terminam</strong> — juros sobre juros, boleto todo mês.</p>
+      </div>
+      <div class="dor-card">
+        <div class="dor-icon">🚫</div>
+        <p>Seu <strong>nome está sujo</strong> e isso te impede de conseguir crédito, emprego ou realizar planos.</p>
+      </div>
+      <div class="dor-card">
+        <div class="dor-icon">😔</div>
+        <p>Você tenta guardar dinheiro mas <strong>nunca consegue</strong> — sempre aparece algo para gastar.</p>
+      </div>
+      <div class="dor-card">
+        <div class="dor-icon">😟</div>
+        <p>Vive com <strong>ansiedade financeira</strong> — medo de não pagar as contas, de não ter o suficiente.</p>
+      </div>
+      <div class="dor-card">
+        <div class="dor-icon">🌀</div>
+        <p>Já tentou de tudo — planilha, cortar gastos — mas volta <strong>ao mesmo ciclo</strong> toda vez.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VIRADA -->
+<section>
+  <div class="container">
+    <h2 class="sec-title">Com o Viva Sempre com Dinheiro, <em>você vai:</em></h2>
+    <p class="sec-sub">Uma mentoria individual que transforma sua relação com o dinheiro de uma vez por todas.</p>
+    <ul class="virada-list">
+      <li><span class="ic">✅</span><span><strong>Sair das dívidas</strong> com um plano claro e personalizado para a sua realidade</span></li>
+      <li><span class="ic">✅</span><span><strong>Limpar seu nome</strong> e recuperar seu score de crédito</span></li>
+      <li><span class="ic">✅</span><span><strong>Guardar dinheiro todo mês</strong> — mesmo com salário apertado</span></li>
+      <li><span class="ic">✅</span><span><strong>Realizar seus sonhos</strong> — viagem, carro, casa própria, investimentos</span></li>
+      <li><span class="ic">✅</span><span><strong>Controlar suas finanças</strong> sem precisar de planilhas complicadas</span></li>
+      <li><span class="ic">✅</span><span><strong>Viver com leveza</strong> — sem ansiedade financeira, sem medo do fim do mês</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- SOBRE NÁDIA -->
+<section class="sobre">
+  <div class="container">
+    <div class="sobre-inner">
+      <div class="sobre-foto">👩</div>
+      <div class="sobre-texto">
+        <h3>Nádia Pace</h3>
+        <h4>Especialista em Educação Financeira</h4>
+        <p>
+          Nádia Pace é especialista em finanças pessoais e mentora de pessoas que querem
+          transformar de vez sua relação com o dinheiro. Com anos de experiência acompanhando
+          individualmente cada aluno, ela desenvolveu um método prático que funciona para
+          <strong>qualquer pessoa</strong> — independente de quanto ganha.
+        </p>
+        <p>
+          Através do Viva Sempre com Dinheiro, Nádia já ajudou <strong>milhares de pessoas</strong>
+          a sair de situações que pareciam impossíveis: dívidas pesadas, nome negativado,
+          endividamento crônico — e hoje vivem com tranquilidade financeira.
+        </p>
+        <div class="sobre-creds">
+          <span class="cred-tag">✅ Método Comprovado</span>
+          <span class="cred-tag">✅ Mentoria Individual</span>
+          <span class="cred-tag">✅ Resultados Reais</span>
+          <span class="cred-tag">✅ 4,9⭐ no Hotmart</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section class="depos">
+  <div class="container">
+    <h2 class="sec-title">O que dizem quem já <em>transformou</em> a vida financeira</h2>
+    <p class="sec-sub">Resultados reais de pessoas reais — assim como você.</p>
+    <div class="depos-grid">
+      <div class="depo-card">
+        <div class="depo-stars">★★★★★</div>
+        <p class="depo-texto">"Eu estava com mais de R$40 mil em dívidas e não via saída. Em 8 meses consegui quitar tudo e hoje tenho uma reserva de emergência. Mudou minha vida completamente."</p>
+        <div class="depo-autor">— Mariana S., São Paulo</div>
+      </div>
+      <div class="depo-card">
+        <div class="depo-stars">★★★★★</div>
+        <p class="depo-texto">"Tinha o nome sujo há 3 anos. Com o método da Nádia limpei tudo em 5 meses. Agora tenho cartão de crédito, financiamento aprovado e estou realizando meus sonhos."</p>
+        <div class="depo-autor">— Carlos R., Belo Horizonte</div>
+      </div>
+      <div class="depo-card">
+        <div class="depo-stars">★★★★★</div>
+        <p class="depo-texto">"Achei que era impossível guardar dinheiro com meu salário. Hoje guardo 20% todo mês e já tenho minha primeira viagem planejada. O investimento valeu cada centavo."</p>
+        <div class="depo-autor">— Fernanda L., Rio de Janeiro</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMULÁRIO -->
+<section class="form-sec" id="formulario">
+  <div class="container">
+    <h2 class="sec-title">Dê o <em>primeiro passo</em> agora</h2>
+    <p class="form-sub">
+      Preencha o formulário abaixo. Nossa equipe vai entrar em contato via WhatsApp
+      para apresentar o programa e tirar todas as suas dúvidas — sem pressão, sem compromisso.
+    </p>
+    <div class="form-box">
+      <form
+        action="https://api.web3forms.com/submit"
+        method="POST"
+        id="form-lead"
+      >
+        <input type="hidden" name="access_key" value="SEU_WEB3FORMS_KEY" />
+        <input type="hidden" name="subject" value="Novo Lead — Viva Sempre com Dinheiro" />
+        <input type="hidden" name="redirect" value="https://viva-com-dinheiro.pages.dev/obrigado.html" />
+        <input type="hidden" name="from_name" value="Landing Viva Sempre com Dinheiro" />
+
+        <label for="nome">Seu nome completo</label>
+        <input type="text" id="nome" name="nome" placeholder="Digite seu nome" required />
+
+        <label for="whatsapp">Seu WhatsApp (com DDD)</label>
+        <input type="tel" id="whatsapp" name="whatsapp" placeholder="(11) 99999-9999" required />
+
+        <label for="email">Seu e-mail</label>
+        <input type="email" id="email" name="email" placeholder="seuemail@exemplo.com" required />
+
+        <button type="submit" class="btn-form">📩 Quero Sair das Dívidas →</button>
+        <p class="form-disclaimer">🔒 Seus dados estão seguros. Não enviamos spam. Entraremos em contato apenas pelo WhatsApp informado.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- GARANTIA -->
+<div class="garantia">
+  <div class="garantia-icon">🛡️</div>
+  <h3>Programa com resultado garantido</h3>
+  <p>
+    O Viva Sempre com Dinheiro é uma mentoria individual com acompanhamento personalizado.
+    Você não está sozinho — a Nádia e sua equipe vão guiar cada passo do seu processo
+    de transformação financeira.
+  </p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2025 Viva Sempre com Dinheiro · Nádia Pace · Todos os direitos reservados</p>
+  <p style="margin-top:8px">
+    <a href="/privacidade">Política de Privacidade</a> &nbsp;·&nbsp;
+    <a href="/termos">Termos de Uso</a>
+  </p>
+  <p style="margin-top:8px;font-size:.7rem;opacity:.6">
+    Este site é de divulgação como afiliado independente. O processamento é feito pela Hotmart.
+  </p>
+</footer>
+
+<script>
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'});
+    });
+  });
+
+  // Máscara WhatsApp
+  document.getElementById('whatsapp')?.addEventListener('input', function(){
+    let v = this.value.replace(/\D/g,'');
+    if(v.length <= 10)
+      v = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+    else
+      v = v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+    this.value = v.trim().replace(/-$/,'');
+  });
+</script>
+
+</body>
+</html>
