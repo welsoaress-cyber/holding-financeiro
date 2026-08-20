@@ -97,6 +97,21 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
 .sheet-pick{font-size:12px;padding:5px 8px;border:1px solid var(--border-2);border-radius:6px;background:var(--surface);color:var(--ink);font-family:var(--font);outline:none;cursor:pointer;max-width:160px}
 .sheet-pick:focus{border-color:var(--accent)}
 
+/* ── search bar ──────────────────────────────────────── */
+.search-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 22px;display:flex;align-items:center;gap:10px}
+.search-bar.hidden{display:none}
+.search-wrap{flex:1;max-width:400px;display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:var(--r);padding:0 10px;transition:border-color .15s}
+.search-wrap:focus-within{border-color:var(--accent)}
+.search-ico{font-size:14px;color:var(--ink-4);flex-shrink:0}
+.search-input{flex:1;border:none;background:transparent;font-family:var(--mono);font-size:13px;color:var(--ink);padding:7px 0;outline:none}
+.search-input::placeholder{font-family:var(--font);color:var(--ink-4);font-size:12.5px}
+.search-clear{background:none;border:none;color:var(--ink-4);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;display:none}
+.search-clear.visible{display:block}
+.search-clear:hover{color:var(--neg)}
+.search-hint{font-size:11.5px;color:var(--ink-4)}
+.search-hint strong{color:var(--accent);font-family:var(--mono)}
+.search-result-count{font-size:12px;font-weight:600;color:var(--ink-3);white-space:nowrap}
+
 /* ── summary bar ─────────────────────────────────────── */
 .summary-bar{display:flex;align-items:center;gap:10px;padding:10px 22px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
 .summary-bar.hidden{display:none}
@@ -302,6 +317,19 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
   </div>
 </div>
 
+<!-- search bar -->
+<div class="search-bar hidden" id="searchBar">
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" id="searchInput" type="text"
+      placeholder="Buscar — ex: 169/81 · cliente 169 · Abbott"
+      oninput="onSearch(this.value)" autocomplete="off" spellcheck="false">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Limpar">✕</button>
+  </div>
+  <span class="search-hint">Use <strong>CLI/CTR</strong> (ex: <strong>169/81</strong>) ou só o nome do cliente</span>
+  <span class="search-result-count hidden" id="searchCount"></span>
+</div>
+
 <!-- summary bar -->
 <div class="summary-bar hidden" id="summaryBar">
   <div class="kpi" id="kpiTotal">
@@ -367,6 +395,7 @@ const S = {
   items:   null,   // Array<Item>  — flat: one per client+contract
   sysMap:  null,   // Map<vplCode, SysEntry>
   filter:  'all',
+  search:  '',
 };
 
 // Column indices for "Dados Trat"
@@ -604,11 +633,31 @@ function render(){
     String(a.num).localeCompare(String(b.num),'pt-BR',{numeric:true})
   );
   const n=sorted.length;
-  const filtered=sorted.filter(item=>S.filter==='all'||S.filter===item.status||
+
+  // 1. Apply search
+  const afterSearch=applySearch(sorted);
+
+  // 2. Apply status filter on top of search
+  const filtered=afterSearch.filter(item=>S.filter==='all'||S.filter===item.status||
     (S.filter==='only'&&(item.status==='only'||item.status==='no-match')));
+
+  // Search result count badge
+  const countEl=document.getElementById('searchCount');
+  if(S.search){
+    const ok=filtered.filter(i=>i.status==='ok').length;
+    const diff=filtered.filter(i=>i.status==='diff'||i.status==='no-match').length;
+    countEl.textContent=filtered.length===0?'Nenhum resultado'
+      :`${filtered.length} resultado${filtered.length>1?'s':''}${diff?' · ⚠ '+diff+' divergente'+(diff>1?'s':''):''}${ok?' · ✅ '+ok+' OK':''}`;
+    countEl.classList.remove('hidden');
+    countEl.style.color=diff>0?'var(--neg)':ok>0?'var(--pos)':'var(--ink-3)';
+  } else {
+    countEl.classList.add('hidden');
+  }
+
+  // Render cards — use index within sorted (global) for numbering
   document.getElementById('cards').innerHTML=filtered.length
-    ?filtered.map((item,i)=>renderCard(item,sorted.indexOf(item)+1,n)).join('')
-    :`<div class="empty-state" style="padding:40px"><div class="empty-ico">🔍</div><div class="empty-title">Nenhum item nesse filtro</div></div>`;
+    ?filtered.map(item=>renderCard(item,sorted.indexOf(item)+1,n)).join('')
+    :`<div class="empty-state" style="padding:40px"><div class="empty-ico">🔍</div><div class="empty-title">${S.search?'Nenhum resultado para "'+esc(S.search)+'"':'Nenhum item nesse filtro'}</div>${S.search?`<div class="empty-sub">Tente <strong>CLI/CTR</strong> (ex: 169/81) ou parte do nome</div>`:''}</div>`;
   updateSummary(sorted);
   syncExpandBtn();
 }
@@ -748,6 +797,7 @@ function updateSummary(items){
   document.getElementById('kpiDiff').querySelector('.kpi-val').textContent=diff;
   document.getElementById('kpiOnly').querySelector('.kpi-val').textContent=only;
   document.getElementById('summaryBar').classList.remove('hidden');
+  document.getElementById('searchBar').classList.remove('hidden');
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('cards').classList.remove('hidden');
   document.getElementById('exportBtn').style.display='';
@@ -761,6 +811,44 @@ function setFilter(f){
   render();
 }
 
+/* ── SEARCH ──────────────────────────────────────────── */
+function onSearch(val){
+  S.search=val.trim();
+  document.getElementById('searchClear').classList.toggle('visible', S.search.length>0);
+  render();
+}
+function clearSearch(){
+  S.search='';
+  document.getElementById('searchInput').value='';
+  document.getElementById('searchClear').classList.remove('visible');
+  document.getElementById('searchCount').classList.add('hidden');
+  render();
+}
+function applySearch(items){
+  const q=S.search;
+  if(!q) return items;
+  // "169/81" → match vpl + contract number
+  const slash=q.indexOf('/');
+  if(slash>=0){
+    const vp=q.slice(0,slash).trim();
+    const ct=q.slice(slash+1).trim();
+    return items.filter(it=>
+      (!vp||it.vpl===vp||it.vpl.startsWith(vp))&&
+      (!ct||it.num===ct||it.num.startsWith(ct))
+    );
+  }
+  // bare number → match vpl OR contract number exactly
+  if(/^\d+$/.test(q)){
+    return items.filter(it=>it.vpl===q||it.num===q);
+  }
+  // text → match client name (case-insensitive, accent-tolerant)
+  const lq=q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return items.filter(it=>{
+    const name=it.clientName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return name.includes(lq);
+  });
+}
+
 function toggleCard(head){
   head.closest('.c-card').classList.toggle('open');
   syncExpandBtn();
@@ -768,7 +856,7 @@ function toggleCard(head){
 
 function clearAll(){
   // Reset state
-  S.wb=null; S.planData=null; S.sysData=null; S.items=null; S.sysMap=null; S.filter='all';
+  S.wb=null; S.planData=null; S.sysData=null; S.items=null; S.sysMap=null; S.filter='all'; S.search='';
   // Reset slots
   ['filePlan','fileSys'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
@@ -778,8 +866,10 @@ function clearAll(){
   document.getElementById('slotPlan').classList.remove('loaded');
   document.getElementById('slotSys').classList.remove('loaded');
   document.getElementById('sheetPick').classList.add('hidden');
-  // Reset summary + cards
+  // Reset summary + search + cards
   document.getElementById('summaryBar').classList.add('hidden');
+  document.getElementById('searchBar').classList.add('hidden');
+  clearSearch();
   document.getElementById('cards').innerHTML=''; document.getElementById('cards').classList.add('hidden');
   document.getElementById('emptyState').classList.remove('hidden');
   document.getElementById('exportBtn').style.display='none';
