@@ -417,6 +417,8 @@ private fun LayerReviewView(
     onConfirm: (List<Suggestion>) -> Unit,
     onCancel: () -> Unit,
 ) {
+    AppBackHandler(onBack = onCancel)
+
     val checked = remember { mutableStateOf(setOf<String>()) }
     val showConfirmDialog = remember { mutableStateOf(false) }
     val now = remember { nowMs() }
@@ -672,6 +674,8 @@ private fun ShortcutsReviewView(
     onConfirm: (Map<String, List<String>>) -> Unit,
     onCancel: () -> Unit,
 ) {
+    AppBackHandler(onBack = onCancel)
+
     // approved: packageName → lista de shortcutIds a desabilitar
     val approved = remember { mutableStateOf(mapOf<String, List<String>>()) }
     val totalApproved = approved.value.values.sumOf { it.size }
@@ -792,6 +796,8 @@ private fun JunkReviewView(
     onConfirm: (List<JunkFile>) -> Unit,
     onCancel: () -> Unit,
 ) {
+    AppBackHandler(onBack = onCancel)
+
     // Grupos marcados para exclusão (começam todos DESMARCADOS: opt-in)
     val checked = remember { mutableStateOf(setOf<String>()) }
     val expanded = remember { mutableStateOf(setOf<String>()) }
