@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MoneyPrinterTurbo — Configuração Afiliados Tom
+# Nicho: Finanças Pessoais / Sair das Dívidas
+# ─────────────────────────────────────────────────────────────────────────────
+
+[app]
+# Idioma da interface
+language = "pt"
+
+[llm]
+# Provedor de IA para geração de roteiro
+# Opções: openai | gemini | ollama
+provider = "openai"
+
+# ⚠️  PREENCHA COM SUA CHAVE
+# Acesse: https://platform.openai.com/api-keys
+openai_api_key = "sk-COLOQUE_SUA_CHAVE_OPENAI_AQUI"
+
+# Modelo — gpt-4o-mini é o mais barato (funciona muito bem)
+openai_model_name = "gpt-4o-mini"
+
+# Se usar Gemini (alternativa gratuita):
+# provider = "gemini"
+# gemini_api_key = "COLOQUE_SUA_CHAVE_GEMINI_AQUI"
+
+[material]
+# Fonte de vídeos de fundo
+# Opções: pexels | pixabay
+provider = "pexels"
+
+# ⚠️  PREENCHA COM SUA CHAVE
+# Gratuito em: https://www.pexels.com/api/
+pexels_api_key = "COLOQUE_SUA_CHAVE_PEXELS_AQUI"
+
+[voice]
+# Voz em português brasileiro
+# azure_tts é grátis (5h/mês) — recomendado
+provider = "edge_tts"
+voice_name = "pt-BR-AntonioNeural"   # Voz masculina
+# voice_name = "pt-BR-FranciscaNeural"  # Voz feminina (descomente pra usar)
+
+# Velocidade da fala (1.0 = normal, 1.1 = um pouco mais rápido)
+voice_rate = 1.05
+
+[video]
+# Resolução — 9:16 para Reels/Shorts/TikTok
+width  = 1080
+height = 1920
+
+# Duração do vídeo em segundos
+min_clip_duration = 2
+max_clip_duration = 5
+
+# Frames por segundo
+fps = 30
+
+# Transição entre clipes
+transition = "fade"
+
+[subtitle]
+# Legenda automática — FUNDAMENTAL para engajamento
+enabled = true
+font_name = "Arial"
+font_size = 60
+font_color = "#FFFFFF"       # Branco
+stroke_color = "#000000"     # Contorno preto
+stroke_width = 2.5
+position = "bottom"          # Posição das legendas
+
+[output]
+# Pasta onde os vídeos serão salvos
+directory = "../videos_gerados"
