@@ -827,14 +827,15 @@ function clearSearch(){
 function applySearch(items){
   const q=S.search;
   if(!q) return items;
-  // "169/81" → match vpl + contract number
+  // "169/81" → match exato CLI e CTR
   const slash=q.indexOf('/');
   if(slash>=0){
     const vp=q.slice(0,slash).trim();
     const ct=q.slice(slash+1).trim();
+    // Sempre exato: 169/1 → só CTR "1", nunca "11" ou "12"
     return items.filter(it=>
-      (!vp||it.vpl===vp||it.vpl.startsWith(vp))&&
-      (!ct||it.num===ct||it.num.startsWith(ct))
+      (!vp||it.vpl===vp)&&
+      (!ct||it.num===ct)
     );
   }
   // bare number → match vpl OR contract number exactly
