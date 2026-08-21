@@ -50,6 +50,22 @@ jobs:
       - name: Permissão no Gradle wrapper
         run: chmod +x gradlew
 
+      - name: SHA-1 do certificado de assinatura (para Google Cloud Console)
+        run: |
+          echo "## 🔑 SHA-1 para cadastrar no Google Cloud Console" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pacote: \`br.com.appstom\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          SHA1=$(keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android -keypass android 2>/dev/null \
+            | grep "SHA1:" | awk '{print $2}')
+          echo "SHA-1 (debug): \`$SHA1\`" >> $GITHUB_STEP_SUMMARY
+          echo "sha1=$SHA1" >> $GITHUB_OUTPUT
+          echo "SHA-1 do debug keystore: $SHA1"
+        id: sha1
+
       - name: Compilar APK debug
         if: ${{ github.event.inputs.variant != 'release' }}
         run: ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
