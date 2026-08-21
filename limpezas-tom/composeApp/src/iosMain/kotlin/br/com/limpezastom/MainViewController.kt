@@ -28,6 +28,9 @@ fun MainViewController(): UIViewController {
             onOpenAppSettings      = {
                 logic.notify("Abra as Configurações do iPhone para gerenciar o app.")
             },
+            onDeleteFiles          = {
+                logic.notify("No iOS, exclua as fotos manualmente pelo app Fotos.")
+            },
         )
     }
 }

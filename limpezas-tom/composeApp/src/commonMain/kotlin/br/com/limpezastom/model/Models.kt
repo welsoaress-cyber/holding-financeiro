@@ -85,6 +85,8 @@ sealed interface UiState {
     data class Done(
         val count: Int,
         val folderName: String,
+        /** Arquivos que foram enviados — usados para oferecer exclusão do celular. */
+        val backedUpFiles: List<FileRef> = emptyList(),
     ) : UiState
 
     // ── Fluxo: limpeza de atalhos duplicados ──────────────────────────────────

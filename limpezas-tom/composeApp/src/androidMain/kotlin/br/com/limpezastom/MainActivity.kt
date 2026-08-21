@@ -6,11 +6,13 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import android.provider.Settings
 import br.com.limpezastom.backup.DriveFolder
 import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.logic.LogicHolder
@@ -26,6 +28,12 @@ class MainActivity : ComponentActivity() {
      * Preenchida quando o usuário clica "Escolher pasta e enviar" sem pasta configurada.
      */
     private var pendingFiles: List<FileRef> = emptyList()
+
+    /**
+     * Quantidade de arquivos aguardando confirmação de exclusão pelo sistema (Android 10+).
+     * Salvo antes de lançar o system dialog; usado no callback para notificar o logic.
+     */
+    private var pendingDeleteCount: Int = 0
 
     // Permissões de leitura de imagens
     private val permissionLauncher = registerForActivityResult(
@@ -65,6 +73,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Resultado do diálogo de exclusão do sistema (Android 11+).
+     * RESULT_OK = usuário confirmou; notifica o logic para atualizar a UI.
+     */
+    private val deleteLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val deleted = pendingDeleteCount
+        pendingDeleteCount = 0
+        if (result.resultCode == RESULT_OK && deleted > 0) {
+            logic.notifyDeletion(deleted)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -86,6 +108,7 @@ class MainActivity : ComponentActivity() {
                             .setData(Uri.parse("package:$pkg"))
                     )
                 },
+                onDeleteFiles          = ::deleteFiles,
             )
         }
     }
@@ -118,5 +141,43 @@ class MainActivity : ComponentActivity() {
         }
         if (missing.isEmpty()) logic.scan()
         else permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    /**
+     * Exclui os arquivos do celular após backup bem-sucedido.
+     *
+     * Android 11+ (API 30): usa [MediaStore.createDeleteRequest] — mostra diálogo do sistema
+     *   pedindo confirmação, sem precisar de permissão extra.
+     * Android 10 (API 29): tenta deleção direta; cada URI pode lançar RecoverableSecurityException,
+     *   que relança um diálogo de confirmação por arquivo.
+     * Android 9-: deleção direta via ContentResolver.
+     */
+    private fun deleteFiles(files: List<FileRef>) {
+        if (files.isEmpty()) return
+        val uris = files.mapNotNull { runCatching { Uri.parse(it.id) }.getOrNull() }
+        if (uris.isEmpty()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+: diálogo de confirmação para todos os arquivos de uma vez
+            runCatching {
+                val pendingIntent = MediaStore.createDeleteRequest(contentResolver, uris)
+                pendingDeleteCount = files.size
+                deleteLauncher.launch(
+                    IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                )
+            }.onFailure {
+                logic.notify("Não foi possível excluir os arquivos: ${it.message}")
+            }
+        } else {
+            // Android 9-10: deleção direta
+            var deleted = 0
+            for (uri in uris) {
+                if (runCatching { contentResolver.delete(uri, null, null) > 0 }.getOrDefault(false)) {
+                    deleted++
+                }
+            }
+            if (deleted > 0) logic.notifyDeletion(deleted)
+            else logic.notify("Não foi possível excluir os arquivos do celular.")
+        }
     }
 }

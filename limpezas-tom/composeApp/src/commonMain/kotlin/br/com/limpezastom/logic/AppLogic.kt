@@ -77,7 +77,7 @@ class AppLogic(private val context: PlatformContext) {
             val folderName = sink.backup(selected) { done, total, name ->
                 _state.value = UiState.Uploading(done, total, name)
             }
-            _state.value = UiState.Done(selected.size, folderName)
+            _state.value = UiState.Done(selected.size, folderName, selected)
         }
     }
 
@@ -116,6 +116,15 @@ class AppLogic(private val context: PlatformContext) {
     fun onSinkReady() {
         val s = _state.value
         if (s is UiState.Found) _state.value = s.copy(sinkReady = true)
+    }
+
+    /**
+     * Chamado pela MainActivity após o usuário confirmar exclusão dos arquivos do celular.
+     * [count] = quantidade de arquivos efetivamente excluídos.
+     */
+    fun notifyDeletion(count: Int) {
+        notify("$count screenshot(s) excluído(s) do celular. Espaço liberado! 🎉")
+        _state.value = UiState.Idle
     }
 
     fun reset()              { _state.value = UiState.Idle }

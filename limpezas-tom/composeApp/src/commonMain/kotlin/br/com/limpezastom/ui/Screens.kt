@@ -60,6 +60,8 @@ fun AppRoot(
     onPickFolder: () -> Unit,
     onPickFolderThenBackup: (List<FileRef>) -> Unit,
     onOpenAppSettings: (packageName: String) -> Unit,
+    /** Chamado quando o usuário quer excluir os arquivos do celular após o backup. */
+    onDeleteFiles: (List<FileRef>) -> Unit = {},
 ) {
     MaterialTheme {
         val state   by logic.state.collectAsState()
@@ -93,7 +95,11 @@ fun AppRoot(
                         onBack                 = logic::reset,
                     )
                     is UiState.Uploading        -> UploadingView(s)
-                    is UiState.Done             -> DoneView(s, onReset = logic::reset)
+                    is UiState.Done             -> DoneView(
+                        state          = s,
+                        onReset        = logic::reset,
+                        onDeleteFiles  = onDeleteFiles,
+                    )
                     is UiState.ScanningShortcuts -> ScanningView("Verificando atalhos duplicados…")
                     is UiState.FoundShortcuts   -> ShortcutsFoundView(
                         groups           = s.groups,
@@ -289,13 +295,25 @@ private fun FoundView(
                     Column(Modifier.padding(14.dp)) {
                         Text("📁 Pasta de destino", fontWeight = FontWeight.Bold)
                         Text(
-                            "Será criada automaticamente uma pasta \"Backup - data\" no local escolhido.",
+                            "Será criada automaticamente uma subpasta \"Backup - data\" dentro da pasta que você escolher.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Spacer(Modifier.height(6.dp))
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("💡", fontSize = 14.sp)
+                                Text(
+                                    "Para enviar ao Google Drive: na tela de seleção, " +
+                                        "toque em ☰ (menu lateral) → \"Drive\" → escolha uma pasta lá.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
-                            Text("Escolher pasta no Drive agora")
+                        Button(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
+                            Text("☁️ Escolher pasta no Google Drive")
                         }
                     }
                 }
@@ -512,7 +530,14 @@ private fun UploadingView(state: UiState.Uploading) {
 // ── Concluído ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DoneView(state: UiState.Done, onReset: () -> Unit) {
+private fun DoneView(
+    state: UiState.Done,
+    onReset: () -> Unit,
+    onDeleteFiles: (List<FileRef>) -> Unit,
+) {
+    val hasFiles = state.backedUpFiles.isNotEmpty()
+    val totalBytes = state.backedUpFiles.sumOf { it.size }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -527,23 +552,46 @@ private fun DoneView(state: UiState.Done, onReset: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
-        Text("Pasta criada no Drive:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Pasta criada:", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             "\"${state.folderName}\"",
             fontWeight = FontWeight.SemiBold,
             color = Color(0xFF10936A),
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Os arquivos ainda estão no celular — para liberar espaço, " +
-                "use o botão \"Liberar espaço\" no Google Fotos.",
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(28.dp))
-        Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
+
+        // ── Excluir do celular ────────────────────────────────────────────────
+        if (hasFiles) {
+            Spacer(Modifier.height(20.dp))
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("⚠️")
+                        Text(
+                            "Os originais ainda estão no celular.",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Para liberar ${formatBytes(totalBytes)} de espaço, exclua os arquivos do celular. " +
+                            "Eles já estão seguros na pasta de backup.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = { onDeleteFiles(state.backedUpFiles) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("🗑️ Excluir ${state.count} arquivo(s) do celular")
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        OutlinedButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
             Text("Voltar ao início")
         }
         Spacer(Modifier.height(16.dp))
