@@ -509,13 +509,14 @@ const S = {
   planLinked:false, // true quando vinculado via File System Access API
 };
 
-// Column indices for "Dados Trat"
+// Column indices for "Dados Trat" (fallback when auto-detect fails)
+// Bruto = coluna AD = índice 29 (A=0, ..., Z=25, AA=26, AB=27, AC=28, AD=29)
 const C = {
-  nf:0, vpl:3, ctr:4, svc:5, cli:6, bruto:7,
-  reaj:8, repasse:9, descFaltas:10, descEquip:11, descPremio:12,
-  premio:13, he:14, prop:15, svcExtra:16, eqEsp:17,
-  va:18, vr:19, vt:20, am:21, ao:22,
-  total:26,
+  nf:0, vpl:3, ctr:4, svc:5, cli:6, bruto:29,
+  reaj:30, repasse:31, descFaltas:32, descEquip:33, descPremio:34,
+  premio:35, he:36, prop:37, svcExtra:38, eqEsp:39,
+  va:40, vr:41, vt:42, am:43, ao:44,
+  total:48,
 };
 // CSV cols
 const CSV = { cli:0, ctr:7, vlrFixo:20 };
@@ -610,7 +611,7 @@ function detectCols(headers){
     ctr:      find(['contrato']),
     svc:      find(['serviço','servico']),
     cli:      find(['cliente']),
-    bruto:    find(['contrato mensal']),
+    bruto:    find(['contrato mensal','valor contrato','vlr contrato','valor bruto','vlr bruto','bruto','valor base','vlr base']),
     reaj:     find(['reajuste']),
     repasse:  find(['nota de repasse','repasse']),
     descFaltas: find(['desconto faltas','desc. faltas','desconto\nfaltas']),
