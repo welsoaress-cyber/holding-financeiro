@@ -510,16 +510,15 @@ const S = {
 };
 
 // Column indices for "Dados Trat" (fallback when auto-detect fails)
-// Bruto = coluna AD = índice 29 (A=0, ..., Z=25, AA=26, AB=27, AC=28, AD=29)
+// VPL = coluna J = índice 9 | CTR = coluna K = índice 10 | Total = coluna AD = índice 29
 const C = {
-  nf:0, vpl:3, ctr:4, svc:5, cli:6, bruto:14, // Contrato Mensal base
+  nf:0, vpl:9, ctr:10, svc:5, cli:6, bruto:14, // vpl=col J, ctr=col K (sufixo)
   reaj:30, repasse:31, descFaltas:32, descEquip:33, descPremio:34,
   premio:35, he:36, prop:37, svcExtra:38, eqEsp:39,
   va:40, vr:41, vt:42, am:43, ao:44,
+  redBINSS:-1, // detectado pelo cabeçalho; -1 = sem fallback de posição fixa
   total:29, // Total à faturar = coluna AD = índice 29
 };
-// CSV cols
-const CSV = { cli:0, ctr:7, vlrFixo:20 };
 
 /* =========================================================
    UTILS
@@ -627,7 +626,7 @@ function detectCols(headers){
     vt:       find(['vt']),
     am:       find(['am']),
     ao:       find(['ao']),
-    redBINSS: find(['% redução base inss','reducao base inss','red. base inss','% red. base','redução base inss','% reducao base']),
+    redBINSS: find(['% redução base inss','reducao base inss','red. base inss','% red. base','redução base inss','% reducao base','% red base','base inss','% base calculo','% base cálculo']),
     total:    find(['total para faturar','total à faturar','total a faturar','total faturar']),
   };
 }
@@ -663,8 +662,10 @@ function buildItemList(data, cols){
         reaj:0, repasse:0, descFaltas:0, descEquip:0, descPremio:0,
         premio:0, he:0, prop:0, svcExtra:0, eqEsp:0,
         va:0, vr:0, vt:0, am:0, ao:0,
-        redBINSS:null,
-        sysBruto:null, status:'only',
+        redBINSS:null,        // % Redução Base INSS da planilha
+        sysBruto:null,        // valor total do sistema (CSV)
+        sysRedBINSS:null,     // % Red Base INSS do sistema (CSV)
+        status:'only',
       });
     }
     const item=itemMap.get(ik);
@@ -695,22 +696,62 @@ function buildItemList(data, cols){
 }
 
 function buildSysMap(data){
+  // CSV do sistema é HIERÁRQUICO: cada cliente tem linha-cabeçalho "Cliente:" + dados,
+  // depois contratos com "Contrato:" + dados, depois locais com "N Loc: ..." + valores.
+  // Estrutura:
+  //   row[0]="Cliente:"         → próxima linha com dígito = dados do cliente (VPL)
+  //   row[0]="Contrato:"        → próxima linha com dígito = dados do contrato (número)
+  //   row[0]="/^\d+ Loc:/"      → linha de local, Vlr Fixo/Hora em row[12]
+  //   row[1]="INSS"             → linha de imposto INSS, %Red Base em row[8]
   const map=new Map();
-  const seen=new Set();
+  let curVPL=null, curCtr=null;
+  let wantClient=false, wantCtr=false;
+
   for(const row of data.rows){
-    const cliRaw=String(row[CSV.cli]??'').trim();
-    const vpl=extractVPL(cliRaw);
-    if(!vpl) continue;
-    const ctrName=String(row[CSV.ctr]??'').trim();
-    const vlr=parseBR(row[CSV.vlrFixo]??0);
-    const dd=vpl+'|'+ctrName;
-    if(seen.has(dd)) continue;
-    seen.add(dd);
-    if(!map.has(vpl)) map.set(vpl,{total:0,contracts:new Map()});
-    const e=map.get(vpl);
-    e.total+=vlr;
-    const cn=extractCtrNum(ctrName);
-    if(cn) e.contracts.set(cn,(e.contracts.get(cn)||0)+vlr);
+    const c0=String(row[0]??'').trim();
+    const c1=String(row[1]??'').trim();
+
+    // Marcadores de seção
+    if(c0==='Cliente:'){ wantClient=true; wantCtr=false; continue; }
+    if(c0==='Contrato:'){ wantCtr=true; wantClient=false; continue; }
+
+    // Linha de dados do cliente (após "Cliente:")
+    if(wantClient && /^\d+\s/.test(c0)){
+      curVPL=String(parseInt(c0,10));
+      curCtr=null; wantClient=false;
+      if(!map.has(curVPL)) map.set(curVPL,{contracts:new Map(),total:0,inssBase:new Map()});
+      continue;
+    }
+
+    // Linha de dados do contrato (após "Contrato:")
+    if(wantCtr && /^\d+\s/.test(c0) && curVPL!==null){
+      curCtr=String(parseInt(c0,10));
+      wantCtr=false;
+      const e=map.get(curVPL);
+      if(e && !e.contracts.has(curCtr)) e.contracts.set(curCtr,0);
+      continue;
+    }
+
+    // Linha de local: "N Loc: ..." — Vlr Fixo/Hora está na coluna 12
+    if(/^\d+\s+Loc:/i.test(c0) && curVPL!==null && curCtr!==null){
+      const vlr=parseBR(String(row[12]??''));
+      if(vlr>0){
+        const e=map.get(curVPL);
+        if(e){
+          e.contracts.set(curCtr,(e.contracts.get(curCtr)??0)+vlr);
+          let t=0; e.contracts.forEach(v=>t+=v); e.total=t;
+        }
+      }
+    }
+
+    // Linha INSS: row[1]="INSS" — %Red Base está na coluna 8
+    if(c1==='INSS' && curVPL!==null && curCtr!==null){
+      const rb=parseFloat(String(row[8]??'').replace(',','.'));
+      if(isFinite(rb)){
+        const e=map.get(curVPL);
+        if(e && !e.inssBase.has(curCtr)) e.inssBase.set(curCtr,rb);
+      }
+    }
   }
   return map;
 }
@@ -719,17 +760,20 @@ const TOL=0.01;
 function matchAll(items, sysMap){
   for(const item of items){
     const sysEntry=sysMap?.get(item.vpl);
-    if(!sysEntry){ item.status='only'; item.sysBruto=null; continue; }
+    if(!sysEntry){ item.status='only'; item.sysBruto=null; item.sysRedBINSS=null; continue; }
     const sv=item.num?sysEntry.contracts.get(item.num):null;
     item.sysBruto=sv??null;
+    item.sysRedBINSS=item.num?(sysEntry.inssBase?.get(item.num)??null):null;
     if(sv!=null){
       item.status=Math.abs(item.totalFaturar-sv)<=TOL?'ok':'diff';
     } else {
       item.status='no-match';
-      // Fallback: client has exactly one contract in sysMap → use total
+      // Fallback: cliente tem exatamente um contrato no sistema → usa total
       if(sysEntry.contracts.size===1){
-        item.sysBruto=sysEntry.total;
-        item.status=Math.abs(item.totalFaturar-sysEntry.total)<=TOL?'ok':'diff';
+        const [[onlyCtr,onlyVal]]=[...sysEntry.contracts.entries()];
+        item.sysBruto=onlyVal;
+        item.sysRedBINSS=sysEntry.inssBase?.get(onlyCtr)??null;
+        item.status=Math.abs(item.totalFaturar-onlyVal)<=TOL?'ok':'diff';
       }
     }
   }
@@ -858,17 +902,25 @@ function renderItemBody(item,hasSys){
     </tr>`;
   }
 
-  // % Redução Base INSS
-  if(item.redBINSS!==null){
-    // valor pode estar em formato 0-1 (ex: 0.10) ou 0-100 (ex: 10)
-    const pct=item.redBINSS>1?item.redBINSS:item.redBINSS*100;
-    const fmtPct=pct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
-    rows+=`<tr>
-      <td class="lbl">% Redução Base INSS</td>
-      <td class="num" style="font-family:var(--mono)">${fmtPct}</td>
-      <td class="num muted">—</td>
-      <td class="num muted">planilha</td>
-    </tr>`;
+  // % Redução Base INSS — comparação planilha vs sistema
+  {
+    const hasPlanINSS=item.redBINSS!==null;
+    const hasSysINSS=item.sysRedBINSS!==null;
+    if(hasPlanINSS||hasSysINSS){
+      // Normaliza: planilha pode usar 0-1 ou 0-100; CSV usa 0-100
+      const planPct=hasPlanINSS?(item.redBINSS>1?item.redBINSS:item.redBINSS*100):null;
+      const sysPct=hasSysINSS?item.sysRedBINSS:null;
+      const fmt=v=>v!=null?v.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%':'—';
+      const inssMatch=planPct!=null&&sysPct!=null&&Math.abs(planPct-sysPct)<0.01;
+      const inssDiff=planPct!=null&&sysPct!=null?planPct-sysPct:null;
+      const diffCls=inssMatch?'muted':(inssDiff!=null?(inssDiff>0?'diff-pos':'diff-neg'):'muted');
+      rows+=`<tr class="${planPct!=null&&sysPct!=null&&!inssMatch?'row-diff':''}">
+        <td class="lbl">% Base INSS</td>
+        <td class="num" style="font-family:var(--mono)">${fmt(planPct)}</td>
+        <td class="num ${!inssMatch&&sysPct!=null?'row-diff-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
+        <td class="num ${diffCls}">${inssDiff!=null?(inssMatch?'OK':inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'):'—'}</td>
+      </tr>`;
+    }
   }
 
   // Contrato Mensal (bruto base) — apenas referência
@@ -1255,6 +1307,7 @@ function loadSheet(name){
     vt:cols.vt>=0?cols.vt:C.vt,
     am:cols.am>=0?cols.am:C.am,
     ao:cols.ao>=0?cols.ao:C.ao,
+    redBINSS:cols.redBINSS>=0?cols.redBINSS:C.redBINSS,
     total:cols.total>=0?cols.total:C.total,
   };
   S.items=buildItemList(S.planData,finalCols);
@@ -1267,7 +1320,8 @@ document.getElementById('fileSys').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   document.getElementById('nameSys').textContent='Carregando…';
   const text=await readText(f);
-  S.sysData=parseCSVText(text,';',1);
+  // skip=0: mantém a linha "Cliente:;Status:;..." nos rows (parser hierárquico precisa dela)
+  S.sysData=parseCSVText(text,';',0);
   document.getElementById('nameSys').textContent=f.name;
   document.getElementById('nameSys').classList.remove('pending');
   document.getElementById('slotSys').classList.add('loaded');
