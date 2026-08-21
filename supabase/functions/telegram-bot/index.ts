@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { enviarTelegram, TG_API, TG_CHAT_ID } from '../_shared/telegram.ts'
+import { TG_API, TG_CHAT_ID } from '../_shared/telegram.ts'
 
 // ----------------------------------------------------------------
 // Variáveis de ambiente
@@ -10,7 +10,7 @@ const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const EVO_URL   = Deno.env.get('EVOLUTION_API_URL')    || 'http://163.176.122.177:8080'
 const EVO_KEY   = Deno.env.get('EVOLUTION_API_KEY')    || 'servnet-evo-2026'
 const EVO_INST  = Deno.env.get('EVOLUTION_INSTANCE')   || 'servnet'
-const WH_URL    = Deno.env.get('WHATSAPP_LEMBRETES_URL') || ''  // URL da Edge Function whatsapp-lembretes
+const WH_URL    = Deno.env.get('WHATSAPP_LEMBRETES_URL') || ''
 
 // ----------------------------------------------------------------
 // Helpers
@@ -23,29 +23,73 @@ function formatBRL(v: string | number | null): string {
 
 function hoje(): string {
   const d = new Date()
-  d.setHours(d.getHours() - 3) // BRT
+  d.setHours(d.getHours() - 3)
   return d.toISOString().split('T')[0]
 }
 
-async function responder(chatId: number | string, texto: string) {
-  await fetch(`${TG_API}/sendMessage`, {
+// ----------------------------------------------------------------
+// Envio de mensagem com botões opcionais
+// ----------------------------------------------------------------
+async function enviar(
+  chatId: number | string,
+  texto: string,
+  teclado?: object,
+  messageId?: number,
+) {
+  const body: Record<string, unknown> = {
+    chat_id: chatId,
+    text: texto,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  }
+  if (teclado) body.reply_markup = teclado
+
+  // Se tiver messageId, edita a mensagem (callback de botão)
+  const endpoint = messageId ? 'editMessageText' : 'sendMessage'
+  if (messageId) body.message_id = messageId
+
+  await fetch(`${TG_API}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: texto,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    }),
+    body: JSON.stringify(body),
   })
+}
+
+async function answerCallback(callbackId: string) {
+  await fetch(`${TG_API}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ callback_query_id: callbackId }),
+  })
+}
+
+// ----------------------------------------------------------------
+// Teclado do menu principal
+// ----------------------------------------------------------------
+const MENU_TECLADO = {
+  inline_keyboard: [
+    [
+      { text: '📡 Status WhatsApp', callback_data: 'status' },
+      { text: '📊 Resumo do mês',   callback_data: 'resumo' },
+    ],
+    [
+      { text: '⚠️ Inadimplentes',   callback_data: 'inadimplentes' },
+      { text: '👥 Clientes',        callback_data: 'clientes' },
+    ],
+    [
+      { text: '🚀 Disparar WhatsApp agora', callback_data: 'disparar' },
+    ],
+  ],
+}
+
+const BTN_MENU = {
+  inline_keyboard: [[{ text: '🏠 Voltar ao menu', callback_data: 'menu' }]],
 }
 
 // ----------------------------------------------------------------
 // Comandos
 // ----------------------------------------------------------------
-
-async function cmdStatus(chatId: number): Promise<string> {
-  // Verifica Evolution API
+async function cmdStatus(): Promise<string> {
   let apiStatus = '🔴 Offline'
   try {
     const ctrl = new AbortController()
@@ -66,41 +110,39 @@ async function cmdStatus(chatId: number): Promise<string> {
   const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   const data = agora.toLocaleDateString('pt-BR')
 
-  return `📡 <b>Status do sistema</b>\n\n` +
-    `WhatsApp: ${apiStatus}\n` +
-    `Horário BRT: ${hora} de ${data}\n\n` +
-    `<i>Use /resumo para ver os dados do negócio.</i>`
+  return (
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `📡  <b>Status do Sistema</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `WhatsApp:  ${apiStatus}\n` +
+    `🕐 BRT:  <b>${hora}</b> de ${data}\n\n` +
+    `<i>Use /resumo para ver os dados financeiros.</i>`
+  )
 }
 
-async function cmdResumo(chatId: number, sb: ReturnType<typeof createClient>): Promise<string> {
+async function cmdResumo(sb: ReturnType<typeof createClient>): Promise<string> {
   const h = hoje()
-  const mesAtual = h.slice(0, 7) // YYYY-MM
+  const mesAtual = h.slice(0, 7)
 
-  // Lançamentos do mês (inativo=false OU inativo ausente)
   const [resLancAtivo, resLancNull] = await Promise.all([
     sb.from('lancamentos').select('dados').eq('dados->>inativo', 'false'),
     sb.from('lancamentos').select('dados').is('dados->>inativo', null),
   ])
   const lancs = [...(resLancAtivo.data || []), ...(resLancNull.data || [])]
 
-  const receitas = (lancs || []).filter((l: any) => {
-    const d = l.dados
-    return d?.tipo === 'Receita' && (d?.data || '').startsWith(mesAtual)
-  })
-  const despesas = (lancs || []).filter((l: any) => {
-    const d = l.dados
-    return d?.tipo === 'Despesa' && (d?.data || '').startsWith(mesAtual)
-  })
-  const vencidos = (lancs || []).filter((l: any) => {
-    const d = l.dados
-    return d?.tipo === 'Receita' && d?.status !== 'Pago' && d?.status !== 'pago' && (d?.data || '') < h
-  })
+  const receitas = lancs.filter((l: any) => l.dados?.tipo === 'Receita' && (l.dados?.data || '').startsWith(mesAtual))
+  const despesas = lancs.filter((l: any) => l.dados?.tipo === 'Despesa' && (l.dados?.data || '').startsWith(mesAtual))
+  const vencidos = lancs.filter((l: any) =>
+    l.dados?.tipo === 'Receita' &&
+    l.dados?.status !== 'Pago' && l.dados?.status !== 'pago' &&
+    (l.dados?.data || '') < h
+  )
 
   const totalReceita = receitas.reduce((s: number, l: any) => s + parseFloat(String(l.dados?.valor || 0)), 0)
   const totalDespesa = despesas.reduce((s: number, l: any) => s + parseFloat(String(l.dados?.valor || 0)), 0)
   const totalVencido = vencidos.reduce((s: number, l: any) => s + parseFloat(String(l.dados?.valor || 0)), 0)
+  const saldo = totalReceita - totalDespesa
 
-  // Clientes ativos (inativo=false OU inativo ausente)
   const [resCliAtivo, resCliNull] = await Promise.all([
     sb.from('cli_clientes').select('id', { count: 'exact', head: true }).eq('dados->>inativo', 'false'),
     sb.from('cli_clientes').select('id', { count: 'exact', head: true }).is('dados->>inativo', null),
@@ -109,17 +151,23 @@ async function cmdResumo(chatId: number, sb: ReturnType<typeof createClient>): P
 
   const mes = mesAtual.split('-')
   const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mes[1]) - 1]
+  const saldoEmoji = saldo >= 0 ? '📈' : '📉'
 
-  return `📊 <b>Resumo — ${nomeMes}/${mes[0]}</b>\n\n` +
-    `💰 Receita: <b>${formatBRL(totalReceita)}</b>\n` +
-    `🔴 Despesas: <b>${formatBRL(totalDespesa)}</b>\n` +
-    `📈 Saldo: <b>${formatBRL(totalReceita - totalDespesa)}</b>\n\n` +
-    `👥 Clientes ativos: <b>${totalClientes || 0}</b>\n` +
-    `⚠️ Inadimplentes: <b>${formatBRL(totalVencido)}</b> em aberto\n\n` +
-    `<i>Use /inadimplentes para ver a lista completa.</i>`
+  return (
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `📊  <b>Resumo — ${nomeMes}/${mes[0]}</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `💰  Receita:    <b>${formatBRL(totalReceita)}</b>\n` +
+    `🔴  Despesas:   <b>${formatBRL(totalDespesa)}</b>\n` +
+    `${saldoEmoji}  Saldo:      <b>${formatBRL(saldo)}</b>\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `👥  Clientes ativos:  <b>${totalClientes}</b>\n` +
+    `⚠️  Inadimplência:    <b>${formatBRL(totalVencido)}</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━`
+  )
 }
 
-async function cmdInadimplentes(chatId: number, sb: ReturnType<typeof createClient>): Promise<string> {
+async function cmdInadimplentes(sb: ReturnType<typeof createClient>): Promise<string> {
   const h = hoje()
 
   const [resAt, resNull] = await Promise.all([
@@ -130,67 +178,80 @@ async function cmdInadimplentes(chatId: number, sb: ReturnType<typeof createClie
   ])
 
   const todos = [...(resAt.data || []), ...(resNull.data || [])]
-  if (todos.length === 0) return '✅ <b>Nenhum inadimplente!</b> Todas as faturas estão em dia.'
+  if (todos.length === 0) return '✅  <b>Nenhum inadimplente!</b>\n\nTodas as faturas estão em dia. 🎉'
 
-  // Agrupa por cliente (pior atraso)
-  const mapaCliente = new Map<string, { clienteId: string; valor: number; diasAtraso: number; dataVenc: string }>()
+  const mapaCliente = new Map<string, { clienteId: string; valor: number; diasAtraso: number }>()
   for (const lanc of todos) {
     const d = lanc.dados as any
     const cid = d?.clienteId
     if (!cid) continue
     const valor = parseFloat(String(d?.valor || 0))
-    const msPerDia = 86400000
-    const dias = Math.round((new Date(h).getTime() - new Date(d?.data || h).getTime()) / msPerDia)
+    const dias = Math.round((new Date(h).getTime() - new Date(d?.data || h).getTime()) / 86400000)
     const atual = mapaCliente.get(cid)
     if (!atual || dias > atual.diasAtraso) {
-      mapaCliente.set(cid, { clienteId: cid, valor, diasAtraso: dias, dataVenc: d?.data || '' })
+      mapaCliente.set(cid, { clienteId: cid, valor, diasAtraso: dias })
     }
   }
 
-  // Busca nomes
   const clienteIds = [...mapaCliente.keys()]
   const { data: clientes } = await sb.from('cli_clientes').select('id, dados').in('id', clienteIds)
   const nomeMap = new Map<string, string>()
   for (const c of (clientes || [])) nomeMap.set(c.id, (c.dados as any)?.nome || c.id)
 
-  // Ordena por atraso
   const lista = [...mapaCliente.values()].sort((a, b) => b.diasAtraso - a.diasAtraso)
   const totalGeral = lista.reduce((s, l) => s + l.valor, 0)
 
-  let txt = `⚠️ <b>Inadimplentes (${lista.length})</b> — Total: <b>${formatBRL(totalGeral)}</b>\n\n`
-  for (const item of lista.slice(0, 20)) {
-    const nome = nomeMap.get(item.clienteId) || item.clienteId
-    txt += `• <b>${nome}</b> — ${formatBRL(item.valor)} (${item.diasAtraso}d atraso)\n`
-  }
-  if (lista.length > 20) txt += `\n<i>...e mais ${lista.length - 20} clientes.</i>`
+  let txt =
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `⚠️  <b>Inadimplentes (${lista.length})</b>\n` +
+    `💸  Total: <b>${formatBRL(totalGeral)}</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n\n`
 
-  return txt
+  for (const item of lista.slice(0, 15)) {
+    const nome = nomeMap.get(item.clienteId) || item.clienteId
+    const urgencia = item.diasAtraso >= 30 ? '🔴' : item.diasAtraso >= 7 ? '🟡' : '🟠'
+    txt += `${urgencia} <b>${nome}</b>\n   ${formatBRL(item.valor)} · ${item.diasAtraso}d em atraso\n\n`
+  }
+  if (lista.length > 15) txt += `<i>...e mais ${lista.length - 15} clientes.</i>`
+
+  return txt.trim()
 }
 
-async function cmdClientes(chatId: number, sb: ReturnType<typeof createClient>): Promise<string> {
-  const h = hoje()
-  const mesAtual = h.slice(0, 7)
-
-  const [resAtivo, resNulo] = await Promise.all([
+async function cmdClientes(sb: ReturnType<typeof createClient>): Promise<string> {
+  const [resAtivo, resNulo, resTotal] = await Promise.all([
     sb.from('cli_clientes').select('id', { count: 'exact', head: true }).eq('dados->>inativo', 'false'),
     sb.from('cli_clientes').select('id', { count: 'exact', head: true }).is('dados->>inativo', null),
+    sb.from('cli_clientes').select('id', { count: 'exact', head: true }),
   ])
   const ativos = (resAtivo.count || 0) + (resNulo.count || 0)
-  const { count: total } = await sb.from('cli_clientes').select('id', { count: 'exact', head: true })
+  const total  = resTotal.count || 0
+  const inativos = total - ativos
 
-  return `👥 <b>Clientes</b>\n\n` +
-    `Ativos: <b>${ativos || 0}</b>\n` +
-    `Total cadastrado: <b>${total || 0}</b>\n\n` +
-    `<i>Use /resumo para ver receita e inadimplência.</i>`
+  return (
+    `━━━━━━━━━━━━━━━━━━━━━\n` +
+    `👥  <b>Clientes</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🟢  Ativos:    <b>${ativos}</b>\n` +
+    `🔴  Inativos:  <b>${inativos}</b>\n` +
+    `📋  Total:     <b>${total}</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━━`
+  )
 }
 
-async function cmdDisparar(chatId: number): Promise<string> {
-  if (!WH_URL) return '❌ URL da função whatsapp-lembretes não configurada (WHATSAPP_LEMBRETES_URL).'
+async function cmdDisparar(): Promise<string> {
+  if (!WH_URL) return '❌ URL da função whatsapp-lembretes não configurada.'
   try {
     const res = await fetch(WH_URL, { method: 'GET' })
     const json = await res.json()
     if (json?.ok) {
-      return `✅ <b>Disparo concluído!</b>\n\nEnviados: ${json.enviados}\nErros: ${json.erros}\nFaturas: ${json.faturas_encontradas}`
+      return (
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🚀  <b>Disparo concluído!</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `✅  Enviados:  <b>${json.enviados}</b>\n` +
+        `❌  Erros:     <b>${json.erros}</b>\n` +
+        `📄  Faturas:   <b>${json.faturas_encontradas}</b>`
+      )
     }
     return `❌ Erro no disparo: ${json?.error || 'resposta inesperada'}`
   } catch (err) {
@@ -198,74 +259,122 @@ async function cmdDisparar(chatId: number): Promise<string> {
   }
 }
 
+function textoMenu(): string {
+  const agora = new Date()
+  agora.setHours(agora.getHours() - 3)
+  const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return (
+    `👋  <b>Servnet Admin</b>\n\n` +
+    `Olá! Escolha uma opção abaixo:\n\n` +
+    `🕐  ${hora} BRT`
+  )
+}
+
 // ----------------------------------------------------------------
 // Handler principal
 // ----------------------------------------------------------------
 serve(async (req) => {
-  if (req.method !== 'POST') {
-    return new Response('ok', { status: 200 })
-  }
+  if (req.method !== 'POST') return new Response('ok', { status: 200 })
 
   let update: any
-  try {
-    update = await req.json()
-  } catch {
-    return new Response('bad request', { status: 400 })
+  try { update = await req.json() } catch { return new Response('bad request', { status: 400 }) }
+
+  const adminId = parseInt(TG_CHAT_ID)
+
+  // ── Callback de botão ──────────────────────────────────────────
+  if (update?.callback_query) {
+    const cb = update.callback_query
+    const chatId: number = cb.message?.chat?.id
+    const messageId: number = cb.message?.message_id
+    const data: string = cb.data || ''
+
+    if (chatId !== adminId) {
+      await answerCallback(cb.id)
+      return new Response('ok')
+    }
+
+    await answerCallback(cb.id)
+    const sb = createClient(SB_URL, SB_SECRET)
+
+    let texto = ''
+    let teclado: object = BTN_MENU
+
+    switch (data) {
+      case 'menu':
+        texto  = textoMenu()
+        teclado = MENU_TECLADO
+        break
+      case 'status':
+        texto = await cmdStatus()
+        break
+      case 'resumo':
+        texto = await cmdResumo(sb)
+        break
+      case 'inadimplentes':
+        texto = await cmdInadimplentes(sb)
+        break
+      case 'clientes':
+        texto = await cmdClientes(sb)
+        break
+      case 'disparar':
+        texto   = '⏳  Disparando mensagens WhatsApp...'
+        teclado = {}
+        await enviar(chatId, texto, undefined, messageId)
+        texto   = await cmdDisparar()
+        teclado = BTN_MENU
+        await enviar(chatId, texto, teclado)
+        return new Response('ok')
+    }
+
+    if (texto) await enviar(chatId, texto, teclado, messageId)
+    return new Response('ok')
   }
 
+  // ── Mensagem de texto ──────────────────────────────────────────
   const msg = update?.message
   if (!msg) return new Response('ok')
 
   const chatId: number = msg.chat?.id
   const texto: string  = (msg.text || '').trim()
-  const adminId = parseInt(TG_CHAT_ID)
 
-  // Segurança: só responde ao admin
   if (chatId !== adminId) {
-    await responder(chatId, '⛔ Acesso não autorizado.')
+    await enviar(chatId, '⛔ Acesso não autorizado.')
     return new Response('ok')
   }
 
-  const sb = createClient(SB_URL, SB_SECRET)
+  const sb  = createClient(SB_URL, SB_SECRET)
   const cmd = texto.split(' ')[0].toLowerCase().replace('@servnet_admin_bot', '')
 
   let resposta = ''
+  let teclado: object | undefined = BTN_MENU
 
   switch (cmd) {
     case '/start':
-      resposta = `👋 <b>Servnet Admin</b>\n\nComandos disponíveis:\n\n` +
-        `/status — WhatsApp online?\n` +
-        `/resumo — Receita e saldo do mês\n` +
-        `/inadimplentes — Lista de inadimplentes\n` +
-        `/clientes — Total de clientes ativos\n` +
-        `/disparar — Dispara WhatsApp agora`
+    case '/menu':
+      resposta = textoMenu()
+      teclado  = MENU_TECLADO
       break
-
     case '/status':
-      resposta = await cmdStatus(chatId)
+      resposta = await cmdStatus()
       break
-
     case '/resumo':
-      resposta = await cmdResumo(chatId, sb)
+      resposta = await cmdResumo(sb)
       break
-
     case '/inadimplentes':
-      resposta = await cmdInadimplentes(chatId, sb)
+      resposta = await cmdInadimplentes(sb)
       break
-
     case '/clientes':
-      resposta = await cmdClientes(chatId, sb)
+      resposta = await cmdClientes(sb)
       break
-
     case '/disparar':
-      await responder(chatId, '⏳ Disparando mensagens...')
-      resposta = await cmdDisparar(chatId)
+      await enviar(chatId, '⏳  Disparando mensagens WhatsApp...')
+      resposta = await cmdDisparar()
       break
-
     default:
-      resposta = `❓ Comando não reconhecido: <code>${cmd}</code>\n\nUse /start para ver os comandos.`
+      resposta = `❓ Comando não reconhecido: <code>${cmd}</code>\n\nUse /start para ver o menu.`
+      teclado  = MENU_TECLADO
   }
 
-  if (resposta) await responder(chatId, resposta)
+  if (resposta) await enviar(chatId, resposta, teclado)
   return new Response('ok')
 })
