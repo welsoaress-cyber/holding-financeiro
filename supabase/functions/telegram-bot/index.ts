@@ -3,6 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { TG_API, TG_CHAT_ID } from '../_shared/telegram.ts'
 
 // ----------------------------------------------------------------
+// Versão
+// ----------------------------------------------------------------
+const BOT_VERSION = '1.0.0'
+
+// ----------------------------------------------------------------
 // Env
 // ----------------------------------------------------------------
 const SB_URL    = Deno.env.get('SUPABASE_URL')!
@@ -200,7 +205,8 @@ async function cmdStatus(): Promise<string> {
     `Latência:       <code>${ping}</code>\n` +
     `Instância:      <code>${EVO_INST}</code>\n\n` +
     `🕐  <b>${hora}</b>\n` +
-    `📅  ${data.charAt(0).toUpperCase() + data.slice(1)}`
+    `📅  ${data.charAt(0).toUpperCase() + data.slice(1)}\n\n` +
+    `<i>Bot v${BOT_VERSION}</i>`
   )
 }
 
@@ -485,7 +491,7 @@ function textoMenu(): string {
   const agora = new Date()
   agora.setHours(agora.getHours() - 3)
   const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  return `👋  <b>Servnet Admin</b>\n\nEscolha uma opção:\n\n🕐 ${hora} BRT`
+  return `👋  <b>Servnet Admin</b>  <code>v${BOT_VERSION}</code>\n\nEscolha uma opção:\n\n🕐 ${hora} BRT`
 }
 
 // ================================================================
