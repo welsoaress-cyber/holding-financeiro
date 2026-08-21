@@ -5,7 +5,7 @@ import { TG_API, TG_CHAT_ID } from '../_shared/telegram.ts'
 // ----------------------------------------------------------------
 // Versão
 // ----------------------------------------------------------------
-const BOT_VERSION = '1.0.0'
+const BOT_VERSION = '1.1.0'
 
 // ----------------------------------------------------------------
 // Env
@@ -149,18 +149,12 @@ async function answerCallback(id: string) {
 // ----------------------------------------------------------------
 const MENU_TECLADO = {
   inline_keyboard: [
-    [
-      { text: '📡 Status',      callback_data: 'status'   },
-      { text: '📊 Resumo',      callback_data: 'resumo'   },
-    ],
-    [
-      { text: '⚠️ Inadimplentes', callback_data: 'inadimplentes' },
-      { text: '👥 Clientes',      callback_data: 'clientes'      },
-    ],
-    [
-      { text: '🔮 Projeção',     callback_data: 'projecao' },
-      { text: '🚀 Disparar',     callback_data: 'disparar' },
-    ],
+    [{ text: '📡 Status WhatsApp',       callback_data: 'status'        }],
+    [{ text: '📊 Resumo do mês',          callback_data: 'resumo'        }],
+    [{ text: '⚠️ Inadimplentes',          callback_data: 'inadimplentes' }],
+    [{ text: '👥 Clientes',              callback_data: 'clientes'      }],
+    [{ text: '🔮 Projeção do mês',        callback_data: 'projecao'      }],
+    [{ text: '🚀 Disparar WhatsApp agora', callback_data: 'disparar'     }],
   ],
 }
 
