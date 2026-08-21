@@ -5,7 +5,7 @@ import { TG_API, TG_CHAT_ID } from '../_shared/telegram.ts'
 // ----------------------------------------------------------------
 // Versão
 // ----------------------------------------------------------------
-const BOT_VERSION = '1.1.0'
+const BOT_VERSION = '1.2.1'
 
 // ----------------------------------------------------------------
 // Env
@@ -281,13 +281,15 @@ async function cmdResumo(sb: ReturnType<typeof createClient>): Promise<string> {
 async function cmdInadimplentes(sb: ReturnType<typeof createClient>): Promise<string> {
   const h = hoje()
 
+  // Busca todas as receitas não pagas (sem filtro de data no banco, pois datas estão em DD/MM/YYYY)
   const [resAt, resNull] = await Promise.all([
     sb.from('lancamentos').select('id, dados').eq('dados->>tipo', 'Receita')
-      .neq('dados->>status', 'Pago').eq('dados->>inativo', 'false').lt('dados->>data', h),
+      .neq('dados->>status', 'Pago').eq('dados->>inativo', 'false'),
     sb.from('lancamentos').select('id, dados').eq('dados->>tipo', 'Receita')
-      .neq('dados->>status', 'Pago').is('dados->>inativo', null).lt('dados->>data', h),
+      .neq('dados->>status', 'Pago').is('dados->>inativo', null),
   ])
 
+  // Filtra em JS: inadimplente = status não pago E data já venceu (toISO faz conversão DD/MM/YYYY → ISO)
   const todos = [...(resAt.data || []), ...(resNull.data || [])]
     .filter((l: any) => isInadimplente(l.dados?.status) && dataVencida(l.dados?.data, h))
   if (!todos.length) return '✅  <b>Nenhum inadimplente!</b>\n\nTodas as faturas estão em dia. 🎉'
