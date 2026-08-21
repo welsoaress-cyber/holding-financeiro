@@ -21,6 +21,11 @@ actual typealias PlatformContext = Context
 
 actual fun nowMs(): Long = System.currentTimeMillis()
 
+actual fun formatMonthYear(ms: Long): String =
+    java.text.SimpleDateFormat("MMMM 'de' yyyy", java.util.Locale("pt", "BR"))
+        .format(java.util.Date(ms))
+        .replaceFirstChar { it.uppercaseChar() }
+
 /** Abre content:// URIs (mídia e documentos) via ContentResolver. */
 actual fun openFileSource(context: PlatformContext, ref: FileRef): Source? = runCatching {
     context.contentResolver.openInputStream(Uri.parse(ref.id))?.source()

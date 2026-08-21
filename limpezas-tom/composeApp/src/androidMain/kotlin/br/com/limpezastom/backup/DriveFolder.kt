@@ -29,8 +29,9 @@ class DriveFolder(
         onProgress: (Int, Int, String) -> Unit,
     ): String = withContext(Dispatchers.IO) {
 
-        // Nome da pasta: "Backup - 20-08-2025 01h30"
-        val folderName = SimpleDateFormat("dd-MM-yyyy HH'h'mm", Locale("pt", "BR"))
+        // Nome da pasta: "Backup - 20-08-2026" (uma pasta por dia; duplicatas
+        // do mesmo dia recebem sufixo automático do SAF: "Backup - 20-08-2026 (1)")
+        val folderName = SimpleDateFormat("dd-MM-yyyy", Locale("pt", "BR"))
             .format(Date())
             .let { "Backup - $it" }
 

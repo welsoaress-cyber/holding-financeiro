@@ -10,14 +10,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import android.provider.Settings
 import br.com.limpezastom.backup.DriveFolder
 import br.com.limpezastom.logic.AppLogic
 import br.com.limpezastom.logic.LogicHolder
+import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
 
     private val logic: AppLogic by lazy { LogicHolder.get(applicationContext) }
+
+    /**
+     * Lista de arquivos aguardando o usuário escolher a pasta antes de fazer backup.
+     * Preenchida quando o usuário clica "Escolher pasta e enviar" sem pasta configurada.
+     */
+    private var pendingFiles: List<FileRef> = emptyList()
 
     // Permissões de leitura de imagens
     private val permissionLauncher = registerForActivityResult(
@@ -31,7 +39,10 @@ class MainActivity : ComponentActivity() {
     private val folderPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
-        if (uri == null) return@registerForActivityResult
+        if (uri == null) {
+            pendingFiles = emptyList()
+            return@registerForActivityResult
+        }
         // Persiste a permissão para sobreviver a reinicializações do app
         contentResolver.takePersistableUriPermission(
             uri,
@@ -43,7 +54,15 @@ class MainActivity : ComponentActivity() {
             .putString("folder_uri", uri.toString())
             .apply()
         logic.backupSink = DriveFolder(this, uri)
-        logic.onSinkReady()
+
+        // Se há arquivos pendentes, inicia o backup imediatamente
+        val pending = pendingFiles
+        pendingFiles = emptyList()
+        if (pending.isNotEmpty()) {
+            logic.startBackup(pending)
+        } else {
+            logic.onSinkReady()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +73,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppRoot(
-                logic          = logic,
-                onScanRequested = ::scanWithPermissions,
-                onPickFolder   = { folderPicker.launch(null) },
+                logic                  = logic,
+                onScanRequested        = ::scanWithPermissions,
+                onPickFolder           = { folderPicker.launch(null) },
+                onPickFolderThenBackup = { files ->
+                    pendingFiles = files
+                    folderPicker.launch(null)
+                },
+                onOpenAppSettings      = { pkg ->
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(Uri.parse("package:$pkg"))
+                    )
+                },
             )
         }
     }

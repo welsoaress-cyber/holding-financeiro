@@ -68,6 +68,9 @@ actual class LauncherScanner actual constructor(context: PlatformContext) {
                     }.getOrDefault(pkg),
                     appIconUri = "android.resource://$pkg/mipmap/ic_launcher",
                     activityCount = acts.size,
+                    activityLabels = acts.map { ri ->
+                        runCatching { ri.loadLabel(pm).toString() }.getOrDefault(ri.activityInfo.name)
+                    },
                     pinnedShortcutIds = pinnedIds,
                     extras = extras,
                 )

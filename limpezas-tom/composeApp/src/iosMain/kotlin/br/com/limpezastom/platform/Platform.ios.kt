@@ -42,6 +42,14 @@ actual open class PlatformContext
 
 actual fun nowMs(): Long = (platform.Foundation.NSDate().timeIntervalSince1970 * 1000).toLong()
 
+actual fun formatMonthYear(ms: Long): String {
+    val date = platform.Foundation.NSDate.dateWithTimeIntervalSince1970(ms / 1000.0)
+    val fmt = platform.Foundation.NSDateFormatter()
+    fmt.dateFormat = "MMMM 'de' yyyy"
+    fmt.locale = platform.Foundation.NSLocale.localeWithLocaleIdentifier("pt_BR")
+    return fmt.stringFromDate(date).replaceFirstChar { it.uppercaseChar() }
+}
+
 private const val ASSET_PREFIX = "phasset:"
 
 /**

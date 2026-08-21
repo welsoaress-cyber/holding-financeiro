@@ -51,3 +51,6 @@ expect fun openFileSource(context: PlatformContext, ref: br.com.limpezastom.mode
 
 /** Retorna o tempo atual em milissegundos (epoch). Usado para calcular "há quanto tempo" nos arquivos. */
 expect fun nowMs(): Long
+
+/** Formata um timestamp em "Mês de YYYY" em português (ex: "Agosto de 2026"). */
+expect fun formatMonthYear(ms: Long): String

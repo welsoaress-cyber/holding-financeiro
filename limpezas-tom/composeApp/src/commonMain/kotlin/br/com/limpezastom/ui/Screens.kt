@@ -1,5 +1,6 @@
 package br.com.limpezastom.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,23 +26,28 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.limpezastom.logic.AppLogic
+import br.com.limpezastom.model.DuplicateShortcutGroup
 import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.model.UiState
+import br.com.limpezastom.platform.formatMonthYear
 import br.com.limpezastom.platform.nowMs
 import kotlin.math.roundToInt
 
@@ -51,6 +58,8 @@ fun AppRoot(
     logic: AppLogic,
     onScanRequested: () -> Unit,
     onPickFolder: () -> Unit,
+    onPickFolderThenBackup: (List<FileRef>) -> Unit,
+    onOpenAppSettings: (packageName: String) -> Unit,
 ) {
     MaterialTheme {
         val state   by logic.state.collectAsState()
@@ -69,17 +78,30 @@ fun AppRoot(
                     .padding(horizontal = 20.dp),
             ) {
                 when (val s = state) {
-                    is UiState.Idle      -> IdleView(onScan = onScanRequested)
-                    is UiState.Scanning  -> ScanningView()
-                    is UiState.Found     -> FoundView(
-                        screenshots = s.screenshots,
-                        sinkReady   = s.sinkReady,
-                        onPickFolder = onPickFolder,
-                        onBackup    = logic::startBackup,
-                        onRescan    = onScanRequested,
+                    is UiState.Idle             -> HomeView(
+                        onScanScreenshots = onScanRequested,
+                        onScanShortcuts   = logic::scanShortcuts,
                     )
-                    is UiState.Uploading -> UploadingView(s)
-                    is UiState.Done      -> DoneView(s, onReset = logic::reset)
+                    is UiState.Scanning         -> ScanningView("Procurando screenshots…")
+                    is UiState.Found            -> FoundView(
+                        screenshots            = s.screenshots,
+                        sinkReady              = s.sinkReady,
+                        onPickFolder           = onPickFolder,
+                        onBackup               = logic::startBackup,
+                        onPickFolderThenBackup = onPickFolderThenBackup,
+                        onRescan               = onScanRequested,
+                        onBack                 = logic::reset,
+                    )
+                    is UiState.Uploading        -> UploadingView(s)
+                    is UiState.Done             -> DoneView(s, onReset = logic::reset)
+                    is UiState.ScanningShortcuts -> ScanningView("Verificando atalhos duplicados…")
+                    is UiState.FoundShortcuts   -> ShortcutsFoundView(
+                        groups           = s.groups,
+                        onRescan         = logic::scanShortcuts,
+                        onDisable        = logic::disableShortcutsFor,
+                        onOpenAppSettings = onOpenAppSettings,
+                        onBack           = logic::reset,
+                    )
                 }
             }
         }
@@ -99,43 +121,102 @@ private fun VersionLabel() {
     )
 }
 
-// ── Tela inicial ──────────────────────────────────────────────────────────────
+// ── Tela inicial (hub) ────────────────────────────────────────────────────────
 
 @Composable
-private fun IdleView(onScan: () -> Unit) {
-    Column(
+private fun HomeView(
+    onScanScreenshots: () -> Unit,
+    onScanShortcuts: () -> Unit,
+) {
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("📸", fontSize = 72.sp)
-        Spacer(Modifier.height(20.dp))
-        Text(
-            "Backup de Screenshots",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Encontra todos os prints de tela e envia para uma pasta no Google Drive — " +
-                "com nome e data do dia. Nenhum arquivo é excluído do celular.",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(28.dp))
-        Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
-            Text("Identificar screenshots")
+        item {
+            Spacer(Modifier.height(32.dp))
+            Text(
+                "🧹 Limpezas Tom",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Ferramentas de organização para o seu celular.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(20.dp))
         }
-        Spacer(Modifier.height(16.dp))
-        VersionLabel()
+
+        // ── Card: Backup de screenshots ───────────────────────────────────────
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick  = onScanScreenshots,
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text("📸", fontSize = 36.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Backup de Screenshots",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Encontra todos os prints de tela e envia para uma pasta no Google Drive, " +
+                            "organizada pela data de hoje. Nenhum arquivo é excluído do celular.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = onScanScreenshots, modifier = Modifier.fillMaxWidth()) {
+                        Text("Identificar screenshots")
+                    }
+                }
+            }
+        }
+
+        // ── Card: Atalhos duplicados ──────────────────────────────────────────
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick  = onScanShortcuts,
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text("🔗", fontSize = 36.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Atalhos Duplicados",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Detecta apps que aparecem mais de uma vez na tela inicial — como " +
+                            "iFood ou Caixa com múltiplos ícones — e orienta como removê-los.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = onScanShortcuts, modifier = Modifier.fillMaxWidth()) {
+                        Text("Verificar tela inicial")
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(16.dp))
+            VersionLabel()
+            Spacer(Modifier.height(28.dp))
+        }
     }
 }
 
-// ── Scanning ──────────────────────────────────────────────────────────────────
+// ── Scanning (genérico) ───────────────────────────────────────────────────────
 
 @Composable
-private fun ScanningView() {
+private fun ScanningView(label: String) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -143,7 +224,7 @@ private fun ScanningView() {
     ) {
         CircularProgressIndicator()
         Spacer(Modifier.height(16.dp))
-        Text("Procurando screenshots…", style = MaterialTheme.typography.titleMedium)
+        Text(label, style = MaterialTheme.typography.titleMedium)
         Text(
             "Nenhum arquivo é alterado.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,10 +242,25 @@ private fun FoundView(
     sinkReady: Boolean,
     onPickFolder: () -> Unit,
     onBackup: (List<FileRef>) -> Unit,
+    onPickFolderThenBackup: (List<FileRef>) -> Unit,
     onRescan: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val selected = remember { mutableStateOf(setOf<String>()) }
-    val approvedList = screenshots.filter { it.id in selected.value }
+
+    // Agrupamento por mês/ano — preserva ordem descendente (screenshots já ordenados)
+    val monthGroups: List<Pair<String, List<FileRef>>> = remember(screenshots) {
+        val linked = linkedMapOf<String, MutableList<FileRef>>()
+        for (file in screenshots) {
+            val key = if (file.lastModifiedMs > 0)
+                formatMonthYear(file.lastModifiedMs) else "Sem data"
+            linked.getOrPut(key) { mutableListOf() }.add(file)
+        }
+        linked.map { (k, v) -> k to v.toList() }
+    }
+
+    val expandedGroups = remember { mutableStateMapOf<String, Boolean>() }
+    val approvedList  = screenshots.filter { it.id in selected.value }
     val approvedBytes = approvedList.sumOf { it.size }
 
     LazyColumn(
@@ -174,6 +270,10 @@ private fun FoundView(
         // ── Cabeçalho ─────────────────────────────────────────────────────────
         item {
             Spacer(Modifier.height(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBack) { Text("← Início") }
+                Spacer(Modifier.weight(1f))
+            }
             Text(
                 "📸 ${screenshots.size} screenshot(s) encontrado(s)",
                 style = MaterialTheme.typography.titleLarge,
@@ -182,21 +282,20 @@ private fun FoundView(
             Spacer(Modifier.height(4.dp))
         }
 
-        // ── Card de pasta de destino ──────────────────────────────────────────
+        // ── Card de pasta ─────────────────────────────────────────────────────
         item {
             if (!sinkReady) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("📁 Escolha onde salvar", fontWeight = FontWeight.Bold)
+                        Text("📁 Pasta de destino", fontWeight = FontWeight.Bold)
                         Text(
-                            "Selecione uma pasta no Google Drive (ou em outro local). " +
-                                "O app cria uma subpasta com o nome e horário do backup.",
+                            "Será criada automaticamente uma pasta \"Backup - data\" no local escolhido.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
-                            Text("Escolher pasta no Drive")
+                        OutlinedButton(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
+                            Text("Escolher pasta no Drive agora")
                         }
                     }
                 }
@@ -208,85 +307,46 @@ private fun FoundView(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text("✅", fontSize = 20.sp)
-                        Column {
-                            Text("Pasta de destino configurada", fontWeight = FontWeight.SemiBold)
+                        Column(Modifier.weight(1f)) {
+                            Text("Pasta configurada", fontWeight = FontWeight.SemiBold)
                             Text(
-                                "Os screenshots irão para uma subpasta com a data/hora de agora.",
+                                "Será criada \"Backup - data\" automaticamente.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        TextButton(onClick = onPickFolder) { Text("Trocar") }
                     }
                 }
             }
         }
 
-        // ── Botões de ação (no topo, antes da lista) ──────────────────────────
+        // ── Botões de ação ────────────────────────────────────────────────────
         item {
-            Spacer(Modifier.height(4.dp))
+            val hasSelection = approvedList.isNotEmpty()
             Button(
-                onClick = { onBackup(approvedList) },
-                enabled = sinkReady && approvedList.isNotEmpty(),
+                onClick = {
+                    if (sinkReady) onBackup(approvedList)
+                    else onPickFolderThenBackup(approvedList)
+                },
+                enabled = hasSelection,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     when {
-                        !sinkReady             -> "Escolha uma pasta primeiro"
-                        approvedList.isEmpty() -> "Selecione os screenshots"
-                        else -> "☁️ Enviar ${approvedList.size} screenshot(s) para o Drive"
+                        !hasSelection -> "Selecione os screenshots"
+                        !sinkReady    -> "📁 Escolher pasta e enviar ${approvedList.size} screenshot(s)"
+                        else          -> "☁️ Enviar ${approvedList.size} — ${formatBytes(approvedBytes)}"
                     }
                 )
             }
-            if (!sinkReady && approvedList.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Button(
-                    onClick = onPickFolder,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("📁 Escolher pasta no Drive") }
-            }
-            OutlinedButton(
-                onClick = onRescan,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            OutlinedButton(onClick = onRescan, modifier = Modifier.fillMaxWidth()) {
                 Text("Analisar de novo")
             }
         }
 
-        // ── Selecionar tudo ───────────────────────────────────────────────────
-        item {
-            if (screenshots.isNotEmpty()) {
-                val allSelected = selected.value.size == screenshots.size
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (selected.value.isNotEmpty()) {
-                        Text(
-                            "${selected.value.size} selecionado(s) — ${formatBytes(approvedBytes)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    } else {
-                        Text(
-                            "Selecione os screenshots para enviar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    TextButton(onClick = {
-                        selected.value = if (allSelected) emptySet()
-                        else screenshots.map { it.id }.toSet()
-                    }) {
-                        Text(if (allSelected) "Desmarcar tudo" else "Selecionar tudo")
-                    }
-                }
-            }
-        }
-
-        // ── Lista de screenshots ──────────────────────────────────────────────
-        if (screenshots.isEmpty()) {
+        // ── Grupos por mês/ano ────────────────────────────────────────────────
+        if (monthGroups.isEmpty()) {
             item {
                 Column(
                     Modifier.fillMaxWidth().padding(vertical = 40.dp),
@@ -303,48 +363,95 @@ private fun FoundView(
             }
         }
 
-        items(screenshots, key = { it.id }) { file ->
-            val isSelected = file.id in selected.value
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    selected.value = if (isSelected)
-                        selected.value - file.id
-                    else
-                        selected.value + file.id
-                },
-            ) {
+        for ((groupLabel, groupFiles) in monthGroups) {
+            val isExpanded    = expandedGroups.getOrDefault(groupLabel, false)
+            val groupSelected = groupFiles.count { it.id in selected.value }
+            val groupBytes    = groupFiles.sumOf { it.size }
+
+            item(key = "header_$groupLabel") {
+                HorizontalDivider()
                 Row(
-                    Modifier.padding(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expandedGroups[groupLabel] = !isExpanded }
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = {
+                    TriStateCheckbox(
+                        state = when {
+                            groupSelected == groupFiles.size -> ToggleableState.On
+                            groupSelected > 0               -> ToggleableState.Indeterminate
+                            else                            -> ToggleableState.Off
+                        },
+                        onClick = {
+                            val ids = groupFiles.map { it.id }.toSet()
+                            selected.value = if (groupSelected == groupFiles.size)
+                                selected.value - ids
+                            else
+                                selected.value + ids
+                        },
+                    )
+                    Column(Modifier.weight(1f).padding(start = 4.dp)) {
+                        Text(groupLabel, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "${groupFiles.size} screenshot(s) · ${formatBytes(groupBytes)}" +
+                                if (groupSelected > 0) " · $groupSelected selecionado(s)" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (groupSelected > 0)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        if (isExpanded) "▼" else "▶",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 4.dp),
+                    )
+                }
+            }
+
+            if (isExpanded) {
+                items(groupFiles, key = { it.id }) { file ->
+                    val isSelected = file.id in selected.value
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
                             selected.value = if (isSelected)
                                 selected.value - file.id else selected.value + file.id
                         },
-                    )
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            file.name,
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                formatBytes(file.size),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ) {
+                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = {
+                                    selected.value = if (isSelected)
+                                        selected.value - file.id else selected.value + file.id
+                                },
                             )
-                            if (file.lastModifiedMs > 0) {
+                            Column(Modifier.weight(1f)) {
                                 Text(
-                                    fileAge(file.lastModifiedMs),
+                                    file.name,
+                                    fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        formatBytes(file.size),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (file.lastModifiedMs > 0) {
+                                        Text(
+                                            fileAge(file.lastModifiedMs),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -352,7 +459,6 @@ private fun FoundView(
             }
         }
 
-        // ── Rodapé ────────────────────────────────────────────────────────────
         item {
             Spacer(Modifier.height(12.dp))
             VersionLabel()
@@ -421,10 +527,7 @@ private fun DoneView(state: UiState.Done, onReset: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            "Pasta criada no Drive:",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text("Pasta criada no Drive:", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             "\"${state.folderName}\"",
             fontWeight = FontWeight.SemiBold,
@@ -441,12 +544,172 @@ private fun DoneView(state: UiState.Done, onReset: () -> Unit) {
         )
         Spacer(Modifier.height(28.dp))
         Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
-            Text("Fazer novo backup")
+            Text("Voltar ao início")
         }
         Spacer(Modifier.height(16.dp))
         VersionLabel()
     }
 }
+
+// ── Atalhos duplicados ────────────────────────────────────────────────────────
+
+@Composable
+private fun ShortcutsFoundView(
+    groups: List<DuplicateShortcutGroup>,
+    onRescan: () -> Unit,
+    onDisable: (DuplicateShortcutGroup) -> Unit,
+    onOpenAppSettings: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Spacer(Modifier.height(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBack) { Text("← Início") }
+                Spacer(Modifier.weight(1f))
+            }
+            Text(
+                "🔗 Atalhos duplicados",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+
+        if (groups.isEmpty()) {
+            item {
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("✨", fontSize = 48.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Tela inicial limpa!", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Nenhum app com ícone duplicado encontrado.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        } else {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("ℹ️")
+                        Text(
+                            "${groups.size} app(s) com ícone duplicado na tela inicial. " +
+                                "Para remover: toque e segure o ícone extra → \"Remover da tela inicial\".",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            items(groups, key = { it.packageName }) { group ->
+                ShortcutGroupCard(
+                    group            = group,
+                    onDisable        = { onDisable(group) },
+                    onOpenAppSettings = { onOpenAppSettings(group.packageName) },
+                )
+            }
+        }
+
+        item {
+            OutlinedButton(onClick = onRescan, modifier = Modifier.fillMaxWidth()) {
+                Text("Verificar de novo")
+            }
+            Spacer(Modifier.height(12.dp))
+            VersionLabel()
+            Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+@Composable
+private fun ShortcutGroupCard(
+    group: DuplicateShortcutGroup,
+    onDisable: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            // ── Cabeçalho do app ──────────────────────────────────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("📱", fontSize = 28.sp)
+                Column(Modifier.weight(1f)) {
+                    Text(group.appLabel, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${group.activityCount} ícone(s) na tela inicial · ${group.extras} extra(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            // ── Rótulos das atividades ────────────────────────────────────────
+            if (group.activityLabels.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Ícones detectados:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                group.activityLabels.forEachIndexed { i, label ->
+                    val isFirst = i == 0
+                    Text(
+                        "  ${if (isFirst) "✅" else "❌"} $label${if (isFirst) " (manter)" else " (remover)"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isFirst)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            // ── Instruções ────────────────────────────────────────────────────
+            Spacer(Modifier.height(10.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(10.dp)) {
+                    Text(
+                        "Como remover o ícone extra:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        "1. Toque e segure o ícone duplicado na tela inicial\n" +
+                            "2. Arraste para \"Remover da tela inicial\" ou toque em ✕",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // ── Botões ────────────────────────────────────────────────────────
+            Spacer(Modifier.height(10.dp))
+            Button(onClick = onOpenAppSettings, modifier = Modifier.fillMaxWidth()) {
+                Text("Abrir configurações do app")
+            }
+            if (group.pinnedShortcutIds.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(onClick = onDisable, modifier = Modifier.fillMaxWidth()) {
+                    Text("Desabilitar atalhos fixados (${group.pinnedShortcutIds.size})")
+                }
+            }
+        }
+    }
+}
+
+// ── Progresso do upload ───────────────────────────────────────────────────────
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
 

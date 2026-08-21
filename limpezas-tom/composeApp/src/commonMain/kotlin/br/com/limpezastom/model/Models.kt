@@ -49,6 +49,8 @@ data class DuplicateShortcutGroup(
     val appLabel: String,
     val appIconUri: String,
     val activityCount: Int,
+    /** Rótulo de cada atividade launcher do app (ex: ["iFood", "iFood Express"]). */
+    val activityLabels: List<String> = emptyList(),
     val pinnedShortcutIds: List<String>,
     val extras: Int,
 )
@@ -84,4 +86,15 @@ sealed interface UiState {
         val count: Int,
         val folderName: String,
     ) : UiState
+
+    // ── Fluxo: limpeza de atalhos duplicados ──────────────────────────────────
+
+    /** Varrendo atalhos duplicados na tela inicial. */
+    data object ScanningShortcuts : UiState
+
+    /**
+     * Atalhos duplicados encontrados.
+     * [groups] pode ser vazio se não houver duplicatas.
+     */
+    data class FoundShortcuts(val groups: List<DuplicateShortcutGroup>) : UiState
 }

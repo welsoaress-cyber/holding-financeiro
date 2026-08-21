@@ -1,9 +1,11 @@
 package br.com.limpezastom.logic
 
 import br.com.limpezastom.backup.BackupSink
+import br.com.limpezastom.model.DuplicateShortcutGroup
 import br.com.limpezastom.model.FileRef
 import br.com.limpezastom.model.UiState
 import br.com.limpezastom.platform.DeviceScanner
+import br.com.limpezastom.platform.LauncherScanner
 import br.com.limpezastom.platform.PlatformContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,20 +14,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * Lógica principal do Limpezas Tom — versão simplificada.
+ * Lógica principal do Limpezas Tom.
  *
- * Fluxo único por enquanto:
- *   1. scan()        → varre o aparelho e lista screenshots
- *   2. startBackup() → copia os selecionados para a pasta de backup no Drive
+ * Fluxo 1 — Backup de screenshots:
+ *   scan() → startBackup()
  *
- * Nenhum arquivo é excluído automaticamente.
+ * Fluxo 2 — Atalhos duplicados:
+ *   scanShortcuts() → (usuário vê lista) → disableShortcutsFor()
+ *
+ * Nenhum arquivo ou app é excluído automaticamente.
  */
 class AppLogic(private val context: PlatformContext) {
 
-    private val scope   = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val scanner = DeviceScanner(context)
+    private val scope          = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scanner        = DeviceScanner(context)
+    private val launcherScan   = LauncherScanner(context)
 
     private val _state   = MutableStateFlow<UiState>(UiState.Idle)
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -36,7 +42,7 @@ class AppLogic(private val context: PlatformContext) {
     /** Pasta de destino: definida pela MainActivity quando o usuário escolhe uma pasta. */
     var backupSink: BackupSink? = null
 
-    // ── Scan ──────────────────────────────────────────────────────────────────
+    // ── Fluxo 1: Screenshots ──────────────────────────────────────────────────
 
     fun scan() {
         if (_state.value is UiState.Scanning) return
@@ -55,8 +61,6 @@ class AppLogic(private val context: PlatformContext) {
         }
     }
 
-    // ── Backup ────────────────────────────────────────────────────────────────
-
     fun startBackup(selected: List<FileRef>) {
         val sink = backupSink ?: run {
             notify("Escolha uma pasta de destino primeiro.")
@@ -74,6 +78,35 @@ class AppLogic(private val context: PlatformContext) {
                 _state.value = UiState.Uploading(done, total, name)
             }
             _state.value = UiState.Done(selected.size, folderName)
+        }
+    }
+
+    // ── Fluxo 2: Atalhos duplicados ───────────────────────────────────────────
+
+    fun scanShortcuts() {
+        if (_state.value is UiState.ScanningShortcuts) return
+        scope.launch {
+            _state.value = UiState.ScanningShortcuts
+            val groups = runCatching {
+                withContext(Dispatchers.Default) { launcherScan.findDuplicateShortcuts() }
+            }.getOrElse { emptyList() }
+            _state.value = UiState.FoundShortcuts(groups)
+        }
+    }
+
+    /**
+     * Tenta desabilitar os pinned shortcuts do grupo.
+     * Para ícones de launcher activity (caso mais comum), apenas notifica o usuário
+     * com instruções de remoção manual — não é possível remover programaticamente.
+     */
+    fun disableShortcutsFor(group: DuplicateShortcutGroup) {
+        if (group.pinnedShortcutIds.isNotEmpty()) {
+            runCatching {
+                launcherScan.disablePinnedShortcuts(group.packageName, group.pinnedShortcutIds)
+            }
+            notify("Atalhos fixados de '${group.appLabel}' desabilitados.")
+        } else {
+            notify("Toque e segure o ícone extra → \"Remover da tela inicial\"")
         }
     }
 
