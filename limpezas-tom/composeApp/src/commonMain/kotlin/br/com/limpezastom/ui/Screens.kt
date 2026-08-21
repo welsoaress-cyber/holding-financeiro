@@ -141,7 +141,7 @@ private fun HomeView(
         item {
             Spacer(Modifier.height(32.dp))
             Text(
-                "🧹 Limpezas Tom",
+                "📱 Apps Tom",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )

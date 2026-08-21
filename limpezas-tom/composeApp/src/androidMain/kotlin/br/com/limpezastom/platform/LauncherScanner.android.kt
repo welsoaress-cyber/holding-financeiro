@@ -84,7 +84,7 @@ actual class LauncherScanner actual constructor(context: PlatformContext) {
         // ShortcutManager.disableShortcuts só funciona para shortcuts do próprio app.
         // Para shortcuts de terceiros, silenciamos sem erro.
         runCatching {
-            sm.disableShortcuts(shortcutIds, "Atalho duplicado removido pelo Limpezas Tom")
+            sm.disableShortcuts(shortcutIds, "Atalho duplicado removido pelo Apps Tom")
         }
     }
 }
