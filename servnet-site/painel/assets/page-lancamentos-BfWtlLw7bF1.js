@@ -277,18 +277,12 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
           </label>
           <div id="div-recorrencia" style="display:none;flex-direction:column;gap:6px;">
             <label style="font-size:13px;font-weight:500;">
-              Número de meses adicionais
-              <select name="qtd_meses" style="
-                display:block;width:100%;margin-top:4px;
-                padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);
-                font-size:14px;background:var(--bg-card);color:var(--text);
-              ">
-                <option value="1">2 meses (este + 1)</option>
-                <option value="2">3 meses (este + 2)</option>
-                <option value="3">4 meses (este + 3)</option>
-                <option value="5">6 meses (este + 5)</option>
-                <option value="11">12 meses (este + 11)</option>
-              </select>
+              Meses adicionais (além deste)
+              <input type="number" name="qtd_meses" min="1" max="120" value="4"
+                placeholder="Ex: 4"
+                style="display:block;width:100%;margin-top:4px;padding:8px;border-radius:8px;
+                  border:1px solid var(--border,#e5e7eb);font-size:14px;
+                  background:var(--bg-card);color:var(--text);" />
             </label>
             <p style="font-size:12px;color:var(--text-muted,#6b7280);margin:0;">
               Gera cópias mensais com datas avançadas automaticamente.
