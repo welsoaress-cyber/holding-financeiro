@@ -44,6 +44,8 @@ import br.com.limpezastom.model.UiState
 import br.com.limpezastom.platform.nowMs
 import kotlin.math.roundToInt
 
+const val APP_VERSION = "0.2.0"
+
 @Composable
 fun AppRoot(
     logic: AppLogic,
@@ -84,6 +86,19 @@ fun AppRoot(
     }
 }
 
+// ── Versão ────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun VersionLabel() {
+    Text(
+        "v$APP_VERSION",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
 // ── Tela inicial ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -112,6 +127,8 @@ private fun IdleView(onScan: () -> Unit) {
         Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
             Text("Identificar screenshots")
         }
+        Spacer(Modifier.height(16.dp))
+        VersionLabel()
     }
 }
 
@@ -131,6 +148,8 @@ private fun ScanningView() {
             "Nenhum arquivo é alterado.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(24.dp))
+        VersionLabel()
     }
 }
 
@@ -152,6 +171,7 @@ private fun FoundView(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // ── Cabeçalho ─────────────────────────────────────────────────────────
         item {
             Spacer(Modifier.height(20.dp))
             Text(
@@ -199,7 +219,37 @@ private fun FoundView(
                     }
                 }
             }
+        }
+
+        // ── Botões de ação (no topo, antes da lista) ──────────────────────────
+        item {
             Spacer(Modifier.height(4.dp))
+            Button(
+                onClick = { onBackup(approvedList) },
+                enabled = sinkReady && approvedList.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    when {
+                        !sinkReady             -> "Escolha uma pasta primeiro"
+                        approvedList.isEmpty() -> "Selecione os screenshots"
+                        else -> "☁️ Enviar ${approvedList.size} screenshot(s) para o Drive"
+                    }
+                )
+            }
+            if (!sinkReady && approvedList.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = onPickFolder,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("📁 Escolher pasta no Drive") }
+            }
+            OutlinedButton(
+                onClick = onRescan,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Analisar de novo")
+            }
         }
 
         // ── Selecionar tudo ───────────────────────────────────────────────────
@@ -302,31 +352,10 @@ private fun FoundView(
             }
         }
 
-        // ── Botões de ação ────────────────────────────────────────────────────
+        // ── Rodapé ────────────────────────────────────────────────────────────
         item {
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { onBackup(approvedList) },
-                enabled = sinkReady && approvedList.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    when {
-                        !sinkReady           -> "Escolha uma pasta primeiro"
-                        approvedList.isEmpty() -> "Selecione os screenshots"
-                        else -> "☁️ Enviar ${approvedList.size} screenshot(s) para o Drive"
-                    }
-                )
-            }
-            if (!sinkReady && approvedList.isNotEmpty()) {
-                Button(
-                    onClick = onPickFolder,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("📁 Escolher pasta no Drive") }
-            }
-            OutlinedButton(onClick = onRescan, modifier = Modifier.fillMaxWidth()) {
-                Text("Analisar de novo")
-            }
+            Spacer(Modifier.height(12.dp))
+            VersionLabel()
             Spacer(Modifier.height(28.dp))
         }
     }
@@ -369,6 +398,8 @@ private fun UploadingView(state: UiState.Uploading) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(24.dp))
+        VersionLabel()
     }
 }
 
@@ -412,6 +443,8 @@ private fun DoneView(state: UiState.Done, onReset: () -> Unit) {
         Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
             Text("Fazer novo backup")
         }
+        Spacer(Modifier.height(16.dp))
+        VersionLabel()
     }
 }
 
