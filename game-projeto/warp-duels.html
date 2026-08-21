@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<title>WARP DUELS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ── TOKENS (single dark theme — deliberate; this is a game screen) ─── */
+:root {
+  --bg:      #06060f;
+  --surf:    #0d0d20;
+  --surf2:   #111127;
+  --bord:    #1c1c3c;
+  --ind:     #4f46e5;
+  --ind-l:   #818cf8;
+  --crim:    #e8375a;
+  --teal:    #22d3a5;
+  --amber:   #f5a623;
+  --txt:     #e8e8ff;
+  --mut:     #60608a;
+  --mut2:    #8888b8;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── NAV ──────────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  background: var(--surf);
+  border-bottom: 1px solid var(--bord);
+  padding: 0 28px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.tab-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--mut2);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 14px 18px 12px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn.active { color: var(--txt); border-bottom-color: var(--ind); }
+.tab-btn:hover:not(.active) { color: var(--mut2); }
+
+/* ── PANELS ───────────────────────────────────────────────── */
+.panel { display: none; flex: 1; }
+.panel.active { display: block; }
+
+/* ═══════════════════════════════════════════════════════════
+   DOC PANEL
+═══════════════════════════════════════════════════════════ */
+.doc-panel {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 52px 32px 96px;
+  width: 100%;
+}
+
+/* hero */
+.game-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(52px,9vw,88px);
+  font-weight: 700;
+  line-height: .95;
+  letter-spacing: -.02em;
+}
+.game-title em { color: var(--ind); font-style: normal; }
+.tagline {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--mut2);
+  margin-top: 12px;
+}
+.doc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--bord);
+}
+.chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  background: var(--surf2);
+  border: 1px solid var(--bord);
+  color: var(--mut2);
+}
+.chip strong { color: var(--teal); font-weight: 500; }
+
+/* phase blocks */
+.phase-block { margin-top: 60px; }
+.phase-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ind);
+  margin-bottom: 8px;
+}
+.phase-h {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.rule { width: 36px; height: 2px; background: var(--ind); margin: 14px 0 32px; }
+
+/* section label used above tables/lists */
+.sec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mut);
+  margin-bottom: 14px;
+}
+
+/* core loop */
+.loop-row {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 32px;
+}
+.loop-step {
+  flex: 1;
+  min-width: 100px;
+  background: var(--surf2);
+  border: 1px solid var(--bord);
+  padding: 18px 14px;
+  text-align: center;
+}
+.loop-step + .loop-step { border-left: none; }
+.ls-n { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--mut); display: block; margin-bottom: 8px; }
+.ls-ico { font-size: 24px; display: block; margin-bottom: 6px; }
+.ls-name { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.ls-sub { font-size: 11px; color: var(--mut2); margin-top: 5px; line-height: 1.45; }
+.loop-step.risk { border-color: var(--crim); }
+.loop-step.risk .ls-name { color: var(--crim); }
+
+/* 2-col grid */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 600px) { .g2 { grid-template-columns: 1fr; } }
+
+/* cards */
+.card {
+  background: var(--surf2);
+  border: 1px solid var(--bord);
+  padding: 20px;
+}
+.card-h {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mut);
+  margin-bottom: 12px;
+}
+.card p { font-size: 13.5px; line-height: 1.65; color: var(--mut2); }
+.card p strong { color: var(--txt); font-weight: 500; }
+.card.il  { border-left: 3px solid var(--ind); }
+.card.cl  { border-left: 3px solid var(--crim); }
+.card.tl  { border-left: 3px solid var(--teal); }
+.card.al  { border-left: 3px solid var(--amber); }
+
+/* questions */
+.qs { display: flex; flex-direction: column; gap: 10px; }
+.q {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--surf2);
+  border: 1px solid var(--bord);
+  padding: 16px 18px;
+}
+.q-n {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ind);
+  min-width: 22px;
+  line-height: 1;
+  padding-top: 2px;
+}
+.q-body { flex: 1; }
+.q-text { font-size: 14px; color: var(--txt); line-height: 1.5; }
+.q-why { font-size: 12px; color: var(--mut); margin-top: 5px; line-height: 1.4; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mut);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bord);
+  white-space: nowrap;
+  font-weight: 500;
+}
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--bord);
+  color: var(--mut2);
+  vertical-align: top;
+  line-height: 1.55;
+}
+td strong { color: var(--txt); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #ffffff03; }
+
+.badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.bi  { background:#4f46e514; color:#818cf8; border:1px solid #4f46e535; }
+.bc  { background:#e8375a14; color:#f87171; border:1px solid #e8375a35; }
+.bt  { background:#22d3a514; color:#2dd4bf; border:1px solid #22d3a535; }
+.ba  { background:#f5a62314; color:#fbbf24; border:1px solid #f5a62335; }
+
+/* longevity */
+.score-box {
+  background: var(--surf2);
+  border: 1px solid var(--bord);
+  padding: 36px;
+  text-align: center;
+  margin-top: 24px;
+}
+.score-big {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 80px;
+  font-weight: 700;
+  color: var(--teal);
+  line-height: 1;
+}
+.score-denom { font-size: 36px; color: var(--mut); }
+.score-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--mut);
+  margin-top: 8px;
+}
+.score-note { font-size: 13px; color: var(--mut2); line-height: 1.65; margin-top: 14px; max-width: 480px; margin-inline: auto; }
+
+/* chosen mechanic */
+.chosen-box {
+  background: linear-gradient(120deg, #e8375a0d, #4f46e50d);
+  border: 1px solid var(--crim);
+  padding: 28px;
+  margin-top: 24px;
+}
+.chosen-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--crim);
+  margin-bottom: 8px;
+}
+.chosen-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+}
+.chosen-body { font-size: 13.5px; color: var(--mut2); line-height: 1.65; margin-top: 10px; }
+.chosen-body strong { color: var(--txt); font-weight: 500; }
+
+/* play CTA */
+.cta-wrap { margin-top: 36px; }
+.cta-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--ind);
+  color: #fff;
+  border: none;
+  padding: 16px 40px;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.cta-btn:hover { background: #6366f1; }
+.cta-btn:active { transform: scale(.98); }
+
+/* ═══════════════════════════════════════════════════════════
+   GAME PANEL
+═══════════════════════════════════════════════════════════ */
+.game-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 48px;
+}
+.game-wrap { position: relative; }
+
+#gc {
+  display: block;
+  border: 1px solid var(--bord);
+  cursor: crosshair;
+  image-rendering: pixelated;
+  max-width: 100%;
+}
+
+.game-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surf);
+  border: 1px solid var(--bord);
+  border-top: none;
+  padding: 8px 16px;
+  width: 600px;
+  max-width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--mut2);
+}
+.hud-score span { color: var(--teal); font-weight: 500; }
+
+.game-tip {
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--mut);
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="doc">📋 Design Doc</button>
+  <button class="tab-btn" data-tab="game">🎮 Jogar Protótipo</button>
+</nav>
+
+<!-- ══════════════════════════ DOC PANEL ══════════════════════ -->
+<div class="panel active" id="tab-doc">
+<div class="doc-panel">
+
+  <header>
+    <h1 class="game-title">WARP<br><em>DUELS</em></h1>
+    <p class="tagline">Arena Shooter · Risco × Recompensa · Mobile Competitivo</p>
+    <div class="doc-chips">
+      <span class="chip">Gênero <strong>Top-Down Arena</strong></span>
+      <span class="chip">Ref <strong>Brawl Stars + Clash Royale</strong></span>
+      <span class="chip">Sessão <strong>5–8 min</strong></span>
+      <span class="chip">Plataforma <strong>Mobile · Web</strong></span>
+      <span class="chip">Status <strong>Protótipo v0.1</strong></span>
+      <span class="chip">Mecânica central <strong>Blood Mana</strong></span>
+    </div>
+  </header>
+
+  <!-- ═══ FASE 1 ════════════════════════════════════════════ -->
+  <div class="phase-block">
+    <p class="phase-eyebrow">Fase 1 · Pitch</p>
+    <h2 class="phase-h">Conceito, Público e Riscos</h2>
+    <div class="rule"></div>
+
+    <p class="sec-label">Core Loop — o que acontece nos primeiros 5 segundos</p>
+    <div class="loop-row">
+      <div class="loop-step">
+        <span class="ls-n">01</span>
+        <span class="ls-ico">🏟️</span>
+        <span class="ls-name">Entrar</span>
+        <p class="ls-sub">Arena carrega em &lt;2s. Nenhuma tela de loading.</p>
+      </div>
+      <div class="loop-step">
+        <span class="ls-n">02</span>
+        <span class="ls-ico">🕹️</span>
+        <span class="ls-name">Mover</span>
+        <p class="ls-sub">WASD ou joystick. Resposta imediata.</p>
+      </div>
+      <div class="loop-step">
+        <span class="ls-n">03</span>
+        <span class="ls-ico">🎯</span>
+        <span class="ls-name">Mirar</span>
+        <p class="ls-sub">Mouse ou arraste. Inimigo mais próximo visível.</p>
+      </div>
+      <div class="loop-step">
+        <span class="ls-n">04</span>
+        <span class="ls-ico">💥</span>
+        <span class="ls-name">Atirar</span>
+        <p class="ls-sub">Click / tap. Feedback sonoro e visual imediato.</p>
+      </div>
+      <div class="loop-step risk">
+        <span class="ls-n">05</span>
+        <span class="ls-ico">🩸</span>
+        <span class="ls-name">Arriscar</span>
+        <p class="ls-sub">Blood Mana: sacrifique HP para um burst devastador.</p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card il">
+        <p class="card-h">Proposta Única</p>
+        <p><strong>Blood Mana</strong> — seu HP é moeda de habilidade. Nenhum jogo da Supercell usa vida como recurso ativo de combate. Quanto mais perto da morte, mais tentador e mais poderoso o burst. Cria um dilema constante: jogo seguro ou vou a zero e arrisco tudo?</p>
+      </div>
+      <div class="card tl">
+        <p class="card-h">Público-alvo</p>
+        <p><strong>14–24 anos</strong> · Brasil, México, SEA.<br>Jogadores de Brawl Stars que querem mais tática. Sessões de 5–8 min no transporte. Competitivos casuais que odeiam P2W.<br><strong>Hábito:</strong> 3–5 sessões/dia, compartilham clips dramáticos.</p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card al">
+        <p class="card-h">3 Métricas de Diversão</p>
+        <p><strong>DPM (Decisões/min):</strong> alvo 8–12. Abaixo = tédio. Acima = ansiedade.<br><br><strong>Taxa de Reviravolta:</strong> % de partidas onde o perdedor vira vencedor. Meta: 35%.<br><br><strong>Clareza de Progressão:</strong> jogador sente evolução a cada 3 partidas, não 30.</p>
+      </div>
+      <div class="card cl">
+        <p class="card-h">5 Riscos de Cancelamento — sem piedade</p>
+        <p><strong>1.</strong> Morte nos primeiros 8s sem entender por quê — raiva sem compreensão.<br>
+        <strong>2.</strong> Matchmaking P2W aparente, mesmo que não seja de verdade.<br>
+        <strong>3.</strong> Sessão que ultrapassa 10 min em mobile = abandono.<br>
+        <strong>4.</strong> Meta estagnada sem conteúdo novo a cada 6 semanas.<br>
+        <strong>5.</strong> Monetização agressiva antes do hook estar formado.</p>
+      </div>
+    </div>
+
+    <p class="sec-label" style="margin-top:8px">3 Perguntas Críticas Antes de Prosseguir</p>
+    <div class="qs">
+      <div class="q">
+        <span class="q-n">1</span>
+        <div class="q-body">
+          <p class="q-text">O formato é <strong>1v1 rápido (3 min)</strong> ou <strong>3v3 médio (8 min)?</strong></p>
+          <p class="q-why">Define toda a arquitetura de matchmaking, monetização e retenção de curto prazo.</p>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-n">2</span>
+        <div class="q-body">
+          <p class="q-text">Progressão do herói: <strong>puramente cosmética</strong> (CS:GO) ou <strong>afeta stats</strong> (Clash Royale)?</p>
+          <p class="q-why">Decisão binária que define LTV vs. churn de jogadores casuais. Não existe meio-termo viável.</p>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-n">3</span>
+        <div class="q-body">
+          <p class="q-text">Blood Mana é a <strong>única mecânica de risco</strong> ou há um sistema de cartas complementar?</p>
+          <p class="q-why">Adicionar cartas aumenta profundidade mas eleva curva de aprendizado em ~40%. Produção 2× mais cara.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FASE 2 ════════════════════════════════════════════ -->
+  <div class="phase-block">
+    <p class="phase-eyebrow">Fase 2 · Análise de Especialistas</p>
+    <h2 class="phase-h">Mecanicista · Economista · Playtester</h2>
+    <div class="rule"></div>
+
+    <p class="sec-label">⚙️ Mecanicista — Árvore de Progressão (5 Upgrades)</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nível</th>
+            <th>Habilidade</th>
+            <th>Efeito base</th>
+            <th>Upgrade desbloqueado</th>
+            <th>Custo mana</th>
+            <th>Classe</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Tiro Básico</strong></td>
+            <td>Projétil direto, 1 dmg</td>
+            <td>Início — sem custo</td>
+            <td><span class="badge bt">0</span></td>
+            <td><span class="badge bi">Ativo</span></td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Blood Mana</strong></td>
+            <td>Burst 8× projéteis, 3 dmg/bala, −25 HP</td>
+            <td>Cura 5 HP por inimigo morto no burst</td>
+            <td><span class="badge bc">30</span></td>
+            <td><span class="badge bc">Risco</span></td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Warp Dash</strong></td>
+            <td>Teleporte curto (~80px) na direção do mouse</td>
+            <td>Rastro de dano elemental no caminho</td>
+            <td><span class="badge ba">45</span></td>
+            <td><span class="badge bi">Mobilidade</span></td>
+          </tr>
+          <tr>
+            <td><strong>4</strong></td>
+            <td><strong>Escudo Espiral</strong></td>
+            <td>3 orbs giram ao redor por 4s, bloqueiam balas</td>
+            <td>Orbs explodem ao colidir com inimigo</td>
+            <td><span class="badge bi">60</span></td>
+            <td><span class="badge bi">Defensivo</span></td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td><strong>Colapso Dimensional</strong></td>
+            <td>Cria rift: todas as balas convergem ao centro</td>
+            <td>Rift dura +2s e suga inimigos para dentro</td>
+            <td><span class="badge bc">100</span></td>
+            <td><span class="badge bc">Ultimate</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="sec-label">💰 Economista — Primeiros 7 Dias</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Dia</th>
+            <th>Grátis (⭐ Estrelas)</th>
+            <th>Evento</th>
+            <th>Premium (💎 Gemas)</th>
+            <th>Tensão psicológica</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td>150 ⭐ (tutorial)</td>
+            <td>Skin "Recrutado" desbloqueada</td>
+            <td>—</td>
+            <td>Generosidade inicial — confiança</td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td>80 ⭐ (vitórias)</td>
+            <td>Bônus diário ativado</td>
+            <td>Oferta: 200💎 por R$4,99</td>
+            <td>Preço âncora baixo — primeiro contato</td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td>60 ⭐</td>
+            <td>Desafio diário desbloqueado</td>
+            <td>—</td>
+            <td>Loop de hábito formado</td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td>120 ⭐</td>
+            <td>Passe semanal disponível</td>
+            <td>Passe: 800💎 por R$14,99</td>
+            <td>Percepção de valor vs. grind</td>
+          </tr>
+          <tr>
+            <td><strong>7</strong></td>
+            <td>200 ⭐ (retenção D7)</td>
+            <td>Skin épica cosmética desbloqueada</td>
+            <td>Pacote exclusivo D7: 2000💎</td>
+            <td>FOMO de quem adiou a compra</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-bottom:28px">
+      <p><strong style="color:var(--teal)">Regra de ouro:</strong> todo conteúdo que afeta stats é acessível por moeda gratuita em &lt;3 semanas de jogo diário. Premium compra aparência e conveniência — XP boost de 1.3×, nunca 2×. Sem isso, o jogo morre em 6 meses.</p>
+    </div>
+
+    <p class="sec-label">🧪 Playtester Crítico — 5 Fun-Killers (por que jogadores desinstalam)</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Momento</th>
+            <th>Por que desinstala</th>
+            <th>Janela</th>
+            <th>Correção</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Morte em 8s sem entender</strong></td>
+            <td>Frustração sem compreensão é raiva pura. Não é desafio — é confusão.</td>
+            <td><span class="badge bc">D1 · 2 min</span></td>
+            <td>Slow-motion na 1ª morte + tooltip do inimigo responsável</td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Nível 2 vs. Nível 40</strong></td>
+            <td>Matchmaking ruim cria percepção de P2W mesmo que não seja. Jogador conclui "é pago".</td>
+            <td><span class="badge bc">D2–D4</span></td>
+            <td>Bracket protegido para &lt;50 partidas, sem exceções</td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Blood Mana sem matar ninguém</strong></td>
+            <td>Ativa a mecânica de risco na hora errada, perde 25 HP, não elimina ninguém. "Inútil."</td>
+            <td><span class="badge ba">D1–D7</span></td>
+            <td>Indicador visual de "alcance efetivo" + feedback de dano mais exagerado</td>
+          </tr>
+          <tr>
+            <td><strong>4</strong></td>
+            <td><strong>5 derrotas seguidas na Wave 7+</strong></td>
+            <td>Dificuldade sem alívio = sensação de progresso zero. "O jogo não é para mim."</td>
+            <td><span class="badge ba">Semana 2</span></td>
+            <td>Victory lap a cada 5 ondas — inimigos mais fracos + recompensa cosmética garantida</td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td><strong>Notificação às 23h "seu passe expira"</strong></td>
+            <td>FOMO monetário fora de hora cria associação negativa. Desinstala por manipulação, não por enjoo do jogo.</td>
+            <td><span class="badge bc">Retenção</span></td>
+            <td>Notificações apenas 9h–21h · linguagem de convite, nunca de urgência</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="score-box">
+      <div class="score-big">7.5<span class="score-denom">/10</span></div>
+      <p class="score-lbl">Potencial de Longevidade · Estimativa &gt;5 anos</p>
+      <p class="score-note">Blood Mana é genuinamente diferente e gera narrativas emergentes filmáveis. O risco real: dependência de conteúdo regular (novo herói a cada 6 semanas mínimo) e execução perfeita do matchmaking. Com meta saudável e updates consistentes: potencial de 7+ anos. Sem isso, estagna em 18 meses.</p>
+    </div>
+  </div>
+
+  <!-- ═══ FASE 3 ════════════════════════════════════════════ -->
+  <div class="phase-block">
+    <p class="phase-eyebrow">Fase 3 · Protótipo</p>
+    <h2 class="phase-h">Mecânicas de Risco e Código Jogável</h2>
+    <div class="rule"></div>
+
+    <p class="sec-label">Comparativo — 3 Opções de Mecânica de Risco</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mecânica</th>
+            <th>Como funciona</th>
+            <th>Prós</th>
+            <th>Contras</th>
+            <th>Nota</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Rift Bet</strong></td>
+            <td>Gaste energia acumulada para superpoder; morrer antes de usar = perde tudo</td>
+            <td>Cria antecipação tensa</td>
+            <td>Punição "passiva" — jogador perde por lag, não erro. Injusto.</td>
+            <td><span class="badge ba">6/10</span></td>
+          </tr>
+          <tr style="background:#e8375a07">
+            <td><strong>Blood Mana ✓</strong></td>
+            <td>−25 HP para burst de 8 balas poderosas (3× dmg). Ativação manual.</td>
+            <td>Dilema constante, intuitivo, gera reversões dramáticas, mobile-friendly</td>
+            <td>Precisa de tutorialização cuidadosa</td>
+            <td><span class="badge bc">9/10</span></td>
+          </tr>
+          <tr>
+            <td><strong>Double or Nothing</strong></td>
+            <td>Após cada kill: aceitar ou recusar dobrar pontos apostando a vida</td>
+            <td>Tensão pós-kill única, decisão explícita</td>
+            <td>Interrompe o fluxo com UI de decisão. Impossível balancear em PvP.</td>
+            <td><span class="badge bi">7/10</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chosen-box">
+      <p class="chosen-eyebrow">✓ Escolha para o Protótipo</p>
+      <p class="chosen-title">Blood Mana</p>
+      <p class="chosen-body">Vence por ser <strong>intuitivo sem ler manual</strong> ("apertar SPACE custa vida mas destrói tudo"), criar dilemas <strong>a cada 5–10 segundos</strong> de jogo, funcionar perfeitamente em <strong>mobile com um botão dedicado</strong>, e gerar os momentos de reviravolta que jogadores filmam e compartilham. O risco é pessoal e imediato — não depende de evento externo, lag ou sorte.</p>
+    </div>
+
+    <div class="cta-wrap">
+      <button class="cta-btn" onclick="switchToGame()">🎮 Jogar Protótipo →</button>
+    </div>
+
+    <div class="g2" style="margin-top:36px">
+      <div class="card il">
+        <p class="card-h">Decisões de Balanceamento</p>
+        <p><strong>Chaser (HP 2):</strong> morre rápido para não punir iniciantes por corrida de um inimigo.<br><br><strong>Sniper (distância 215px):</strong> calibrado para forçar movimento sem deixar o jogador encurralado.<br><br><strong>Tank (HP 6, vel. 50):</strong> lento o suficiente para dar opção de fuga; poderoso o suficiente para forçar decisão de Blood Mana.</p>
+      </div>
+      <div class="card tl">
+        <p class="card-h">3 Iterações — Próxima Versão</p>
+        <p><strong>v0.2 — PvP Assíncrono:</strong> gravação de run de fantasmas de outros jogadores para comparação.<br><br><strong>v0.3 — Warp Dash:</strong> adicionar teleporte como segunda habilidade, criar trade-offs de posicionamento.<br><br><strong>v1.0 — Meta Sazonal:</strong> rotação semanal de enemy compositions + ranking global por wave.</p>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /doc-panel -->
+</div><!-- /tab-doc -->
+
+<!-- ══════════════════════════ GAME PANEL ══════════════════════ -->
+<div class="panel" id="tab-game">
+<div class="game-panel">
+  <div class="game-wrap">
+    <canvas id="gc" width="600" height="556"></canvas>
+    <div class="game-hud">
+      <span id="h-lives">❤️❤️❤️</span>
+      <span id="h-wave">WAVE 1</span>
+      <span class="hud-score">SCORE <span id="h-score">0</span></span>
+      <span id="h-mana" style="font-size:11px">🔮 MANA 100</span>
+    </div>
+  </div>
+  <p class="game-tip">WASD · mover &nbsp;|&nbsp; MOUSE + CLICK · atirar &nbsp;|&nbsp; SPACE · Blood Mana (−25 HP, burst 8×)</p>
+</div>
+</div>
+
+<!-- ══════════════════════════ SCRIPTS ════════════════════════ -->
+<script>
+// ── TAB SWITCH ──────────────────────────────────────────────
+function switchToGame() {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="game"]').classList.add('active');
+  document.getElementById('tab-game').classList.add('active');
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// GAME ENGINE
+// ══════════════════════════════════════════════════════════════
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+const W = 600, H = 556;
+
+// ── ENEMY CONFIG ────────────────────────────────────────────
+const ECFG = {
+  CHASER: { col:'#e84855', hi:'#ff9aa2', hp:2, spd:128, r:13, dmg:1, pts:10, si:0         },
+  SNIPER: { col:'#f5a623', hi:'#ffd280', hp:2, spd:62,  r:12, dmg:1, pts:20, si:2.3, pd:215 },
+  TANK:   { col:'#9b59b6', hi:'#c39bd3', hp:6, spd:50,  r:22, dmg:2, pts:35, si:0         }
+};
+
+// ── STATE ────────────────────────────────────────────────────
+let gs = 'menu'; // menu | play | clear | over
+let score, lives, wave, mana, hp;
+let player, bullets, eBullets, enemies, particles;
+let keys={}, mouse={x:300,y:278};
+let lastT=0, waveT=0, clearT=0;
+let spawnQ=[], spawnDone=false;
+let shootCD=0, invT=0, flashT=0;
+
+function initGame() {
+  score=0; lives=3; wave=1; mana=100; hp=100;
+  player={x:W/2, y:H/2, ang:0};
+  bullets=[]; eBullets=[]; enemies=[]; particles=[];
+  spawnDone=false; shootCD=0; invT=0; flashT=0;
+  buildWave(1);
+  gs='play';
+}
+
+// ── WAVE ─────────────────────────────────────────────────────
+function buildWave(w) {
+  spawnQ=[];
+  const n = Math.min(4 + w*2, 20);
+  for (let i=0;i<n;i++) {
+    const r=Math.random();
+    let type;
+    if (w<=2)      type = r<.75 ? 'CHASER' : 'SNIPER';
+    else if (w<=4) type = r<.45 ? 'CHASER' : r<.78 ? 'SNIPER' : 'TANK';
+    else           type = r<.30 ? 'CHASER' : r<.58 ? 'SNIPER' : 'TANK';
+    spawnQ.push({type, delay: 0.4 + i*0.65});
+  }
+  waveT=0; spawnDone=false;
+}
+
+function spawnEnemy(type) {
+  const side=Math.floor(Math.random()*4);
+  let x,y;
+  if (side===0) {x=Math.random()*W; y=-28;}
+  else if (side===1) {x=W+28; y=Math.random()*H;}
+  else if (side===2) {x=Math.random()*W; y=H+28;}
+  else {x=-28; y=Math.random()*H;}
+  const c=ECFG[type];
+  enemies.push({type,x,y,hp:c.hp,mhp:c.hp,sT:0,
+    spd:c.spd,r:c.r,col:c.col,hi:c.hi,
+    dmg:c.dmg,pts:c.pts,si:c.si,pd:c.pd||0});
+}
+
+// ── PARTICLES ───────────────────────────────────────────────
+function burst(x,y,col,n,fast) {
+  for (let i=0;i<n;i++) {
+    const a=Math.random()*Math.PI*2, s=35+Math.random()*(fast?175:100);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      life:0.45+Math.random()*0.5,col,r:1.5+Math.random()*3});
+  }
+}
+
+// ── UPDATE ───────────────────────────────────────────────────
+function update(dt) {
+  if (gs==='menu'||gs==='over') return;
+  if (gs==='clear') {
+    clearT-=dt;
+    if (clearT<=0) { wave++; buildWave(wave); gs='play'; }
+    updParticles(dt); return;
+  }
+
+  // move player
+  const mx=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
+  const my=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);
+  if (mx||my) {
+    const ml=Math.hypot(mx,my);
+    player.x=Math.max(14,Math.min(W-14,player.x+mx/ml*190*dt));
+    player.y=Math.max(14,Math.min(H-14,player.y+my/ml*190*dt));
+  }
+  player.ang=Math.atan2(mouse.y-player.y,mouse.x-player.x);
+
+  if (shootCD>0) shootCD-=dt;
+  if (invT>0) invT-=dt;
+  if (flashT>0) flashT-=dt;
+  mana=Math.min(100,mana+14*dt);
+
+  // spawn queue
+  if (spawnQ.length&&!spawnDone) {
+    waveT+=dt;
+    while (spawnQ.length&&waveT>=spawnQ[0].delay) { spawnEnemy(spawnQ[0].type); spawnQ.shift(); }
+    if (!spawnQ.length) spawnDone=true;
+  }
+
+  // wave clear
+  if (spawnDone&&enemies.length===0) {
+    score+=wave*50;
+    burst(W/2,H/2,'#22d3a5',32,true);
+    clearT=1.8; gs='clear'; updHUD(); return;
+  }
+
+  // enemies
+  for (let i=enemies.length-1;i>=0;i--) {
+    const e=enemies[i];
+    const dx=player.x-e.x, dy=player.y-e.y, d=Math.hypot(dx,dy)||1;
+
+    if (e.type==='CHASER') {
+      e.x+=dx/d*e.spd*dt; e.y+=dy/d*e.spd*dt;
+      if (d<14+e.r&&invT<=0) {
+        hit(e.dmg); burst(e.x,e.y,e.col,12,false);
+        enemies.splice(i,1); continue;
+      }
+    } else if (e.type==='SNIPER') {
+      if (d<e.pd-38) { e.x-=dx/d*e.spd*dt; e.y-=dy/d*e.spd*dt; }
+      else if (d>e.pd+38) { e.x+=dx/d*e.spd*0.55*dt; e.y+=dy/d*e.spd*0.55*dt; }
+      else { e.x+=(-dy/d)*e.spd*0.4*dt; e.y+=(dx/d)*e.spd*0.4*dt; }
+      e.sT-=dt;
+      if (e.sT<=0&&d<440) {
+        e.sT=e.si*(0.8+Math.random()*0.4);
+        const a=Math.atan2(dy,dx)+(Math.random()-.5)*0.28;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*205,vy:Math.sin(a)*205,life:2,dmg:1,r:5,col:'#f5a623'});
+      }
+    } else { // TANK
+      e.x+=dx/d*e.spd*dt; e.y+=dy/d*e.spd*dt;
+      if (d<14+e.r&&invT<=0) { hit(e.dmg); invT=0.95; }
+    }
+  }
+
+  // player bullets
+  for (let i=bullets.length-1;i>=0;i--) {
+    const b=bullets[i];
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if (b.life<=0||b.x<-30||b.x>W+30||b.y<-30||b.y>H+30) { bullets.splice(i,1); continue; }
+    let hit=false;
+    for (let j=enemies.length-1;j>=0;j--) {
+      const e=enemies[j];
+      if (!hit&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+b.r) {
+        e.hp-=b.pow; burst(b.x,b.y,'#ffffff',5,false);
+        bullets.splice(i,1); hit=true;
+        if (e.hp<=0) { score+=e.pts; burst(e.x,e.y,e.col,18,false); enemies.splice(j,1); }
+        break;
+      }
+    }
+  }
+
+  // enemy bullets
+  for (let i=eBullets.length-1;i>=0;i--) {
+    const b=eBullets[i];
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if (b.life<=0||b.x<-30||b.x>W+30||b.y<-30||b.y>H+30) { eBullets.splice(i,1); continue; }
+    if (invT<=0&&Math.hypot(b.x-player.x,b.y-player.y)<14+b.r) {
+      hit(b.dmg); burst(b.x,b.y,'#ff6655',8,false); eBullets.splice(i,1);
+    }
+  }
+
+  updParticles(dt);
+  updHUD();
+}
+
+function updParticles(dt) {
+  for (let i=particles.length-1;i>=0;i--) {
+    const p=particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt;
+    p.vx*=0.87; p.vy*=0.87;
+    p.life-=dt;
+    if (p.life<=0) particles.splice(i,1);
+  }
+}
+
+function hit(dmg) {
+  if (invT>0) return;
+  hp-=dmg*22; invT=0.5; flashT=0.1;
+  if (hp<=0) {
+    hp=0; lives--;
+    if (lives<=0) { gs='over'; updHUD(); }
+    else { hp=100; invT=2.5; burst(player.x,player.y,'#ff2244',22,true); }
+  }
+}
+
+function bloodMana() {
+  if (mana<30||hp<=25) return;
+  mana-=30; hp-=25; invT=0.1;
+  for (let i=0;i<8;i++) {
+    const a=(i/8)*Math.PI*2;
+    bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*405,vy:Math.sin(a)*405,life:1.1,pow:3,r:8,blood:true});
+  }
+  burst(player.x,player.y,'#ff44aa',26,true);
+  flashT=0.05;
+}
+
+// ── DRAW ─────────────────────────────────────────────────────
+function draw() {
+  const fv=flashT>0?Math.min(flashT*6,0.22):0;
+  ctx.fillStyle=fv>0?`rgba(190,10,30,${fv})`:'#07071a';
+  ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#0d0d26'; ctx.lineWidth=1;
+  for (let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for (let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  if (gs==='menu') { drawMenu(); return; }
+  if (gs==='over') { drawOver(); return; }
+
+  // particles
+  for (const p of particles) {
+    const al=Math.max(0,p.life);
+    ctx.globalAlpha=Math.min(1,al*1.5);
+    ctx.fillStyle=p.col;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  // enemy bullets
+  for (const b of eBullets) {
+    ctx.fillStyle=b.col;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff4';ctx.beginPath();ctx.arc(b.x,b.y,b.r*.4,0,Math.PI*2);ctx.fill();
+  }
+
+  // player bullets
+  for (const b of bullets) {
+    ctx.shadowBlur=b.blood?18:8;
+    ctx.shadowColor=b.blood?'#ff44aa':'#4f46e5';
+    ctx.fillStyle=b.blood?'#ff44aa':'#818cf8';
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+  }
+  ctx.shadowBlur=0;
+
+  // enemies
+  for (const e of enemies) {
+    ctx.shadowBlur=10; ctx.shadowColor=e.col;
+    if (e.type==='CHASER') {
+      ctx.fillStyle=e.col;ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=e.hi;ctx.beginPath();ctx.arc(e.x-2,e.y-3,e.r*.4,0,Math.PI*2);ctx.fill();
+    } else if (e.type==='SNIPER') {
+      ctx.save();ctx.translate(e.x,e.y);ctx.rotate(Math.PI/4);
+      ctx.fillStyle=e.col;ctx.fillRect(-e.r*.78,-e.r*.78,e.r*1.56,e.r*1.56);
+      ctx.fillStyle=e.hi;ctx.fillRect(-e.r*.3,-e.r*.3,e.r*.6,e.r*.6);
+      ctx.restore();
+    } else {
+      hexPath(e.x,e.y,e.r);ctx.fillStyle=e.col;ctx.fill();
+      hexPath(e.x,e.y,e.r*.52);ctx.fillStyle=e.hi;ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    // hp bar
+    const bw=e.r*2.4;
+    ctx.fillStyle='#0a0a18';ctx.fillRect(e.x-bw/2,e.y-e.r-11,bw,4);
+    ctx.fillStyle=e.hp/e.mhp>.5?'#22d3a5':'#e84855';
+    ctx.fillRect(e.x-bw/2,e.y-e.r-11,bw*(e.hp/e.mhp),4);
+  }
+
+  // player
+  if (invT<=0||Math.floor(invT*9)%2===0) {
+    ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.ang);
+    ctx.shadowBlur=18; ctx.shadowColor='#4f46e5';
+    ctx.fillStyle='#312e81';ctx.fillRect(-14,-14,28,28);
+    ctx.fillStyle='#818cf8';ctx.fillRect(-9,-9,18,18);
+    ctx.fillStyle='#c7d2fe';ctx.fillRect(-4,-4,8,8);
+    ctx.fillStyle='#1e1b6e';ctx.fillRect(10,-3,16,6);
+    ctx.shadowBlur=0;ctx.restore();
+  }
+
+  // HP bar
+  ctx.fillStyle='#0a0a18';ctx.fillRect(10,H-26,130,12);
+  ctx.fillStyle=hp>60?'#22d3a5':hp>30?'#f5a623':'#e84855';
+  ctx.fillRect(10,H-26,130*(hp/100),12);
+  ctx.strokeStyle='#1c1c3c';ctx.lineWidth=1;ctx.strokeRect(10,H-26,130,12);
+  ctx.fillStyle='#e8e8ff';ctx.font='9px "JetBrains Mono",monospace';ctx.textAlign='left';
+  ctx.fillText('HP '+hp,14,H-17);
+
+  // Mana bar
+  ctx.fillStyle='#0a0a18';ctx.fillRect(150,H-26,90,12);
+  ctx.fillStyle='#6d28d9';ctx.fillRect(150,H-26,90*(mana/100),12);
+  ctx.strokeRect(150,H-26,90,12);
+  ctx.fillStyle='#e8e8ff';ctx.fillText('MN '+Math.floor(mana),154,H-17);
+
+  // wave clear overlay
+  if (gs==='clear') {
+    const a=Math.min(clearT*1.5,0.88);
+    ctx.globalAlpha=a;
+    ctx.fillStyle='#22d3a5';
+    ctx.font='bold 34px "Rajdhani",sans-serif';ctx.textAlign='center';
+    ctx.fillText('WAVE CLEAR!',W/2,H/2-12);
+    ctx.fillStyle='#e8e8ff';ctx.font='17px "Rajdhani",sans-serif';
+    ctx.fillText('+'+wave*50+' PONTOS',W/2,H/2+22);
+    ctx.globalAlpha=1;
+  }
+}
+
+function hexPath(cx,cy,r) {
+  ctx.beginPath();
+  for (let i=0;i<6;i++) {
+    const a=(i/6)*Math.PI*2-Math.PI/6;
+    i===0?ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)
+         :ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+  }
+  ctx.closePath();
+}
+
+function drawMenu() {
+  // title
+  ctx.shadowBlur=30;ctx.shadowColor='#4f46e5';
+  ctx.fillStyle='#818cf8';ctx.font='bold 64px "Rajdhani",sans-serif';ctx.textAlign='center';
+  ctx.fillText('WARP DUELS',W/2,105);ctx.shadowBlur=0;
+  ctx.fillStyle='#60608a';ctx.font='13px "Rajdhani",sans-serif';
+  ctx.fillText('PROTÓTIPO v0.1  ·  Blood Mana Edition',W/2,134);
+
+  // enemy legend
+  const leg=[
+    {type:'CHASER', x:W/2-148, y:215, desc:'Rápido · Corpo a corpo · 2 HP · 10 pts'},
+    {type:'SNIPER', x:W/2,     y:215, desc:'Mantém distância · Atirador · 2 HP · 20 pts'},
+    {type:'TANK',   x:W/2+148, y:215, desc:'Lento · Alta vida · 6 HP · 35 pts'},
+  ];
+  for (const l of leg) {
+    const c=ECFG[l.type];
+    ctx.shadowBlur=10;ctx.shadowColor=c.col;
+    if (l.type==='CHASER') {
+      ctx.fillStyle=c.col;ctx.beginPath();ctx.arc(l.x,l.y,15,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=c.hi;ctx.beginPath();ctx.arc(l.x-2,l.y-3,6,0,Math.PI*2);ctx.fill();
+    } else if (l.type==='SNIPER') {
+      ctx.save();ctx.translate(l.x,l.y);ctx.rotate(Math.PI/4);
+      ctx.fillStyle=c.col;ctx.fillRect(-11,-11,22,22);
+      ctx.fillStyle=c.hi;ctx.fillRect(-4,-4,8,8);ctx.restore();
+    } else {
+      hexPath(l.x,l.y,17);ctx.fillStyle=c.col;ctx.fill();
+      hexPath(l.x,l.y,9);ctx.fillStyle=c.hi;ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#9090c0';ctx.font='11px "JetBrains Mono",monospace';
+    ctx.fillText(l.type,l.x,l.y+32);
+    ctx.fillStyle='#55556a';ctx.font='10px "JetBrains Mono",monospace';
+    ctx.fillText(l.desc,l.x,l.y+48);
+  }
+
+  ctx.fillStyle='#60608a';ctx.font='12px "JetBrains Mono",monospace';
+  ctx.fillText('WASD mover  ·  CLICK atirar  ·  SPACE blood mana',W/2,296);
+
+  // start
+  ctx.fillStyle='#4f46e5';rrect(W/2-88,318,176,50,4);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 22px "Rajdhani",sans-serif';
+  ctx.fillText('▶  JOGAR',W/2,351);
+  ctx.fillStyle='#55556a';ctx.font='10px "JetBrains Mono",monospace';
+  ctx.fillText('bônus de wave: wave × 50 pontos ao limpar',W/2,400);
+}
+
+function drawOver() {
+  ctx.shadowBlur=22;ctx.shadowColor='#e84855';
+  ctx.fillStyle='#e84855';ctx.font='bold 60px "Rajdhani",sans-serif';ctx.textAlign='center';
+  ctx.fillText('GAME OVER',W/2,158);ctx.shadowBlur=0;
+
+  ctx.fillStyle='#e8e8ff';ctx.font='24px "Rajdhani",sans-serif';
+  ctx.fillText('SCORE: '+score,W/2,208);
+  ctx.fillText('WAVE: '+wave,W/2,245);
+
+  let rat='😅 Novato';
+  if (score>=1000) rat='👑 SUPERCELL TIER';
+  else if (score>=600) rat='⚡ Lendário';
+  else if (score>=300) rat='🔥 Destruidor';
+  else if (score>=100) rat='😤 Lutador';
+  ctx.fillStyle='#f5a623';ctx.font='22px "Rajdhani",sans-serif';
+  ctx.fillText(rat,W/2,286);
+
+  ctx.fillStyle='#4f46e5';rrect(W/2-96,316,192,52,4);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 21px "Rajdhani",sans-serif';
+  ctx.fillText('↺  REINICIAR',W/2,350);
+}
+
+function rrect(x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+// ── HUD ──────────────────────────────────────────────────────
+function updHUD() {
+  document.getElementById('h-lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(Math.max(0,3-lives));
+  document.getElementById('h-wave').textContent='WAVE '+wave;
+  document.getElementById('h-score').textContent=score;
+  document.getElementById('h-mana').textContent='🔮 MANA '+Math.floor(mana);
+}
+
+// ── INPUT ─────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  keys[e.key.toLowerCase()]=true;
+  if (e.key===' '){e.preventDefault();if(gs==='play')bloodMana();}
+});
+document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)*(W/r.width);
+  mouse.y=(e.clientY-r.top)*(H/r.height);
+});
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const cx=(e.clientX-r.left)*(W/r.width), cy=(e.clientY-r.top)*(H/r.height);
+  if (gs==='menu'){if(cx>W/2-88&&cx<W/2+88&&cy>318&&cy<368)initGame();return;}
+  if (gs==='over'){if(cx>W/2-96&&cx<W/2+96&&cy>316&&cy<368)initGame();return;}
+  if (gs==='play'&&shootCD<=0){
+    const a=Math.atan2(mouse.y-player.y,mouse.x-player.x);
+    bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*330,vy:Math.sin(a)*330,life:1.3,pow:1,r:5});
+    shootCD=0.2;
+  }
+});
+
+// ── LOOP ──────────────────────────────────────────────────────
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05); lastT=ts;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts=>{lastT=ts;loop(ts);});
+</script>
+</body>
+</html>
