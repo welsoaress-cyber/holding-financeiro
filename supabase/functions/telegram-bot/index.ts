@@ -76,11 +76,12 @@ async function cmdResumo(chatId: number, sb: ReturnType<typeof createClient>): P
   const h = hoje()
   const mesAtual = h.slice(0, 7) // YYYY-MM
 
-  // Lançamentos do mês
-  const { data: lancs } = await sb
-    .from('lancamentos')
-    .select('dados')
-    .eq('dados->>inativo', 'false')
+  // Lançamentos do mês (inativo=false OU inativo ausente)
+  const [resLancAtivo, resLancNull] = await Promise.all([
+    sb.from('lancamentos').select('dados').eq('dados->>inativo', 'false'),
+    sb.from('lancamentos').select('dados').is('dados->>inativo', null),
+  ])
+  const lancs = [...(resLancAtivo.data || []), ...(resLancNull.data || [])]
 
   const receitas = (lancs || []).filter((l: any) => {
     const d = l.dados
@@ -99,11 +100,12 @@ async function cmdResumo(chatId: number, sb: ReturnType<typeof createClient>): P
   const totalDespesa = despesas.reduce((s: number, l: any) => s + parseFloat(String(l.dados?.valor || 0)), 0)
   const totalVencido = vencidos.reduce((s: number, l: any) => s + parseFloat(String(l.dados?.valor || 0)), 0)
 
-  // Clientes ativos
-  const { count: totalClientes } = await sb
-    .from('cli_clientes')
-    .select('id', { count: 'exact', head: true })
-    .eq('dados->>inativo', 'false')
+  // Clientes ativos (inativo=false OU inativo ausente)
+  const [resCliAtivo, resCliNull] = await Promise.all([
+    sb.from('cli_clientes').select('id', { count: 'exact', head: true }).eq('dados->>inativo', 'false'),
+    sb.from('cli_clientes').select('id', { count: 'exact', head: true }).is('dados->>inativo', null),
+  ])
+  const totalClientes = (resCliAtivo.count || 0) + (resCliNull.count || 0)
 
   const mes = mesAtual.split('-')
   const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mes[1]) - 1]
@@ -169,8 +171,11 @@ async function cmdClientes(chatId: number, sb: ReturnType<typeof createClient>):
   const h = hoje()
   const mesAtual = h.slice(0, 7)
 
-  const { count: ativos } = await sb.from('cli_clientes').select('id', { count: 'exact', head: true })
-    .eq('dados->>inativo', 'false')
+  const [resAtivo, resNulo] = await Promise.all([
+    sb.from('cli_clientes').select('id', { count: 'exact', head: true }).eq('dados->>inativo', 'false'),
+    sb.from('cli_clientes').select('id', { count: 'exact', head: true }).is('dados->>inativo', null),
+  ])
+  const ativos = (resAtivo.count || 0) + (resNulo.count || 0)
   const { count: total } = await sb.from('cli_clientes').select('id', { count: 'exact', head: true })
 
   return `👥 <b>Clientes</b>\n\n` +
