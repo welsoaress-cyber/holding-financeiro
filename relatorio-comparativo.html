@@ -512,11 +512,11 @@ const S = {
 // Column indices for "Dados Trat" (fallback when auto-detect fails)
 // Bruto = coluna AD = índice 29 (A=0, ..., Z=25, AA=26, AB=27, AC=28, AD=29)
 const C = {
-  nf:0, vpl:3, ctr:4, svc:5, cli:6, bruto:29,
+  nf:0, vpl:3, ctr:4, svc:5, cli:6, bruto:14, // Contrato Mensal base
   reaj:30, repasse:31, descFaltas:32, descEquip:33, descPremio:34,
   premio:35, he:36, prop:37, svcExtra:38, eqEsp:39,
   va:40, vr:41, vt:42, am:43, ao:44,
-  total:48,
+  total:29, // Total à faturar = coluna AD = índice 29
 };
 // CSV cols
 const CSV = { cli:0, ctr:7, vlrFixo:20 };
@@ -611,7 +611,7 @@ function detectCols(headers){
     ctr:      find(['contrato']),
     svc:      find(['serviço','servico']),
     cli:      find(['cliente']),
-    bruto:    find(['contrato mensal','valor contrato','vlr contrato','valor bruto','vlr bruto','bruto','valor base','vlr base']),
+    bruto:    find(['contrato mensal','valor contrato','vlr contrato','valor base','vlr base','ctr mensal']),
     reaj:     find(['reajuste']),
     repasse:  find(['nota de repasse','repasse']),
     descFaltas: find(['desconto faltas','desc. faltas','desconto\nfaltas']),
@@ -723,13 +723,13 @@ function matchAll(items, sysMap){
     const sv=item.num?sysEntry.contracts.get(item.num):null;
     item.sysBruto=sv??null;
     if(sv!=null){
-      item.status=Math.abs(item.bruto-sv)<=TOL?'ok':'diff';
+      item.status=Math.abs(item.totalFaturar-sv)<=TOL?'ok':'diff';
     } else {
       item.status='no-match';
       // Fallback: client has exactly one contract in sysMap → use total
       if(sysEntry.contracts.size===1){
         item.sysBruto=sysEntry.total;
-        item.status=Math.abs(item.bruto-sysEntry.total)<=TOL?'ok':'diff';
+        item.status=Math.abs(item.totalFaturar-sysEntry.total)<=TOL?'ok':'diff';
       }
     }
   }
@@ -808,7 +808,7 @@ function renderCard(item,num,total){
   const vplTag=item.vpl&&item.vpl!=='__UNKNOWN__'?tag('CLI',item.vpl):'';
   const ctrTag=tag('CTR',item.num);
 
-  const metaP=`<span class="c-metric" title="Bruto">Bruto ${fmtBRL(item.bruto)}</span>`;
+  const metaP=`<span class="c-metric" title="Total à Faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
   const metaT=`<span class="c-meta-sep">·</span><span class="c-metric" title="Total a faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
   const metaS=hasSys&&item.sysBruto!=null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Bruto no sistema">Sist. ${fmtBRL(item.sysBruto)}</span>`:'';
   const nfDisp=item.nf?`<span class="c-meta-sep">·</span><span class="c-metric" style="font-family:var(--mono);font-size:11px">NF ${esc(item.nf.split(',')[0])}${item.nf.includes(',')?'…':''}</span>`:'';
@@ -839,20 +839,20 @@ function renderItemBody(item,hasSys){
   const isDiff=st==='diff';
   let rows='';
 
-  // Bruto
+  // Total à Faturar (col. AD) — campo principal de comparação
   if(hasSys&&item.sysBruto!=null){
-    const delta=item.bruto-item.sysBruto;
+    const delta=item.totalFaturar-item.sysBruto;
     const deltaCls=Math.abs(delta)<=TOL?'muted':(delta>0?'diff-pos':'diff-neg');
     rows+=`<tr class="${isDiff?'row-diff':'row-ok'}">
-      <td class="lbl">Bruto <span style="font-weight:400;color:var(--ink-4)">(Ctr. Mensal)</span></td>
-      <td class="num">${fmtBRL(item.bruto)}</td>
+      <td class="lbl">Total à Faturar <span style="font-weight:400;color:var(--ink-4)">(col. AD)</span></td>
+      <td class="num">${fmtBRL(item.totalFaturar)}</td>
       <td class="num ${isDiff?'row-diff-val':''}">${fmtBRL(item.sysBruto)}</td>
       <td class="num ${deltaCls}">${Math.abs(delta)<=TOL?'R$ 0,00':fmtBRL(delta)}</td>
     </tr>`;
   } else {
     rows+=`<tr>
-      <td class="lbl">Bruto <span style="font-weight:400;color:var(--ink-4)">(Ctr. Mensal)</span></td>
-      <td class="num">${fmtBRL(item.bruto)}</td>
+      <td class="lbl">Total à Faturar <span style="font-weight:400;color:var(--ink-4)">(col. AD)</span></td>
+      <td class="num">${fmtBRL(item.totalFaturar)}</td>
       <td class="num muted">${hasSys?'—':'N/A'}</td>
       <td class="num muted">—</td>
     </tr>`;
@@ -871,15 +871,15 @@ function renderItemBody(item,hasSys){
     </tr>`;
   }
 
-  // Total a faturar
+  // Contrato Mensal (bruto base) — apenas referência
   const difBrutoTotal=item.totalFaturar-item.bruto;
   const totalEqBruto=Math.abs(difBrutoTotal)<=TOL;
   rows+=`<tr>
-    <td class="lbl">Total a faturar</td>
-    <td class="num">${fmtBRL(item.totalFaturar)}</td>
+    <td class="lbl">Ctr. Mensal <span style="font-weight:400;color:var(--ink-4)">(base)</span></td>
+    <td class="num">${fmtBRL(item.bruto)}</td>
     <td class="num muted">—</td>
     <td class="num ${totalEqBruto?'muted':(difBrutoTotal>0?'diff-pos':'diff-neg')}">
-      ${totalEqBruto?'= Bruto':fmtBRL(difBrutoTotal)+' vs bruto'}
+      ${totalEqBruto?'= Total':fmtBRL(difBrutoTotal)+' dif'}
     </td>
   </tr>`;
 
@@ -938,7 +938,7 @@ function updateSummary(items){
   const fixd=items.filter(i=>i.recStatus==='fixd');
   const banner=document.getElementById('recBanner');
   if(rec.length>0){
-    const impact=rec.reduce((s,i)=>s+Math.abs((i.sysBruto!=null?i.bruto-i.sysBruto:0)),0);
+    const impact=rec.reduce((s,i)=>s+Math.abs((i.sysBruto!=null?i.totalFaturar-i.sysBruto:0)),0);
     document.getElementById('recCount').textContent=rec.length;
     document.getElementById('recImpact').textContent=impact>0?'· Impacto '+fmtBRL(impact):'';
     banner.classList.remove('hidden');
@@ -1318,7 +1318,7 @@ function exportCSV(){
   if(!S.items) return;
   const rows=['Cliente;VPL;Contrato;Serviço;NF;Bruto Planilha;Total Fat Planilha;Bruto Sistema;Diferença Bruto;VA+Prêmio;VR;VT;AM;AO;Hora Extra;Desc Faltas;Status'];
   for(const item of S.items){
-    const delta=item.sysBruto!=null?(item.bruto-item.sysBruto):null;
+    const delta=item.sysBruto!=null?(item.totalFaturar-item.sysBruto):null;
     rows.push([
       item.clientName, item.vpl, item.num, item.svc, item.nf,
       item.bruto.toFixed(2), item.totalFaturar.toFixed(2),
@@ -1430,7 +1430,7 @@ function autoSave(){
     divergentes:S.items
       .filter(i=>i.status==='diff'||i.status==='no-match')
       .map(i=>({id:`${i.vpl}|${i.num}`,vpl:i.vpl,num:i.num,clientName:i.clientName,
-        bruto:i.bruto,sysBruto:i.sysBruto,delta:i.sysBruto!=null?i.bruto-i.sysBruto:null,
+        bruto:i.totalFaturar,sysBruto:i.sysBruto,delta:i.sysBruto!=null?i.totalFaturar-i.sysBruto:null,
         emailSent:i.emailSent||false,emailDate:i.emailDate||null})),
   };
   // Prune months older than 7
@@ -1505,7 +1505,7 @@ function openEmailModal(globalIdx){
   const delta=item.sysBruto!=null?item.bruto-item.sysBruto:null;
   let divLines='';
   if(item.sysBruto!=null)
-    divLines+=`\n  • Bruto (Ctr. Mensal): Planilha ${fmtBRL(item.bruto)} / Sistema ${fmtBRL(item.sysBruto)} → Dif. ${fmtBRL(delta)}`;
+    divLines+=`\n  • Total à Faturar (col. AD): Planilha ${fmtBRL(item.totalFaturar)} / Sistema ${fmtBRL(item.sysBruto)} → Dif. ${fmtBRL(delta)}`;
   if(item.he>0.01)   divLines+=`\n  • Hora Extra: ${fmtBRL(item.he)}`;
   if(item.reaj>0.01) divLines+=`\n  • Reajuste: ${fmtBRL(item.reaj)}`;
   const benefitsTotal=item.va+item.vr+item.vt+item.am+item.ao;
@@ -1615,7 +1615,7 @@ function emailAll(){
       const subj=encodeURIComponent(`[PENDÊNCIA] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`);
       const delta=item.sysBruto!=null?item.bruto-item.sysBruto:null;
       const dif=delta!=null?` Dif: ${fmtBRL(delta)}`:'';
-      const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num}\nBruto planilha: ${fmtBRL(item.bruto)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
+      const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num}\nTotal à Faturar: ${fmtBRL(item.totalFaturar)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
       window.open(`mailto:?subject=${subj}&body=${bdy}`);
       markEmailSent(item);
     }, i*600);
