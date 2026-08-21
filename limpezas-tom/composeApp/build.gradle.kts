@@ -43,6 +43,8 @@ kotlin {
             implementation(libs.activity.compose)
             implementation(libs.core.ktx)
             implementation(libs.kotlinx.coroutines.android)
+            // Google Sign-In / Drive OAuth (Identity API)
+            implementation(libs.play.services.auth)
         }
         iosMain.dependencies {
         }

@@ -169,8 +169,8 @@ private fun HomeView(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Encontra todos os prints de tela e envia para uma pasta no Google Drive, " +
-                            "organizada pela data de hoje. Nenhum arquivo é excluído do celular.",
+                        "Encontra todos os prints de tela e os move para o seu Google Drive " +
+                            "em uma pasta com a data de hoje, liberando espaço no celular.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -288,32 +288,23 @@ private fun FoundView(
             Spacer(Modifier.height(4.dp))
         }
 
-        // ── Card de pasta ─────────────────────────────────────────────────────
+        // ── Card de destino (Drive) ───────────────────────────────────────────
         item {
             if (!sinkReady) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("📁 Pasta de destino", fontWeight = FontWeight.Bold)
+                        Text("☁️ Destino: Google Drive", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            "Será criada automaticamente uma subpasta \"Backup - data\" dentro da pasta que você escolher.",
+                            "Faça login com sua conta Google e os screenshots serão " +
+                                "enviados automaticamente para uma pasta \"Backup - data\" " +
+                                "no seu Google Drive. Nenhuma configuração manual necessária.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.height(6.dp))
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("💡", fontSize = 14.sp)
-                                Text(
-                                    "Para enviar ao Google Drive: na tela de seleção, " +
-                                        "toque em ☰ (menu lateral) → \"Drive\" → escolha uma pasta lá.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
                         Button(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
-                            Text("☁️ Escolher pasta no Google Drive")
+                            Text("🔑 Conectar ao Google Drive")
                         }
                     }
                 }
@@ -326,14 +317,14 @@ private fun FoundView(
                     ) {
                         Text("✅", fontSize = 20.sp)
                         Column(Modifier.weight(1f)) {
-                            Text("Pasta configurada", fontWeight = FontWeight.SemiBold)
+                            Text("Google Drive conectado", fontWeight = FontWeight.SemiBold)
                             Text(
-                                "Será criada \"Backup - data\" automaticamente.",
+                                "Pasta \"Backup - data\" criada automaticamente no Drive.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        TextButton(onClick = onPickFolder) { Text("Trocar") }
+                        TextButton(onClick = onPickFolder) { Text("Trocar conta") }
                     }
                 }
             }
@@ -353,8 +344,8 @@ private fun FoundView(
                 Text(
                     when {
                         !hasSelection -> "Selecione os screenshots"
-                        !sinkReady    -> "📁 Escolher pasta e enviar ${approvedList.size} screenshot(s)"
-                        else          -> "☁️ Enviar ${approvedList.size} — ${formatBytes(approvedBytes)}"
+                        !sinkReady    -> "🔑 Conectar ao Drive e mover ${approvedList.size} screenshot(s)"
+                        else          -> "☁️ Mover ${approvedList.size} para o Drive — ${formatBytes(approvedBytes)}"
                     }
                 )
             }
@@ -494,7 +485,7 @@ private fun UploadingView(state: UiState.Uploading) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("☁️ Enviando para o Drive…", style = MaterialTheme.typography.titleMedium)
+        Text("☁️ Movendo para o Drive…", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(20.dp))
         if (state.total > 0) {
             LinearProgressIndicator(
@@ -552,7 +543,7 @@ private fun DoneView(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
-        Text("Pasta criada:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Pasta criada no Google Drive:", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             "\"${state.folderName}\"",
             fontWeight = FontWeight.SemiBold,
