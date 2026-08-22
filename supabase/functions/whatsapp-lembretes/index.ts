@@ -149,11 +149,24 @@ function formatarValor(valor: string | number | null): string {
 }
 
 // ----------------------------------------------------------------
-// Formata data YYYY-MM-DD para DD/MM/YYYY
+// Converte DD/MM/YYYY ou YYYY-MM-DD → YYYY-MM-DD (para comparações)
+// ----------------------------------------------------------------
+function toISO(data: string): string {
+  if (!data) return ''
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+    const [d, m, y] = data.split('/')
+    return `${y}-${m}-${d}`
+  }
+  return data
+}
+
+// ----------------------------------------------------------------
+// Formata data YYYY-MM-DD ou DD/MM/YYYY → DD/MM/YYYY (exibição)
 // ----------------------------------------------------------------
 function formatarData(data: string): string {
   if (!data) return ''
-  const parts = data.split('-')
+  const iso = toISO(data)
+  const parts = iso.split('-')
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
   return data
 }
@@ -313,63 +326,45 @@ serve(async (req) => {
   console.log(`🗓️ Hoje: ${hoje} | Próximas: ${datasProximas.join(', ')}`)
 
   // ----------------------------------------------------------------
-  // Busca faturas não pagas:
-  //   - Vencidas: TODAS, sem limite de data (nos dois modos). O ritmo de
-  //     cada uma é decidido no loop abaixo:
-  //       · até 3 dias de atraso → aviso diário (mensagens de bloqueio)
-  //       · acima de 3 dias      → cobrança a cada 5 dias de atraso
-  //                                (5, 10, 15, ...) com mensagem de
-  //                                incentivo/novidades (reengajamento)
-  //     No modo MANUAL (?clienteId, botão 📲 Cobrar) não há ritmo:
-  //     o clique é a decisão — envia tudo que está em aberto na hora.
-  //   - A vencer: hoje + próximos 3 dias (nos dois modos)
+  // Busca TODAS as receitas não pagas (sem filtro de data no banco).
+  // O filtro de data é feito em JS para suportar DD/MM/YYYY e YYYY-MM-DD.
+  //   - Vencidas: data ISO < hoje (aviso diário até 3d, ciclo 5/5 acima disso)
+  //   - A vencer: data ISO em [hoje, +1d, +2d, +3d]
   // ----------------------------------------------------------------
-  const [resVencAt, resVencNull] = await Promise.all([
+  const [resAt, resNull] = await Promise.all([
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
-        .eq('dados->>inativo', 'false').lt('dados->>data', hoje)
+        .eq('dados->>inativo', 'false')
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
       return q
     })(),
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
         .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
-        .is('dados->>inativo', null).lt('dados->>data', hoje)
-      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
-      return q
-    })(),
-  ])
-
-  // A vencer: hoje + próximos 3 dias
-  const [resProxAt, resProxNull] = await Promise.all([
-    (() => {
-      let q = sb.from('lancamentos').select('id, dados, user_id')
-        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
-        .eq('dados->>inativo', 'false').in('dados->>data', datasProximas)
-      if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
-      return q
-    })(),
-    (() => {
-      let q = sb.from('lancamentos').select('id, dados, user_id')
-        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
-        .is('dados->>inativo', null).in('dados->>data', datasProximas)
+        .is('dados->>inativo', null)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
       return q
     })(),
   ])
 
-  if (resVencAt.error) {
-    console.error('❌ Erro ao buscar lançamentos:', resVencAt.error)
-    return jsonRes({ ok: false, error: resVencAt.error.message }, 500)
+  if (resAt.error) {
+    console.error('❌ Erro ao buscar lançamentos:', resAt.error)
+    return jsonRes({ ok: false, error: resAt.error.message }, 500)
   }
 
-  const todoLancamentos = [
-    ...(resVencAt.data || []),
-    ...(resVencNull.data || []),
-    ...(resProxAt.data || []),
-    ...(resProxNull.data || []),
-  ]
+  // Filtra em JS — suporta tanto DD/MM/YYYY quanto YYYY-MM-DD
+  const todos = [...(resAt.data || []), ...(resNull.data || [])]
+  const resVencidos = todos.filter(l => {
+    const iso = toISO((l.dados as Record<string, string>)?.data || '')
+    return iso && iso < hoje
+  })
+  const resProximos = todos.filter(l => {
+    const iso = toISO((l.dados as Record<string, string>)?.data || '')
+    return iso && datasProximas.includes(iso)
+  })
+
+  const todoLancamentos = [...resVencidos, ...resProximos]
 
   if (filtroClienteId) console.log(`🔍 Filtro ativo: clienteId=${filtroClienteId}`)
 
@@ -385,11 +380,11 @@ serve(async (req) => {
   // ----------------------------------------------------------------
   const msDia = 24 * 60 * 60 * 1000
   const inadimplencia = new Map<string, { maxAtraso: number; oldestId: string }>()
-  for (const lanc of [...(resVencAt.data || []), ...(resVencNull.data || [])]) {
+  for (const lanc of resVencidos) {
     const d = lanc.dados as Record<string, string>
     const cid = d?.clienteId
     if (!cid || !d?.data) continue
-    const atraso = Math.round((new Date(hoje).getTime() - new Date(d.data).getTime()) / msDia)
+    const atraso = Math.round((new Date(hoje).getTime() - new Date(toISO(d.data)).getTime()) / msDia)
     const atual = inadimplencia.get(cid)
     if (!atual || atraso > atual.maxAtraso) inadimplencia.set(cid, { maxAtraso: atraso, oldestId: lanc.id })
   }
@@ -421,7 +416,7 @@ serve(async (req) => {
     // Dias exatos até o vencimento (negativo = vencido há X dias)
     const msPerDia = 24 * 60 * 60 * 1000
     const diasRestantes = dataVenc
-      ? Math.round((new Date(dataVenc).getTime() - new Date(hoje).getTime()) / msPerDia)
+      ? Math.round((new Date(toISO(dataVenc)).getTime() - new Date(hoje).getTime()) / msPerDia)
       : 0
     const diasAtraso = -diasRestantes
 
@@ -495,7 +490,7 @@ serve(async (req) => {
       if (valorNum > 0) {
         const idempKey = `servnet-${lanc.id}-${hoje}`
         const descPix = `Mensalidade Servnet - ${nome}`
-        const dataExpiracao = diasRestantes >= 0 ? (dataVenc || hoje) : hoje
+        const dataExpiracao = diasRestantes >= 0 ? (toISO(dataVenc) || hoje) : hoje
         linkPix = await gerarLinkPix(valorNum, nome, descPix, dataExpiracao, idempKey, lanc.id)
       }
     }
