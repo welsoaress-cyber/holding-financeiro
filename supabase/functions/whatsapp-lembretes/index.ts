@@ -390,7 +390,26 @@ serve(async (req) => {
   }
 
   if (todoLancamentos.length === 0) {
-    return jsonRes({ ok: true, enviados: 0, msg: 'Nenhuma fatura a notificar.' })
+    return jsonRes({
+      ok: true,
+      enviados: 0,
+      msg: 'Nenhuma fatura a notificar.',
+      debug: {
+        total_db: todos.length,
+        vencidos: resVencidos.length,
+        proximos: resProximos.length,
+        hoje,
+        datasProximas,
+        amostra: todos.slice(0, 5).map(l => ({
+          id: l.id,
+          data: (l.dados as Record<string, string>)?.data,
+          data_iso: toISO((l.dados as Record<string, string>)?.data || ''),
+          status: (l.dados as Record<string, string>)?.status,
+          inativo: (l.dados as Record<string, string>)?.inativo,
+          tipo: (l.dados as Record<string, string>)?.tipo,
+        })),
+      },
+    })
   }
 
   // Ninguém é pulado por status de cliente: toda fatura que entrou na janela
