@@ -1032,6 +1032,18 @@ const PALETA_NEGOCIOS = ["#3B7EC4","#8457C9","#1E9159","#D8752B","#0D8C82","#6B7
 const TIPOS_CONTA = ["Conta Corrente","Conta Pagamento","Poupança"];
 const TIPOS_LANC = ["Receita","Despesa","Transferência"];
 const STATUS_LANC = ["Pago","Provisionado","Agendado"];
+const FORMAS_RENDA = [
+  "Mensalidades",
+  "Serviços Prestados",
+  "Venda de Produtos",
+  "Consultas / Procedimentos",
+  "Locação / Aluguel",
+  "Dividendos",
+  "Rendimentos de Investimento",
+  "Comissões",
+  "Reembolsos",
+  "Outras"
+];
 const BANDEIRAS = ["Visa","Mastercard","Elo","American Express","Hipercard","Outra"];
 const PERIODOS = ["Semanal", "Quinzenal", "Mensal", "Bimestral", "Trimestral", "Semestral", "Anual"];
 const SENHA_PAGAR = "@2020";
@@ -3488,7 +3500,7 @@ function sidebarConteudo(){
     grupos.push({ id: `neg_${n.id}`, html: navGrupo(`neg_${n.id}`, "", n.nome, views, itens.join("")) });
   });
 
-  const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre"];
+  const financeiroViews = ["dashboard","contas","cartoes","lancamentos","receitas","despesas","transferencias","ajustes","categorias","negocios","rel_fluxo","rel_dre","rel_formas_renda"];
   if(podeVerModulo("financeiro")){
     grupos.push({ id: "financeiro", html: navGrupo("financeiro", ic("financeiro"), "Financeiro", financeiroViews, [
       master ? navItem("dashboard",ic("dashboard"),"Dashboard") : "",
@@ -3500,6 +3512,7 @@ function sidebarConteudo(){
       navItem("transferencias",ic("transferencias"),"Transferências"),
       master ? navItem("rel_fluxo",ic("fluxocaixa"),"Fluxo de Caixa") : "",
       master ? navItem("rel_dre",ic("dre"),"DRE") : "",
+      master ? navItem("rel_formas_renda",ic("receber"),"Formas de Renda") : "",
       master ? navSubmenuAjustes() : "",
     ].join("")) });
   }
@@ -3611,6 +3624,7 @@ function renderView(){
   else if(state.view === "dashboard") main.innerHTML = viewDashboard();
   else if(state.view === "rel_fluxo") main.innerHTML = viewRelFluxoCaixa();
   else if(state.view === "rel_dre") main.innerHTML = viewRelDre();
+  else if(state.view === "rel_formas_renda") main.innerHTML = viewRelFormasRenda();
   else if(state.view === "contas") main.innerHTML = viewContas();
   else if(state.view === "cartoes") main.innerHTML = viewCartoes();
   else if(state.view === "lancamentos" || state.view === "receitas" || state.view === "despesas" || state.view === "transferencias") main.innerHTML = viewLancamentos();
@@ -5402,6 +5416,171 @@ function viewRelDre(){
 }
 
 // ============================================================
+// VIEW: RELATÓRIO — FORMAS DE RENDA
+// ============================================================
+function viewRelFormasRenda(){
+  const mv = state.mesVisualizado;
+  const hoje = new Date();
+  const isMesAtual = mv.ano === hoje.getFullYear() && mv.mes === hoje.getMonth();
+  const ini = new Date(mv.ano, mv.mes, 1).toISOString().slice(0,10);
+  const fim = new Date(mv.ano, mv.mes+1, 0).toISOString().slice(0,10);
+
+  // Receitas pagas no período, visíveis para o usuário
+  const receitas = lancamentosVisiveis(
+    state.lancamentos.filter(l => !l.inativo && l.tipo === "Receita" && l.status === "Pago" && l.data >= ini && l.data <= fim)
+  );
+
+  const totalGeral = receitas.reduce((s, l) => s + Number(l.valor), 0);
+
+  // Agrupar por formaRenda
+  const grupos = {};
+  for(const l of receitas){
+    const chave = l.formaRenda || "Não classificado";
+    if(!grupos[chave]) grupos[chave] = { total: 0, qtd: 0, itens: [] };
+    grupos[chave].total += Number(l.valor);
+    grupos[chave].qtd++;
+    grupos[chave].itens.push(l);
+  }
+
+  // Ordenar por valor desc
+  const ordenados = Object.entries(grupos).sort((a,b) => b[1].total - a[1].total);
+
+  // Paleta de cores para formas de renda
+  const CORES_FORMA = ["#3B7EC4","#1E9159","#8457C9","#D8752B","#0D8C82","#B8891A","#C0447A","#3C6E8F","#6B7280","#8A8F1F"];
+  const corDaForma = (idx) => CORES_FORMA[idx % CORES_FORMA.length];
+
+  // KPI cards — top 3 formas
+  const kpiCards = ordenados.slice(0, 3).map(([nome, dados], idx) => {
+    const pct = totalGeral > 0 ? Math.round((dados.total / totalGeral) * 100) : 0;
+    return vgKpiCard(nome, fmtBRL(dados.total), `${pct}% da receita · ${dados.qtd} lançamento${dados.qtd!==1?"s":""}`, "pos");
+  }).join("");
+
+  // Gráfico de barras horizontais por forma
+  const maxTotal = ordenados.length ? ordenados[0][1].total : 1;
+  const barras = ordenados.map(([nome, dados], idx) => {
+    const pct = totalGeral > 0 ? Math.round((dados.total / totalGeral) * 100) : 0;
+    const largura = maxTotal > 0 ? Math.round((dados.total / maxTotal) * 100) : 0;
+    const cor = corDaForma(idx);
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-size:13px; color:var(--ink);">${esc(nome)}</span>
+          <span style="font-family:var(--font-num); font-size:13px; font-weight:600; color:var(--ink);">${fmtBRL(dados.total)} <span style="color:var(--ink-4); font-weight:400;">(${pct}%)</span></span>
+        </div>
+        <div style="background:var(--border); border-radius:4px; height:8px; overflow:hidden;">
+          <div style="width:${largura}%; background:${cor}; height:100%; border-radius:4px; transition:width .3s;"></div>
+        </div>
+      </div>`;
+  }).join("");
+
+  // Tabela detalhada por forma
+  const linhasTabela = ordenados.map(([nome, dados], idx) => {
+    const pct = totalGeral > 0 ? Math.round((dados.total / totalGeral) * 100) : 0;
+    const cor = corDaForma(idx);
+    return `<tr>
+      <td><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${cor}; margin-right:6px;"></span>${esc(nome)}</td>
+      <td class="num">${dados.qtd}</td>
+      <td class="num" style="color:var(--pos); font-weight:600;">${fmtBRL(dados.total)}</td>
+      <td class="num">${pct}%</td>
+    </tr>`;
+  }).join("");
+
+  // Receitas sem classificação
+  const semClassif = receitas.filter(l => !l.formaRenda).length;
+  const avisoClassif = semClassif > 0
+    ? `<div class="field-help" style="margin-top:12px;">⚠️ <strong>${semClassif} receita${semClassif!==1?"s":""}</strong> ainda não ${semClassif!==1?"foram classificadas":"foi classificada"} — abra o lançamento e escolha a Forma de Renda pra aparecer no relatório.</div>`
+    : "";
+
+  // Evolução mensal dos últimos 6 meses por forma (top 3)
+  const top3Formas = ordenados.slice(0, 3).map(([nome]) => nome);
+  const mesesEvolucao = [];
+  for(let d = 5; d >= 0; d--){
+    const dt = new Date(mv.ano, mv.mes - d, 1);
+    const a = dt.getFullYear(), m = dt.getMonth();
+    const iniM = new Date(a, m, 1).toISOString().slice(0,10);
+    const fimM = new Date(a, m+1, 0).toISOString().slice(0,10);
+    const entry = { label: `${NOMES_MESES[m].slice(0,3)}/${String(a).slice(2)}` };
+    for(const f of top3Formas){
+      entry[f] = lancamentosVisiveis(
+        state.lancamentos.filter(l => !l.inativo && l.tipo === "Receita" && l.status === "Pago" && l.data >= iniM && l.data <= fimM && (l.formaRenda||"Não classificado") === f)
+      ).reduce((s, l) => s + Number(l.valor), 0);
+    }
+    mesesEvolucao.push(entry);
+  }
+
+  const maxEvolucao = Math.max(1, ...mesesEvolucao.flatMap(e => top3Formas.map(f => e[f]||0)));
+  const evolucaoHTML = top3Formas.length ? `
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-head"><div class="panel-title">Evolução — últimos 6 meses (top 3 formas)</div></div>
+      <div class="panel-body">
+        <div style="display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+          ${top3Formas.map((f,i) => `<span style="display:flex; align-items:center; gap:5px; font-size:12px;"><span style="width:10px;height:10px;border-radius:50%;background:${corDaForma(i)};"></span>${esc(f)}</span>`).join("")}
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="lanc-table" style="min-width:420px;">
+            <thead><tr><th>Mês</th>${top3Formas.map(f=>`<th class="num">${esc(f)}</th>`).join("")}</tr></thead>
+            <tbody>
+              ${mesesEvolucao.map(e => `<tr><td style="font-size:12px; color:var(--ink-2);">${e.label}</td>${top3Formas.map((f,i)=>`<td class="num" style="color:${e[f]>0?"var(--pos)":"var(--ink-4)"};">${e[f]>0?fmtBRL(e[f]):"—"}</td>`).join("")}</tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>` : "";
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Formas de Renda</div>
+        <div class="page-sub">${isMesAtual ? "Mês atual" : `${NOMES_MESES[mv.mes]}/${mv.ano}`} — receitas pagas classificadas por origem</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="icon-btn" data-action="mes-prev" title="Mês anterior" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">◀</button>
+        ${!isMesAtual ? `<button class="icon-btn" data-action="mes-hoje" title="Voltar para o mês atual" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--r); white-space:nowrap;">Hoje</button>` : ""}
+        <button class="icon-btn" data-action="mes-next" title="Próximo mês" style="font-size:14px; padding:6px 12px; border:1px solid var(--border); border-radius:var(--r);">▶</button>
+      </div>
+    </div>
+
+    ${totalGeral === 0 ? `
+      <div class="panel"><div class="panel-body" style="text-align:center; padding:40px 0; color:var(--ink-4);">
+        Nenhuma receita paga em ${NOMES_MESES[mv.mes]}/${mv.ano}.<br>
+        <span style="font-size:12px;">Registre receitas e classifique-as com uma Forma de Renda.</span>
+      </div></div>
+    ` : `
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); margin-bottom:16px;">
+        ${vgKpiCard("Total de receitas", fmtBRL(totalGeral), `${receitas.length} lançamento${receitas.length!==1?"s":""}`, "pos")}
+        ${vgKpiCard("Formas distintas", String(ordenados.length), "tipos de renda no período", "")}
+        ${kpiCards}
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Distribuição por forma de renda</div></div>
+        <div class="panel-body">${barras || '<p style="color:var(--ink-4); text-align:center;">Sem dados.</p>'}</div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-head"><div class="panel-title">Detalhamento</div></div>
+        <div class="panel-body" style="padding:0;">
+          <table class="lanc-table">
+            <thead><tr><th>Forma de Renda</th><th class="num">Lançamentos</th><th class="num">Total</th><th class="num">% do total</th></tr></thead>
+            <tbody>${linhasTabela || '<tr><td colspan="4" style="text-align:center; color:var(--ink-4);">—</td></tr>'}</tbody>
+            <tfoot><tr style="font-weight:700;">
+              <td>Total</td>
+              <td class="num">${receitas.length}</td>
+              <td class="num" style="color:var(--pos);">${fmtBRL(totalGeral)}</td>
+              <td class="num">100%</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      ${evolucaoHTML}
+      ${avisoClassif}
+    `}
+    <div class="field-help" style="margin-top:10px;">A Forma de Renda é definida em cada lançamento de Receita. Para classificar lançamentos antigos, abra-os e selecione a forma correspondente.</div>
+  `;
+}
+
+// ============================================================
 // VIEW: CONTAS
 // ============================================================
 function viewContas(){
@@ -5486,7 +5665,7 @@ function viewCartoes(){
 // ============================================================
 // VIEW: LANÇAMENTOS
 // ============================================================
-let lancFilter = { negocio: "", status: "", conta: "", cartao: "", categoria: "", catNome: "", subcatNome: "", texto: "", dataDe: "", dataAte: "", clienteId: "" };
+let lancFilter = { negocio: "", status: "", conta: "", cartao: "", categoria: "", catNome: "", subcatNome: "", texto: "", dataDe: "", dataAte: "", clienteId: "", formaRenda: "" };
 let lancSelecionados = new Set();
 // Navegação de mês para Contas a Receber / Contas a Pagar
 const _hj = new Date();
@@ -5536,6 +5715,7 @@ function viewLancamentos(){
   if(state.view === "lancamentos" && lancFilter.cartao) list = list.filter(l => l.cartaoId === lancFilter.cartao);
   if(lancFilter.catNome) list = list.filter(l => l.categoria === lancFilter.catNome);
   if(lancFilter.subcatNome) list = list.filter(l => l.subcategoria === lancFilter.subcatNome);
+  if(lancFilter.formaRenda) list = list.filter(l => (l.formaRenda||"") === lancFilter.formaRenda);
   if(lancFilter.texto) {
     const _txt = lancFilter.texto.trim();
     // Multi-termo: "termo1","termo2" → busca qualquer um (OR) na descrição
@@ -5622,7 +5802,7 @@ function viewLancamentos(){
       <td>${sinal} ${esc(l.tipo)}</td>
       <td>${l.negocio ? `<span class="tag" style="background:color-mix(in srgb, ${color} 14%, white); color:${color};"><span class="tag-dot" style="background:${color}"></span>${esc(l.negocio)}</span>` : "—"}</td>
       <td>${contaTxt}</td>
-      <td>${l.descricao ? esc(l.descricao) : `<span style="color:var(--ink-4);">—</span>`}${cartaoBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}${clienteBadge}</td>
+      <td>${l.descricao ? esc(l.descricao) : `<span style="color:var(--ink-4);">—</span>`}${cartaoBadge}${autorBadge}${catTxt ? `<div style="font-size:11px;color:var(--ink-4)">${esc(catTxt)}</div>` : ""}${l.tipo==="Receita" && l.formaRenda ? `<div style="margin-top:2px;"><span style="font-size:10px;color:var(--pos);background:color-mix(in srgb,var(--pos) 10%,white);border:1px solid color-mix(in srgb,var(--pos) 25%,white);border-radius:3px;padding:1px 5px;font-weight:500;">💰 ${esc(l.formaRenda)}</span></div>` : ""}${clienteBadge}</td>
       <td class="num" style="font-weight:600;">${maskBRL(l.valor, true)}</td>
       <td><span class="status-pill ${statusClass}">${statusLabel}</span>${l.status==="Pago" && l.dataPagamento ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px;">recebido ${fmtDateBR(l.dataPagamento)}</div>` : ""}</td>
       <td style="text-align:center;"><span class="${l.conciliado ? 'conc-yes' : 'conc-no'}" style="${podeEditar?'cursor:pointer;':''}" ${podeEditar?`data-action="toggle-conc" data-id="${l.id}"`:''} title="${podeEditar?'Clique para alternar':''}">${l.conciliado ? "✓ Sim" : "Não"}</span></td>
@@ -5683,7 +5863,8 @@ function viewLancamentos(){
   const clienteOptions = cliAtivosAZ().map(c => `<option value="${c.id}" ${lancFilter.clienteId===c.id?"selected":""}>${esc(cliLabel(c))}</option>`).join("");
   // Negócio só conta como "filtro manual" quando o usuário escolheu um diferente do contexto travado
   const negFiltroManual = filtroNegocioTravado ? (lancFilter.negocio && lancFilter.negocio !== cliFiltro.negocio) : !!lancFilter.negocio;
-  const temFiltro = negFiltroManual||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId;
+  const formaRendaOptions = FORMAS_RENDA.map(f => `<option value="${esc(f)}" ${lancFilter.formaRenda===f?"selected":""}>${esc(f)}</option>`).join("");
+  const temFiltro = negFiltroManual||lancFilter.status||lancFilter.conta||lancFilter.cartao||lancFilter.categoria||lancFilter.catNome||lancFilter.subcatNome||lancFilter.texto||lancFilter.dataDe||lancFilter.dataAte||lancFilter.clienteId||lancFilter.formaRenda;
   const todosVisiveisSelecionados = lancVisibleIds.length > 0 && lancVisibleIds.every(id => lancSelecionados.has(id));
   // Navegação de mês — todos os sub-módulos financeiros
   const mesNavAtivo = true;
@@ -5722,6 +5903,7 @@ function viewLancamentos(){
       ${state.view === "lancamentos" && state.cartoes.length ? `<select data-action="filter-cartao"><option value="">Todos os cartões</option>${cartaoOptions}</select>` : ""}
       <select data-action="filter-catnome"><option value="">Todas as categorias</option>${catNomeOptions}</select>
       <select data-action="filter-subcatnome" ${lancFilter.catNome?"":"disabled"}><option value="">${lancFilter.catNome?"Todas as subcategorias":"Selecione uma categoria"}</option>${subcatNomeOptions}</select>
+      ${state.view === "receitas" ? `<select data-action="filter-formarenda"><option value="">Todas as formas de renda</option>${formaRendaOptions}</select>` : ""}
 ${temFiltro ? `<button class="btn btn-ghost btn-sm" data-action="filter-clear">Limpar filtros</button>` : ""}
     </div><div class="panel-body">
       <div class="so-desktop"><table class="lanc-table"><thead><tr>
@@ -6147,6 +6329,13 @@ function modalLancamento(existing, tipoPreset, prefill){
         </div>
       </div>
       <div class="field"><label>Descrição</label><input type="text" name="descricao" value="${esc(l.descricao)}" placeholder="Detalhe o lançamento"></div>
+      <div id="lancFormaRendaWrap" class="field" style="display:${l.tipo==='Receita'?'block':'none'}">
+        <label>Forma de Renda <span class="field-help" style="display:inline;">— de onde vem essa receita</span></label>
+        <select name="formaRenda" id="lancFormaRendaSelect">
+          <option value="">— não classificado —</option>
+          ${FORMAS_RENDA.map(f=>`<option ${(l.formaRenda||"")===f?"selected":""}>${esc(f)}</option>`).join("")}
+        </select>
+      </div>
       ${podeVerModulo("clientes") ? `
       <div id="lancClienteWrap" class="field" style="display:${l.tipo==='Receita'?'block':'none'}">
         <label>Cliente <span class="field-help" style="display:inline;">— opcional</span></label>
@@ -6203,6 +6392,8 @@ function modalLancamento(existing, tipoPreset, prefill){
     document.getElementById("lancCategoriaWrap").style.display = isTransf ? "none" : "block";
     const clienteWrap = document.getElementById("lancClienteWrap");
     if(clienteWrap) clienteWrap.style.display = isReceita ? "block" : "none";
+    const formaRendaWrap = document.getElementById("lancFormaRendaWrap");
+    if(formaRendaWrap) formaRendaWrap.style.display = isReceita ? "block" : "none";
     // Atualiza label do campo de data conforme o tipo selecionado
     const lbl = document.getElementById("lancDataLabel");
     if(lbl) lbl.textContent = isTransf ? "Data" : "Vencimento";
@@ -6496,6 +6687,7 @@ function modalLancamento(existing, tipoPreset, prefill){
       valor: parseFloat(fd.get("valor"))||0,
       descricao: fd.get("descricao").trim(),
       clienteId: clienteIdSalvo,
+      formaRenda: tipo === "Receita" ? (fd.get("formaRenda")||"") : "",
       status: fd.get("status"),
       conciliado: fd.get("conciliado") === "on",
       lancadoPor: isEdit ? existing.lancadoPor : (state.perfilAtivo ? state.perfilAtivo.nome : "Master"),
@@ -7769,7 +7961,7 @@ document.addEventListener("click", async e => {
   else if(action === "lock-pagar"){ state.pagarUnlocked = false; renderApp(); showToast("Contas a pagar ocultadas."); }
   else if(action === "unlock-receber") modalSenha("receber");
   else if(action === "lock-receber"){ state.receberUnlocked = false; renderApp(); showToast("A receber/saldo ocultados."); }
-  else if(action === "filter-clear"){ lancFilter = {negocio: filtroNegocioTravado ? lancFilter.negocio : "",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:"",clienteId:""}; lancSelecionados.clear(); renderApp(); }
+  else if(action === "filter-clear"){ lancFilter = {negocio: filtroNegocioTravado ? lancFilter.negocio : "",status:"",conta:"",cartao:"",categoria:"",catNome:"",subcatNome:"",texto:"",dataDe:"",dataAte:"",clienteId:"",formaRenda:""}; lancSelecionados.clear(); renderApp(); }
   else if(action === "lanc-mes-prev"){ lancMesNav.mes--; if(lancMesNav.mes<0){lancMesNav.mes=11;lancMesNav.ano--;} renderApp(); }
   else if(action === "lanc-mes-next"){ lancMesNav.mes++; if(lancMesNav.mes>11){lancMesNav.mes=0;lancMesNav.ano++;} renderApp(); }
   else if(action === "lanc-mes-hoje"){ lancMesNav = { ano: new Date().getFullYear(), mes: new Date().getMonth() }; renderApp(); }
@@ -8394,6 +8586,7 @@ document.addEventListener("change", e => {
     if(!val || parseInt(val.split("-")[0],10) >= 2000){ lancFilter.dataAte = val||""; renderApp(); }
   }
   if(e.target.dataset.action === "filter-clienteid"){ lancFilter.clienteId = e.target.value; renderApp(); }
+  if(e.target.dataset.action === "filter-formarenda"){ lancFilter.formaRenda = e.target.value; renderApp(); }
   // Estoque filters
   if(e.target.dataset.action === "est-filtro-cat"){ estFiltroCategoria = e.target.value; renderView(); }
   if(e.target.dataset.action === "est-movfiltro-tipo"){ estMovFiltro.tipo = e.target.value; renderView(); }
