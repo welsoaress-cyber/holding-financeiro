@@ -277,10 +277,14 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
 
       <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
         Negócio
-        <select name="negocio"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);">
-          ${(()=>{const atual=o.negocio||"";const lst=[...new Set([atual,...((g.get("negocios")||[]).map(n=>n.nome||"")),...((g.get("lancamentos")||[]).map(l=>l.negocio||""))])].filter(Boolean);return `<option value="">—</option>`+lst.map(n=>`<option value="${n}" ${n===atual?"selected":""}>${n}</option>`).join("")})()}
-        </select>
+        <input name="negocio" type="text" value="${o.negocio||""}"
+          list="dl-negocio-lanc"
+          placeholder="Ex: Servidor, Streaming…"
+          autocomplete="off"
+          style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
+        <datalist id="dl-negocio-lanc">
+          ${[...new Set([...((g.get("negocios")||[]).map(n=>n.nome||"")),...((g.get("lancamentos")||[]).map(l=>l.negocio||""))])].filter(Boolean).sort().map(n=>`<option value="${n}">`).join("")}
+        </datalist>
       </label>
 
       ${t?`
