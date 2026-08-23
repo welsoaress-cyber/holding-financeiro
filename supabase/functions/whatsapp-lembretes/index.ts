@@ -334,14 +334,14 @@ serve(async (req) => {
   const [resAt, resNull] = await Promise.all([
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
-        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>tipo', 'receita').neq('dados->>status', 'Pago')
         .eq('dados->>inativo', 'false')
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
       return q
     })(),
     (() => {
       let q = sb.from('lancamentos').select('id, dados, user_id')
-        .eq('dados->>tipo', 'Receita').neq('dados->>status', 'Pago')
+        .eq('dados->>tipo', 'receita').neq('dados->>status', 'Pago')
         .is('dados->>inativo', null)
       if (filtroClienteId) q = q.eq('dados->>clienteId', filtroClienteId)
       return q
