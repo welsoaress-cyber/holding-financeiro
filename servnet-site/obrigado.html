@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18397898966"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18397898966');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon-site.svg" />
+<title>Pedido recebido — Servnet</title>
+<!-- Conversão Google Ads: Enviar formulário de lead -->
+<script>
+  gtag('event', 'conversion', {'send_to': 'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});
+</script>
+<style>
+:root {
+  --pool: #00C4D8; --pool-hi: #2DDAE8; --bg: #F1FAFB; --surface: #FFFFFF;
+  --text: #071A1F; --text-2: #3D7585; --border: rgba(0,196,216,0.2);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #030F18; --surface: #061520; --text: #E8F7FA; --text-2: #7FB3C4;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #030F18; --surface: #061520; --text: #E8F7FA; --text-2: #7FB3C4;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 2.5rem 2rem; max-width: 460px; width: 100%; text-align: center;
+}
+.check { font-size: 3.2rem; margin-bottom: 0.8rem; }
+h1 { font-size: 1.5rem; margin-bottom: 0.6rem; }
+h1 span { color: var(--pool); }
+p { color: var(--text-2); line-height: 1.7; font-size: 0.98rem; margin-bottom: 1.6rem; }
+.btn-wa {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: #25D366; color: #06281a; font-weight: 700; font-size: 1.05rem;
+  border: none; border-radius: 10px; padding: 0.9rem 1.6rem;
+  text-decoration: none; cursor: pointer;
+}
+.btn-wa:hover { filter: brightness(1.06); }
+.aguarde { margin-top: 1rem; font-size: 0.85rem; color: var(--text-2); }
+.voltar { display: block; margin-top: 1.6rem; color: var(--text-2); font-size: 0.88rem; }
+.voltar a { color: var(--pool); }
+</style>
+<div class="card">
+  <div class="check">✅</div>
+  <h1>Pedido recebido com <span>sucesso</span>!</h1>
+  <p>Agora é só finalizar pelo WhatsApp — sua mensagem já está pronta, é só enviar. Vamos confirmar a cobertura do seu endereço e agendar a instalação.</p>
+  <a class="btn-wa" id="btn-wa" href="https://wa.me/5511954490001">💬 Abrir o WhatsApp</a>
+  <div class="aguarde" id="aguarde">Abrindo o WhatsApp automaticamente…</div>
+  <div class="voltar"><a href="index.html">← Voltar ao site</a></div>
+</div>
+<script>
+// A mensagem do lead chega pela URL (?m=...) montada pelo formulário do site.
+(function(){
+  const m = new URLSearchParams(location.search).get('m');
+  const url = 'https://wa.me/5511954490001' + (m ? '?text=' + encodeURIComponent(m) : '');
+  const btn = document.getElementById('btn-wa');
+  btn.href = url;
+  // navegação na mesma aba não é bloqueada como popup
+  setTimeout(() => { window.location.href = url; }, 1500);
+})();
+</script>
+</html>

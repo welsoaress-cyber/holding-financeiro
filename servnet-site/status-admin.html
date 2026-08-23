@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status da Rede — Admin Servnet</title>
+<link rel="icon" type="image/svg+xml" href="/favicon-status.svg" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --pool:#00C4D8;--pool-hi:#2DDAE8;
+  --bg:#030F18;--surface:#061520;--card:#091C2A;
+  --text:#CDEAF2;--text-2:#4A8898;
+  --border:rgba(0,196,216,0.15);
+  --pos:#10B981;--neg:#EF4444;--warn:#F59E0B;
+}
+body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:2rem 1rem;}
+
+.logo{font-size:1.5rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 20px rgba(0,196,216,0.4);margin-bottom:0.25rem;}
+.logo span{color:var(--text);opacity:0.7;font-weight:700;}
+.sub{font-size:0.78rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.18em;margin-bottom:2rem;}
+
+.box{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem 1.75rem;}
+.box-title{font-size:1rem;font-weight:700;margin-bottom:1.5rem;color:var(--text);}
+
+/* PIN screen */
+#pinScreen{}
+.f-group{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1.2rem;}
+.f-label{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);}
+.f-input{padding:0.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.f-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
+.f-input::placeholder{color:var(--text-2);opacity:0.6;}
+.btn-primary{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.15s;font-family:inherit;}
+.btn-primary:hover:not(:disabled){opacity:0.88;}
+.btn-primary:disabled{opacity:0.5;cursor:default;}
+.err-msg{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:0.7rem 1rem;color:#FCA5A5;font-size:0.86rem;margin-top:0.75rem;display:none;}
+.err-msg.show{display:block;}
+
+/* status buttons */
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.5rem;}
+.s-btn{display:flex;flex-direction:column;align-items:center;gap:0.35rem;padding:1rem 0.5rem;border:2px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;font-family:inherit;font-size:0.8rem;font-weight:600;text-align:center;transition:border-color 0.15s,background 0.15s;}
+.s-btn:hover{border-color:var(--pool);background:rgba(0,196,216,0.07);}
+.s-btn.active{border-color:var(--pool);background:rgba(0,196,216,0.12);}
+.s-btn .s-icon{font-size:1.6rem;line-height:1;}
+.s-btn.sel-lentidao.active{border-color:#F59E0B;background:rgba(245,158,11,0.1);}
+.s-btn.sel-queda.active   {border-color:#EF4444;background:rgba(239,68,68,0.1);}
+.s-btn.sel-manutencao.active{border-color:#8B5CF6;background:rgba(139,92,246,0.1);}
+
+.field-group{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;}
+.field-label{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);}
+.field-input{padding:0.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.95rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
+.field-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
+textarea.field-input{resize:vertical;min-height:80px;line-height:1.5;}
+
+.status-info{font-size:0.8rem;color:var(--text-2);margin-bottom:1.5rem;line-height:1.6;padding:0.75rem 1rem;background:var(--card);border-radius:6px;border:1px solid var(--border);}
+
+.ok-msg{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:6px;padding:0.7rem 1rem;color:#34D399;font-size:0.88rem;margin-top:0.75rem;display:none;}
+.ok-msg.show{display:block;}
+
+.logout-link{font-size:0.8rem;color:var(--text-2);text-decoration:none;margin-top:1rem;display:inline-block;cursor:pointer;}
+.logout-link:hover{color:var(--pool);}
+
+.spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.current-badge{display:inline-flex;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;border-radius:100px;font-size:0.75rem;font-weight:700;margin-bottom:1.25rem;}
+.current-ok        {background:rgba(16,185,129,0.12);color:#34D399;border:1px solid rgba(16,185,129,0.3);}
+.current-lentidao  {background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);}
+.current-queda     {background:rgba(239,68,68,0.12);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);}
+.current-manutencao{background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);}
+</style>
+</head>
+<body>
+
+<div class="logo">SERV<span>NET</span></div>
+<div class="sub">Painel — Status da Rede</div>
+
+<!-- PIN LOGIN -->
+<div class="box" id="pinScreen">
+  <div class="box-title">🔐 Acesso Restrito</div>
+  <div class="f-group">
+    <label class="f-label">PIN de Administrador</label>
+    <input class="f-input" type="password" id="pinInput" placeholder="••••" maxlength="20" autocomplete="current-password">
+  </div>
+  <button class="btn-primary" id="pinBtn" onclick="verificarPin()">Entrar</button>
+  <div class="err-msg" id="pinErr">PIN incorreto. Tente novamente.</div>
+</div>
+
+<!-- PAINEL -->
+<div class="box" id="adminScreen" style="display:none">
+  <div class="box-title">📡 Status da Rede</div>
+
+  <div id="currentStatus"></div>
+
+  <div class="status-info">
+    Selecione o estado atual da rede. O aviso aparece automaticamente
+    para todos os clientes no portal — quando tudo estiver normal,
+    escolha <strong>✅ Normal</strong> para ocultar o card.
+  </div>
+
+  <div class="status-grid">
+    <button class="s-btn sel-ok" data-status="ok" onclick="selecionarStatus('ok')">
+      <span class="s-icon">✅</span>Normal
+    </button>
+    <button class="s-btn sel-lentidao" data-status="lentidao" onclick="selecionarStatus('lentidao')">
+      <span class="s-icon">🟡</span>Lentidão
+    </button>
+    <button class="s-btn sel-queda" data-status="queda" onclick="selecionarStatus('queda')">
+      <span class="s-icon">🔴</span>Queda
+    </button>
+    <button class="s-btn sel-manutencao" data-status="manutencao" onclick="selecionarStatus('manutencao')">
+      <span class="s-icon">🔧</span>Manutenção
+    </button>
+  </div>
+
+  <div class="field-group">
+    <label class="field-label">Título do aviso</label>
+    <input class="field-input" type="text" id="sTitulo" maxlength="120" placeholder="Ex: Lentidão em alguns bairros">
+  </div>
+
+  <div class="field-group">
+    <label class="field-label">Descrição (opcional)</label>
+    <textarea class="field-input" id="sDescricao" maxlength="400" placeholder="Ex: Equipe técnica já está no local. Previsão de normalização: 14h."></textarea>
+  </div>
+
+  <button class="btn-primary" id="salvarBtn" onclick="salvarStatus()">💾 Salvar</button>
+  <div class="ok-msg" id="salvarOk"></div>
+  <div class="err-msg" id="salvarErr"></div>
+
+  <br>
+  <a class="logout-link" onclick="deslogar()">← Trocar PIN / Sair</a>
+</div>
+
+<script>
+const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let pinSessao = '';
+let statusAtual = 'ok';
+
+const MSGS = {
+  ok:         { titulo:'Rede operando normalmente',      desc:'' },
+  lentidao:   { titulo:'Lentidão detectada na rede',    desc:'Estamos investigando a causa. Alguns clientes podem notar queda de velocidade.' },
+  queda:      { titulo:'Queda de sinal em andamento',   desc:'Nossa equipe já foi acionada e está trabalhando para restaurar o serviço.' },
+  manutencao: { titulo:'Manutenção programada',         desc:'Estamos realizando melhorias na rede. Pode haver instabilidades temporárias.' }
+};
+
+const BADGE = {
+  ok:         { cls:'current-ok',         label:'✅ Normal'        },
+  lentidao:   { cls:'current-lentidao',   label:'🟡 Lentidão'     },
+  queda:      { cls:'current-queda',      label:'🔴 Queda'         },
+  manutencao: { cls:'current-manutencao', label:'🔧 Manutenção'   }
+};
+
+// Enter em PIN
+document.getElementById('pinInput').addEventListener('keydown', e => {
+  if(e.key==='Enter') verificarPin();
+});
+
+async function verificarPin(){
+  const pin = document.getElementById('pinInput').value.trim();
+  if(!pin){ showPinErr('Informe o PIN.'); return; }
+  const btn = document.getElementById('pinBtn');
+  const err = document.getElementById('pinErr');
+  err.classList.remove('show');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+
+  try{
+    // Tentativa com status neutro (ok), só para validar o PIN
+    const {data,error} = await sb.rpc('portal_servnet_atualizar_status',{
+      p_pin:       pin,
+      p_status:    'ok',
+      p_titulo:    'Rede operando normalmente',
+      p_descricao: ''
+    });
+    if(error) throw error;
+    if(!data?.ok){ showPinErr('PIN incorreto. Tente novamente.'); return; }
+    pinSessao = pin;
+    entrarAdmin();
+  }catch(e){
+    showPinErr('Erro de conexão. Tente novamente.');
+    console.error(e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+  }
+}
+
+function showPinErr(msg){
+  const el = document.getElementById('pinErr');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function entrarAdmin(){
+  document.getElementById('pinScreen').style.display  = 'none';
+  document.getElementById('adminScreen').style.display = 'block';
+  await carregarStatusAtual();
+}
+
+async function carregarStatusAtual(){
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_status');
+    if(error||!data) return;
+    statusAtual = data.status || 'ok';
+    selecionarStatus(statusAtual, false); // marca botão mas não sobrescreve título
+
+    // preenche campos com o que está salvo
+    document.getElementById('sTitulo').value    = data.titulo    || MSGS[statusAtual].titulo;
+    document.getElementById('sDescricao').value = data.descricao || '';
+
+    // badge de status atual
+    const b = BADGE[statusAtual] || BADGE.ok;
+    document.getElementById('currentStatus').innerHTML =
+      `<div class="current-badge ${b.cls}">Status atual: ${b.label}</div>`;
+  }catch{}
+}
+
+function selecionarStatus(st, preencherCampos = true){
+  statusAtual = st;
+  document.querySelectorAll('.s-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.s-btn[data-status="${st}"]`);
+  if(btn) btn.classList.add('active');
+
+  if(preencherCampos){
+    const m = MSGS[st] || MSGS.ok;
+    document.getElementById('sTitulo').value    = m.titulo;
+    document.getElementById('sDescricao').value = m.desc;
+  }
+}
+
+async function salvarStatus(){
+  const btn   = document.getElementById('salvarBtn');
+  const okEl  = document.getElementById('salvarOk');
+  const errEl = document.getElementById('salvarErr');
+  okEl.classList.remove('show');
+  errEl.classList.remove('show');
+
+  const titulo    = document.getElementById('sTitulo').value.trim();
+  const descricao = document.getElementById('sDescricao').value.trim();
+
+  if(!titulo){ errEl.textContent='Informe o título.'; errEl.classList.add('show'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Salvando…';
+
+  try{
+    const {data,error} = await sb.rpc('portal_servnet_atualizar_status',{
+      p_pin:       pinSessao,
+      p_status:    statusAtual,
+      p_titulo:    titulo,
+      p_descricao: descricao
+    });
+    if(error) throw error;
+    if(!data?.ok) throw new Error(data?.msg||'Erro ao salvar.');
+
+    // atualiza badge
+    const b = BADGE[statusAtual] || BADGE.ok;
+    document.getElementById('currentStatus').innerHTML =
+      `<div class="current-badge ${b.cls}">Status atual: ${b.label}</div>`;
+
+    okEl.textContent = '✅ Status atualizado! Os clientes já visualizam a nova informação.';
+    okEl.classList.add('show');
+  }catch(e){
+    errEl.textContent = '❌ '+(e.message||'Erro ao salvar. Tente novamente.');
+    errEl.classList.add('show');
+    console.error(e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar';
+  }
+}
+
+function deslogar(){
+  pinSessao = '';
+  statusAtual = 'ok';
+  document.getElementById('adminScreen').style.display = 'none';
+  document.getElementById('pinScreen').style.display   = 'block';
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinErr').classList.remove('show');
+}
+</script>
+</body>
+</html>

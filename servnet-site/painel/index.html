@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GrupoTom — Login</title>
+  <meta name="description" content="Sistema financeiro GrupoTom" />
+  <meta name="theme-color" content="#3FD68E" />
+  <link rel="manifest" href="/painel/assets/manifest-DAJhj4yM.json" />
+  <link rel="apple-touch-icon" href="/painel/icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:     #3FD68E;
+      --accent-glow:rgba(63,214,142,0.28);
+      --bg:         #0A0F1F;
+      --border:     rgba(255,255,255,0.08);
+      --text-1:     #FFFFFF;
+      --text-2:     #A0AEC0;
+      --text-3:     #4A5568;
+      --font-head:  'Space Grotesk', sans-serif;
+      --font-body:  'Inter', sans-serif;
+    }
+
+    html, body {
+      height: 100%; overflow: hidden;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text-1);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Canvas de fundo ─────────────────────────── */
+    #login-canvas {
+      position: fixed; inset: 0; z-index: 0;
+    }
+
+    /* ── Tela de login ───────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Topbar ──────────────────────────────────── */
+    .login-topbar {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 58px; display: flex; align-items: center;
+      padding: 0 32px; z-index: 20;
+      font-family: var(--font-head);
+      font-size: 14px; font-weight: 700;
+      letter-spacing: 2px; color: var(--text-1);
+    }
+    .login-topbar-mark {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: linear-gradient(135deg, var(--accent), #0eb87a);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px; font-weight: 700; color: #0A0F1F;
+      margin-right: 10px;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    /* ── Layout principal ────────────────────────── */
+    .login-layout {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 78px 56px 40px; gap: 72px;
+    }
+
+    /* ── Hero (esquerda) ─────────────────────────── */
+    .login-hero {
+      flex: 1; max-width: 460px;
+    }
+    .login-badge {
+      display: inline-block;
+      font-family: var(--font-head);
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid rgba(63,214,142,0.3);
+      border-radius: 20px; padding: 5px 14px;
+      margin-bottom: 26px;
+    }
+    .login-hero h1 {
+      font-family: var(--font-head);
+      font-size: 40px; font-weight: 700;
+      line-height: 1.17; margin-bottom: 18px;
+      color: var(--text-1); text-wrap: balance;
+    }
+    .login-hero h1 .accent { color: var(--accent); }
+    .login-hero p {
+      font-size: 16px; color: var(--text-2);
+      line-height: 1.65; max-width: 360px;
+    }
+    .login-features {
+      margin-top: 32px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .login-feature {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 14px; color: var(--text-2);
+    }
+    .login-feature-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Card do formulário (direita) ────────────── */
+    .login-card {
+      width: 100%; max-width: 390px; flex-shrink: 0;
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(28px);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 40px 36px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.45),
+                  0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .login-card h2 {
+      font-family: var(--font-head);
+      font-size: 24px; font-weight: 700;
+      color: var(--text-1); margin-bottom: 5px;
+    }
+    .login-card .sub {
+      font-size: 14px; color: var(--text-2); margin-bottom: 30px;
+    }
+    .login-field { margin-bottom: 18px; }
+    .login-field label {
+      display: block; font-size: 12.5px; font-weight: 500;
+      color: var(--text-2); margin-bottom: 7px;
+    }
+    .login-field input {
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; font-size: 15px;
+      color: var(--text-1); font-family: var(--font-body);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .login-field input::placeholder { color: var(--text-3); }
+    .login-field input:focus {
+      border-color: rgba(63,214,142,0.4);
+      box-shadow: 0 0 0 3px rgba(63,214,142,0.1);
+    }
+    .senha-wrapper { position: relative; }
+    .senha-wrapper input { padding-right: 44px; }
+    #btn-ver-senha {
+      position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: var(--text-3); padding: 4px;
+    }
+    #btn-ver-senha:hover { color: var(--text-2); }
+
+    #erro-login {
+      color: #f87171; font-size: 13px;
+      margin-bottom: 10px; min-height: 18px;
+    }
+
+    #btn-login {
+      width: 100%; padding: 13px;
+      background: var(--accent); color: #0A0F1F;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      font-family: var(--font-head);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 0 28px var(--accent-glow);
+    }
+    #btn-login:hover { opacity: 0.91; transform: translateY(-1px); }
+    #btn-login:active { transform: translateY(0); }
+    #btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .login-link {
+      text-align: center; margin-top: 16px;
+      font-size: 13px; color: var(--text-3);
+    }
+    #btn-esqueci-senha {
+      background: none; border: none; cursor: pointer;
+      color: var(--accent); font-size: 13px;
+      text-decoration: underline; padding: 0;
+    }
+
+    /* ── Footer ──────────────────────────────────── */
+    .login-footer {
+      position: absolute; bottom: 20px; left: 0; right: 0;
+      text-align: center; font-size: 12px; color: var(--text-3);
+    }
+
+    /* ── Mobile ──────────────────────────────────── */
+    @media (max-width: 767px) {
+      .login-layout {
+        flex-direction: column;
+        padding: 80px 24px 80px;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 28px; overflow-y: auto;
+        inset: unset; position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+      }
+      .login-hero h1 { font-size: 26px; }
+      .login-features { display: none; }
+      .login-card { max-width: 100%; padding: 32px 24px; }
+    }
+  </style>
+  <script type="module" crossorigin src="/painel/assets/main-B0aA6X-RF1.js"></script>
+  <link rel="modulepreload" crossorigin href="/painel/assets/modulepreload-polyfill-B5Qt9EMXF1.js">
+  <link rel="modulepreload" crossorigin href="/painel/assets/supabase-DthfXWp1F1.js">
+  <link rel="modulepreload" crossorigin href="/painel/assets/page-dashboard-Dbqm2OjXbF1.js">
+  <link rel="modulepreload" crossorigin href="/painel/assets/auth-8dcbKywjF1.js">
+</head>
+<body>
+
+<canvas id="login-canvas"></canvas>
+
+<div id="login-screen">
+  <div class="login-topbar">
+    <div class="login-topbar-mark">GT</div>
+    GRUPOTOM
+  </div>
+
+  <div class="login-layout">
+    <!-- Hero -->
+    <div class="login-hero">
+      <div class="login-badge">PAINEL DE GESTÃO</div>
+      <h1>Gestão financeira <span class="accent">centralizada</span> para sua holding.</h1>
+      <p>Contas, lançamentos, cobranças, clientes e equipe — tudo em um só lugar.</p>
+      <div class="login-features">
+        <div class="login-feature">
+          <div class="login-feature-dot"></div>Controle de receitas e despesas
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-dot"></div>Gestão de clientes e cobranças
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-dot"></div>Relatórios e dashboards em tempo real
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="login-card">
+      <h2>Entrar</h2>
+      <p class="sub">Acesse seu painel financeiro</p>
+
+      <form id="form-login" novalidate>
+        <div class="login-field">
+          <label for="input-email">E-mail</label>
+          <input id="input-email" type="email" name="email"
+                 autocomplete="email" placeholder="seu@email.com" required />
+        </div>
+        <div class="login-field">
+          <label for="input-senha">Senha</label>
+          <div class="senha-wrapper">
+            <input id="input-senha" type="password" name="senha"
+                   autocomplete="current-password" placeholder="••••••••" required />
+            <button type="button" id="btn-ver-senha" aria-label="Mostrar/ocultar senha">👁</button>
+          </div>
+        </div>
+
+        <div id="erro-login" role="alert" aria-live="polite"></div>
+        <button type="submit" id="btn-login">Entrar</button>
+      </form>
+
+      <p class="login-link">
+        <button id="btn-esqueci-senha" type="button">Esqueci minha senha</button>
+      </p>
+    </div>
+  </div>
+
+  <div class="login-footer">Acesso restrito — contas criadas pelo administrador do sistema.</div>
+</div>
+
+<script>
+(function () {
+  const c   = document.getElementById('login-canvas');
+  const ctx = c.getContext('2d');
+  let W, H;
+  const N = 60, DIST = 140, SPD = 0.32;
+  const CLR = [63, 214, 142];
+  let pts = [];
+
+  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  function mkPt() {
+    return { x: Math.random()*W, y: Math.random()*H,
+             vx:(Math.random()-.5)*SPD, vy:(Math.random()-.5)*SPD,
+             r: Math.random()*1.4+0.5 };
+  }
+  function init() { resize(); pts = Array.from({length:N}, mkPt); }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0A0F1F';
+    ctx.fillRect(0, 0, W, H);
+
+    const g = ctx.createRadialGradient(W*.35, H*.5, 0, W*.35, H*.5, Math.max(W,H)*.72);
+    g.addColorStop(0, 'rgba(20,60,50,0.22)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${CLR[0]},${CLR[1]},${CLR[2]},0.65)`;
+      ctx.fill();
+    }
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i+1; j < pts.length; j++) {
+        const dx = pts[i].x-pts[j].x, dy = pts[i].y-pts[j].y;
+        const d  = Math.sqrt(dx*dx+dy*dy);
+        if (d < DIST) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.strokeStyle = `rgba(${CLR[0]},${CLR[1]},${CLR[2]},${(1-d/DIST)*.3})`;
+          ctx.lineWidth = 0.6; ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  init(); frame();
+  window.addEventListener('resize', () => {
+    resize();
+    pts.forEach(p => { p.x = Math.min(p.x,W); p.y = Math.min(p.y,H); });
+  });
+})();
+</script>
+
+</body>
+</html>
