@@ -389,6 +389,21 @@ a{color:inherit;}
 .upgrade-btn:hover:not(:disabled){background:rgba(0,196,216,0.18);border-color:rgba(0,196,216,0.6);}
 .upgrade-btn:disabled{opacity:0.55;cursor:default;}
 
+/* seletor de plano (upgrade) */
+.upgrade-seletor{margin-top:0.9rem;background:rgba(0,196,216,0.05);border:1px solid rgba(0,196,216,0.2);border-radius:10px;padding:12px;}
+.upgrade-seletor-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--pool);margin-bottom:8px;}
+.upgrade-plano-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:7px;border:1.5px solid rgba(0,196,216,0.15);background:rgba(0,196,216,0.03);cursor:pointer;margin-bottom:5px;transition:all 0.12s;}
+.upgrade-plano-item:hover{border-color:rgba(0,196,216,0.4);background:rgba(0,196,216,0.08);}
+.upgrade-plano-item.selected{border-color:var(--pool);background:rgba(0,196,216,0.12);}
+.upgrade-plano-nome{font-size:0.82rem;font-weight:600;color:var(--text);}
+.upgrade-plano-info{font-size:0.72rem;color:var(--pool);}
+.upgrade-seletor-desc{width:100%;resize:none;border:1px solid rgba(0,196,216,0.2);background:rgba(0,0,0,0.2);color:var(--text);border-radius:6px;padding:7px 9px;font-size:0.78rem;font-family:inherit;margin-top:4px;box-sizing:border-box;}
+.upgrade-seletor-desc::placeholder{color:var(--text-2);}
+.upgrade-seletor-btns{display:flex;gap:7px;margin-top:8px;}
+.upgrade-seletor-btns .btn-cancel{flex:1;padding:8px;border-radius:7px;border:1px solid rgba(0,196,216,0.2);background:transparent;color:var(--text-2);cursor:pointer;font-size:0.8rem;font-family:inherit;}
+.upgrade-seletor-btns .btn-send{flex:2;padding:8px;border-radius:7px;border:none;background:var(--pool);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:700;font-family:inherit;}
+.upgrade-seletor-btns .btn-send:disabled{opacity:0.55;cursor:default;}
+
 /* promoções */
 .promo-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
 @media(max-width:640px){.promo-grid{grid-template-columns:1fr;}}
@@ -653,41 +668,124 @@ document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') doLogin();
 });
 
-async function solicitarUpgrade(tipo, key){
-  if(!session) return;
-  const btn = document.getElementById(key?`upgradeBtn-${key}`:'upgradeBtn');
-  const msg = document.getElementById(key?`upgradeMsg-${key}`:'upgradeMsg');
-  if(!btn || !msg) return;
+// Estado do seletor de upgrade
+let _upgradePlanos = [];
+let _upgradeSelecionado = null;
 
-  // com mais de um contrato, o chamado precisa dizer de qual deles se trata
-  const i  = contratos.findIndex((ct,n)=>ctKey(ct,n)===key);
-  const ct = i>=0 ? contratos[i] : null;
-  const descricao = (ct && contratos.length>1)
-    ? `Contrato: ${ctNome(ct,i)}${ct.diaVencimento?` (vencimento dia ${ct.diaVencimento})`:''}`
-    : '';
+async function solicitarUpgrade(tipo){
+  if(!session) return;
+  if(tipo === 'upgrade'){
+    await _mostrarSeletorPlano();
+  } else {
+    // Suporte: envia diretamente, sem seleção de plano
+    await _enviarSolicitar('suporte','','','');
+  }
+}
+
+async function _mostrarSeletorPlano(){
+  const btn = document.getElementById('upgradeBtn');
+  const msg = document.getElementById('upgradeMsg');
+  if(!btn) return;
 
   btn.disabled = true;
-  btn.textContent = '⏳ Enviando...';
-  msg.style.display = 'none';
+  btn.textContent = '⏳ Carregando planos...';
+  if(msg) msg.style.display = 'none';
+  _upgradeSelecionado = null;
+
   try{
-    const {data:res,error} = await sb.rpc('portal_servnet_solicitar',{
-      p_cliente_id: session.cliente_id,
-      p_master_id:  session.master_id,
-      p_tipo:       tipo,
-      p_descricao:  descricao
+    const {data:r, error} = await sb.rpc('portal_servnet_planos',{p_master_id: session.master_id});
+    if(error) throw error;
+    _upgradePlanos = (r?.planos || []).filter(p => p.nome !== (session.plano?.nome||''));
+  }catch(e){
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = '⚡ Solicitar Upgrade de Plano';
+    if(msg){ msg.style.display='block'; msg.style.color='#F87171'; msg.textContent='Não foi possível carregar os planos. Tente novamente.'; }
+    return;
+  }
+
+  const planosHTML = _upgradePlanos.length > 0
+    ? _upgradePlanos.map((p,i) =>
+        `<div class="upgrade-plano-item" data-idx="${i}" onclick="_selecionarPlano(${i})">
+          <span class="upgrade-plano-nome">${p.nome}</span>
+          <span class="upgrade-plano-info">${p.velocidade?p.velocidade+' · ':''}${p.valor?fmtVal(p.valor)+'/mês':''}</span>
+        </div>`
+      ).join('')
+    : '<div style="color:var(--text-2);font-size:0.78rem;text-align:center;padding:6px 0;">Fale com o suporte para ver as opções disponíveis.</div>';
+
+  // Remove seletor anterior se houver
+  document.getElementById('_upgradeSeletor')?.remove();
+
+  const html = `<div id="_upgradeSeletor" class="upgrade-seletor">
+    <div class="upgrade-seletor-title">Selecione o plano desejado</div>
+    ${session.plano?.nome ? `<div style="font-size:0.75rem;color:var(--text-2);margin-bottom:8px;">Plano atual: <strong style="color:var(--text)">${session.plano.nome}</strong></div>` : ''}
+    <div id="_planosLista">${planosHTML}</div>
+    <textarea id="_upgDesc" class="upgrade-seletor-desc" rows="2" placeholder="Informações adicionais (opcional)..."></textarea>
+    <div class="upgrade-seletor-btns">
+      <button class="btn-cancel" onclick="_cancelarSeletor()">Cancelar</button>
+      <button class="btn-send" id="_btnEnviar" onclick="_confirmarUpgrade()">Enviar solicitação →</button>
+    </div>
+    <div id="_seletorMsg" style="display:none;font-size:0.74rem;margin-top:6px;text-align:center;"></div>
+  </div>`;
+
+  btn.style.display = 'none';
+  btn.insertAdjacentHTML('afterend', html);
+}
+
+function _selecionarPlano(idx){
+  _upgradeSelecionado = _upgradePlanos[idx];
+  document.querySelectorAll('.upgrade-plano-item').forEach((el,i) => el.classList.toggle('selected', i===idx));
+}
+
+function _cancelarSeletor(){
+  document.getElementById('_upgradeSeletor')?.remove();
+  const btn = document.getElementById('upgradeBtn');
+  if(btn){ btn.style.display=''; btn.disabled=false; }
+  _upgradeSelecionado = null;
+}
+
+async function _confirmarUpgrade(){
+  if(_upgradePlanos.length > 0 && !_upgradeSelecionado){
+    const sMsg = document.getElementById('_seletorMsg');
+    if(sMsg){ sMsg.style.display='block'; sMsg.style.color='#F87171'; sMsg.textContent='Selecione o plano desejado acima.'; }
+    return;
+  }
+  const descricao = document.getElementById('_upgDesc')?.value?.trim()||'';
+  const planoAtual = session.plano?.nome||'';
+  const planoDesejado = _upgradeSelecionado?.nome||'';
+  const btnEnv = document.getElementById('_btnEnviar');
+  if(btnEnv){ btnEnv.disabled=true; btnEnv.textContent='⏳ Enviando...'; }
+  await _enviarSolicitar('upgrade', planoAtual, planoDesejado, descricao);
+}
+
+async function _enviarSolicitar(tipo, planoAtual, planoDesejado, descricao){
+  const btn    = document.getElementById('upgradeBtn');
+  const msg    = document.getElementById('upgradeMsg');
+  const seletor = document.getElementById('_upgradeSeletor');
+  try{
+    const {data:res, error} = await sb.rpc('portal_servnet_solicitar',{
+      p_cliente_id:     session.cliente_id,
+      p_master_id:      session.master_id,
+      p_tipo:           tipo,
+      p_descricao:      descricao,
+      p_plano_atual:    planoAtual,
+      p_plano_desejado: planoDesejado
     });
     if(error) throw error;
     if(!res?.ok) throw new Error(res?.msg||'Erro ao enviar.');
-    btn.textContent = '✅ Solicitação enviada!';
-    msg.style.display = 'block';
-    msg.style.color = '#34D399';
-    msg.textContent = `Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`;
+    seletor?.remove();
+    if(btn){ btn.style.display=''; btn.disabled=true; btn.textContent='✅ Solicitação enviada!'; }
+    if(msg){ msg.style.display='block'; msg.style.color='#34D399'; msg.textContent=`Nossa equipe entrará em contato em breve. (Protocolo: ${res.numero})`; }
   }catch(e){
-    btn.disabled = false;
-    btn.textContent = tipo==='upgrade' ? '⚡ Solicitar Upgrade de Plano' : '💬 Falar com Suporte';
-    msg.style.display = 'block';
-    msg.style.color = '#F87171';
-    msg.textContent = 'Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.';
+    const sMsg = document.getElementById('_seletorMsg');
+    const btnEnv = document.getElementById('_btnEnviar');
+    if(seletor){
+      if(sMsg){ sMsg.style.display='block'; sMsg.style.color='#F87171'; sMsg.textContent='Erro ao enviar. Tente novamente.'; }
+      if(btnEnv){ btnEnv.disabled=false; btnEnv.textContent='Enviar solicitação →'; }
+    } else {
+      if(btn){ btn.style.display=''; btn.disabled=false; btn.textContent=tipo==='upgrade'?'⚡ Solicitar Upgrade de Plano':'💬 Falar com Suporte'; }
+      if(msg){ msg.style.display='block'; msg.style.color='#F87171'; msg.textContent='Não foi possível enviar. Tente novamente ou entre em contato pelo WhatsApp.'; }
+    }
     console.error(e);
   }
 }
@@ -1452,7 +1550,6 @@ function renderFidelidade(nomeCliente, ct, idx, fatContrato){
   const semAlcance = faltam > 0 && foraDeAlcance(metaAtual);
   if(semAlcance) faltam = 0;
 
-  const pctTotal = Math.round((streak/12)*100);
   const nome = (nomeCliente||session?.nome||'Cliente').toUpperCase();
 
   alvo.innerHTML=`
