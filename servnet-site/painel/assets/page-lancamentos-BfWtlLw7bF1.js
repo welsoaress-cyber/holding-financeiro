@@ -75,12 +75,18 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
       <td style="padding:6px 10px;text-align:right;font-size:13px;font-weight:600;color:${x};font-variant-numeric:tabular-nums;white-space:nowrap;">
         ${M(e.valor)}
       </td>
-      <td style="padding:6px 10px;">
+      <td style="padding:6px 10px;white-space:nowrap;">
         <span style="
           display:inline-block;padding:2px 7px;border-radius:3px;
           font-size:11px;font-weight:600;
           background:${w};color:${m};
         ">${p}</span>
+        ${!n&&!d?`<button class="btn-pagar" data-id="${e.id}" onclick="event.stopPropagation()"
+          title="Marcar como pago"
+          style="margin-left:4px;padding:1px 7px;font-size:11px;cursor:pointer;
+            border:1px solid #16a34a;border-radius:3px;
+            background:transparent;color:#16a34a;font-weight:700;
+            vertical-align:middle;">✓</button>`:""}
       </td>
     </tr>
   `}function S(e,t){return`
@@ -211,7 +217,7 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
         ">Carregar mais</button>`:""}
       </div>
     </div>
-  `,(m=l.querySelector('[data-action="mes-prev"]'))==null||m.addEventListener("click",K),(w=l.querySelector('[data-action="mes-next"]'))==null||w.addEventListener("click",W),(u=l.querySelector('[data-action="mes-hoje"]'))==null||u.addEventListener("click",X),(y=l.querySelector('[data-action="novo-lanc"]'))==null||y.addEventListener("click",()=>R(null)),(x=l.querySelector('[data-action="carregar-mais"]'))==null||x.addEventListener("click",()=>_(!1));const p=l.querySelector("#busca-lanc");p==null||p.addEventListener("input",r=>{z=r.target.value;const _gid=r.target.id;clearTimeout(window._gtBT);window._gtBT=setTimeout(()=>{h();const _b=_gid&&document.getElementById(_gid);if(_b){_b.focus();_b.setSelectionRange(_b.value.length,_b.value.length)}},350)}),(C=l.querySelector("#btn-limpar-busca"))==null||C.addEventListener("click",()=>{z="",h()}),l.querySelectorAll("[data-filtro-tipo]").forEach(r=>{r.addEventListener("click",()=>{$=r.dataset.filtroTipo,h()})}),l.querySelectorAll("[data-filtro-status]").forEach(r=>{r.addEventListener("click",()=>{k=r.dataset.filtroStatus,h()})});const _fnb=l.querySelector("#filtro-negocio");_fnb&&_fnb.addEventListener("change",()=>{nb=_fnb.value;h()});const _selAll=l.querySelector("#sel-all");if(_selAll){_selAll.indeterminate=sel.size>0&&sel.size<t.length;_selAll.checked=t.length>0&&sel.size===t.length;_selAll.addEventListener("change",()=>{if(_selAll.checked)t.forEach(r=>sel.add(r.id));else sel.clear();h()})}l.querySelectorAll(".sel-item").forEach(cb=>{cb.addEventListener("change",_ev=>{_ev.stopPropagation();if(cb.checked)sel.add(cb.dataset.id);else sel.delete(cb.dataset.id);const _sa=l.querySelector("#sel-all");if(_sa){_sa.indeterminate=sel.size>0&&sel.size<t.length;_sa.checked=t.length>0&&sel.size===t.length}})});const _btnDelSel=l.querySelector("#btn-del-sel");_btnDelSel&&_btnDelSel.addEventListener("click",async()=>{if(!sel.size)return;if(await f.confirmar(`Excluir ${sel.size} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"})){const _ids=[...sel];sel.clear();for(const _id of _ids){try{await Q("lancamentos",_id);g.remove("lancamentos",_id)}catch(_ex){console.error(_ex)}}E.ok(`${_ids.length} lançamento(s) excluído(s).`);h()}});l.querySelectorAll("[data-lanc-id]").forEach(r=>{r.addEventListener("click",()=>{const b=r.dataset.lancId,N=(g.get("lancamentos")??[]).find(P=>P.id===b);N&&R(N)})})}function te(e){const t=!e,o=e??{tipo:"despesa",status:"pendente",data_vencimento:j(),valor:"",descricao:"",categoria:""};return`
+  `,(m=l.querySelector('[data-action="mes-prev"]'))==null||m.addEventListener("click",K),(w=l.querySelector('[data-action="mes-next"]'))==null||w.addEventListener("click",W),(u=l.querySelector('[data-action="mes-hoje"]'))==null||u.addEventListener("click",X),(y=l.querySelector('[data-action="novo-lanc"]'))==null||y.addEventListener("click",()=>R(null)),(x=l.querySelector('[data-action="carregar-mais"]'))==null||x.addEventListener("click",()=>_(!1));const p=l.querySelector("#busca-lanc");p==null||p.addEventListener("input",r=>{z=r.target.value;const _gid=r.target.id;clearTimeout(window._gtBT);window._gtBT=setTimeout(()=>{h();const _b=_gid&&document.getElementById(_gid);if(_b){_b.focus();_b.setSelectionRange(_b.value.length,_b.value.length)}},350)}),(C=l.querySelector("#btn-limpar-busca"))==null||C.addEventListener("click",()=>{z="",h()}),l.querySelectorAll("[data-filtro-tipo]").forEach(r=>{r.addEventListener("click",()=>{$=r.dataset.filtroTipo,h()})}),l.querySelectorAll("[data-filtro-status]").forEach(r=>{r.addEventListener("click",()=>{k=r.dataset.filtroStatus,h()})});const _fnb=l.querySelector("#filtro-negocio");_fnb&&_fnb.addEventListener("change",()=>{nb=_fnb.value;h()});const _selAll=l.querySelector("#sel-all");if(_selAll){_selAll.indeterminate=sel.size>0&&sel.size<t.length;_selAll.checked=t.length>0&&sel.size===t.length;_selAll.addEventListener("change",()=>{if(_selAll.checked)t.forEach(r=>sel.add(r.id));else sel.clear();h()})}l.querySelectorAll(".sel-item").forEach(cb=>{cb.addEventListener("change",_ev=>{_ev.stopPropagation();if(cb.checked)sel.add(cb.dataset.id);else sel.delete(cb.dataset.id);const _sa=l.querySelector("#sel-all");if(_sa){_sa.indeterminate=sel.size>0&&sel.size<t.length;_sa.checked=t.length>0&&sel.size===t.length}})});const _btnDelSel=l.querySelector("#btn-del-sel");_btnDelSel&&_btnDelSel.addEventListener("click",async()=>{if(!sel.size)return;if(await f.confirmar(`Excluir ${sel.size} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"})){const _ids=[...sel];sel.clear();for(const _id of _ids){try{await Q("lancamentos",_id);g.remove("lancamentos",_id)}catch(_ex){console.error(_ex)}}E.ok(`${_ids.length} lançamento(s) excluído(s).`);h()}});l.querySelectorAll("[data-lanc-id]").forEach(r=>{r.addEventListener("click",()=>{const b=r.dataset.lancId,N=(g.get("lancamentos")??[]).find(P=>P.id===b);N&&R(N)})});l.querySelectorAll(".btn-pagar").forEach(_bp=>{_bp.addEventListener("click",async()=>{const _id=_bp.dataset.id,_lnc=(g.get("lancamentos")??[]).find(_r=>_r.id===_id);if(!_lnc)return;const _today=new Date().toISOString().slice(0,10);const _upd={..._lnc,status:"pago",data_pagamento:_today};try{await G("lancamentos",_upd);g.patch("lancamentos",_id,_upd);E.ok("Marcado como pago! ✓");h()}catch(_ex){E.err("Erro: "+_ex.message)}})})}function te(e){const t=!e,o=e??{tipo:"despesa",status:"pendente",data_vencimento:j(),valor:"",descricao:"",categoria:""};return`
     <form id="form-lanc" style="display:flex;flex-direction:column;gap:14px;">
       <div style="display:flex;gap:8px;">
         <label style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
@@ -244,8 +250,13 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
       <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
         Descrição
         <input name="descricao" type="text" value="${o.descricao||""}" required
+          list="dl-desc-lanc"
           placeholder="Ex: Conta de energia"
+          autocomplete="off"
           style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
+        <datalist id="dl-desc-lanc">
+          ${[...new Set((g.get("lancamentos")||[]).map(l=>l.descricao||""))].filter(Boolean).sort().map(n=>`<option value="${n}">`).join("")}
+        </datalist>
       </label>
 
       <div style="display:flex;gap:8px;">
@@ -262,7 +273,7 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
         </label>
       </div>
 
-      <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
+      <label id="label-data-pgto" style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
         Data de Pagamento
         <input name="data_pagamento" type="date" value="${o.data_pagamento||""}"
           style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
@@ -271,20 +282,28 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
       <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
         Categoria (opcional)
         <input name="categoria" type="text" value="${o.categoria||""}"
+          list="dl-cat-lanc"
           placeholder="Ex: Alimentação, Transporte…"
+          autocomplete="off"
           style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
+        <datalist id="dl-cat-lanc">
+          ${[...new Set((g.get("lancamentos")||[]).map(l=>l.categoria||""))].filter(Boolean).sort().map(n=>`<option value="${n}">`).join("")}
+        </datalist>
       </label>
 
       <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
         Negócio
-        <input name="negocio" type="text" value="${o.negocio||""}"
-          list="dl-negocio-lanc"
-          placeholder="Ex: Servidor, Streaming…"
-          autocomplete="off"
-          style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
-        <datalist id="dl-negocio-lanc">
-          ${[...new Set([...((g.get("negocios")||[]).map(n=>n.nome||"")),...((g.get("lancamentos")||[]).map(l=>l.negocio||""))])].filter(Boolean).sort().map(n=>`<option value="${n}">`).join("")}
-        </datalist>
+        <div style="display:flex;gap:6px;">
+          <select name="negocio-sel" id="sel-negocio"
+            style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);">
+            <option value="">— Selecionar —</option>
+            ${(g.get("negocios")||[]).map(n=>`<option value="${n.nome||""}" ${(o.negocio||"")===(n.nome||"")?"selected":""}>${n.nome||""}</option>`).join("")}
+            <option value="__novo__">+ Novo negócio…</option>
+          </select>
+          <input id="inp-negocio-novo" name="negocio-novo" type="text"
+            placeholder="Nome do negócio"
+            style="display:none;flex:1;padding:8px;border-radius:8px;border:2px solid #2563eb;font-size:14px;background:var(--bg-card);color:var(--text);" />
+        </div>
       </label>
 
       ${t?`
@@ -327,4 +346,4 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
         ">${t?"Criar":"Salvar"}</button>
       </div>
     </form>
-  `}async function R(e){var d;f.abrir({titulo:e?"Editar lançamento":"Novo lançamento",conteudo:te(e)}),await new Promise(s=>setTimeout(s,60));const t=document.getElementById("form-lanc");if(!t)return;const o=t.querySelector("#check-recorrente"),n=t.querySelector("#div-recorrencia");o==null||o.addEventListener("change",()=>{n&&(n.style.display=o.checked?"flex":"none")}),t.addEventListener("submit",async s=>{s.preventDefault();const i=new FormData(t),p=i.get("data_vencimento")||j(),m=i.get("recorrente")==="on",w=m?parseInt(i.get("qtd_meses")||"1",10):0,u={...(e??{}),id:(e==null?void 0:e.id)??B(),negocio:i.get("negocio")||null,tipo:i.get("tipo"),status:i.get("status"),cliente:i.get("cliente")||null,descricao:i.get("descricao"),valor:parseFloat(i.get("valor"))||0,data_vencimento:p,data_pagamento:i.get("data_pagamento")||null,categoria:i.get("categoria")||null,mes_ref:p.slice(0,7)},y=t.querySelector("[type=submit]");y.disabled=!0,y.textContent="Salvando…";try{if(m&&w>0){const x=[u];for(let r=1;r<=w;r++){const b=U(p,r);x.push({...u,id:B(),data_vencimento:b,mes_ref:b.slice(0,7)})}await V("lancamentos",x),x.filter(r=>r.mes_ref===F()).forEach(r=>g.patch("lancamentos",r.id,r)),E.ok(`${x.length} lançamentos criados!`)}else await G("lancamentos",u);(!e||u.mes_ref===F())&&g.patch("lancamentos",u.id,u);if(e){const _esc=await f.escopoAcao("Aplicar alterações",e,"primary");if(_esc==="proximos"||_esc==="todos"){const _alvo=(g.get("lancamentos")??[]).filter(_r=>_r.id!==u.id&&(_r.descricao||"")===(e.descricao||"")&&(_r.cliente||null)===(e.cliente||null)&&(_esc==="todos"||(_r.status!=="pago"&&(_r.data_vencimento||_r.data||"")>=u.data_vencimento)));const _campos={cliente:u.cliente,descricao:u.descricao,categoria:u.categoria,negocio:u.negocio,valor:u.valor,tipo:u.tipo};for(const _r of _alvo){try{await G("lancamentos",{..._r,..._campos});g.patch("lancamentos",_r.id,{..._r,..._campos})}catch(_ex){console.error(_ex)}}E.ok(`Alteração aplicada em ${_alvo.length+1} lançamento(s)!`)}else if(_esc==="este"){E.ok("Lançamento atualizado!")}else{E.ok("Lançamento atualizado!")}}else{E.ok("Lançamento criado!")};f.fechar(),h()}catch(x){console.error(x),E.err("Erro ao salvar: "+x.message),y.disabled=!1,y.textContent=e?"Salvar":"Criar"}}),(d=document.getElementById("btn-excluir"))==null||d.addEventListener("click",async()=>{{const _escDel=await f.escopoAcao("Excluir lançamento",e,"danger");if(_escDel!==null){try{const _alvoDel=(g.get("lancamentos")??[]).filter(_rd=>_rd.id!==e.id&&(_rd.descricao||"")===(e.descricao||"")&&(_rd.cliente||null)===(e.cliente||null)&&(_escDel==="todos"||(_rd.status!=="pago"&&(_rd.data_vencimento||_rd.data||"")>=(e.data_vencimento||e.data||""))));await Q("lancamentos",e.id);g.remove("lancamentos",e.id);for(const _rd of _alvoDel){try{await Q("lancamentos",_rd.id);g.remove("lancamentos",_rd.id)}catch(_ex){console.error(_ex)}}f.fechar();E.ok(_alvoDel.length?`${_alvoDel.length+1} lançamentos excluídos.`:"Lançamento excluído.");h()}catch(i){E.err("Erro ao excluir: "+i.message)}}}})}async function oe(e){l=e;const t=new Date;v=t.getFullYear(),c=t.getMonth()+1,L=null,q=!1,$="todos",k="todos",z="",nb="todos",sel=new Set(),T=!1,g.set("lancamentos",[]),h(),await _(!0)}const re=Object.freeze(Object.defineProperty({__proto__:null,initLancamentos:oe},Symbol.toStringTag,{value:"Module"}));export{re as i,f as m,B as u};
+  `}async function R(e){var d;f.abrir({titulo:e?"Editar lançamento":"Novo lançamento",conteudo:te(e)}),await new Promise(s=>setTimeout(s,60));const t=document.getElementById("form-lanc");if(!t)return;const o=t.querySelector("#check-recorrente"),n=t.querySelector("#div-recorrencia");o==null||o.addEventListener("change",()=>{n&&(n.style.display=o.checked?"flex":"none")});const _st2=t.querySelector("[name=status]"),_dp2=t.querySelector("[name=data_pagamento]"),_ldp2=t.querySelector("#label-data-pgto");if(_st2&&_dp2){const _upd2=()=>{const _isPago=_st2.value==="pago";if(_ldp2)_ldp2.style.display=_isPago?"flex":"none";if(_isPago&&!_dp2.value)_dp2.value=j()};_st2.addEventListener("change",_upd2);_upd2()}const _selNeg=t.querySelector("#sel-negocio"),_inpNovNeg=t.querySelector("#inp-negocio-novo");if(_selNeg&&_inpNovNeg){_selNeg.addEventListener("change",()=>{const _isNovo=_selNeg.value==="__novo__";_inpNovNeg.style.display=_isNovo?"":"none";if(_isNovo)_inpNovNeg.focus()})}t.addEventListener("submit",async s=>{s.preventDefault();const i=new FormData(t),p=i.get("data_vencimento")||j(),m=i.get("recorrente")==="on",w=m?parseInt(i.get("qtd_meses")||"1",10):0,u={...(e??{}),id:(e==null?void 0:e.id)??B(),negocio:(()=>{const _snv=t.querySelector("#sel-negocio")?.value||"",_inv=t.querySelector("#inp-negocio-novo")?.value||"";return _snv==="__novo__"?(_inv.trim()||null):(_snv||null)})(),tipo:i.get("tipo"),status:i.get("status"),cliente:i.get("cliente")||null,descricao:i.get("descricao"),valor:parseFloat(i.get("valor"))||0,data_vencimento:p,data_pagamento:i.get("data_pagamento")||null,categoria:i.get("categoria")||null,mes_ref:p.slice(0,7)},y=t.querySelector("[type=submit]");y.disabled=!0,y.textContent="Salvando…";try{const _selN2=t.querySelector("#sel-negocio"),_inpN2=t.querySelector("#inp-negocio-novo");if(_selN2?.value==="__novo__"&&_inpN2?.value?.trim()){const _nNeg={id:B(),nome:_inpN2.value.trim()};try{await G("negocios",_nNeg);g.patch("negocios",_nNeg.id,_nNeg)}catch(_ex){console.error("Erro ao criar negócio:",_ex)}}if(u.status==="pago"&&!u.data_pagamento)u.data_pagamento=j();if(m&&w>0){const x=[u];for(let r=1;r<=w;r++){const b=U(p,r);x.push({...u,id:B(),data_vencimento:b,mes_ref:b.slice(0,7)})}await V("lancamentos",x),x.filter(r=>r.mes_ref===F()).forEach(r=>g.patch("lancamentos",r.id,r)),E.ok(`${x.length} lançamentos criados!`)}else await G("lancamentos",u);(!e||u.mes_ref===F())&&g.patch("lancamentos",u.id,u);if(e){const _esc=await f.escopoAcao("Aplicar alterações",e,"primary");if(_esc==="proximos"||_esc==="todos"){const _alvo=(g.get("lancamentos")??[]).filter(_r=>_r.id!==u.id&&(_r.descricao||"")===(e.descricao||"")&&(_r.cliente||null)===(e.cliente||null)&&(_esc==="todos"||(_r.status!=="pago"&&(_r.data_vencimento||_r.data||"")>=u.data_vencimento)));const _campos={cliente:u.cliente,descricao:u.descricao,categoria:u.categoria,negocio:u.negocio,valor:u.valor,tipo:u.tipo};for(const _r of _alvo){try{await G("lancamentos",{..._r,..._campos});g.patch("lancamentos",_r.id,{..._r,..._campos})}catch(_ex){console.error(_ex)}}E.ok(`Alteração aplicada em ${_alvo.length+1} lançamento(s)!`)}else if(_esc==="este"){E.ok("Lançamento atualizado!")}else{E.ok("Lançamento atualizado!")}}else{E.ok("Lançamento criado!")};f.fechar(),h()}catch(x){console.error(x),E.err("Erro ao salvar: "+x.message),y.disabled=!1,y.textContent=e?"Salvar":"Criar"}}),(d=document.getElementById("btn-excluir"))==null||d.addEventListener("click",async()=>{{const _escDel=await f.escopoAcao("Excluir lançamento",e,"danger");if(_escDel!==null){try{const _alvoDel=(g.get("lancamentos")??[]).filter(_rd=>_rd.id!==e.id&&(_rd.descricao||"")===(e.descricao||"")&&(_rd.cliente||null)===(e.cliente||null)&&(_escDel==="todos"||(_rd.status!=="pago"&&(_rd.data_vencimento||_rd.data||"")>=(e.data_vencimento||e.data||""))));await Q("lancamentos",e.id);g.remove("lancamentos",e.id);for(const _rd of _alvoDel){try{await Q("lancamentos",_rd.id);g.remove("lancamentos",_rd.id)}catch(_ex){console.error(_ex)}}f.fechar();E.ok(_alvoDel.length?`${_alvoDel.length+1} lançamentos excluídos.`:"Lançamento excluído.");h()}catch(i){E.err("Erro ao excluir: "+i.message)}}}})}async function oe(e){l=e;const t=new Date;v=t.getFullYear(),c=t.getMonth()+1,L=null,q=!1,$="todos",k="todos",z="",nb="todos",sel=new Set(),T=!1,g.set("lancamentos",[]),h(),await _(!0)}const re=Object.freeze(Object.defineProperty({__proto__:null,initLancamentos:oe},Symbol.toStringTag,{value:"Module"}));export{re as i,f as m,B as u};
