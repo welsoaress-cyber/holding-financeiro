@@ -354,13 +354,16 @@ serve(async (req) => {
   }
 
   // Filtra em JS — suporta tanto DD/MM/YYYY quanto YYYY-MM-DD
+  // data_vencimento é o campo principal (formulário ERP); data é fallback legado
   const todos = [...(resAt.data || []), ...(resNull.data || [])]
+  const getDataLanc = (d: Record<string, string>): string =>
+    d?.data_vencimento || d?.data || ''
   const resVencidos = todos.filter(l => {
-    const iso = toISO((l.dados as Record<string, string>)?.data || '')
+    const iso = toISO(getDataLanc(l.dados as Record<string, string>))
     return iso && iso < hoje
   })
   const resProximos = todos.filter(l => {
-    const iso = toISO((l.dados as Record<string, string>)?.data || '')
+    const iso = toISO(getDataLanc(l.dados as Record<string, string>))
     return iso && datasProximas.includes(iso)
   })
 
@@ -383,8 +386,9 @@ serve(async (req) => {
   for (const lanc of resVencidos) {
     const d = lanc.dados as Record<string, string>
     const cid = d?.clienteId
-    if (!cid || !d?.data) continue
-    const atraso = Math.round((new Date(hoje).getTime() - new Date(toISO(d.data)).getTime()) / msDia)
+    const dataD = d?.data_vencimento || d?.data || ''
+    if (!cid || !dataD) continue
+    const atraso = Math.round((new Date(hoje).getTime() - new Date(toISO(dataD)).getTime()) / msDia)
     const atual = inadimplencia.get(cid)
     if (!atual || atraso > atual.maxAtraso) inadimplencia.set(cid, { maxAtraso: atraso, oldestId: lanc.id })
   }
@@ -402,8 +406,8 @@ serve(async (req) => {
         datasProximas,
         amostra: todos.slice(0, 5).map(l => ({
           id: l.id,
-          data: (l.dados as Record<string, string>)?.data,
-          data_iso: toISO((l.dados as Record<string, string>)?.data || ''),
+          data: (l.dados as Record<string, string>)?.data_vencimento || (l.dados as Record<string, string>)?.data,
+          data_iso: toISO(getDataLanc(l.dados as Record<string, string>)),
           status: (l.dados as Record<string, string>)?.status,
           inativo: (l.dados as Record<string, string>)?.inativo,
           tipo: (l.dados as Record<string, string>)?.tipo,
@@ -424,7 +428,7 @@ serve(async (req) => {
     const dados = lanc.dados as Record<string, string>
     const clienteId = dados?.clienteId
     const valor = dados?.valor || dados?.valorTotal || dados?.valorFatura || '0'
-    const dataVenc = dados?.data || ''
+    const dataVenc = dados?.data_vencimento || dados?.data || ''
 
     if (!clienteId) {
       console.log(`⚠️ Lançamento ${lanc.id} sem clienteId`)
