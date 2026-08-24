@@ -18,6 +18,45 @@
 <meta property="og:image" content="https://servnet.net.br/faisca.png">
 <meta property="og:locale" content="pt_BR">
 <link rel="icon" type="image/svg+xml" href="/favicon-site.svg" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "InternetCafe",
+  "@id": "https://servnet.net.br/#business",
+  "name": "Servnet",
+  "description": "Provedor de internet fibra óptica no Jardim Moraes Prado. Planos de 100 a 300 Mbps a partir de R$ 60/mês, instalação grátis e suporte via WhatsApp.",
+  "url": "https://servnet.net.br",
+  "telephone": "+55-11-95449-0001",
+  "priceRange": "R$60–R$120",
+  "image": "https://servnet.net.br/faisca.png",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Jardim Moraes Prado",
+    "addressLocality": "São Paulo",
+    "addressRegion": "SP",
+    "addressCountry": "BR"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": -23.6,
+    "longitude": -46.7
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+    "opens": "08:00",
+    "closes": "18:00"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "+55-11-95449-0001",
+    "contactType": "customer support",
+    "availableLanguage": "Portuguese",
+    "contactOption": "TollFree"
+  },
+  "sameAs": ["https://wa.me/5511954490001"]
+}
+</script>
 <link rel="canonical" href="https://servnet.net.br/">
 <title>Servnet — Internet Fibra no Jardim Moraes Prado</title>
 <style>
@@ -510,75 +549,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .footer-links a:hover { color: var(--pool); }
 .footer-copy { font-size: 0.82rem; color: var(--text-2); }
 
-/* ===== PROMOÇÕES ===== */
-.promos-section { background: var(--surface); }
-.promos-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem;
-  max-width: 860px;
-}
-@media (max-width: 640px) { .promos-grid { grid-template-columns: 1fr; } }
-
-.promo-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 2rem 1.75rem;
-  display: flex; flex-direction: column; gap: 1.1rem;
-  position: relative; overflow: hidden;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-.promo-card:hover {
-  transform: translateY(-5px);
-}
-.promo-card::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent 5%, var(--pc) 50%, transparent 95%);
-  box-shadow: 0 0 12px var(--pc);
-}
-.promo-card.c-teal { --pc: #00C4D8; }
-.promo-card.c-gold { --pc: #F59E0B; }
-.promo-card.c-teal:hover { border-color: rgba(0,196,216,0.45); box-shadow: 0 12px 40px rgba(0,196,216,0.1); }
-.promo-card.c-gold:hover  { border-color: rgba(245,158,11,0.45); box-shadow: 0 12px 40px rgba(245,158,11,0.1); }
-
-.promo-ico {
-  width: 50px; height: 50px; border-radius: 11px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.promo-card.c-teal .promo-ico { background: rgba(0,196,216,0.1); border: 1px solid rgba(0,196,216,0.2); color: #00C4D8; }
-.promo-card.c-gold  .promo-ico { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #F59E0B; }
-.promo-ico svg { width: 24px; height: 24px; }
-
-.promo-tag {
-  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.2em;
-  text-transform: uppercase; margin-bottom: 0.25rem;
-}
-.promo-card.c-teal .promo-tag { color: #00C4D8; }
-.promo-card.c-gold  .promo-tag { color: #F59E0B; }
-
-.promo-title {
-  font-size: clamp(1.25rem, 2.5vw, 1.6rem); font-weight: 800;
-  line-height: 1.2; letter-spacing: -0.02em; color: var(--text);
-}
-.promo-desc { font-size: 0.93rem; color: var(--text-2); line-height: 1.75; }
-
-.promo-list { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
-.promo-list li {
-  display: flex; align-items: center; gap: 0.6rem;
-  font-size: 0.91rem; color: var(--text-2);
-}
-.promo-list li::before {
-  content: ''; width: 5px; height: 5px; border-radius: 50%;
-  flex-shrink: 0; background: var(--pc);
-}
-.promo-list strong { color: var(--text); }
-
-.promo-fine {
-  font-size: 0.75rem; color: var(--text-2); margin-top: 0.5rem;
-  display: flex; align-items: center; gap: 0.4rem; opacity: 0.75;
-}
-.promo-fine::before {
-  content: ''; width: 12px; height: 1px; background: var(--text-2); flex-shrink: 0;
-}
-
 /* ===== MODAL LEAD ===== */
 .modal-ov{
   position:fixed;inset:0;z-index:500;
@@ -998,7 +968,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
     <h2>Sua fibra está<br>esperando por você</h2>
     <p>Instalação rápida, sem burocracia e sem fidelidade. Ligue agora e comece a usar ainda esta semana.</p>
     <div class="cta-banner-actions">
-      <a href="whatsapp://send?phone=5511954490001" class="btn-wa" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
+      <a href="https://wa.me/5511954490001" class="btn-wa" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
         </svg>
@@ -1051,7 +1021,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <div class="ch-ico" aria-hidden="true">💬</div>
         <div>
           <div class="ch-key">WhatsApp</div>
-          <div class="ch-val"><a href="whatsapp://send?phone=5511954490001" style="color:inherit;text-decoration:none;">(11) 95449-0001 ↗</a></div>
+          <div class="ch-val"><a href="https://wa.me/5511954490001" style="color:inherit;text-decoration:none;">(11) 95449-0001 ↗</a></div>
         </div>
       </div>
       <div class="channel">
@@ -1154,7 +1124,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 
 
 <!-- WHATSAPP FLOAT -->
-<a class="wa-float" href="whatsapp://send?phone=5511954490001" aria-label="Abrir WhatsApp da Servnet" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
+<a class="wa-float" href="https://wa.me/5511954490001" aria-label="Abrir WhatsApp da Servnet" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
   </svg>
@@ -1447,8 +1417,10 @@ async function submitLead(e) {
 (function(){
   const c = document.getElementById('bg-net');
   if (!c || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  /* Desliga no mobile — economiza bateria e CPU */
+  if (matchMedia('(max-width: 767px)').matches) { c.style.display='none'; return; }
   const ctx = c.getContext('2d');
-  let W, H, pts = [];
+  let W, H, pts = [], raf;
   const N = 70, DIST = 150, SPD = 0.35;
   const isLight = () => {
     const t = document.documentElement.dataset.theme;
@@ -1458,6 +1430,7 @@ async function submitLead(e) {
   function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
   function mk(){ return { x:Math.random()*W, y:Math.random()*H, vx:(Math.random()-.5)*SPD, vy:(Math.random()-.5)*SPD, r:Math.random()*1.6+0.5 }; }
   function frame(){
+    if (document.hidden) return; /* pausa quando aba está em segundo plano */
     const light = isLight();
     const CLR = light ? [13,116,130] : [0,196,216];
     ctx.fillStyle = light ? '#F1FAFB' : '#030F18';
@@ -1481,9 +1454,14 @@ async function submitLead(e) {
         ctx.lineWidth = 0.6; ctx.stroke();
       }
     }
-    requestAnimationFrame(frame);
+    raf = requestAnimationFrame(frame);
   }
   resize(); pts = Array.from({length:N}, mk); frame();
+  /* Pausa quando aba fica oculta, retoma ao voltar */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else frame();
+  });
   addEventListener('resize', () => { resize(); pts.forEach(p=>{p.x=Math.min(p.x,W);p.y=Math.min(p.y,H);}); });
 })();
 </script>
