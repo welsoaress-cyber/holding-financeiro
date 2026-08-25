@@ -47,7 +47,7 @@ function render(){
       <button id="btn-export" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border,#e5e7eb);cursor:pointer;background:var(--bg,#fff);color:var(--text-1,#111);font-size:13px;">⬇ Exportar CSV</button>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
     ${kpiCard("Total em aberto",k.aberto,"#eff6ff","#1d4ed8",!0,!1)}
     ${kpiCard("Vencido",k.vencido,"#fee2e2","#991b1b",!0,!1)}
     ${kpiCard("A vencer 30d",k.aVencer,"#fef3c7","#92400e",!0,!1)}
