@@ -31,8 +31,10 @@
 
 ### 3. 99 Tecnologia — Processo 4059607-59.2026.8.26.0002
 - **Réu:** 99 Tecnologia Ltda.
-- **Status:** Aguardando contestação — prazo do réu: **25/08/2026**
-- **Próxima ação:** Verificar em 25/08 se houve contestação. Se não houver → revelia.
+- **Status:** Conclusos para julgamento (desde 25/08/2026)
+- **Contestação apresentada:** 24/08/2026 — defesa pela Lee Brock Camargo Advogados (Fábio Rivelli). Argumento: intermediária tecnológica, fato de terceiro, sem dano moral.
+- **Réplica gerada:** `replica_99.docx` ✅ — tentar protocolar urgente antes da sentença
+- **Fatos:** 6 corridas em RJ (28/02–03/03/2025), R$ 181,91, Wellington nunca esteve no RJ
 
 ---
 
@@ -65,4 +67,49 @@
 
 ---
 
-*Atualizado em: 24/08/2026*
+## Casos Procon-SP (CIP)
+
+### 1. iFood — Protocolo 1739205/2026
+- **Fornecedor:** iFood.com Agência de Restaurantes Online S.A.
+- **Prazo:** 28/12/2026
+- **Status:** "Gerar Termo" — Wellington precisa gerar o termo no portal para formalizar "não resolvido"
+- **Fato:** Pedido de 50 mini salgados (R$ 68,98) em 26/07/2026 marcado como entregue falsamente. Reembolso recebido mas Wellington gastou R$ 18,00 de Uber ao McDonald's. iFood pediu 15 dias adicionais sem oferecer nada.
+- **Resposta iFood:** Alega ser "mero intermediário", pediu prazo extra, não ofereceu reembolso dos R$ 18,00
+- **Próxima ação:** Gerar termo no portal + submeter resposta marcando NÃO resolvido antes de 31/08/2026
+
+### 2. Amazon — Protocolo 1732435/2026
+- **Fornecedor:** Amazon Serviços de Varejo do Brasil Ltda
+- **Prazo:** 28/12/2026
+- **Status:** Aguardando resposta do fornecedor
+- **Fato:** Livro não entregue (disponível na Estante Virtual). Amazon não entregou nem reembolsou.
+- **Próxima ação:** Responder no portal marcando NÃO resolvido — prazo era 27/08/2026
+
+### 3. Óticas Gassi — Protocolo 1710550/2026
+- **Fornecedor:** Lunettes Optical Ltda (Óticas Gassi)
+- **Prazo:** Expirado em 17/08/2026 — baixado pelo sistema
+- **Fato:** Compra de 2 pares de óculos (R$ 2.435,00) em 18/07/2026. Prazo prometido: 28/07. Foram buscar às 9h (abertura) e não estava pronto. Gastou R$ 39,84 em transporte (R$ 19,44 corrida + R$ 20,40 mototáxi). Pedido nº 2097626.
+- **Resposta da loja:** Alegou que "não pode garantir horário exato" — não mencionou o reembolso.
+- **Próxima ação:** Reabrir no portal (botão disponível) com texto já elaborado pedindo R$ 39,84. Se não resolver → JEC.
+
+### 4. Keeta Delivery — Protocolo 1722037/2026
+- **Fornecedor:** Keeta Delivery Brazil Ltda
+- **Prazo:** Baixado em 19/08/2026
+- **Status:** A apurar — Wellington não informou os detalhes do caso ainda
+
+---
+
+## Crédito MEI — Banco do Povo Paulista (BPP)
+
+- **CNPJ MEI:** 36.988.911/0001-16
+- **Linha pleiteada:** Empreenda Rápido (até R$ 21.000 — capital de giro + estoque)
+- **Canal:** ADE SAMPA → Banco do Povo (Rua 24 de Maio, 32, Centro — saopaulo@bancodopovo.sp.gov.br — (11) 3385-2350)
+- **Data da solicitação:** 24/06/2026
+- **Pendência atual:** CRF da Caixa — sistema retorna "não foi possível verificar regularidade"
+- **Situação real:** Wellington é MEI SEM FUNCIONÁRIOS → não recolhe FGTS → não tem cadastro na Caixa → erro é normal, não é irregularidade
+- **Argumento a usar:** MEI sem empregados não é obrigado a ter CRF. Oferecer CCMEI + DASN-SIMEI 2025 como substitutos.
+- **Próxima ação:** Enviar email ao BPP explicando a situação + anexar CCMEI e DASN-SIMEI. Se insistirem → SP156 ou Ouvidoria da Secretaria de Desenvolvimento Econômico.
+- **Emails enviados sem resposta:** 10/08, 11/08 (19+ dias sem retorno após CRF)
+
+---
+
+*Atualizado em: 26/08/2026*
