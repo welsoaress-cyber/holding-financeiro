@@ -62,5 +62,5 @@ Queda de nível reavaliada a cada 90 dias. "Ativo" = trouxe cliente nos últimos
 - [ ] Comprar 1ª leva: 2× Point Pro 3 (R$178) — risco mínimo, entrega rápida
 - [ ] 1ª venda: barbeiro do funil Navalha ou comércio conhecido
 - [ ] Meta 90 dias: 4 clientes ativados (R$2k+ cartão) → Especialista
-- [ ] Plugar linha da maquininha na mensagem de boas-vindas do robô Navalha
+- [x] Plugar linha da maquininha na mensagem de boas-vindas do robô Navalha
 - [ ] Ao virar Especialista: montar campanha de anúncio com a landing
