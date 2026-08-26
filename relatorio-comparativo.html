@@ -193,6 +193,8 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;background:var(--b
 .metrics-t tr:hover td{background:var(--surface-2)}
 .metrics-t .row-ok   td:first-child{color:var(--pos)}
 .metrics-t .row-diff td:first-child{color:var(--neg)}
+.metrics-t .row-warn td:first-child{color:var(--warn)}
+.metrics-t td.row-warn-val{background:var(--warn-bg)}
 .diff-neg{color:var(--neg)!important;font-weight:600}
 .diff-pos{color:var(--pos)!important;font-weight:600}
 .muted{color:var(--ink-4)!important}
@@ -965,6 +967,13 @@ function renderItemBody(item,hasSys){
   const isDiff=st==='diff';
   let rows='';
 
+  // Líquido calculado antes: o resultado dele define a prioridade da
+  // divergência de % Base INSS (líquido OK ⇒ % divergente é só arredondamento)
+  const sysLiq=calcSysLiq(item.sys);
+  const hasPlanLiq=Math.abs(item.liq||0)>0.009;
+  const liqDelta=hasPlanLiq&&sysLiq!=null?(Math.round(item.liq*100)-Math.round(sysLiq*100))/100:null;
+  const liqOK=liqDelta===0;
+
   // Total à Faturar (col. AD) — campo principal de comparação
   if(hasSys&&item.sysBruto!=null){
     const delta=item.totalFaturar-item.sysBruto;
@@ -1015,23 +1024,29 @@ function renderItemBody(item,hasSys){
   }
 
   // % Base INSS — planilha (col. AM) × sistema (%Red Base)
-  // O sistema TRUNCA em 4 casas (33,61509 → 33,6150); truncamos a planilha
-  // igual para os dois lados exibirem o mesmo número quando conferem
+  // Exibe cada lado como o usuário o vê: Excel ARREDONDA em 4 casas (33,6151),
+  // o sistema TRUNCA (33,6150). Se divergirem mas o LÍQUIDO conferir, é só
+  // arredondamento → baixa prioridade (âmbar); líquido divergente → vermelho.
   {
-    const trunc4=v=>v!=null?Math.trunc(v*10000+1e-3)/10000:null; // +1e-3 protege contra erro de ponto flutuante
-    const planPct=item.redBINSS!==null?trunc4(item.redBINSS*100):null;
-    const sysPct=trunc4(item.sysRedBINSS);
+    const round4=v=>v!=null?Math.round(v*10000)/10000:null;
+    const planPct=item.redBINSS!==null?round4(item.redBINSS*100):null; // como o Excel exibe
+    const sysPct=item.sysRedBINSS!=null?round4(item.sysRedBINSS):null; // valor truncado do CSV
     if(planPct!=null||sysPct!=null){
       const fmt=v=>v!=null?v.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%':'—';
-      const inssDiff=planPct!=null&&sysPct!=null?planPct-sysPct:null;
-      const inssMatch=inssDiff!=null&&Math.abs(inssDiff)<0.00005;
-      const isBad=inssDiff!=null&&!inssMatch;
-      const diffCls=inssMatch?'muted':(inssDiff!=null?(inssDiff>0?'diff-pos':'diff-neg'):'muted');
-      rows+=`<tr class="${isBad?'row-diff':''}">
+      const inssDiff=planPct!=null&&sysPct!=null?(Math.round(planPct*10000)-Math.round(sysPct*10000))/10000:null;
+      const inssMatch=inssDiff===0;
+      const isLow=inssDiff!=null&&!inssMatch&&liqOK;   // diverge, mas o líquido bate
+      const isBad=inssDiff!=null&&!inssMatch&&!liqOK;  // diverge E o líquido não bate
+      const diffCls=inssMatch?'muted':isLow?'':(inssDiff>0?'diff-pos':'diff-neg');
+      const diffTxt=inssDiff==null?'—'
+        :inssMatch?'OK'
+        :isLow?`<span style="color:var(--warn);font-weight:600">${inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}%</span><br><span style="font-size:10px;color:var(--warn)">baixa prioridade · líquido OK</span>`
+        :inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%';
+      rows+=`<tr class="${isBad?'row-diff':isLow?'row-warn':''}">
         <td class="lbl">% Base INSS</td>
         <td class="num" style="font-family:var(--mono)">${fmt(planPct)}</td>
-        <td class="num ${isBad?'row-diff-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
-        <td class="num ${diffCls}">${inssDiff==null?'—':inssMatch?'OK':inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'}</td>
+        <td class="num ${isBad?'row-diff-val':isLow?'row-warn-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
+        <td class="num ${diffCls}">${diffTxt}</td>
       </tr>`;
     }
   }
@@ -1059,22 +1074,16 @@ function renderItemBody(item,hasSys){
 
   // Total Líquido — última linha: planilha (col. AY) × sistema (calculado
   // dos % de impostos: total − retenções − INSS sobre a base reduzida)
-  {
-    const sysLiq=calcSysLiq(item.sys);
-    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
-    if(hasPlanLiq||sysLiq!=null){
-      // Delta em centavos EXIBIDOS: OK somente quando os números na tela são idênticos
-      const delta=hasPlanLiq&&sysLiq!=null?(Math.round(item.liq*100)-Math.round(sysLiq*100))/100:null;
-      const match=delta===0;
-      const isBad=delta!=null&&!match;
-      const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
+  // sysLiq, hasPlanLiq, liqDelta e liqOK já calculados no topo de renderItemBody
+  if(hasPlanLiq||sysLiq!=null){
+      const isBad=liqDelta!=null&&!liqOK;
+      const deltaCls=liqOK?'muted':(liqDelta!=null?(liqDelta>0?'diff-pos':'diff-neg'):'muted');
       rows+=`<tr class="${isBad?'row-diff':''}" style="border-top:2px solid var(--border)">
         <td class="lbl" style="font-weight:700">Total Líquido</td>
         <td class="num" style="font-weight:700">${hasPlanLiq?fmtBRL(item.liq):'—'}</td>
         <td class="num ${isBad?'row-diff-val':''}" style="font-weight:700">${sysLiq!=null?fmtBRL(sysLiq):'—'}</td>
-        <td class="num ${deltaCls}">${delta==null?'—':match?'OK':fmtBRL(delta)}</td>
+        <td class="num ${deltaCls}">${liqDelta==null?'—':liqOK?'OK':fmtBRL(liqDelta)}</td>
       </tr>`;
-    }
   }
 
   const metricsTable=`<div class="metrics-wrap">
