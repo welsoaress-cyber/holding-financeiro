@@ -514,7 +514,7 @@ const S = {
 // Column indices for "Dados Trat" (fallback when auto-detect fails)
 // VPL = coluna J = índice 9 | CTR = coluna K = índice 10 | Total = coluna AD = índice 29
 const C = {
-  nf:0, vpl:9, ctr:10, svc:5, cli:6, bruto:14, // vpl=col J, ctr=col K (sufixo)
+  nf:0, vpl:9, ctr:10, svc:5, cli:6, pedido:6, bruto:14, // vpl=col J, ctr=col K; pedido(PC/Pedido)=col G
   reaj:30, repasse:31, descFaltas:32, descEquip:33, descPremio:34,
   premio:35, he:36, prop:37, svcExtra:38, eqEsp:39,
   va:40, vr:41, vt:42, am:43, ao:44,
@@ -619,6 +619,7 @@ function detectCols(headers){
     ctr:      find(['contrato']),
     svc:      find(['serviço','servico']),
     cli:      find(['cliente']),
+    pedido:   find(['pc/pedido','pc pedido','n pedido','nº pedido','pedido']),
     bruto:    find(['contrato mensal','valor contrato','vlr contrato','valor base','vlr base','ctr mensal']),
     reaj:     find(['reajuste']),
     repasse:  find(['nota de repasse','repasse']),
@@ -656,6 +657,9 @@ function buildItemList(data, cols){
 
     const ctrRaw=String(row[cols.ctr]??'').trim();
     const svcRaw=String(row[cols.svc]??'').trim();
+    const pedidoRaw=cols.pedido>=0?String(row[cols.pedido]??'').trim():'';
+    // Serviço Extra: chave de matching é o número do pedido (PC/Pedido), não o contrato
+    const isExtra=norm(svcRaw).includes('extra');
     const ctrKey=ctrRaw||(svcRaw.slice(0,40));
     const nfRaw=String(row[cols.nf]??'').trim();
 
@@ -667,7 +671,7 @@ function buildItemList(data, cols){
     if(!itemMap.has(ik)){
       itemMap.set(ik,{
         vpl, clientName:cliName, ctrKey,
-        num:ctrRaw, svc:svcRaw, nf:nfRaw,
+        num:ctrRaw, svc:svcRaw, pedido:pedidoRaw, isExtra, nf:nfRaw,
         bruto:0, totalFaturar:0, liq:0,
         reaj:0, repasse:0, descFaltas:0, descEquip:0, descPremio:0,
         premio:0, he:0, prop:0, svcExtra:0, eqEsp:0,
@@ -1051,18 +1055,6 @@ function renderItemBody(item,hasSys){
     }
   }
 
-  // Contrato Mensal (bruto base) — apenas referência
-  const difBrutoTotal=item.totalFaturar-item.bruto;
-  const totalEqBruto=Math.abs(difBrutoTotal)<=TOL;
-  rows+=`<tr>
-    <td class="lbl">Ctr. Mensal <span style="font-weight:400;color:var(--ink-4)">(base)</span></td>
-    <td class="num">${fmtBRL(item.bruto)}</td>
-    <td class="num muted">—</td>
-    <td class="num ${totalEqBruto?'muted':(difBrutoTotal>0?'diff-pos':'diff-neg')}">
-      ${totalEqBruto?'= Total':fmtBRL(difBrutoTotal)+' dif'}
-    </td>
-  </tr>`;
-
   // Ajustes que compõem o total (Eq. Especial já aparece em Benefícios)
   const ajusts=[{k:'reaj',l:'Reajuste'},{k:'he',l:'Hora Extra'},{k:'svcExtra',l:'Serviço Extra'},{k:'prop',l:'Proporcional'}].filter(a=>Math.abs(item[a.k])>0.009);
   const descs=[{k:'descFaltas',l:'Desc. Faltas'},{k:'descEquip',l:'Desc. Equipamentos'},{k:'descPremio',l:'Desc. Prêmio'},{k:'repasse',l:'Nota Repasse'}].filter(a=>Math.abs(item[a.k])>0.009);
@@ -1428,6 +1420,7 @@ function loadSheet(name){
     ctr:cols.ctr>=0?cols.ctr:C.ctr,
     svc:cols.svc>=0?cols.svc:C.svc,
     cli:cols.cli>=0?cols.cli:C.cli,
+    pedido:cols.pedido>=0?cols.pedido:C.pedido,
     bruto:cols.bruto>=0?cols.bruto:C.bruto,
     reaj:cols.reaj>=0?cols.reaj:C.reaj,
     repasse:cols.repasse>=0?cols.repasse:C.repasse,
