@@ -372,4 +372,4 @@ import{i as J,s as v,u as G,j as Q,t as h,f as $,b as _,e as F}from"./page-dashb
         <button id="modal-x" style="border:none;background:none;cursor:pointer;font-size:20px;color:var(--text-2,#6b7280);">✕</button>
       </div>
       <div style="padding:20px;">${d}</div>
-    </div>`,(a=e.querySelector("#modal-x"))==null||a.addEventListener("click",()=>e.remove()),e.addEventListener("click",r=>{r.target===e&&e.remove()}),document.body.appendChild(e),e}async function ct(t){L=t,N="",S="todos",P="",E="lista",L.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;">Carregando…</div>',await R()}export{ct as initClientes};
+    </div>`,(a=e.querySelector("#modal-x"))==null||a.addEventListener("click",()=>e.remove()),e.addEventListener("mousedown",r=>{e._md=r.target===e}),e.addEventListener("click",r=>{r.target===e&&e._md&&e.remove()}),document.body.appendChild(e),e}async function ct(t){L=t,N="",S="todos",P="",E="lista",L.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;">Carregando…</div>',await R()}export{ct as initClientes};
