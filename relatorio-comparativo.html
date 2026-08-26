@@ -834,7 +834,17 @@ function matchAll(items, sysMap){
     item.sys=ctr;
     item.sysBruto=ctr.total;
     item.sysRedBINSS=ctr.redBase;
-    item.status=Math.abs(item.totalFaturar-ctr.total)<=TOL?'ok':'diff';
+    // Passo 1: Total à Faturar confere?
+    const totalOK=Math.abs(item.totalFaturar-ctr.total)<=TOL;
+    if(!totalOK){ item.status='diff'; continue; }
+    // Passo 2: mesmo com total igual, o Líquido pode divergir (% Base INSS errada)
+    // — nesse caso NÃO é "Confere", é divergência real
+    const sysLiq=calcSysLiq(ctr);
+    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
+    const liqDelta=hasPlanLiq&&sysLiq!=null
+      ?(Math.round(item.liq*100)-Math.round(sysLiq*100))/100
+      :null;
+    item.status=(liqDelta!==null&&liqDelta!==0)?'diff':'ok';
   }
 }
 
