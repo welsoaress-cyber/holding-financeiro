@@ -995,13 +995,16 @@ function renderItemBody(item,hasSys){
   }
 
   // % Base INSS — planilha (col. AM) × sistema (%Red Base)
+  // O sistema TRUNCA em 4 casas (33,61509 → 33,6150); truncamos a planilha
+  // igual para os dois lados exibirem o mesmo número quando conferem
   {
-    const planPct=item.redBINSS!==null?item.redBINSS*100:null;
-    const sysPct=item.sysRedBINSS;
+    const trunc4=v=>v!=null?Math.trunc(v*10000)/10000:null;
+    const planPct=item.redBINSS!==null?trunc4(item.redBINSS*100):null;
+    const sysPct=trunc4(item.sysRedBINSS);
     if(planPct!=null||sysPct!=null){
       const fmt=v=>v!=null?v.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%':'—';
       const inssDiff=planPct!=null&&sysPct!=null?planPct-sysPct:null;
-      const inssMatch=inssDiff!=null&&Math.abs(inssDiff)<0.001; // 4ª casa decimal
+      const inssMatch=inssDiff!=null&&Math.abs(inssDiff)<0.00005;
       const isBad=inssDiff!=null&&!inssMatch;
       const diffCls=inssMatch?'muted':(inssDiff!=null?(inssDiff>0?'diff-pos':'diff-neg'):'muted');
       rows+=`<tr class="${isBad?'row-diff':''}">
@@ -1009,24 +1012,6 @@ function renderItemBody(item,hasSys){
         <td class="num" style="font-family:var(--mono)">${fmt(planPct)}</td>
         <td class="num ${isBad?'row-diff-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
         <td class="num ${diffCls}">${inssDiff==null?'—':inssMatch?'OK':inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'}</td>
-      </tr>`;
-    }
-  }
-
-  // Total Líquido — planilha (col. AY) × sistema (calculado dos % de impostos)
-  {
-    const sysLiq=calcSysLiq(item.sys);
-    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
-    if(hasPlanLiq||sysLiq!=null){
-      const delta=hasPlanLiq&&sysLiq!=null?item.liq-sysLiq:null;
-      const match=delta!=null&&Math.abs(delta)<=LIQTOL;
-      const isBad=delta!=null&&!match;
-      const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
-      rows+=`<tr class="${isBad?'row-diff':''}">
-        <td class="lbl">Total Líquido</td>
-        <td class="num">${hasPlanLiq?fmtBRL(item.liq):'—'}</td>
-        <td class="num ${isBad?'row-diff-val':''}">${sysLiq!=null?fmtBRL(sysLiq):'—'}</td>
-        <td class="num ${deltaCls}">${delta==null?'—':match?'OK':fmtBRL(delta)}</td>
       </tr>`;
     }
   }
@@ -1043,13 +1028,32 @@ function renderItemBody(item,hasSys){
     </td>
   </tr>`;
 
-  // Adjustments
-  const ajusts=[{k:'reaj',l:'Reajuste'},{k:'he',l:'Hora Extra'},{k:'svcExtra',l:'Serviço Extra'},{k:'eqEsp',l:'Eq. Especial (20%)'},{k:'prop',l:'Proporcional'}].filter(a=>Math.abs(item[a.k])>0.009);
+  // Ajustes que compõem o total (Eq. Especial já aparece em Benefícios)
+  const ajusts=[{k:'reaj',l:'Reajuste'},{k:'he',l:'Hora Extra'},{k:'svcExtra',l:'Serviço Extra'},{k:'prop',l:'Proporcional'}].filter(a=>Math.abs(item[a.k])>0.009);
   const descs=[{k:'descFaltas',l:'Desc. Faltas'},{k:'descEquip',l:'Desc. Equipamentos'},{k:'descPremio',l:'Desc. Prêmio'},{k:'repasse',l:'Nota Repasse'}].filter(a=>Math.abs(item[a.k])>0.009);
   if(ajusts.length||descs.length){
     rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Ajustes</td></tr>`;
     ajusts.forEach(a=>{rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-pos">+${fmtBRL(item[a.k])}</td><td class="num muted">—</td><td></td></tr>`;});
     descs.forEach(a=>{rows+=`<tr><td class="lbl" style="padding-left:20px">${esc(a.l)}</td><td class="num diff-neg">${fmtBRL(-Math.abs(item[a.k]))}</td><td class="num muted">—</td><td></td></tr>`;});
+  }
+
+  // Total Líquido — última linha: planilha (col. AY) × sistema (calculado
+  // dos % de impostos: total − retenções − INSS sobre a base reduzida)
+  {
+    const sysLiq=calcSysLiq(item.sys);
+    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
+    if(hasPlanLiq||sysLiq!=null){
+      const delta=hasPlanLiq&&sysLiq!=null?item.liq-sysLiq:null;
+      const match=delta!=null&&Math.abs(delta)<=LIQTOL;
+      const isBad=delta!=null&&!match;
+      const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
+      rows+=`<tr class="${isBad?'row-diff':''}" style="border-top:2px solid var(--border)">
+        <td class="lbl" style="font-weight:700">Total Líquido</td>
+        <td class="num" style="font-weight:700">${hasPlanLiq?fmtBRL(item.liq):'—'}</td>
+        <td class="num ${isBad?'row-diff-val':''}" style="font-weight:700">${sysLiq!=null?fmtBRL(sysLiq):'—'}</td>
+        <td class="num ${deltaCls}">${delta==null?'—':match?'OK':fmtBRL(delta)}</td>
+      </tr>`;
+    }
   }
 
   const metricsTable=`<div class="metrics-wrap">
