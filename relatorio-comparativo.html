@@ -1704,12 +1704,35 @@ function openEmailModal(globalIdx){
 
   const delta=item.sysBruto!=null?item.totalFaturar-item.sysBruto:null;
   let divLines='';
-  if(item.sysBruto!=null)
+  // Total à Faturar — só mostra se houver diferença real
+  if(item.sysBruto!=null && Math.abs(delta)>TOL)
     divLines+=`\n  • Total à Faturar (col. AD): Planilha ${fmtBRL(item.totalFaturar)} / Sistema ${fmtBRL(item.sysBruto)} → Dif. ${fmtBRL(delta)}`;
+  // Hora Extra / Reajuste — informativo (não existe no sistema, faz parte do total)
   if(item.he>0.01)   divLines+=`\n  • Hora Extra: ${fmtBRL(item.he)}`;
   if(item.reaj>0.01) divLines+=`\n  • Reajuste: ${fmtBRL(item.reaj)}`;
-  const benefitsTotal=item.va+item.vr+item.vt+item.am+item.ao;
-  if(benefitsTotal>0.01) divLines+=`\n  • Benefícios (VA/VR/VT/AM/AO): ${fmtBRL(benefitsTotal)}`;
+  // Benefícios — só mostra se o valor planilha ≠ sistema
+  const sysBen=item.sys?.ben||{};
+  const planBen=item.va+item.vr+item.vt+item.am+item.ao;
+  const sysBenTot=(sysBen.va||0)+(sysBen.vr||0)+(sysBen.vt||0)+(sysBen.am||0)+(sysBen.ao||0);
+  const benDiff=planBen-sysBenTot;
+  if(Math.abs(benDiff)>TOL) divLines+=`\n  • Benefícios (VA/VR/VT/AM/AO): Planilha ${fmtBRL(planBen)} / Sistema ${fmtBRL(sysBenTot)} → Dif. ${fmtBRL(benDiff)}`;
+  // Total Líquido — mostra quando diverge (mesmo que Total à Faturar bata)
+  const sysLiqEmail=calcSysLiq(item.sys);
+  const hasPlanLiqEmail=Math.abs(item.liq||0)>0.009;
+  if(hasPlanLiqEmail&&sysLiqEmail!=null){
+    const liqDeltaEmail=(Math.round(item.liq*100)-Math.round(sysLiqEmail*100))/100;
+    if(liqDeltaEmail!==0)
+      divLines+=`\n  • Total Líquido: Planilha ${fmtBRL(item.liq)} / Sistema ${fmtBRL(sysLiqEmail)} → Dif. ${fmtBRL(liqDeltaEmail)}`;
+  }
+  // % Base INSS — mostra só quando o Líquido também diverge (divergência real, não arredondamento)
+  if(item.sysRedBINSS!=null&&item.redBINSS!=null){
+    const planPct=Math.round(item.redBINSS*10000*10000)/10000;
+    const sysPct=Math.round(item.sysRedBINSS*10000)/10000;
+    const sysLiqChk=calcSysLiq(item.sys);
+    const liqChkDelta=hasPlanLiqEmail&&sysLiqChk!=null?(Math.round(item.liq*100)-Math.round(sysLiqChk*100))/100:null;
+    if(Math.round(planPct*10000)!==Math.round(sysPct*10000)&&liqChkDelta!==0)
+      divLines+=`\n  • % Base INSS: Planilha ${planPct.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}% / Sistema ${sysPct.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}%`;
+  }
 
   const avisoLine=nAviso>1
     ?`\n\n🔔  ESTE É O ${nAviso}º AVISO sobre esta mesma divergência.\n   ${nAviso-1===1?'O aviso anterior foi enviado':'Os '+(nAviso-1)+' avisos anteriores foram enviados'} (último em ${item.emailDate||'—'}) e a correção ainda NÃO foi verificada no sistema.`
