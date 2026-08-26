@@ -33,7 +33,7 @@
 - **Réu:** 99 Tecnologia Ltda.
 - **Status:** Conclusos para julgamento (desde 25/08/2026)
 - **Contestação apresentada:** 24/08/2026 — defesa pela Lee Brock Camargo Advogados (Fábio Rivelli). Argumento: intermediária tecnológica, fato de terceiro, sem dano moral.
-- **Réplica gerada:** `replica_99.docx` ✅ — tentar protocolar urgente antes da sentença
+- **Réplica gerada e protocolada:** `replica_99.docx` ✅ — protocolada em 26/08/2026
 - **Fatos:** 6 corridas em RJ (28/02–03/03/2025), R$ 181,91, Wellington nunca esteve no RJ
 
 ---
