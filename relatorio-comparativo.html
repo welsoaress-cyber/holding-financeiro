@@ -754,6 +754,7 @@ function buildSysMap(data){
   let wantClient=false, wantCtr=false, inObs=false;
 
   const newCtr=()=>({total:0, redBase:null, inssPct:null, taxOther:0,
+                     taxes:{irrf:null,cofins:null,pis:null,csll:null,iss:null},
                      _taxDone:false, ben:{}, obsText:''});
 
   for(const row of data.rows){
@@ -806,7 +807,16 @@ function buildSysMap(data){
       }
       if(/^(IRRF|COFINS|PIS|CSLL|ISS)/i.test(c1)){
         const pct=parseFloat(String(row[2]??'').replace(',','.'));
-        if(isFinite(pct)) curObj.taxOther+=pct;
+        if(isFinite(pct)){
+          curObj.taxOther+=pct;
+          // Armazena cada imposto individualmente para exibição
+          const k=c1.toLowerCase();
+          if(k.startsWith('irrf'))        curObj.taxes.irrf  =(curObj.taxes.irrf  ||0)+pct;
+          else if(k.startsWith('cofins')) curObj.taxes.cofins=(curObj.taxes.cofins||0)+pct;
+          else if(k.startsWith('pis'))    curObj.taxes.pis   =(curObj.taxes.pis   ||0)+pct;
+          else if(k.startsWith('csll'))   curObj.taxes.csll  =(curObj.taxes.csll  ||0)+pct;
+          else if(k.startsWith('iss'))    curObj.taxes.iss   =(curObj.taxes.iss   ||0)+pct;
+        }
         continue;
       }
     }
@@ -834,17 +844,40 @@ function matchAll(items, sysMap){
     item.sys=ctr;
     item.sysBruto=ctr.total;
     item.sysRedBINSS=ctr.redBase;
-    // Passo 1: Total à Faturar confere?
-    const totalOK=Math.abs(item.totalFaturar-ctr.total)<=TOL;
-    if(!totalOK){ item.status='diff'; continue; }
-    // Passo 2: mesmo com total igual, o Líquido pode divergir (% Base INSS errada)
-    // — nesse caso NÃO é "Confere", é divergência real
-    const sysLiq=calcSysLiq(ctr);
-    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
-    const liqDelta=hasPlanLiq&&sysLiq!=null
-      ?(Math.round(item.liq*100)-Math.round(sysLiq*100))/100
-      :null;
-    item.status=(liqDelta!==null&&liqDelta!==0)?'diff':'ok';
+    // Passo 1: Total à Faturar
+    if(Math.abs(item.totalFaturar-ctr.total)>TOL){ item.status='diff'; continue; }
+    // Passo 2: qualquer métrica visível divergindo → "Divergente"
+    // 2a. Benefícios individuais
+    const ben=ctr.ben||{};
+    const benPairs=[
+      [item.va,ben.va],[item.vr,ben.vr],[item.vt,ben.vt],
+      [item.am,ben.am],[item.ao,ben.ao],[item.eqEsp,ben.eqEsp]
+    ];
+    let anyDiff=false;
+    for(const [plan,sys] of benPairs){
+      const hasPlan=Math.abs(plan||0)>0.009, hasSysV=sys!=null&&sys>0.009;
+      if(!hasPlan&&!hasSysV) continue;
+      if((Math.round((plan||0)*100)-Math.round((sys||0)*100))!==0){anyDiff=true;break;}
+    }
+    // 2b. % Base INSS — só conta quando o Líquido também diverge (senão é arredondamento)
+    if(!anyDiff&&item.redBINSS!=null&&ctr.redBase!=null){
+      const planPct=Math.round(item.redBINSS*100*10000)/10000;
+      const sysPct=Math.round(ctr.redBase*10000)/10000;
+      if(Math.round(planPct*10000)!==Math.round(sysPct*10000)){
+        const sysL=calcSysLiq(ctr);
+        const planLiq=item.liq||0;
+        if(sysL!=null&&Math.abs(planLiq)>0.009&&
+           (Math.round(planLiq*100)-Math.round(sysL*100))!==0) anyDiff=true;
+      }
+    }
+    // 2c. Total Líquido (quando % Base INSS não detectado acima)
+    if(!anyDiff){
+      const sysL=calcSysLiq(ctr);
+      const planLiq=item.liq||0;
+      if(sysL!=null&&Math.abs(planLiq)>0.009&&
+         (Math.round(planLiq*100)-Math.round(sysL*100))!==0) anyDiff=true;
+    }
+    item.status=anyDiff?'diff':'ok';
   }
 }
 
@@ -1062,6 +1095,33 @@ function renderItemBody(item,hasSys){
         <td class="num ${isBad?'row-diff-val':isLow?'row-warn-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
         <td class="num ${diffCls}">${diffTxt}</td>
       </tr>`;
+    }
+  }
+
+  // Impostos — percentuais registrados no sistema por imposto
+  // Planilha não tem coluna equivalente → exibe só o lado sistema
+  if(item.sys){
+    const tx=item.sys.taxes||{};
+    const inss=item.sys.inssPct;
+    const taxRows=[
+      ['IRRF',   tx.irrf],
+      ['INSS',   inss],
+      ['COFINS', tx.cofins],
+      ['PIS',    tx.pis],
+      ['CSLL',   tx.csll],
+      ['ISS',    tx.iss],
+    ].filter(([,v])=>v!=null&&v>0);
+    if(taxRows.length){
+      const fp=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+      rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Impostos · % Sistema</td></tr>`;
+      taxRows.forEach(([lbl,pct])=>{
+        rows+=`<tr>
+          <td class="lbl" style="padding-left:20px">${lbl}</td>
+          <td class="num muted">—</td>
+          <td class="num" style="font-family:var(--mono)">${fp(pct)}</td>
+          <td class="num muted">—</td>
+        </tr>`;
+      });
     }
   }
 
