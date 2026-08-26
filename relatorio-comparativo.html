@@ -1098,8 +1098,7 @@ function renderItemBody(item,hasSys){
     }
   }
 
-  // Impostos — percentuais registrados no sistema por imposto
-  // Planilha não tem coluna equivalente → exibe só o lado sistema
+  // Impostos — percentuais do sistema aplicados sobre o Total à Faturar da planilha (col. AD)
   if(item.sys){
     const tx=item.sys.taxes||{};
     const inss=item.sys.inssPct;
@@ -1113,13 +1112,19 @@ function renderItemBody(item,hasSys){
     ].filter(([,v])=>v!=null&&v>0);
     if(taxRows.length){
       const fp=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
-      rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Impostos · % Sistema</td></tr>`;
+      rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Impostos</td></tr>`;
       taxRows.forEach(([lbl,pct])=>{
-        rows+=`<tr>
-          <td class="lbl" style="padding-left:20px">${lbl}</td>
-          <td class="num muted">—</td>
-          <td class="num" style="font-family:var(--mono)">${fp(pct)}</td>
-          <td class="num muted">—</td>
+        // Planilha: % sistema × Total à Faturar planilha (col. AD)
+        const planTaxAmt = (item.totalFaturar||0) * pct / 100;
+        // Sistema: % sistema × Total sistema
+        const sysTaxAmt  = (item.sysBruto||0) * pct / 100;
+        const taxDelta   = planTaxAmt - sysTaxAmt;
+        const taxOK      = Math.round(taxDelta*100)===0;
+        rows+=`<tr${taxOK?'':' class="row-diff"'}>
+          <td class="lbl" style="padding-left:20px">${lbl} <span class="muted" style="font-size:10px">(${fp(pct)})</span></td>
+          <td class="num">${fmtBRL(planTaxAmt)}</td>
+          <td class="num${taxOK?'':' row-diff-val'}">${fmtBRL(sysTaxAmt)}</td>
+          <td class="num ${taxOK?'muted':(taxDelta>0?'diff-pos':'diff-neg')}">${taxOK?'OK':fmtBRL(taxDelta)}</td>
         </tr>`;
       });
     }
