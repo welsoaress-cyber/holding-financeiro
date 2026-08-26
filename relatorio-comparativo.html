@@ -817,7 +817,6 @@ function buildSysMap(data){
 }
 
 const TOL=0.01;
-const LIQTOL=0.10; // tolerância p/ Total Líquido (arredondamento do %Red Base a 4 casas)
 function matchAll(items, sysMap){
   for(const item of items){
     const sysEntry=sysMap?.get(item.vpl);
@@ -834,11 +833,26 @@ function matchAll(items, sysMap){
 }
 
 // Líquido teórico do sistema: total − impostos retidos (IR/COFINS/PIS/CSLL/ISS)
-// − INSS 11% sobre a base reduzida
+// − INSS sobre a base reduzida.
+// Base do INSS: o %Red Base oficial é truncado em 4 casas no CSV (gera ruído de
+// centavos); a soma dos benefícios das observações é exata em R$, mas o texto
+// pode estar desatualizado. Usamos a soma das obs SOMENTE quando ela é
+// consistente com o % oficial (dentro da janela de truncamento); senão vale o %.
 function calcSysLiq(sys){
   if(!sys||!(sys.total>0)||sys.inssPct==null) return null;
   const other=sys.total*(sys.taxOther||0)/100;
-  const inss=sys.total*(sys.inssPct/100)*(1-(sys.redBase||0)/100);
+  const ben=sys.ben||{};
+  const benSum=(ben.vt||0)+(ben.va||0)+(ben.vr||0)+(ben.am||0)+(ben.ao||0)+(ben.eqEsp||0);
+  let base;
+  if(benSum>0&&sys.redBase!=null){
+    const d=benSum/sys.total*100-sys.redBase; // real% − truncado% ∈ [0, 0.0001)
+    base=(d>-1e-5&&d<1.1e-4)?sys.total-benSum:sys.total*(1-sys.redBase/100);
+  }else if(benSum>0){
+    base=Math.max(0,sys.total-benSum);
+  }else{
+    base=sys.total*(1-(sys.redBase||0)/100);
+  }
+  const inss=base*(sys.inssPct/100);
   return sys.total-other-inss;
 }
 
@@ -903,11 +917,16 @@ function renderCard(item,num,total){
     ?`<span class="badge fixd">✅ Corrigida</span>`
     :'';
 
-  // Email button
+  // Email button — mostra o nº do aviso (prova de reincidência)
+  const nAv=item.emailCount||0;
   const emailBtn=(st==='diff'||st==='no-match')
     ?item.emailSent
-      ?`<button class="email-btn sent" onclick="event.stopPropagation();openEmailModal(${num-1})">📧 Enviado<span class="email-date">${item.emailDate||''}</span></button>`
-      :`<button class="email-btn"      onclick="event.stopPropagation();openEmailModal(${num-1})">📧 Alertar comercial</button>`
+      ?`<button class="email-btn sent" onclick="event.stopPropagation();openEmailModal(${num-1})">📧 ${nAv>1?nAv+'º aviso enviado':'Enviado'}<span class="email-date">${item.emailDate||''}</span></button>`
+      :`<button class="email-btn"      onclick="event.stopPropagation();openEmailModal(${num-1})">📧 ${nAv>0?`Alertar — será o ${nAv+1}º aviso`:'Alertar comercial'}</button>`
+    :'';
+  // Badge de reincidência de avisos (aparece mesmo antes de reenviar)
+  const avBadge=nAv>=2&&(st==='diff'||st==='no-match')
+    ?`<span class="badge rec" title="Avisos já enviados ao comercial — último em ${esc(item.emailDate||'')}">🔔 ${nAv} avisos</span>`
     :'';
 
   // Tags: VPL code + contract number
@@ -934,7 +953,7 @@ function renderCard(item,num,total){
           <span class="c-meta-sep">·</span>${metaP}${metaT}${metaS}${nfDisp}
         </div>
       </div>
-      <div class="c-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${badge}${rBadge}${emailBtn}</div>
+      <div class="c-badges" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${badge}${rBadge}${avBadge}${emailBtn}</div>
       <div class="c-chevron">▼</div>
     </div>
     <div class="c-body"><div class="ctr-row">${body}</div></div>
@@ -968,11 +987,12 @@ function renderItemBody(item,hasSys){
   // Benefícios — planilha × sistema (valores extraídos das obs. do contrato no CSV)
   {
     const ben=item.sys?.ben||{};
-    const cmpRow=(label,planVal,sysVal,tol=TOL)=>{
+    const cmpRow=(label,planVal,sysVal)=>{
       const hasPlan=Math.abs(planVal||0)>0.009, hasSys=sysVal!=null;
       if(!hasPlan&&!hasSys) return '';
-      const delta=hasSys?(planVal||0)-sysVal:null;
-      const match=delta!=null&&Math.abs(delta)<=tol;
+      // Delta em centavos EXIBIDOS: OK somente quando os números na tela são idênticos
+      const delta=hasSys?(Math.round((planVal||0)*100)-Math.round(sysVal*100))/100:null;
+      const match=delta===0;
       const isBad=delta!=null&&!match;
       const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
       return `<tr class="${isBad?'row-diff':''}">
@@ -998,7 +1018,7 @@ function renderItemBody(item,hasSys){
   // O sistema TRUNCA em 4 casas (33,61509 → 33,6150); truncamos a planilha
   // igual para os dois lados exibirem o mesmo número quando conferem
   {
-    const trunc4=v=>v!=null?Math.trunc(v*10000)/10000:null;
+    const trunc4=v=>v!=null?Math.trunc(v*10000+1e-3)/10000:null; // +1e-3 protege contra erro de ponto flutuante
     const planPct=item.redBINSS!==null?trunc4(item.redBINSS*100):null;
     const sysPct=trunc4(item.sysRedBINSS);
     if(planPct!=null||sysPct!=null){
@@ -1043,8 +1063,9 @@ function renderItemBody(item,hasSys){
     const sysLiq=calcSysLiq(item.sys);
     const hasPlanLiq=Math.abs(item.liq||0)>0.009;
     if(hasPlanLiq||sysLiq!=null){
-      const delta=hasPlanLiq&&sysLiq!=null?item.liq-sysLiq:null;
-      const match=delta!=null&&Math.abs(delta)<=LIQTOL;
+      // Delta em centavos EXIBIDOS: OK somente quando os números na tela são idênticos
+      const delta=hasPlanLiq&&sysLiq!=null?(Math.round(item.liq*100)-Math.round(sysLiq*100))/100:null;
+      const match=delta===0;
       const isBad=delta!=null&&!match;
       const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
       rows+=`<tr class="${isBad?'row-diff':''}" style="border-top:2px solid var(--border)">
@@ -1636,6 +1657,10 @@ function enrichWithHistory(items){
     const es=currEmailMap.get(id);
     item.emailSent=es?es.emailSent:false;
     item.emailDate=es?es.emailDate:null;
+    // Contador cumulativo de avisos enviados (todos os meses)
+    const av=(S.historico||{}).avisos?.[id];
+    item.emailCount=av?av.count:0;
+    if(!item.emailDate&&av) item.emailDate=av.last;
   }
 }
 
@@ -1662,9 +1687,10 @@ function openEmailModal(globalIdx){
   S.emailTarget=item;
 
   const mes=getMesLabel(S.mesAtual);
-  const subject=`[PENDÊNCIA] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`;
+  const nAviso=(item.emailCount||0)+1; // nº do aviso que está sendo enviado agora
+  const subject=`[PENDÊNCIA${nAviso>1?` — ${nAviso}º AVISO`:''}] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`;
 
-  const delta=item.sysBruto!=null?item.bruto-item.sysBruto:null;
+  const delta=item.sysBruto!=null?item.totalFaturar-item.sysBruto:null;
   let divLines='';
   if(item.sysBruto!=null)
     divLines+=`\n  • Total à Faturar (col. AD): Planilha ${fmtBRL(item.totalFaturar)} / Sistema ${fmtBRL(item.sysBruto)} → Dif. ${fmtBRL(delta)}`;
@@ -1673,6 +1699,9 @@ function openEmailModal(globalIdx){
   const benefitsTotal=item.va+item.vr+item.vt+item.am+item.ao;
   if(benefitsTotal>0.01) divLines+=`\n  • Benefícios (VA/VR/VT/AM/AO): ${fmtBRL(benefitsTotal)}`;
 
+  const avisoLine=nAviso>1
+    ?`\n\n🔔  ESTE É O ${nAviso}º AVISO sobre esta mesma divergência.\n   ${nAviso-1===1?'O aviso anterior foi enviado':'Os '+(nAviso-1)+' avisos anteriores foram enviados'} (último em ${item.emailDate||'—'}) e a correção ainda NÃO foi verificada no sistema.`
+    :'';
   const recLine=item.recStatus==='rec'
     ?`\n\n⚠️  ATENÇÃO: Esta divergência é RECORRENTE — detectada em ${item.recMonths} mês(es) anterior(es).\n   Solicito verificação urgente na origem do cadastro.`
     :'';
@@ -1687,7 +1716,8 @@ CLI     : ${item.vpl} | CTR: ${item.num}
 Serviço : ${item.svc||'—'}
 NF(s)   : ${item.nf||'—'}
 Mês ref.: ${mes}
-${recLine}
+Aviso nº: ${nAviso}º${avisoLine}${recLine}
+
 Divergências encontradas:${divLines}
 
 Por favor, realize o ajuste no sistema até 48h após o recebimento deste email.
@@ -1729,6 +1759,12 @@ function openOutlook(){
 function markEmailSent(item){
   item.emailSent=true;
   item.emailDate=new Date().toLocaleDateString('pt-BR');
+  // Contador cumulativo de avisos (atravessa os meses — prova de reincidência)
+  item.emailCount=(item.emailCount||0)+1;
+  const hist=S.historico||{};
+  if(!hist.avisos) hist.avisos={};
+  hist.avisos[`${item.vpl}|${item.num}`]={count:item.emailCount,last:item.emailDate};
+  S.historico=hist;
   // Update in localStorage
   autoSave();
   // Show confirmation
@@ -1774,10 +1810,12 @@ function emailAll(){
   toEmail.forEach((item,i)=>{
     setTimeout(()=>{
       const mes=getMesLabel(S.mesAtual);
-      const subj=encodeURIComponent(`[PENDÊNCIA] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`);
+      const nAviso=(item.emailCount||0)+1;
+      const subj=encodeURIComponent(`[PENDÊNCIA${nAviso>1?` — ${nAviso}º AVISO`:''}] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`);
       const delta=item.sysBruto!=null?item.totalFaturar-item.sysBruto:null;
       const dif=delta!=null?` Dif: ${fmtBRL(delta)}`:'';
-      const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num}\nTotal à Faturar: ${fmtBRL(item.totalFaturar)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
+      const avisoTxt=nAviso>1?`\n🔔 ${nAviso}º AVISO — anteriores sem correção verificada (último: ${item.emailDate||'—'})`:'';
+      const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num} | Aviso nº ${nAviso}\nTotal à Faturar: ${fmtBRL(item.totalFaturar)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}${avisoTxt}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
       window.open(`mailto:?subject=${subj}&body=${bdy}`);
       markEmailSent(item);
     }, i*600);
