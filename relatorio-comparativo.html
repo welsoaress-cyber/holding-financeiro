@@ -1754,7 +1754,9 @@ function openOutlook(){
   if(!S.emailTarget) return;
   const subj=encodeURIComponent(document.getElementById('modalSubject').value);
   const body=encodeURIComponent(document.getElementById('modalBody').value.slice(0,1800));
-  window.open(`mailto:?subject=${subj}&body=${body}`);
+  const to=encodeURIComponent('victor.mendonca@servsul.com.br;negocios@servsul.com.br');
+  const cc=encodeURIComponent('guilherme.albuquerque@servsul.com.br');
+  window.open(`mailto:${to}?cc=${cc}&subject=${subj}&body=${body}`);
   markEmailSent(S.emailTarget);
 }
 
@@ -1818,7 +1820,9 @@ function emailAll(){
       const dif=delta!=null?` Dif: ${fmtBRL(delta)}`:'';
       const avisoTxt=nAviso>1?`\n🔔 ${nAviso}º AVISO — anteriores sem correção verificada (último: ${item.emailDate||'—'})`:'';
       const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num} | Aviso nº ${nAviso}\nTotal à Faturar: ${fmtBRL(item.totalFaturar)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}${avisoTxt}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
-      window.open(`mailto:?subject=${subj}&body=${bdy}`);
+      const to=encodeURIComponent('victor.mendonca@servsul.com.br;negocios@servsul.com.br');
+      const cc=encodeURIComponent('guilherme.albuquerque@servsul.com.br');
+      window.open(`mailto:${to}?cc=${cc}&subject=${subj}&body=${bdy}`);
       markEmailSent(item);
     }, i*600);
   });
