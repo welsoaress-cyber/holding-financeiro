@@ -516,7 +516,8 @@ const C = {
   reaj:30, repasse:31, descFaltas:32, descEquip:33, descPremio:34,
   premio:35, he:36, prop:37, svcExtra:38, eqEsp:39,
   va:40, vr:41, vt:42, am:43, ao:44,
-  redBINSS:-1, // detectado pelo cabeçalho; -1 = sem fallback de posição fixa
+  redBINSS:-1, // '% Base' (AM nas abas mensais) — detectado pelo cabeçalho
+  liq:-1,      // 'Total Liquido' (AY nas abas mensais) — detectado pelo cabeçalho
   total:29, // Total à faturar = coluna AD = índice 29
 };
 
@@ -603,7 +604,13 @@ function splitLine(line,sep){
    ========================================================= */
 function detectCols(headers){
   const h=headers.map(x=>norm(x));
-  const find=(patterns)=>{ for(const p of patterns){ const i=h.findIndex(x=>x.includes(p)); if(i>=0)return i } return -1 };
+  // Preferência: match EXATO primeiro, depois "contém" — evita ex.: "prêmio"
+  // casar com "desconto prêmio", ou "base inss" (R$) no lugar de "% base"
+  const find=(patterns)=>{
+    for(const p of patterns){ const i=h.findIndex(x=>x===p); if(i>=0)return i }
+    for(const p of patterns){ const i=h.findIndex(x=>x.includes(p)); if(i>=0)return i }
+    return -1;
+  };
   return{
     nf:       find(['nº da nota','nota fiscal']),
     vpl:      find(['código vpl','codigo vpl','cód. vpl','cod. vpl']),
@@ -626,7 +633,8 @@ function detectCols(headers){
     vt:       find(['vt']),
     am:       find(['am']),
     ao:       find(['ao']),
-    redBINSS: find(['% redução base inss','reducao base inss','red. base inss','% red. base','redução base inss','% reducao base','% red base','base inss','% base calculo','% base cálculo']),
+    redBINSS: find(['% base','% base cálculo','% base calculo','% redução base inss','% reducao base inss','% red. base']),
+    liq:      find(['total liquido','total líquido']),
     total:    find(['total para faturar','total à faturar','total a faturar','total faturar']),
   };
 }
@@ -658,21 +666,24 @@ function buildItemList(data, cols){
       itemMap.set(ik,{
         vpl, clientName:cliName, ctrKey,
         num:ctrRaw, svc:svcRaw, nf:nfRaw,
-        bruto:0, totalFaturar:0,
+        bruto:0, totalFaturar:0, liq:0,
         reaj:0, repasse:0, descFaltas:0, descEquip:0, descPremio:0,
         premio:0, he:0, prop:0, svcExtra:0, eqEsp:0,
         va:0, vr:0, vt:0, am:0, ao:0,
-        redBINSS:null,        // % Redução Base INSS da planilha
+        redBINSS:null,        // % Base INSS da planilha (fração 0-1)
         sysBruto:null,        // valor total do sistema (CSV)
-        sysRedBINSS:null,     // % Red Base INSS do sistema (CSV)
+        sysRedBINSS:null,     // % Red Base INSS do sistema (CSV, 0-100)
+        sys:null,             // objeto do contrato no sistema (benefícios, impostos)
         status:'only',
       });
     }
     const item=itemMap.get(ik);
     const g=(k)=>cols[k]>=0?parseBR(row[cols[k]]??0):0;
 
+    const rowTotal=parseBR(row[cols.total]??0);
     item.bruto        +=parseBR(row[cols.bruto]??0);
-    item.totalFaturar +=parseBR(row[cols.total]??0);
+    item.totalFaturar +=rowTotal;
+    item.liq          +=g('liq');
     item.reaj         +=g('reaj');   item.repasse    +=g('repasse');
     item.descFaltas   +=g('descFaltas'); item.descEquip +=g('descEquip');
     item.descPremio   +=g('descPremio'); item.premio    +=g('premio');
@@ -680,103 +691,155 @@ function buildItemList(data, cols){
     item.svcExtra     +=g('svcExtra');   item.eqEsp   +=g('eqEsp');
     item.va+=g('va'); item.vr+=g('vr'); item.vt+=g('vt');
     item.am+=g('am'); item.ao+=g('ao');
-    // % Redução Base INSS — lê só uma vez (é igual em todas as linhas do contrato)
-    if(item.redBINSS===null && cols.redBINSS>=0){
+    // % Base INSS — média ponderada pelo total de cada linha do contrato
+    if(cols.redBINSS>=0){
       const raw=row[cols.redBINSS];
       if(raw!==null&&raw!==undefined&&String(raw).trim()!==''){
-        const v=typeof raw==='number'?raw:parseFloat(String(raw).replace('%','').replace(',','.').trim());
-        if(isFinite(v)) item.redBINSS=v;
+        let v=typeof raw==='number'?raw:parseFloat(String(raw).replace('%','').replace(',','.').trim());
+        if(isFinite(v)){
+          if(v>1) v/=100; // normaliza 0-100 → fração
+          item._rbW=(item._rbW||0)+v*rowTotal;
+        }
       }
     }
     if(nfRaw && !item.nf.includes(nfRaw) && item.nf!==nfRaw)
       item.nf+=(item.nf?', ':'')+nfRaw;
   }
 
-  return [...itemMap.values()];
+  const items=[...itemMap.values()];
+  for(const it of items){
+    if(it._rbW!=null&&it.totalFaturar>0) it.redBINSS=it._rbW/it.totalFaturar;
+    delete it._rbW;
+  }
+  return items;
+}
+
+// Extrai valores de benefícios do texto de observações do contrato no CSV
+// Ex.: "REDUÇÃO BASE INSS - V.TRANSP = R$ 675,28 VALE ALIMENTAÇÃO = R$ 589,36 ..."
+function parseObsBenefits(text){
+  if(!text) return {};
+  const t=norm(text);
+  const grab=(re)=>{
+    const m=t.match(re);
+    return m?parseBR(m[1].replace(/[.,]+$/,'')):null;
+  };
+  // {0,15} evita "pular" para o "=" de outro benefício; cobre rótulos com % (ex.: "ESPECIAIS 20% = R$")
+  const V='[^=]{0,15}=\\s*-?\\s*r?\\$?\\s*([\\d.,]+)';
+  return {
+    vt:    grab(new RegExp('v\\.?\\s*transp\\w*'+V)) ?? grab(new RegExp('vale\\s*transporte'+V)),
+    va:    grab(new RegExp('vale\\s*alimenta\\S*'+V)),
+    vr:    grab(new RegExp('vale\\s*refei\\S*'+V)),
+    am:    grab(new RegExp('assist\\.?\\s*m[eé]dica'+V)),
+    ao:    grab(new RegExp('assist\\.?\\s*odonto\\w*'+V)),
+    eqEsp: grab(new RegExp('equipamentos?\\s*especiais?'+V)),
+  };
 }
 
 function buildSysMap(data){
-  // CSV do sistema é HIERÁRQUICO: cada cliente tem linha-cabeçalho "Cliente:" + dados,
-  // depois contratos com "Contrato:" + dados, depois locais com "N Loc: ..." + valores.
-  // Estrutura:
-  //   row[0]="Cliente:"         → próxima linha com dígito = dados do cliente (VPL)
-  //   row[0]="Contrato:"        → próxima linha com dígito = dados do contrato (número)
-  //   row[0]="/^\d+ Loc:/"      → linha de local, Vlr Fixo/Hora em row[12]
-  //   row[1]="INSS"             → linha de imposto INSS, %Red Base em row[8]
+  // CSV do sistema é HIERÁRQUICO:
+  //   row[0]="Cliente:"    → próxima linha com dígito = dados do cliente (VPL)
+  //   row[0]="Contrato:"   → próxima linha com dígito = dados do contrato (número)
+  //   row[0]="Obs Ctr..."  → observações (benefícios da redução base INSS)
+  //   row[0]="N Loc: ..."  → linha de local, Vlr Fixo/Hora em row[12]
+  //   row[1]="INSS"        → % em row[2], %Red Base em row[8]
+  //   row[1]="IRRF|COFINS|PIS|CSLL|ISS..." → % em row[2] (impostos retidos)
   const map=new Map();
-  let curVPL=null, curCtr=null;
-  let wantClient=false, wantCtr=false;
+  let curVPL=null, curCtr=null, curObj=null;
+  let wantClient=false, wantCtr=false, inObs=false;
+
+  const newCtr=()=>({total:0, redBase:null, inssPct:null, taxOther:0,
+                     _taxDone:false, ben:{}, obsText:''});
 
   for(const row of data.rows){
     const c0=String(row[0]??'').trim();
     const c1=String(row[1]??'').trim();
 
-    // Marcadores de seção
-    if(c0==='Cliente:'){ wantClient=true; wantCtr=false; continue; }
-    if(c0==='Contrato:'){ wantCtr=true; wantClient=false; continue; }
+    if(c0==='Cliente:'){ wantClient=true; wantCtr=false; inObs=false; continue; }
+    if(c0==='Contrato:'){ wantCtr=true; wantClient=false; inObs=false; continue; }
 
-    // Linha de dados do cliente (após "Cliente:")
     if(wantClient && /^\d+\s/.test(c0)){
       curVPL=String(parseInt(c0,10));
-      curCtr=null; wantClient=false;
-      if(!map.has(curVPL)) map.set(curVPL,{contracts:new Map(),total:0,inssBase:new Map()});
+      curCtr=null; curObj=null; wantClient=false;
+      if(!map.has(curVPL)) map.set(curVPL,{contracts:new Map()});
       continue;
     }
 
-    // Linha de dados do contrato (após "Contrato:")
     if(wantCtr && /^\d+\s/.test(c0) && curVPL!==null){
       curCtr=String(parseInt(c0,10));
-      wantCtr=false;
+      wantCtr=false; inObs=false;
       const e=map.get(curVPL);
-      if(e && !e.contracts.has(curCtr)) e.contracts.set(curCtr,0);
+      if(!e.contracts.has(curCtr)) e.contracts.set(curCtr,newCtr());
+      curObj=e.contracts.get(curCtr);
       continue;
     }
 
-    // Linha de local: "N Loc: ..." — Vlr Fixo/Hora está na coluna 12
-    if(/^\d+\s+Loc:/i.test(c0) && curVPL!==null && curCtr!==null){
+    if(!curObj) continue;
+
+    // Bloco de observações do contrato — acumula texto até chegar num "Loc:"
+    if(/^Obs\s*Ctr/i.test(c0)){ inObs=true; curObj.obsText+=' '+row.join(' '); continue; }
+
+    // Linha de local — soma o Vlr Fixo/Hora (col 12)
+    if(/^\d+\s+Loc:/i.test(c0)){
+      inObs=false;
+      if(curObj.inssPct!==null||curObj.taxOther>0) curObj._taxDone=true; // impostos do 1º posto já lidos
       const vlr=parseBR(String(row[12]??''));
-      if(vlr>0){
-        const e=map.get(curVPL);
-        if(e){
-          e.contracts.set(curCtr,(e.contracts.get(curCtr)??0)+vlr);
-          let t=0; e.contracts.forEach(v=>t+=v); e.total=t;
-        }
-      }
+      if(vlr>0) curObj.total+=vlr;
+      continue;
     }
 
-    // Linha INSS: row[1]="INSS" — %Red Base está na coluna 8
-    if(c1==='INSS' && curVPL!==null && curCtr!==null){
-      const rb=parseFloat(String(row[8]??'').replace(',','.'));
-      if(isFinite(rb)){
-        const e=map.get(curVPL);
-        if(e && !e.inssBase.has(curCtr)) e.inssBase.set(curCtr,rb);
+    if(inObs){ curObj.obsText+=' '+row.join(' '); continue; }
+
+    // Impostos do primeiro posto (os % valem para o contrato)
+    if(!curObj._taxDone){
+      if(c1==='INSS'){
+        const pct=parseFloat(String(row[2]??'').replace(',','.'));
+        const rb=parseFloat(String(row[8]??'').replace(',','.'));
+        if(isFinite(pct)&&curObj.inssPct===null) curObj.inssPct=pct;
+        if(isFinite(rb)&&curObj.redBase===null) curObj.redBase=rb;
+        continue;
       }
+      if(/^(IRRF|COFINS|PIS|CSLL|ISS)/i.test(c1)){
+        const pct=parseFloat(String(row[2]??'').replace(',','.'));
+        if(isFinite(pct)) curObj.taxOther+=pct;
+        continue;
+      }
+    }
+  }
+
+  // Pós-processa: extrai benefícios do texto de observações
+  for(const e of map.values()){
+    for(const o of e.contracts.values()){
+      o.ben=parseObsBenefits(o.obsText);
+      delete o.obsText;
     }
   }
   return map;
 }
 
 const TOL=0.01;
+const LIQTOL=0.10; // tolerância p/ Total Líquido (arredondamento do %Red Base a 4 casas)
 function matchAll(items, sysMap){
   for(const item of items){
     const sysEntry=sysMap?.get(item.vpl);
-    if(!sysEntry){ item.status='only'; item.sysBruto=null; item.sysRedBINSS=null; continue; }
-    const sv=item.num?sysEntry.contracts.get(item.num):null;
-    item.sysBruto=sv??null;
-    item.sysRedBINSS=item.num?(sysEntry.inssBase?.get(item.num)??null):null;
-    if(sv!=null){
-      item.status=Math.abs(item.totalFaturar-sv)<=TOL?'ok':'diff';
-    } else {
-      item.status='no-match';
-      // Fallback: cliente tem exatamente um contrato no sistema → usa total
-      if(sysEntry.contracts.size===1){
-        const [[onlyCtr,onlyVal]]=[...sysEntry.contracts.entries()];
-        item.sysBruto=onlyVal;
-        item.sysRedBINSS=sysEntry.inssBase?.get(onlyCtr)??null;
-        item.status=Math.abs(item.totalFaturar-onlyVal)<=TOL?'ok':'diff';
-      }
-    }
+    if(!sysEntry){ item.status='only'; item.sysBruto=null; item.sysRedBINSS=null; item.sys=null; continue; }
+    let ctr=item.num?sysEntry.contracts.get(item.num):null;
+    // Fallback: cliente tem exatamente um contrato no sistema
+    if(!ctr && sysEntry.contracts.size===1) ctr=[...sysEntry.contracts.values()][0];
+    if(!ctr){ item.status='no-match'; item.sysBruto=null; item.sysRedBINSS=null; item.sys=null; continue; }
+    item.sys=ctr;
+    item.sysBruto=ctr.total;
+    item.sysRedBINSS=ctr.redBase;
+    item.status=Math.abs(item.totalFaturar-ctr.total)<=TOL?'ok':'diff';
   }
+}
+
+// Líquido teórico do sistema: total − impostos retidos (IR/COFINS/PIS/CSLL/ISS)
+// − INSS 11% sobre a base reduzida
+function calcSysLiq(sys){
+  if(!sys||!(sys.total>0)||sys.inssPct==null) return null;
+  const other=sys.total*(sys.taxOther||0)/100;
+  const inss=sys.total*(sys.inssPct/100)*(1-(sys.redBase||0)/100);
+  return sys.total-other-inss;
 }
 
 /* =========================================================
@@ -852,9 +915,9 @@ function renderCard(item,num,total){
   const vplTag=item.vpl&&item.vpl!=='__UNKNOWN__'?tag('CLI',item.vpl):'';
   const ctrTag=tag('CTR',item.num);
 
-  const metaP=`<span class="c-metric" title="Total à Faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
-  const metaT=`<span class="c-meta-sep">·</span><span class="c-metric" title="Total a faturar">Total ${fmtBRL(item.totalFaturar)}</span>`;
-  const metaS=hasSys&&item.sysBruto!=null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Bruto no sistema">Sist. ${fmtBRL(item.sysBruto)}</span>`:'';
+  const metaP=`<span class="c-metric" title="Total à Faturar (col. AD)">Total ${fmtBRL(item.totalFaturar)}</span>`;
+  const metaT='';
+  const metaS=hasSys&&item.sysBruto!=null?`<span class="c-meta-sep">·</span><span class="c-metric" title="Total no sistema">Sist. ${fmtBRL(item.sysBruto)}</span>`:'';
   const nfDisp=item.nf?`<span class="c-meta-sep">·</span><span class="c-metric" style="font-family:var(--mono);font-size:11px">NF ${esc(item.nf.split(',')[0])}${item.nf.includes(',')?'…':''}</span>`:'';
 
   const body=renderItemBody(item,hasSys);
@@ -902,23 +965,68 @@ function renderItemBody(item,hasSys){
     </tr>`;
   }
 
-  // % Redução Base INSS — comparação planilha vs sistema
+  // Benefícios — planilha × sistema (valores extraídos das obs. do contrato no CSV)
   {
-    const hasPlanINSS=item.redBINSS!==null;
-    const hasSysINSS=item.sysRedBINSS!==null;
-    if(hasPlanINSS||hasSysINSS){
-      // Normaliza: planilha pode usar 0-1 ou 0-100; CSV usa 0-100
-      const planPct=hasPlanINSS?(item.redBINSS>1?item.redBINSS:item.redBINSS*100):null;
-      const sysPct=hasSysINSS?item.sysRedBINSS:null;
+    const ben=item.sys?.ben||{};
+    const cmpRow=(label,planVal,sysVal,tol=TOL)=>{
+      const hasPlan=Math.abs(planVal||0)>0.009, hasSys=sysVal!=null;
+      if(!hasPlan&&!hasSys) return '';
+      const delta=hasSys?(planVal||0)-sysVal:null;
+      const match=delta!=null&&Math.abs(delta)<=tol;
+      const isBad=delta!=null&&!match;
+      const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
+      return `<tr class="${isBad?'row-diff':''}">
+        <td class="lbl" style="padding-left:20px">${label}</td>
+        <td class="num">${fmtBRL(planVal||0)}</td>
+        <td class="num ${isBad?'row-diff-val':''}">${hasSys?fmtBRL(sysVal):'—'}</td>
+        <td class="num ${deltaCls}">${delta==null?'—':match?'OK':fmtBRL(delta)}</td>
+      </tr>`;
+    };
+    const benRows=
+      cmpRow('VA + Prêmio',item.va,ben.va)+
+      cmpRow('VR',item.vr,ben.vr)+
+      cmpRow('VT',item.vt,ben.vt)+
+      cmpRow('AM <span style="font-weight:400;color:var(--ink-4)">(Assist. Médica)</span>',item.am,ben.am)+
+      cmpRow('AO <span style="font-weight:400;color:var(--ink-4)">(Assist. Odonto)</span>',item.ao,ben.ao)+
+      cmpRow('Eq. Especial',item.eqEsp,ben.eqEsp);
+    if(benRows){
+      rows+=`<tr style="background:var(--surface-2)"><td colspan="4" style="padding:4px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-4)">Benefícios · Redução Base INSS</td></tr>`+benRows;
+    }
+  }
+
+  // % Base INSS — planilha (col. AM) × sistema (%Red Base)
+  {
+    const planPct=item.redBINSS!==null?item.redBINSS*100:null;
+    const sysPct=item.sysRedBINSS;
+    if(planPct!=null||sysPct!=null){
       const fmt=v=>v!=null?v.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%':'—';
-      const inssMatch=planPct!=null&&sysPct!=null&&Math.abs(planPct-sysPct)<0.01;
       const inssDiff=planPct!=null&&sysPct!=null?planPct-sysPct:null;
+      const inssMatch=inssDiff!=null&&Math.abs(inssDiff)<0.001; // 4ª casa decimal
+      const isBad=inssDiff!=null&&!inssMatch;
       const diffCls=inssMatch?'muted':(inssDiff!=null?(inssDiff>0?'diff-pos':'diff-neg'):'muted');
-      rows+=`<tr class="${planPct!=null&&sysPct!=null&&!inssMatch?'row-diff':''}">
+      rows+=`<tr class="${isBad?'row-diff':''}">
         <td class="lbl">% Base INSS</td>
         <td class="num" style="font-family:var(--mono)">${fmt(planPct)}</td>
-        <td class="num ${!inssMatch&&sysPct!=null?'row-diff-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
-        <td class="num ${diffCls}">${inssDiff!=null?(inssMatch?'OK':inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'):'—'}</td>
+        <td class="num ${isBad?'row-diff-val':''}" style="font-family:var(--mono)">${fmt(sysPct)}</td>
+        <td class="num ${diffCls}">${inssDiff==null?'—':inssMatch?'OK':inssDiff.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'}</td>
+      </tr>`;
+    }
+  }
+
+  // Total Líquido — planilha (col. AY) × sistema (calculado dos % de impostos)
+  {
+    const sysLiq=calcSysLiq(item.sys);
+    const hasPlanLiq=Math.abs(item.liq||0)>0.009;
+    if(hasPlanLiq||sysLiq!=null){
+      const delta=hasPlanLiq&&sysLiq!=null?item.liq-sysLiq:null;
+      const match=delta!=null&&Math.abs(delta)<=LIQTOL;
+      const isBad=delta!=null&&!match;
+      const deltaCls=match?'muted':(delta!=null?(delta>0?'diff-pos':'diff-neg'):'muted');
+      rows+=`<tr class="${isBad?'row-diff':''}">
+        <td class="lbl">Total Líquido</td>
+        <td class="num">${hasPlanLiq?fmtBRL(item.liq):'—'}</td>
+        <td class="num ${isBad?'row-diff-val':''}">${sysLiq!=null?fmtBRL(sysLiq):'—'}</td>
+        <td class="num ${deltaCls}">${delta==null?'—':match?'OK':fmtBRL(delta)}</td>
       </tr>`;
     }
   }
@@ -950,12 +1058,7 @@ function renderItemBody(item,hasSys){
       <tbody>${rows}</tbody>
     </table></div>`;
 
-  const benefits=[{k:'va',l:'VA+Prêmio'},{k:'vr',l:'VR'},{k:'vt',l:'VT'},{k:'am',l:'AM'},{k:'ao',l:'AO'}].filter(b=>item[b.k]>0.009);
-  let benefitsHtml='';
-  if(benefits.length){
-    const tot=benefits.reduce((s,b)=>s+item[b.k],0);
-    benefitsHtml=`<div class="chips"><span class="chips-label">Benefícios</span>${benefits.map(b=>`<span class="chip hi">${b.l} ${fmtBRL(item[b.k])}</span>`).join('')}<span class="chip" style="margin-left:4px;font-weight:700">Total ${fmtBRL(tot)}</span></div>`;
-  }
+  let benefitsHtml=''; // benefícios agora estão na tabela planilha × sistema
 
   const notes=`<div class="print-notes">
     <div class="print-notes-lbl">Observações / Ajuste comercial</div>
@@ -1308,6 +1411,7 @@ function loadSheet(name){
     am:cols.am>=0?cols.am:C.am,
     ao:cols.ao>=0?cols.ao:C.ao,
     redBINSS:cols.redBINSS>=0?cols.redBINSS:C.redBINSS,
+    liq:cols.liq>=0?cols.liq:C.liq,
     total:cols.total>=0?cols.total:C.total,
   };
   S.items=buildItemList(S.planData,finalCols);
@@ -1667,7 +1771,7 @@ function emailAll(){
     setTimeout(()=>{
       const mes=getMesLabel(S.mesAtual);
       const subj=encodeURIComponent(`[PENDÊNCIA] Cadastro ${item.clientName} — CTR ${item.num} — ${mes}`);
-      const delta=item.sysBruto!=null?item.bruto-item.sysBruto:null;
+      const delta=item.sysBruto!=null?item.totalFaturar-item.sysBruto:null;
       const dif=delta!=null?` Dif: ${fmtBRL(delta)}`:'';
       const bdy=encodeURIComponent(`Cliente: ${item.clientName} | CLI ${item.vpl} CTR ${item.num}\nTotal à Faturar: ${fmtBRL(item.totalFaturar)} / Sistema: ${item.sysBruto!=null?fmtBRL(item.sysBruto):'—'}${dif}\n${item.recStatus==='rec'?'[RECORRENTE] ':''}`);
       window.open(`mailto:?subject=${subj}&body=${bdy}`);
