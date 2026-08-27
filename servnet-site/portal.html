@@ -706,7 +706,11 @@ async function doLogin(){
   try{
     const {data,error} = await sb.rpc('portal_servnet_login',{p_cpf:cpf,p_nascimento:nasc});
     if(error) throw error;
-    if(!data||!data.ok){ showErr(data?.msg||'CPF ou data de nascimento incorretos.'); return; }
+    if(!data||!data.ok){
+      const baseMsg = data?.msg || 'CPF ou data de nascimento incorretos.';
+      showErr(baseMsg + ' Se você se cadastrou recentemente, <a href="whatsapp://send?phone=5511954490001" style="color:inherit;text-decoration:underline">fale pelo WhatsApp</a> para ativar seu acesso.');
+      return;
+    }
     session=data;
     sessionStorage.setItem('sn_sess',JSON.stringify(data));
     enterDash(data);
@@ -720,7 +724,7 @@ async function doLogin(){
 
 function showErr(msg){
   const el=document.getElementById('loginErr');
-  el.textContent=msg; el.classList.add('show');
+  el.innerHTML=msg; el.classList.add('show');
 }
 
 function doLogout(){

@@ -2,6 +2,35 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.3 — 2026-08-27
+
+### Corrigido
+- "Painel de Gestão" voltou ao mobile (havia sido removido por engano na v2.7.2):
+  agora posicionado na borda inferior da topbar (bottom: 4px) para não
+  sobrepor o texto de versão que fica no centro-alto.
+
+## v2.7.2 — 2026-08-27
+
+### Corrigido
+- Versão não aparecia no celular: opacidade aumentada (0.45→0.75),
+  cor em destaque (accent verde), `text-transform:none` para exibir
+  "v2.7.2" sem maiúsculas.
+
+## v2.7.1 — 2026-08-27
+
+### Corrigido
+- Módulo Planos: campo "Periodicidade" removido do formulário de criação/edição
+  de plano — periodicidade é sempre "Mensal" por padrão, sem exigir seleção.
+- Módulo Planos: erro "column cli_planos.created_at does not exist" — query
+  corrigida para usar `updated_at` (coluna real da tabela).
+- Portal do cliente: login retornava "CPF ou data de nascimento não conferem"
+  para clientes cadastrados — dados ficavam gravados em `{dados:{dados:{...}}}`
+  (duplo aninhamento). Corrigido em `page-clientes`: salvamento agora usa `{id, ...obj}`.
+- Portal do cliente: faturas não apareciam — RPC `portal_servnet_faturas`
+  apontava para tabela errada (`servnet_faturas`); corrigida para ler `lancamentos`.
+- Clientes: mensagem de erro no login do portal inclui link WhatsApp para
+  clientes recém-cadastrados ainda sem acesso ativado.
+
 ## v2.5.5 — 2026-08-19
 
 ### Adicionado
