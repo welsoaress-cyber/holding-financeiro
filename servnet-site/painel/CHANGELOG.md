@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.2 — 2026-08-27
+
+### Corrigido
+- Versão não aparecia no celular: opacidade aumentada (0.45→0.75),
+  cor em destaque (accent verde), `text-transform:none` para exibir
+  "v2.7.2" sem maiúsculas, e título central (`Painel de Gestão`)
+  ocultado em mobile para não cobrir o texto de versão.
+
 ## v2.7.1 — 2026-08-27
 
 ### Corrigido
