@@ -2,6 +2,21 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.1 — 2026-08-27
+
+### Corrigido
+- Módulo Planos: campo "Periodicidade" removido do formulário de criação/edição
+  de plano — periodicidade é sempre "Mensal" por padrão, sem exigir seleção.
+- Módulo Planos: erro "column cli_planos.created_at does not exist" — query
+  corrigida para usar `updated_at` (coluna real da tabela).
+- Portal do cliente: login retornava "CPF ou data de nascimento não conferem"
+  para clientes cadastrados — dados ficavam gravados em `{dados:{dados:{...}}}`
+  (duplo aninhamento). Corrigido em `page-clientes`: salvamento agora usa `{id, ...obj}`.
+- Portal do cliente: faturas não apareciam — RPC `portal_servnet_faturas`
+  apontava para tabela errada (`servnet_faturas`); corrigida para ler `lancamentos`.
+- Clientes: mensagem de erro no login do portal inclui link WhatsApp para
+  clientes recém-cadastrados ainda sem acesso ativado.
+
 ## v2.5.5 — 2026-08-19
 
 ### Adicionado
