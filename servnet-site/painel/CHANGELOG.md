@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.0 — 2026-08-27
+
+### Adicionado
+- Exclusão em massa com escopo de recorrência: o botão "Excluir (N)" agora
+  pergunta se quer excluir apenas os selecionados, estes e os próximos de
+  cada série (não pagos), ou todos da série (incluindo pagos). Funciona igual
+  ao botão Excluir individual mas aplicado a cada entrada selecionada.
+
 ## v2.7.9 — 2026-08-27
 
 ### Corrigido
