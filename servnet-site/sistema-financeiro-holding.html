@@ -1029,7 +1029,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ESTADO E CONSTANTES
 // ============================================================
 const PALETA_NEGOCIOS = ["#3B7EC4","#8457C9","#1E9159","#D8752B","#0D8C82","#6B7280","#B8891A","#C0447A","#3C6E8F","#8A8F1F"];
-const TIPOS_CONTA = ["Conta Corrente","Conta Pagamento","Poupança"];
+const TIPOS_CONTA = ["Conta Corrente","Conta Pagamento","Poupança","Investimento"];
 const TIPOS_LANC = ["Receita","Despesa","Transferência"];
 const STATUS_LANC = ["Pago","Provisionado","Agendado"];
 const FORMAS_RENDA = [
@@ -5590,7 +5590,10 @@ function viewContas(){
     const negTag = c.negocio
       ? `<span class="tag" style="background:color-mix(in srgb, ${negocioCor(c.negocio)} 14%, white); color:${negocioCor(c.negocio)}; margin-left:6px;"><span class="tag-dot" style="background:${negocioCor(c.negocio)}"></span>${esc(c.negocio)}</span>`
       : `<span class="tag" style="background:var(--muted-bg); color:var(--muted); margin-left:6px;"> Todos os negócios</span>`;
-    const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
+    const taxaLabel = c.tipo === "Investimento" && c.taxaAnual > 0
+      ? `<span style="font-size:10px; background:color-mix(in srgb, var(--pos) 12%, var(--surface-2)); color:var(--pos); border:1px solid color-mix(in srgb, var(--pos) 30%, var(--border)); border-radius:10px; padding:1px 7px; margin-left:6px;">${c.taxaAnual}% a.a.${c.isentoIR?' · isento':''}${c.percentualCDI?' · '+c.percentualCDI+'% CDI':''}</span>`
+      : "";
+    const nomeCell = nested ? `<span style="color:var(--ink-4); padding-left:18px;">↳</span> ${esc(c.nome)}` : `<strong>${esc(c.nome)}</strong>${negTag}${taxaLabel}<div style="font-size:11px;color:var(--ink-4)">${esc(c.instituicao)} · ${esc(c.tipo)}</div>`;
     const novaCaixinhaBtn = nested ? "" : `<button class="icon-btn" data-action="new-caixinha" data-id="${c.id}" title="Nova caixinha">＋</button>`;
     return `<tr style="${inativa ? 'opacity:.55;' : ''} ${nested ? 'background:var(--surface-2);' : ''}">
       ${bulkCheckboxCellHTML("contas", c.id)}
@@ -6160,22 +6163,53 @@ function modalSenha(kind){
 // ============================================================
 function modalConta(existing){
   const isEdit = !!existing;
-  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true, negocio:"" };
+  const c = existing || { nome:"", instituicao:"", tipo:"Conta Corrente", saldoInicial:0, limite:0, ativa:true, negocio:"",
+    taxaAnual:0, percentualCDI:0, dataAplicacao:"", isentoIR:false };
   const negOpts = negociosAZ().map(n=>`<option value="${esc(n.nome)}" ${c.negocio===n.nome?"selected":""}>${esc(n.nome)}</option>`).join("");
+  const isInvest = c.tipo === "Investimento";
   openModal(`
     <div class="modal-head"><div class="modal-title">${isEdit ? "Editar conta" : "Nova conta bancária"}</div><button class="modal-close" data-action="close-modal">✕</button></div>
     <form id="formConta"><div class="modal-body">
       <div class="field"><label>Nome da conta</label><input required type="text" name="nome" value="${esc(c.nome)}" placeholder="Ex: Mercado Pago, Caixa, C6 Bank PJ..."></div>
       <div class="field-row">
         <div class="field"><label>Instituição</label><input required type="text" name="instituicao" value="${esc(c.instituicao)}" placeholder="Ex: C6 Bank"></div>
-        <div class="field"><label>Tipo</label><select name="tipo">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field"><label>Tipo</label><select name="tipo" id="contaTipoSel">${TIPOS_CONTA.map(t=>`<option ${c.tipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
       </div>
       <div class="field"><label>Negócio</label><select name="negocio"><option value=""> Todos os negócios</option>${negOpts}</select>
         <div class="field-help">Deixe em "Todos os negócios" se essa conta é compartilhada — só escolha uma se ela for exclusiva de um negócio.</div>
       </div>
       <div class="field-row">
         ${campoValorProtegido("Saldo inicial (R$)", "saldoInicial", c.saldoInicial, !isEdit || receberDesbloqueado())}
-        <div class="field"><label>Limite cheque especial (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div>
+        <div class="field" id="limiteChequeWrap"><label>Limite cheque especial (R$)</label><input type="number" step="0.01" name="limite" value="${c.limite}"></div>
+      </div>
+      <div id="investimentoFields" style="display:${isInvest?'block':'none'};">
+        <div style="border-top:1px solid var(--border); margin:12px 0 10px; padding-top:12px;">
+          <div style="font-size:12px; font-weight:600; color:var(--ink-3); margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">⚙ Configuração do rendimento</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Taxa bruta anual (% a.a.)</label>
+              <input type="number" step="0.01" name="taxaAnual" value="${c.taxaAnual||0}" placeholder="Ex: 10.75 para 10,75% a.a.">
+              <div class="field-help">Taxa que o banco informa (ex.: 100% CDI ≈ 10,75% a.a.). Use essa taxa para calcular o rendimento bruto mensal.</div>
+            </div>
+            <div class="field">
+              <label>% do CDI (referência)</label>
+              <input type="number" step="0.01" name="percentualCDI" value="${c.percentualCDI||0}" placeholder="Ex: 100 para 100% CDI">
+              <div class="field-help">Informativo. Preencha para referência — o cálculo usa a taxa anual ao lado.</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Data da aplicação</label>
+              <input type="date" name="dataAplicacao" value="${c.dataAplicacao||''}">
+              <div class="field-help">Usada para calcular a alíquota de IR regressiva.</div>
+            </div>
+            <div class="field" style="justify-content:flex-end; padding-top:18px;">
+              <label class="checkbox-row"><input type="checkbox" name="isentoIR" ${c.isentoIR?"checked":""}> Isento de IR (LCI/LCA)</label>
+              <div class="field-help">Marque para LCI, LCA e outros produtos isentos.</div>
+            </div>
+          </div>
+          <div id="rendimentoPreview" style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px; font-size:12px; margin-top:4px; display:none;"></div>
+        </div>
       </div>
       <div class="field"><label class="checkbox-row"><input type="checkbox" name="ativa" ${c.ativa!==false?"checked":""}> Conta ativa</label>
         <div class="field-help">Contas inativas ficam esmaecidas e somem das opções ao criar novos lançamentos, mas o histórico continua visível.</div>
@@ -6183,14 +6217,67 @@ function modalConta(existing){
     </div><div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn btn-primary">${isEdit ? "Salvar alterações" : "Adicionar conta"}</button></div></form>
   `);
   attachCalculadora("saldoInicial");
+
+  // Mostrar/esconder campos de investimento conforme tipo selecionado
+  const tipoSel = document.getElementById("contaTipoSel");
+  const investFields = document.getElementById("investimentoFields");
+  const limiteChequeWrap = document.getElementById("limiteChequeWrap");
+  function atualizarCamposInvestimento(){
+    const ehInvest = tipoSel.value === "Investimento";
+    investFields.style.display = ehInvest ? "block" : "none";
+    limiteChequeWrap.style.display = ehInvest ? "none" : "block";
+  }
+  tipoSel.addEventListener("change", atualizarCamposInvestimento);
+
+  // Preview ao vivo do rendimento estimado
+  function atualizarPreviewRendimento(){
+    const taxa = parseFloat(document.querySelector('[name=taxaAnual]').value) || 0;
+    const saldo = parseFloat(document.querySelector('[name=saldoInicial]').value) || (isEdit ? saldoAtual(c.id) : 0);
+    const dataApl = document.querySelector('[name=dataAplicacao]').value;
+    const isento = document.querySelector('[name=isentoIR]').checked;
+    const preview = document.getElementById("rendimentoPreview");
+    if (!preview) return;
+    if (tipoSel.value !== "Investimento" || taxa <= 0 || saldo <= 0) { preview.style.display = "none"; return; }
+    const mensal = taxaAnualParaMensal(taxa / 100);
+    const bruto = saldo * mensal;
+    const dias = diasDesdeAplicacao(dataApl);
+    const aliq = isento ? 0 : aliquotaIR(dias || 365); // default 15% se sem data
+    const ir = bruto * aliq;
+    const liquido = bruto - ir;
+    const aliqPct = (aliq * 100).toFixed(1);
+    preview.style.display = "block";
+    preview.innerHTML = `
+      <strong style="color:var(--ink-1);">📊 Estimativa mensal sobre ${fmtBRL(saldo)}</strong>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+        <div style="text-align:center;"><div style="color:var(--ink-3); margin-bottom:2px;">Rendimento bruto</div><div style="font-weight:700; font-size:14px; color:var(--pos);">${fmtBRL(bruto)}</div></div>
+        <div style="text-align:center;"><div style="color:var(--ink-3); margin-bottom:2px;">IR (${isento?'isento':aliqPct+'%'})</div><div style="font-weight:700; font-size:14px; color:var(--neg);">−${fmtBRL(ir)}</div></div>
+        <div style="text-align:center;"><div style="color:var(--ink-3); margin-bottom:2px;">Rendimento líquido</div><div style="font-weight:700; font-size:14px; color:var(--ink-1);">${fmtBRL(liquido)}</div></div>
+      </div>
+      ${dataApl ? `<div style="margin-top:6px; color:var(--ink-4); font-size:11px;">${dias} dias de aplicação · alíquota ${isento?'isenta':aliqPct+'%'}</div>` : `<div style="margin-top:6px; color:var(--ink-4); font-size:11px;">Preencha a data da aplicação para calcular a alíquota exata de IR.</div>`}
+    `;
+  }
+  document.querySelector('[name=taxaAnual]')?.addEventListener('input', atualizarPreviewRendimento);
+  document.querySelector('[name=saldoInicial]')?.addEventListener('input', atualizarPreviewRendimento);
+  document.querySelector('[name=dataAplicacao]')?.addEventListener('change', atualizarPreviewRendimento);
+  document.querySelector('[name=isentoIR]')?.addEventListener('change', atualizarPreviewRendimento);
+  tipoSel.addEventListener("change", atualizarPreviewRendimento);
+  if (isInvest) atualizarPreviewRendimento();
+
   document.getElementById("formConta").addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const tipo = fd.get("tipo");
+    const ehInvest = tipo === "Investimento";
     const data = {
-      nome: fd.get("nome").trim(), instituicao: fd.get("instituicao").trim(), tipo: fd.get("tipo"),
+      nome: fd.get("nome").trim(), instituicao: fd.get("instituicao").trim(), tipo,
       negocio: fd.get("negocio")||"",
-      saldoInicial: parseFloat(fd.get("saldoInicial"))||0, limite: parseFloat(fd.get("limite"))||0,
-      ativa: fd.get("ativa") === "on"
+      saldoInicial: parseFloat(fd.get("saldoInicial"))||0,
+      limite: ehInvest ? 0 : (parseFloat(fd.get("limite"))||0),
+      ativa: fd.get("ativa") === "on",
+      taxaAnual: ehInvest ? (parseFloat(fd.get("taxaAnual"))||0) : 0,
+      percentualCDI: ehInvest ? (parseFloat(fd.get("percentualCDI"))||0) : 0,
+      dataAplicacao: ehInvest ? (fd.get("dataAplicacao")||"") : "",
+      isentoIR: ehInvest ? (fd.get("isentoIR")==="on") : false,
     };
     if(isEdit){ Object.assign(existing, data); }
     else{ state.contas.push({ id: uid("c"), parentId: null, ...data }); }
@@ -6253,9 +6340,135 @@ async function abrirLancarRendimento(contaId){
   if(!conta) return;
   let cat = categoriaByNome(CATEGORIA_RENDIMENTOS);
   if(!cat){ cat = { id: uid("cat"), nome: CATEGORIA_RENDIMENTOS, subcategorias: [] }; state.categorias.push(cat); await saveCategorias(); }
+
+  // Contas de Investimento com taxa configurada → mostrar simulador primeiro
+  if(ehContaInvestimento(conta)){
+    await modalSimuladorRendimento(contaId, cat);
+    return;
+  }
+
   modalLancamento(null, "Receita", {
     contaOrigem: contaId, negocio: conta.negocio || "", categoria: cat.nome,
     descricao: `Rendimento — ${conta.nome}`, status: "Pago", conciliado: true,
+  });
+}
+
+// ============================================================
+// MODAL — SIMULADOR DE RENDIMENTO (Investimentos)
+// ============================================================
+function modalSimuladorRendimento(contaId, cat){
+  return new Promise(resolve => {
+    const conta = contaById(contaId);
+    if(!conta){ resolve(); return; }
+
+    const saldo = saldoAtual(conta.id);
+    const taxa = (conta.taxaAnual || 0) / 100;
+    const mensal = taxaAnualParaMensal(taxa);
+    const brutoMensal = saldo * mensal;
+    const dias = diasDesdeAplicacao(conta.dataAplicacao);
+    const isento = conta.isentoIR === true;
+    const aliq = isento ? 0 : aliquotaIR(dias || 365);
+    const irMensal = brutoMensal * aliq;
+    const liquidoMensal = brutoMensal - irMensal;
+    const aliqPct = (aliq * 100).toFixed(1);
+    const faixaIR = isento ? "Isento (LCI/LCA)"
+      : dias <= 180 ? "22,5% (até 180 dias)"
+      : dias <= 360 ? "20% (181–360 dias)"
+      : dias <= 720 ? "17,5% (361–720 dias)"
+      : "15% (acima de 720 dias)";
+
+    // Rendimento bruto anual estimado
+    const brutoAnual = saldo * taxa;
+    const irAnual = brutoAnual * aliq;
+    const liquidoAnual = brutoAnual - irAnual;
+
+    const percentCDILabel = conta.percentualCDI ? ` · ${conta.percentualCDI}% do CDI` : "";
+    const diasLabel = conta.dataAplicacao
+      ? `${dias} dias (desde ${fmtDateBR(conta.dataAplicacao)})`
+      : "Data da aplicação não informada";
+
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">📈 Rendimento — ${esc(conta.nome)}</div>
+        <button class="modal-close" data-action="close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin-bottom:14px; font-size:12px; color:var(--ink-3);">
+          <strong style="color:var(--ink-1);">${esc(conta.instituicao)} · ${esc(conta.nome)}</strong>
+          <div style="margin-top:4px;">Taxa: <strong>${conta.taxaAnual}% a.a.</strong>${percentCDILabel} · Saldo atual: <strong>${fmtBRL(saldo)}</strong></div>
+          <div>Tempo de aplicação: ${diasLabel} · IR: <strong>${faixaIR}</strong></div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:600; color:var(--ink-3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;">Rendimento mensal estimado</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; text-align:center;">
+            <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:4px;">Bruto</div>
+              <div style="font-size:18px; font-weight:700; color:var(--pos); font-family:var(--font-num);">${fmtBRL(brutoMensal)}</div>
+            </div>
+            <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:4px;">IR (${isento?'isento':aliqPct+'%'})</div>
+              <div style="font-size:18px; font-weight:700; color:var(--neg); font-family:var(--font-num);">−${fmtBRL(irMensal)}</div>
+            </div>
+            <div style="background:color-mix(in srgb, var(--pos) 10%, var(--surface-2)); border:1px solid color-mix(in srgb, var(--pos) 30%, var(--border)); border-radius:var(--r); padding:12px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:4px;">Líquido</div>
+              <div style="font-size:18px; font-weight:700; color:var(--pos); font-family:var(--font-num);">${fmtBRL(liquidoMensal)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:600; color:var(--ink-3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;">Rendimento anual estimado</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; text-align:center;">
+            <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:10px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:2px;">Bruto</div>
+              <div style="font-weight:700; color:var(--pos); font-family:var(--font-num);">${fmtBRL(brutoAnual)}</div>
+            </div>
+            <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:10px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:2px;">IR (${isento?'isento':aliqPct+'%'})</div>
+              <div style="font-weight:700; color:var(--neg); font-family:var(--font-num);">−${fmtBRL(irAnual)}</div>
+            </div>
+            <div style="background:color-mix(in srgb, var(--pos) 10%, var(--surface-2)); border:1px solid color-mix(in srgb, var(--pos) 30%, var(--border)); border-radius:var(--r); padding:10px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:2px;">Líquido</div>
+              <div style="font-weight:700; color:var(--pos); font-family:var(--font-num);">${fmtBRL(liquidoAnual)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px; font-size:11px; color:var(--ink-3); margin-bottom:14px;">
+          <strong style="color:var(--ink-2);">ℹ️ Como lançar?</strong><br>
+          O banco recolhe o IR na fonte. O valor que cai na sua conta já é o <strong>líquido</strong>.
+          Clique em "Lançar valor líquido" abaixo para registrar o rendimento já com o valor correto.
+        </div>
+
+        <div style="margin-bottom:8px;">
+          <label style="font-size:12px; color:var(--ink-3);">Ajuste o valor se necessário (R$):</label>
+          <input id="simValorLiquido" type="number" step="0.01" value="${liquidoMensal.toFixed(2)}"
+            style="width:100%; margin-top:4px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--r); font-size:14px; font-family:var(--font-num); background:var(--surface); color:var(--ink-1);">
+        </div>
+      </div>
+      <div class="modal-foot" style="gap:8px;">
+        <button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+        <button type="button" id="btnLancarRendimentoLiquido" class="btn btn-primary">✓ Lançar valor líquido</button>
+      </div>
+    `);
+
+    document.getElementById("btnLancarRendimentoLiquido").addEventListener("click", () => {
+      const valorLancado = parseFloat(document.getElementById("simValorLiquido").value) || liquidoMensal;
+      closeModal();
+      modalLancamento(null, "Receita", {
+        contaOrigem: contaId,
+        negocio: conta.negocio || "",
+        categoria: cat ? cat.nome : CATEGORIA_RENDIMENTOS,
+        descricao: `Rendimento ${esc(conta.nome)} — ${new Date().toLocaleDateString("pt-BR", {month:"long", year:"numeric"})}`,
+        status: "Pago",
+        conciliado: true,
+        valor: valorLancado,
+      });
+      resolve();
+    });
+
+    document.querySelector('[data-action="close-modal"]')?.addEventListener("click", () => resolve(), { once: true });
   });
 }
 function modalLancamento(existing, tipoPreset, prefill){
@@ -8667,6 +8880,37 @@ const ORC_STATUS = ["Rascunho","Enviado","Aprovado","Recusado","Convertido em OS
 const OS_STATUS = ["Aberta","Em execução","Concluída","Cancelada"];
 const CATEGORIA_VENDAS_SERVICOS = "Vendas/Serviços";
 const CATEGORIA_RENDIMENTOS = "Rendimentos/Investimentos";
+
+// ---- Helpers de rendimento / IR ----
+/** Retorna a alíquota de IR para renda fixa conforme tabela regressiva (dias corridos). */
+function aliquotaIR(diasAplicado) {
+  if (diasAplicado <= 180) return 0.225;
+  if (diasAplicado <= 360) return 0.20;
+  if (diasAplicado <= 720) return 0.175;
+  return 0.15;
+}
+/** Converte taxa anual (decimal) em taxa mensal efetiva por capitalização composta. */
+function taxaAnualParaMensal(taxaAnual) {
+  return Math.pow(1 + taxaAnual, 1 / 12) - 1;
+}
+/** Dias corridos entre dataInicio (ISO string) e hoje. */
+function diasDesdeAplicacao(dataInicio) {
+  if (!dataInicio) return 0;
+  const d0 = new Date(dataInicio + "T00:00:00");
+  const d1 = new Date();
+  return Math.max(0, Math.floor((d1 - d0) / 86400000));
+}
+/** Verifica se a conta é do tipo Investimento e tem taxa configurada. */
+function ehContaInvestimento(conta) {
+  return conta && conta.tipo === "Investimento" && (conta.taxaAnual > 0 || conta.percentualCDI > 0);
+}
+/** Calcula rendimento bruto mensal (R$) de uma conta Investimento. */
+function calcRendimentoBrutoMensal(conta) {
+  const saldo = saldoAtual(conta.id);
+  const taxa = (conta.taxaAnual || 0) / 100;
+  const mensal = taxaAnualParaMensal(taxa);
+  return saldo * mensal;
+}
 
 // ---- Helpers ----
 function cliClienteById(id){ return state.cliClientes.find(c => c.id === id); }
