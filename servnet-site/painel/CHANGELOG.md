@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.6 — 2026-08-27
+
+### Corrigido
+- Módulo Clientes quebrado com "Invalid or unexpected token": aspas duplas
+  dentro de expressão `${}` de template literal estavam escapadas com `\"`
+  (inválido em contexto de expressão JS). Corrigido para aspas sem barra.
+
 ## v2.7.5 — 2026-08-27
 
 ### Removido
