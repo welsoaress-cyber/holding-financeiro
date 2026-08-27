@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.8 — 2026-08-27
+
+### Corrigido
+- Editar lançamento recorrente (tipo, valor etc.) com "aplicar nos próximos/todos"
+  só atualizava o mês atual — os meses futuros eram ignorados porque a store só
+  carrega um mês. Corrigido: agora busca todos os lançamentos do banco antes de
+  aplicar a alteração em massa (mesmo padrão já usado no Excluir).
+
 ## v2.7.7 — 2026-08-27
 
 ### Alterado
