@@ -2,13 +2,19 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.3 — 2026-08-27
+
+### Corrigido
+- "Painel de Gestão" voltou ao mobile (havia sido removido por engano na v2.7.2):
+  agora posicionado na borda inferior da topbar (bottom: 4px) para não
+  sobrepor o texto de versão que fica no centro-alto.
+
 ## v2.7.2 — 2026-08-27
 
 ### Corrigido
 - Versão não aparecia no celular: opacidade aumentada (0.45→0.75),
   cor em destaque (accent verde), `text-transform:none` para exibir
-  "v2.7.2" sem maiúsculas, e título central (`Painel de Gestão`)
-  ocultado em mobile para não cobrir o texto de versão.
+  "v2.7.2" sem maiúsculas.
 
 ## v2.7.1 — 2026-08-27
 
