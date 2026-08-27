@@ -12,7 +12,6 @@ import{j as m,t as c,f as x}from"./page-dashboard-Dbqm2OjXb.js";import{u as y}fr
     <div class="kpi-card"><span class="kv">${s.length}</span><span class="kl">Total</span></div>
     <div class="kpi-card kpi-green"><span class="kv">${o}</span><span class="kl">Ativos</span></div>
     <div class="kpi-card kpi-gray"><span class="kv">${a}</span><span class="kl">Inativos</span></div>
-    <div class="kpi-card kpi-blue"><span class="kv">${x(r)}</span><span class="kl">Receita bruta</span></div>
     ${f.map(e=>`<div class="kpi-card"><span class="kv">${i[e]||0}</span><span class="kl">${e}</span></div>`).join("")}
   </div>
 
