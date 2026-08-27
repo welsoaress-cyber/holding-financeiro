@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.4 — 2026-08-27
+
+### Removido
+- Coluna "Periodicidade" da tabela de listagem de Planos — campo não
+  faz mais parte do cadastro (sempre Mensal); removidos cabeçalho `<th>`
+  e célula `<td>` correspondente em todos os arquivos.
+
 ## v2.7.3 — 2026-08-27
 
 ### Corrigido
