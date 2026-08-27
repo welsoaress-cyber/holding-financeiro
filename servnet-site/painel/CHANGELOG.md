@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.1 — 2026-08-27
+
+### Adicionado
+- Seleção em massa e exclusão em lote na tela de Clientes: checkbox em
+  cada linha, "Selecionar todos (N)" no topo da lista e botão
+  "🗑️ Excluir (N)" que aparece ao selecionar 1 ou mais clientes.
+  A seleção é limpa automaticamente ao trocar filtro ou negócio.
+
 ## v2.8.0 — 2026-08-27
 
 ### Adicionado
