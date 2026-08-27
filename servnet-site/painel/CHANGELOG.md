@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.9 — 2026-08-27
+
+### Corrigido
+- "Erro ao excluir: Carga incompleta de lançamentos: 5017/5021" — fetchAll
+  contava as linhas primeiro e lançava erro se a contagem não batia (pode
+  ocorrer por race condition ou inconsistência do Supabase). Reescrito para
+  paginar até a página retornar vazia, sem depender de count.
+
 ## v2.7.8 — 2026-08-27
 
 ### Corrigido
