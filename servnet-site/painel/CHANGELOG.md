@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.7 — 2026-08-27
+
+### Alterado
+- Campo Cliente no modal de Novo/Editar lançamento: substituído o
+  `<datalist>` nativo (que exibia todos os clientes ao abrir) por um
+  autocomplete customizado — o dropdown só aparece ao digitar e filtra
+  os clientes cadastrados em tempo real (até 10 sugestões por vez).
+
 ## v2.7.6 — 2026-08-27
 
 ### Corrigido
