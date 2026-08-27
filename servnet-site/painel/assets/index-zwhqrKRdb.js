@@ -37,19 +37,17 @@ import{j as m,t as c,f as x}from"./page-dashboard-Dbqm2OjXb.js";import{u as y}fr
           <th>Nome</th>
           <th>Negócio</th>
           <th>Valor</th>
-          <th>Periodicidade</th>
           <th>Status</th>
           <th>Descrição</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        ${t.length===0?'<tr><td colspan="7" class="pln-empty">Nenhum plano encontrado.</td></tr>':t.map(e=>`
+        ${t.length===0?'<tr><td colspan="6" class="pln-empty">Nenhum plano encontrado.</td></tr>':t.map(e=>`
         <tr class="pln-row${e.status!=="Ativo"?" row-off":""}">
           <td class="pln-nome">${d(e.nome||"—")}</td>
           <td><span class="badge-neg badge-${(e.negocio||"").toLowerCase()}">${d(e.negocio||"—")}</span></td>
           <td class="pln-val">${x(e.valor)}</td>
-          <td>${d(e.periodicidade||"—")}</td>
           <td><span class="badge-st ${e.status==="Ativo"?"st-ativo":"st-inativo"}">${d(e.status||"—")}</span></td>
           <td class="pln-desc" title="${d(e.descricao||"")}">${d(e.descricao||"—")}</td>
           <td class="pln-acoes">
