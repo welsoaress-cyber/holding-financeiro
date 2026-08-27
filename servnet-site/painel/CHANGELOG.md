@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.7.5 — 2026-08-27
+
+### Removido
+- Card "Receita Bruta" dos KPIs do módulo Planos — Planos é cadastro
+  de produtos, não módulo financeiro; o card não fazia sentido ali.
+
 ## v2.7.4 — 2026-08-27
 
 ### Removido
