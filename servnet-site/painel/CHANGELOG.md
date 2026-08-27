@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.2 — 2026-08-27
+
+### Corrigido
+- Módulo Contratos: campo "Dia de Vencimento" limitava o máximo a 28,
+  impedindo salvar contratos com vencimento nos dias 29, 30 ou 31.
+  Corrigido para aceitar 1–31.
+
 ## v2.8.1 — 2026-08-27
 
 ### Adicionado
