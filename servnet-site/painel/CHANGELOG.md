@@ -2,6 +2,92 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.0 — 2026-08-28
+
+### Reformulado
+- Módulo Financeiro completamente reconstruído do zero sobre 13 tabelas
+  normalizadas (`fin_*`) com colunas diretas (sem wrapper JSONB `dados`),
+  soft-delete por `deleted_at` e RLS por usuário.
+- 10 abas independentes: Resumo, Despesas, Receitas, Transferências,
+  Contas, Cartões, Categorias, Orçamentos, Metas e Relatórios.
+- Despesas e Receitas distinguem avulsas (lançamento único) de fixas
+  (template + valor por mês com flag `excluido_mes`). Toggle de
+  pago/recebido atualiza o registro do mês sem duplicar o template.
+- Saldo de cada conta calculado em tempo real: saldo inicial + receitas
+  recebidas − despesas pagas ± transferências.
+- Resumo mensal com KPIs (saldo total, receitas, despesas, saldo do mês),
+  cards de contas e lista dos últimos lançamentos do mês.
+- Orçamentos com barra de progresso por categoria e alerta ao ultrapassar.
+- Metas de poupança com aporte e percentual de conclusão.
+- Relatórios: gráfico de barras dos últimos 6 meses + quebra por categoria.
+- Cartões de crédito com cor, limite e dia de vencimento.
+- Toda a lógica desacoplada do sistema antigo (`lancamentos`) — migração
+  total para as novas tabelas `fin_*`.
+
+## v2.8.10 — 2026-08-28
+
+### Corrigido
+- Editar recorrente via "Este e os próximos": janela de geração aumentada
+  de 12 para 60 meses (5 anos) no modo edição — antes parava em agosto/2027
+  para uma despesa mensal iniciada em setembro/2026.
+
+## v2.8.9 — 2026-08-28
+
+### Adicionado
+- Financeiro: editar lançamento recorrente com "Este e os próximos" agora
+  cria as parcelas futuras que ainda não existem — antes só atualizava
+  entradas já cadastradas; agora, se o lançamento tem apenas 1 mês,
+  o sistema gera automaticamente os próximos meses (sem duplicar
+  meses que já possuam entrada com mesma descrição/cliente).
+
+## v2.8.8 — 2026-08-28
+
+### Performance
+- Financeiro: as 4 buscas de lookup (negócios, clientes, contas,
+  categorias) agora rodam em paralelo (Promise.all) ao invés de
+  sequência — abre modal em 1 round-trip de rede em vez de 4.
+- Pré-carregamento dos dados de lookup em background ao abrir o módulo,
+  eliminando espera no primeiro clique em Novo/Editar.
+
+## v2.8.7 — 2026-08-28
+
+### Corrigido
+- Financeiro mobile: navegação (◄ mês ►) e resumo (Receitas/Despesas/Saldo)
+  agora em duas linhas separadas — nav centralizada acima, resumo centralizado abaixo.
+
+## v2.8.6 — 2026-08-28
+
+### Alterado
+- Layout mobile do Financeiro reorganizado: navegação de mês ocupa linha
+  própria (sem apertar com Receitas/Despesas), filtros de tipo e status
+  em linha separada dos filtros de negócio/busca/novo. Campo de busca
+  agora é flexível (não força largura fixa). Rótulo "Qualquer status"
+  encurtado para "Todos" nos filtros de status.
+
+## v2.8.5 — 2026-08-28
+
+### Corrigido
+- Editar lançamento recorrente gerava cópias duplicadas: ao salvar um
+  lançamento com frequência ≠ "única", o submit entrava no branch de
+  geração de série mesmo em modo edição. Corrigido — novas parcelas só
+  são geradas ao criar (Novo), nunca ao editar.
+
+## v2.8.4 — 2026-08-28
+
+### Corrigido
+- Modal "Editar lançamento": campo Frequência (🔁) voltou a aparecer —
+  estava escondido no modo edição (só aparecia em Novo). Agora o select
+  de frequência sempre exibe e mostra o valor gravado no lançamento;
+  as opções de término de recorrência permanecem exclusivas do Novo.
+
+## v2.8.3 — 2026-08-27
+
+### Corrigido
+- Autocomplete de Cliente no modal Novo/Editar lançamento não sugeria
+  nomes ao digitar: o código buscava na tabela inexistente "clientes"
+  em vez de "cli_clientes". Corrigido — agora funciona mesmo sem ter
+  aberto o módulo Clientes antes.
+
 ## v2.8.2 — 2026-08-27
 
 ### Corrigido
