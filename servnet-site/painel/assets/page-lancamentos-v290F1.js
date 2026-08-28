@@ -960,9 +960,9 @@ const TABS_DEF=[
 function buildShell(){return`
 <style>
 .fin-wrap{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg,#f8fafc);}
-.fin-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border,#e5e7eb);background:var(--bg-card,#fff);padding:0 4px;flex-shrink:0;scrollbar-width:none;}
+.fin-tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--border,#e5e7eb);background:var(--bg-card,#fff);padding:0;flex-shrink:0;}
 .fin-tabs::-webkit-scrollbar{display:none;}
-.fin-tab{flex-shrink:0;padding:10px 8px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text-2,#6b7280);border-bottom:2px solid transparent;display:flex;align-items:center;gap:3px;white-space:nowrap;}
+.fin-tab{flex:1 1 33%;min-width:0;padding:8px 4px;font-size:10.5px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text-2,#6b7280);border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:3px;text-align:center;}
 .fin-tab.active{color:var(--accent,#2563eb);border-bottom-color:var(--accent,#2563eb);}
 .fin-body{flex:1;overflow-y:auto;min-height:0;}
 </style>
