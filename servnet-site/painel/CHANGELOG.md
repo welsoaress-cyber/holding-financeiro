@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.1 — 2026-08-28
+
+### Corrigido
+- Despesas/Receitas fixas: toggle de pago/recebido e exclusão de mês
+  agora usam `fSaveValor` — busca o registro existente pelo par
+  `(id_despesa_fixa|id_receita_fixa, mes_ref)` antes de inserir,
+  evitando violação da constraint UNIQUE ao marcar/desmarcar rapidamente.
+- Criação das 13 tabelas `fin_*` documentada em `setup-financeiro-fin-tables.sql`.
+
 ## v2.9.0 — 2026-08-28
 
 ### Reformulado
