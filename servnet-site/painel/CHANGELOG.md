@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.7 — 2026-08-28
+
+### Removido
+- Módulo **Contratos** completamente excluído: arquivos JS (`page-contratos-DsRvToNz.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`,
+  e todas as permissões RBAC em todos os perfis.
+
 ## v2.9.6 — 2026-08-28
 
 ### Removido
