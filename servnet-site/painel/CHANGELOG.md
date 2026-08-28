@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.4 — 2026-08-28
+
+### Removido
+- Módulo **Cartões** completamente excluído: arquivos JS (`page-cartoes-DpTQTZlc.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`,
+  e todas as permissões RBAC em todos os perfis.
+- A tabela `fin_cartoes` pode ser removida do Supabase com:
+  `DROP TABLE IF EXISTS fin_cartoes CASCADE;`
+
 ## v2.9.3 — 2026-08-28
 
 ### Removido
