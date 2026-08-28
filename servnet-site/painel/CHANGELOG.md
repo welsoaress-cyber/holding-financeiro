@@ -2,6 +2,26 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.14 — 2026-08-28
+
+### Adicionado
+- **Resumo (Dashboard) estilo Organizze** — tela de resumo financeiro completa com:
+  - Navegação por mês (‹ Agosto 2026 ›) com estado persistido em `h.mesNav`
+  - Barra de métricas: Saldo inicial / Saldo atual / Saldo previsto
+  - **Contas**: lista de contas ativas com saldo individual e total consolidado
+  - **Discriminação das receitas/despesas**: três colunas (Efetivadas | Vencidas | Próx. venc.)
+  - **Fluxo de caixa**: barras comparativas Entrada / Saída / Saldo atual
+  - **Economia mensal**: gauge circular com % economizado e valor
+  - **Transações pendentes**: carrossel de 3 slides (despesas / receitas / transferências)
+  - **Saldo consolidado**: donut Patrimônio vs Dívidas
+  - **Últimas receitas / despesas**: listas com ícone de categoria, data, valor
+  - **Receitas / Despesas por categoria**: donut + lista com percentual por categoria
+  - Configurar resumo (placeholder para configurações futuras)
+- Donut SVG responsivo calculado por stroke-dasharray/dashoffset
+- Gauge SVG de economia mensal
+- Carrossel com suporte a touch/swipe (mobile)
+- Skeleton loader enquanto os dados carregam
+
 ## v2.9.13 — 2026-08-28
 
 ### Adicionado
