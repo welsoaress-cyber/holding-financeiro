@@ -2,13 +2,20 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.10 — 2026-08-28
+
+### Corrigido
+- Editar recorrente via "Este e os próximos": janela de geração aumentada
+  de 12 para 60 meses (5 anos) no modo edição — antes parava em agosto/2027
+  para uma despesa mensal iniciada em setembro/2026.
+
 ## v2.8.9 — 2026-08-28
 
 ### Adicionado
 - Financeiro: editar lançamento recorrente com "Este e os próximos" agora
   cria as parcelas futuras que ainda não existem — antes só atualizava
   entradas já cadastradas; agora, se o lançamento tem apenas 1 mês,
-  o sistema gera automaticamente os próximos meses (até 12, sem duplicar
+  o sistema gera automaticamente os próximos meses (sem duplicar
   meses que já possuam entrada com mesma descrição/cliente).
 
 ## v2.8.8 — 2026-08-28
