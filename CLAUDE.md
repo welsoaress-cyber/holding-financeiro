@@ -41,8 +41,9 @@
 
 ### 4. Banco C6 — Processo 4059615-36.2026.8.26.0002
 - **Réu:** Banco C6 S.A.
-- **Status:** Citação frustrada (tentativas eletrônica e física falharam)
-- **Próxima ação:** Aguardar tribunal realizar nova tentativa de citação. Wellington não precisa fazer nada agora.
+- **Juiz:** Vinicius Camara Campos Bernardes Siqueira
+- **Status:** Citação frustrada — eletrônica (sem confirmação) + Correios (devolvida em 14/08). Aguardando nova tentativa pelo tribunal.
+- **Próxima ação:** Nenhuma — tribunal providencia nova citação automaticamente.
 
 ---
 
