@@ -2,6 +2,16 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.15 — 2026-08-28
+
+### Alterado
+- **Sidebar corrigida** para replicar exatamente o menu do Organizze:
+  - Seção principal: Resumo, Contas, Transações, Cartões de crédito
+  - Seção **Planejar**: Orçamentos, Objetivos
+  - Seção **Analisar**: Relatórios, Gráficos, Categorias, Calendário
+  - Rodapé: Recursos Premium, Ferramentas, Configurações, Usuários (RBAC), Cafezinho, Sair
+- Versão bumped 2.9.14 → 2.9.15
+
 ## v2.9.14 — 2026-08-28
 
 ### Adicionado

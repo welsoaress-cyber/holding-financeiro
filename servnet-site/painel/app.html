@@ -686,54 +686,67 @@
   </div>
 
   <nav class="sb-nav">
-    <button class="sb-item" onclick="sbOpen('dashboard','Resumo','📊','#3FD68E')">
-      <span class="sb-item-icon">📊</span>
+    <!-- Principal -->
+    <button class="sb-item" onclick="sbOpen('dashboard','Resumo','⊞','#3FD68E')">
+      <span class="sb-item-icon">⊞</span>
       <span class="sb-item-label">Resumo</span>
     </button>
-    <button class="sb-item" onclick="sbOpen('lancamentos','Financeiro','💰','#3FD68E')">
-      <span class="sb-item-icon">💰</span>
-      <span class="sb-item-label">Lançamentos</span>
+    <button class="sb-item" onclick="sbOpen('contas','Contas','🏦','#3b82f6')">
+      <span class="sb-item-icon">🏦</span>
+      <span class="sb-item-label">Contas</span>
     </button>
-
-    <div class="sb-sep"></div>
-    <div class="sb-section-label">Movimentações</div>
-
-    <button class="sb-item" onclick="sbOpen('receitas','Receitas','📈','#22c55e')">
-      <span class="sb-item-icon">📈</span>
-      <span class="sb-item-label">Receitas</span>
+    <button class="sb-item" onclick="sbOpen('lancamentos','Transações','💳','#3FD68E')">
+      <span class="sb-item-icon">💳</span>
+      <span class="sb-item-label">Transações</span>
     </button>
-    <button class="sb-item" onclick="sbOpen('despesas','Despesas','📉','#ef4444')">
-      <span class="sb-item-icon">📉</span>
-      <span class="sb-item-label">Despesas</span>
-    </button>
-    <button class="sb-item" onclick="sbOpen('transferencias','Transferências','🔀','#8b5cf6')">
-      <span class="sb-item-icon">🔀</span>
-      <span class="sb-item-label">Transferências</span>
-    </button>
-    <button class="sb-item" onclick="sbOpen('ajustes','Ajustes','🔧','#f59e0b')">
-      <span class="sb-item-icon">🔧</span>
-      <span class="sb-item-label">Ajustes</span>
+    <button class="sb-item" onclick="sbOpen('cartoes','Cartões de crédito','💳','#6366f1')">
+      <span class="sb-item-icon">🪪</span>
+      <span class="sb-item-label">Cartões de crédito</span>
     </button>
 
     <div class="sb-sep"></div>
     <div class="sb-section-label">Planejar</div>
 
-    <button class="sb-item" onclick="sbOpen('planos','Planos','📋','#f59e0b')">
-      <span class="sb-item-icon">📋</span>
-      <span class="sb-item-label">Planos</span>
+    <button class="sb-item" onclick="sbOpen('orcamentos','Orçamentos','%','#f59e0b')">
+      <span class="sb-item-icon">〣</span>
+      <span class="sb-item-label">Orçamentos</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('objetivos','Objetivos','🎯','#ec4899')">
+      <span class="sb-item-icon">🎯</span>
+      <span class="sb-item-label">Objetivos</span>
     </button>
 
     <div class="sb-sep"></div>
     <div class="sb-section-label">Analisar</div>
 
-    <button class="sb-item" onclick="sbOpen('categorias','Categorias','🏷️','#06b6d4')">
+    <button class="sb-item" onclick="sbOpen('relatorios','Relatórios','🔍','#0284c7')">
+      <span class="sb-item-icon">🔍</span>
+      <span class="sb-item-label">Relatórios</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('graficos','Gráficos','📊','#06b6d4')">
+      <span class="sb-item-icon">📊</span>
+      <span class="sb-item-label">Gráficos</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('categorias','Categorias','🏷️','#7c3aed')">
       <span class="sb-item-icon">🏷️</span>
       <span class="sb-item-label">Categorias</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('calendario','Calendário','📅','#059669')">
+      <span class="sb-item-icon">📅</span>
+      <span class="sb-item-label">Calendário</span>
     </button>
   </nav>
 
   <div class="sb-sep"></div>
   <div class="sb-footer">
+    <button class="sb-item" onclick="sbOpen('premium','Recursos Premium','👑','#f59e0b')">
+      <span class="sb-item-icon">👑</span>
+      <span class="sb-item-label">Recursos Premium</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('ferramentas','Ferramentas','🔧','#64748b')">
+      <span class="sb-item-icon">🔧</span>
+      <span class="sb-item-label">Ferramentas</span>
+    </button>
     <button class="sb-item" onclick="sbOpen('config','Configurações','⚙️','#94a3b8')">
       <span class="sb-item-icon">⚙️</span>
       <span class="sb-item-label">Configurações</span>
@@ -741,6 +754,11 @@
     <button class="sb-item" id="sb-btn-usuarios" style="display:none" onclick="sbOpen('usuarios','Usuários','👤','#6366f1')">
       <span class="sb-item-icon">👤</span>
       <span class="sb-item-label">Usuários</span>
+    </button>
+    <div class="sb-sep"></div>
+    <button class="sb-item" onclick="sbOpen('cafezinho','Cafezinho','☕','#a16207')">
+      <span class="sb-item-icon">☕</span>
+      <span class="sb-item-label">Cafezinho</span>
     </button>
     <div class="sb-sep"></div>
     <button class="sb-item danger" id="sb-btn-logout">
