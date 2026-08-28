@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.10 — 2026-08-28
+
+### Corrigido
+- Erro `does not provide an export named 'u'` em Planos: o export `u` (gerador de
+  UUID via `crypto.randomUUID()`) foi adicionado em `page-lancamentos-v290.js` + F1,
+  que é de onde Planos (e outros módulos) o importam.
+
+### Removido
+- Módulo **Cobranças** completamente excluído: assets (`index-Bl4esJceb.js` e F1),
+  registry, card em `app.html`, RBAC todos os perfis.
+
 ## v2.9.9 — 2026-08-28
 
 ### Adicionado
