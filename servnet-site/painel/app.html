@@ -468,6 +468,114 @@
     /* ═══ UTILITÁRIOS ═══════════════════════════════════════ */
     .hidden { display: none !important; }
 
+    /* ═══ SIDEBAR ═══════════════════════════════════════════ */
+    #sidebar-overlay {
+      position: fixed; inset: 0; z-index: 800;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+      display: none; opacity: 0; transition: opacity 0.25s;
+    }
+    #sidebar-overlay.visible { display: block; }
+    #sidebar-overlay.open    { opacity: 1; }
+
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 801;
+      width: 280px;
+      background: rgba(8,12,26,0.99);
+      backdrop-filter: blur(24px);
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.2,0,0.2,1);
+      overflow-y: auto; overflow-x: hidden;
+      display: flex; flex-direction: column;
+    }
+    [data-theme="light"] #sidebar { background: rgba(255,255,255,0.99); }
+    #sidebar.open { transform: translateX(0); }
+
+    .sb-header {
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sb-profile {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sb-avatar-ring {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: #fff;
+      font-family: var(--font-head); flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
+    }
+    .sb-user-info { flex: 1; min-width: 0; }
+    .sb-user-name {
+      font-family: var(--font-head); font-size: 14px; font-weight: 600;
+      color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sb-user-email {
+      font-size: 11px; color: var(--text-3); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .sb-workspace {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 14px; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; cursor: pointer; transition: background 0.2s;
+    }
+    .sb-workspace:hover { background: var(--surface-hv); }
+    .sb-workspace-left { display: flex; align-items: center; gap: 9px; }
+    .sb-workspace-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #0eb87a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900; color: #0A0F1F;
+      font-family: var(--font-mono);
+    }
+    .sb-workspace-name {
+      font-size: 13px; font-weight: 600; color: var(--text-1);
+      font-family: var(--font-head);
+    }
+    .sb-workspace-chevron { font-size: 10px; color: var(--text-3); }
+
+    .sb-nav { flex: 1; padding: 6px 8px; }
+    .sb-footer { padding: 6px 8px 20px; }
+
+    .sb-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--text-3);
+      padding: 14px 12px 4px;
+      font-family: var(--font-body);
+    }
+
+    .sb-item {
+      width: 100%; padding: 10px 12px;
+      border: none; background: none;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; border-radius: 10px;
+      font-family: var(--font-body); font-size: 14px;
+      color: var(--text-2);
+      transition: background 0.15s, color 0.15s;
+      text-align: left; margin-bottom: 1px;
+    }
+    .sb-item:hover { background: var(--surface); color: var(--text-1); }
+    .sb-item.active { background: var(--accent-dim); color: var(--accent); }
+    .sb-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; line-height: 1; }
+    .sb-item-label { flex: 1; }
+    .sb-item.danger { color: #f87171; }
+    .sb-item.danger:hover { background: rgba(248,113,113,0.08); color: #f87171; }
+
+    .sb-sep { height: 1px; background: var(--border); margin: 6px 12px; }
+
+    /* Hamburger no topbar */
+    #btn-sidebar {
+      background: none; border: none; color: var(--text-2);
+      font-size: 22px; cursor: pointer; padding: 8px; line-height: 1;
+      flex-shrink: 0; border-radius: 8px;
+      transition: background 0.2s, color 0.2s;
+    }
+    #btn-sidebar:hover { background: var(--surface); color: var(--text-1); }
+
     /* ═══ MOBILE BOTTOM NAVIGATION ═════════════════════════ */
     #mobile-bottom-nav {
       display: none;
@@ -557,6 +665,91 @@
 </head>
 <body>
 
+<!-- Sidebar overlay + drawer -->
+<div id="sidebar-overlay"></div>
+<aside id="sidebar">
+  <div class="sb-header">
+    <div class="sb-profile">
+      <div class="sb-avatar-ring" id="sb-avatar">U</div>
+      <div class="sb-user-info">
+        <div class="sb-user-name" id="sb-name">Gestor</div>
+        <div class="sb-user-email" id="sb-email">—</div>
+      </div>
+    </div>
+    <div class="sb-workspace">
+      <div class="sb-workspace-left">
+        <div class="sb-workspace-icon">GT</div>
+        <span class="sb-workspace-name">GrupoTom</span>
+      </div>
+      <span class="sb-workspace-chevron">▾</span>
+    </div>
+  </div>
+
+  <nav class="sb-nav">
+    <button class="sb-item" onclick="sbOpen('dashboard','Resumo','📊','#3FD68E')">
+      <span class="sb-item-icon">📊</span>
+      <span class="sb-item-label">Resumo</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('lancamentos','Financeiro','💰','#3FD68E')">
+      <span class="sb-item-icon">💰</span>
+      <span class="sb-item-label">Lançamentos</span>
+    </button>
+
+    <div class="sb-sep"></div>
+    <div class="sb-section-label">Movimentações</div>
+
+    <button class="sb-item" onclick="sbOpen('receitas','Receitas','📈','#22c55e')">
+      <span class="sb-item-icon">📈</span>
+      <span class="sb-item-label">Receitas</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('despesas','Despesas','📉','#ef4444')">
+      <span class="sb-item-icon">📉</span>
+      <span class="sb-item-label">Despesas</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('transferencias','Transferências','🔀','#8b5cf6')">
+      <span class="sb-item-icon">🔀</span>
+      <span class="sb-item-label">Transferências</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('ajustes','Ajustes','🔧','#f59e0b')">
+      <span class="sb-item-icon">🔧</span>
+      <span class="sb-item-label">Ajustes</span>
+    </button>
+
+    <div class="sb-sep"></div>
+    <div class="sb-section-label">Planejar</div>
+
+    <button class="sb-item" onclick="sbOpen('planos','Planos','📋','#f59e0b')">
+      <span class="sb-item-icon">📋</span>
+      <span class="sb-item-label">Planos</span>
+    </button>
+
+    <div class="sb-sep"></div>
+    <div class="sb-section-label">Analisar</div>
+
+    <button class="sb-item" onclick="sbOpen('categorias','Categorias','🏷️','#06b6d4')">
+      <span class="sb-item-icon">🏷️</span>
+      <span class="sb-item-label">Categorias</span>
+    </button>
+  </nav>
+
+  <div class="sb-sep"></div>
+  <div class="sb-footer">
+    <button class="sb-item" onclick="sbOpen('config','Configurações','⚙️','#94a3b8')">
+      <span class="sb-item-icon">⚙️</span>
+      <span class="sb-item-label">Configurações</span>
+    </button>
+    <button class="sb-item" id="sb-btn-usuarios" style="display:none" onclick="sbOpen('usuarios','Usuários','👤','#6366f1')">
+      <span class="sb-item-icon">👤</span>
+      <span class="sb-item-label">Usuários</span>
+    </button>
+    <div class="sb-sep"></div>
+    <button class="sb-item danger" id="sb-btn-logout">
+      <span class="sb-item-icon">🚪</span>
+      <span class="sb-item-label">Sair do sistema</span>
+    </button>
+  </div>
+</aside>
+
 <!-- Canvas de fundo -->
 <canvas id="bg-canvas"></canvas>
 <div id="hex-overlay"></div>
@@ -571,6 +764,7 @@
 
 <!-- Topbar -->
 <header id="topbar">
+  <button id="btn-sidebar" onclick="toggleSidebar()" title="Menu">☰</button>
   <div class="tb-brand">
     <div class="tb-brand-mark">GT</div>
     GrupoTom <span id="tb-version" style="opacity:.75;font-weight:500;font-size:12px;margin-left:4px;color:var(--accent,#00d4aa);letter-spacing:0;text-transform:none;"></span>
@@ -1056,10 +1250,22 @@ window.applyLayout = applyLayout;
 window.renderGrid = function() {
   applyLayout(localStorage.getItem('gt_layout') || 'hex');
 
-  // Exibe botão Usuários no menu apenas para quem tem permissão
   const perfil = window.GT_PERFIL;
+
+  // Atualiza sidebar — perfil
+  const sbAv   = document.getElementById('sb-avatar');
+  const sbNm   = document.getElementById('sb-name');
+  const sbEm   = document.getElementById('sb-email');
+  if (perfil) {
+    const nome = perfil.nome || 'Gestor';
+    if (sbAv) sbAv.textContent  = (nome[0] ?? 'U').toUpperCase();
+    if (sbNm) sbNm.textContent  = nome;
+    if (sbEm) sbEm.textContent  = perfil.email || '';
+  }
+
+  // RBAC — Usuários visível apenas para quem tem permissão
   const podeVerUsuarios = perfil && (perfil.isMaster || perfil.permissoes?.usuarios?.ver);
-  ['sheet-btn-usuarios', 'btn-usuarios'].forEach(id => {
+  ['sheet-btn-usuarios', 'btn-usuarios', 'sb-btn-usuarios'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = podeVerUsuarios ? '' : 'none';
   });
@@ -1450,6 +1656,54 @@ document.getElementById('sheet-btn-logout')?.addEventListener('click', async () 
       ptr.style.opacity    = '0';
     }
     pullDist = 0;
+  }, { passive: true });
+})();
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR — drawer lateral
+══════════════════════════════════════════════════════════ */
+(function() {
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+
+  function openSidebar() {
+    overlay.classList.add('visible');
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+      sidebar.classList.add('open');
+    });
+  }
+  function closeSidebar() {
+    overlay.classList.remove('open');
+    sidebar.classList.remove('open');
+    setTimeout(() => overlay.classList.remove('visible'), 300);
+  }
+
+  window.toggleSidebar = function() {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  };
+  window.closeSidebar = closeSidebar;
+
+  overlay.addEventListener('click', closeSidebar);
+
+  // Abre módulo e fecha sidebar
+  window.sbOpen = function(view, label, icon, color) {
+    closeSidebar();
+    window.openModule(view, label, icon, color);
+  };
+
+  // Logout via sidebar — reutiliza o handler do sheet
+  document.getElementById('sb-btn-logout')?.addEventListener('click', () => {
+    closeSidebar();
+    setTimeout(() => document.getElementById('sheet-btn-logout')?.click(), 300);
+  });
+
+  // Swipe-right fecha sidebar (mobile)
+  let _tsx = 0;
+  sidebar.addEventListener('touchstart', e => { _tsx = e.touches[0].clientX; }, { passive: true });
+  sidebar.addEventListener('touchend',   e => {
+    if (e.changedTouches[0].clientX - _tsx < -60) closeSidebar();
   }, { passive: true });
 })();
 
