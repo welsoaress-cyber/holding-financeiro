@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.8 — 2026-08-28
+
+### Performance
+- Financeiro: as 4 buscas de lookup (negócios, clientes, contas,
+  categorias) agora rodam em paralelo (Promise.all) ao invés de
+  sequência — abre modal em 1 round-trip de rede em vez de 4.
+- Pré-carregamento dos dados de lookup em background ao abrir o módulo,
+  eliminando espera no primeiro clique em Novo/Editar.
+
 ## v2.8.7 — 2026-08-28
 
 ### Corrigido
