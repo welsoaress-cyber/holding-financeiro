@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.5 — 2026-08-28
+
+### Corrigido
+- Editar lançamento recorrente gerava cópias duplicadas: ao salvar um
+  lançamento com frequência ≠ "única", o submit entrava no branch de
+  geração de série mesmo em modo edição. Corrigido — novas parcelas só
+  são geradas ao criar (Novo), nunca ao editar.
+
 ## v2.8.4 — 2026-08-28
 
 ### Corrigido
