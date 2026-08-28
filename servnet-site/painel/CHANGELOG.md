@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.12 — 2026-08-28
+
+### Corrigido
+- Abas do módulo Financeiro (Resumo, Despesas, Receitas, Transf., Contas…) agora
+  quebram em 2 linhas de 3 abas — sem scroll lateral. Antes usavam `overflow-x:auto`
+  forçando arrastar para ver todas. Agora cada aba ocupa 1/3 da largura com
+  `flex-wrap:wrap` e `flex:1 1 33%`.
+
 ## v2.9.11 — 2026-08-28
 
 ### Alterado
