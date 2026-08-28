@@ -99,82 +99,84 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
       white-space:nowrap;
     ">${e}</button>
   `}function h(){var m,w,u,y,x,C;if(!l)return;const e=g.get("lancamentos")??[],t=Z(),o=new Date,n=v===o.getFullYear()&&c===o.getMonth()+1,d=e.filter(r=>r.tipo==="receita").reduce((r,b)=>r+(Number(b.valor)||0),0),s=e.filter(r=>r.tipo==="despesa").reduce((r,b)=>r+(Number(b.valor)||0),0),i=d-s;l.innerHTML=`
-    <div style="padding:16px 20px;max-width:960px;">
+    <div style="padding:8px 6px;max-width:960px;">
 
       <!-- Barra de título e navegação -->
       <div style="
-        display:flex;align-items:center;justify-content:space-between;
-        padding:8px 12px;background:var(--bg-card,#fff);
+        display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+        padding:8px 10px;background:var(--bg-card,#fff);
         border:1px solid var(--border,#d1d5db);border-bottom:none;
-        margin-bottom:0;
       ">
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
           <button data-action="mes-prev" style="
             background:none;border:1px solid var(--border,#d1d5db);
-            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);
+            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);flex-shrink:0;
           ">&#9664;</button>
-          <span style="font-size:13px;font-weight:600;min-width:150px;text-align:center;">
+          <span style="font-size:13px;font-weight:600;white-space:nowrap;text-align:center;flex:1;">
             ${I()}
           </span>
           <button data-action="mes-next" style="
             background:none;border:1px solid var(--border,#d1d5db);
-            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);
+            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);flex-shrink:0;
           ">&#9654;</button>
           ${n?"":`<button data-action="mes-hoje" style="
             font-size:11px;color:#2563eb;background:none;
-            border:1px solid #2563eb;padding:2px 8px;cursor:pointer;
+            border:1px solid #2563eb;padding:2px 8px;cursor:pointer;flex-shrink:0;
           ">Hoje</button>`}
         </div>
-
         <!-- Resumo inline -->
-        <div style="display:flex;align-items:center;gap:16px;font-size:12px;">
-          <span>Receitas: <strong style="color:#166534;font-variant-numeric:tabular-nums;">${M(d)}</strong></span>
-          <span>Despesas: <strong style="color:#991b1b;font-variant-numeric:tabular-nums;">${M(s)}</strong></span>
+        <div style="display:flex;align-items:center;gap:10px;font-size:11px;flex-wrap:wrap;">
+          <span>Rec: <strong style="color:#166534;font-variant-numeric:tabular-nums;">${M(d)}</strong></span>
+          <span>Desp: <strong style="color:#991b1b;font-variant-numeric:tabular-nums;">${M(s)}</strong></span>
           <span>Saldo: <strong style="color:${i>=0?"#1d4ed8":"#92400e"};font-variant-numeric:tabular-nums;">${i>=0?"":"-"}${M(Math.abs(i))}</strong></span>
         </div>
       </div>
 
       <!-- Toolbar: filtros + busca + novo -->
       <div style="
-        display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-        padding:6px 8px;background:var(--bg,#f3f4f6);
+        display:flex;flex-direction:column;gap:6px;
+        padding:8px;background:var(--bg,#f3f4f6);
         border:1px solid var(--border,#d1d5db);border-bottom:none;
       ">
-        <span data-filtro-tipo="todos">   ${S("Todos",$==="todos")}</span>
-        <span data-filtro-tipo="receita"> ${S("Receitas",$==="receita")}</span>
-        <span data-filtro-tipo="despesa"> ${S("Despesas",$==="despesa")}</span>
-        <span style="width:1px;height:18px;background:var(--border,#d1d5db);margin:0 2px;"></span>
-        <span data-filtro-status="todos">   ${S("Qualquer status",k==="todos")}</span>
-        <span data-filtro-status="pago">    ${S("Pagos",k==="pago")}</span>
-        <span data-filtro-status="pendente">${S("Pendentes",k==="pendente")}</span>
-        <span data-filtro-status="vencido">${S("Vencidos",k==="vencido")}</span>
-        <span style="width:1px;height:18px;background:var(--border,#d1d5db);margin:0 4px;"></span>
-        <select id="filtro-negocio" title="Filtrar por negócio" style="padding:3px 7px;border:1px solid var(--border,#d1d5db);font-size:12px;background:var(--bg-card,#fff);color:var(--text,#111);cursor:pointer;">
-          <option value="todos" ${nb==="todos"?"selected":""}>Todos os negócios</option>
-          ${[...new Set((g.get("lancamentos")??[]).map(r=>r.negocio||"").filter(Boolean))].sort().map(n=>`<option value="${n}" ${nb===n?"selected":""}>${n}</option>`).join("")}
-        </select>
-        <span style="flex:1;"></span>
-        ${sel.size>0?`<button id="btn-del-sel" style="
-          background:#dc2626;color:#fff;border:none;
-          padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;
-          display:flex;align-items:center;gap:4px;
-        ">🗑️ Excluir (${sel.size})</button>`:""}
-        <input
-          id="busca-lanc"
-          type="text"
-          placeholder="Buscar..."
-          value="${z}"
-          style="
-            padding:3px 8px;border:1px solid var(--border,#d1d5db);
-            font-size:12px;background:var(--bg-card,#fff);color:var(--text,#111);
-            width:180px;outline:none;
-          "
-        />
-        ${z?'<button id="btn-limpar-busca" style="background:none;border:none;font-size:16px;cursor:pointer;color:#6b7280;padding:0 2px;">×</button>':""}
-        <button data-action="novo-lanc" style="
-          background:#2563eb;color:#fff;border:none;
-          padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;
-        ">+ Novo</button>
+        <!-- Linha 1: tipo + status -->
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          <span data-filtro-tipo="todos">   ${S("Todos",$==="todos")}</span>
+          <span data-filtro-tipo="receita"> ${S("Receitas",$==="receita")}</span>
+          <span data-filtro-tipo="despesa"> ${S("Despesas",$==="despesa")}</span>
+          <span style="width:1px;height:18px;background:var(--border,#d1d5db);margin:0 2px;flex-shrink:0;"></span>
+          <span data-filtro-status="todos">   ${S("Todos",k==="todos")}</span>
+          <span data-filtro-status="pago">    ${S("Pagos",k==="pago")}</span>
+          <span data-filtro-status="pendente">${S("Pendentes",k==="pendente")}</span>
+          <span data-filtro-status="vencido">${S("Vencidos",k==="vencido")}</span>
+        </div>
+        <!-- Linha 2: negócio + busca + novo -->
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          <select id="filtro-negocio" title="Filtrar por negócio" style="padding:3px 7px;border:1px solid var(--border,#d1d5db);font-size:12px;background:var(--bg-card,#fff);color:var(--text,#111);cursor:pointer;max-width:160px;">
+            <option value="todos" ${nb==="todos"?"selected":""}>Todos negócios</option>
+            ${[...new Set((g.get("lancamentos")??[]).map(r=>r.negocio||"").filter(Boolean))].sort().map(n=>`<option value="${n}" ${nb===n?"selected":""}>${n}</option>`).join("")}
+          </select>
+          ${sel.size>0?`<button id="btn-del-sel" style="
+            background:#dc2626;color:#fff;border:none;
+            padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;gap:4px;white-space:nowrap;
+          ">🗑️ Excluir (${sel.size})</button>`:""}
+          <input
+            id="busca-lanc"
+            type="text"
+            placeholder="Buscar..."
+            value="${z}"
+            style="
+              padding:3px 8px;border:1px solid var(--border,#d1d5db);
+              font-size:12px;background:var(--bg-card,#fff);color:var(--text,#111);
+              flex:1;min-width:80px;outline:none;
+            "
+          />
+          ${z?'<button id="btn-limpar-busca" style="background:none;border:none;font-size:16px;cursor:pointer;color:#6b7280;padding:0 2px;">×</button>':""}
+          <button data-action="novo-lanc" style="
+            background:#2563eb;color:#fff;border:none;
+            padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+          ">+ Novo</button>
+        </div>
       </div>
 
       <!-- Tabela de lançamentos -->

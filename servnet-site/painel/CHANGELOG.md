@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.6 — 2026-08-28
+
+### Alterado
+- Layout mobile do Financeiro reorganizado: navegação de mês ocupa linha
+  própria (sem apertar com Receitas/Despesas), filtros de tipo e status
+  em linha separada dos filtros de negócio/busca/novo. Campo de busca
+  agora é flexível (não força largura fixa). Rótulo "Qualquer status"
+  encurtado para "Todos" nos filtros de status.
+
 ## v2.8.5 — 2026-08-28
 
 ### Corrigido
