@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.9 — 2026-08-28
+
+### Adicionado
+- Financeiro: editar lançamento recorrente com "Este e os próximos" agora
+  cria as parcelas futuras que ainda não existem — antes só atualizava
+  entradas já cadastradas; agora, se o lançamento tem apenas 1 mês,
+  o sistema gera automaticamente os próximos meses (até 12, sem duplicar
+  meses que já possuam entrada com mesma descrição/cliente).
+
 ## v2.8.8 — 2026-08-28
 
 ### Performance
