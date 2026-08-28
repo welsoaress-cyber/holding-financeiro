@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.6 — 2026-08-28
+
+### Removido
+- Módulo **Contas** completamente excluído: arquivos JS (`page-contas-ChlK-aHV.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`,
+  e todas as permissões RBAC em todos os perfis.
+
 ## v2.9.5 — 2026-08-28
 
 ### Corrigido
