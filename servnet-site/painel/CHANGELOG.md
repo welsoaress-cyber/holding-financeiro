@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.13 — 2026-08-28
+
+### Adicionado
+- **Sidebar de navegação** estilo Organizze: gaveta lateral que desliza da esquerda
+  ao clicar no botão ≡ (hamburger) no canto superior esquerdo do topbar.
+- Sidebar exibe perfil do usuário (avatar, nome, e-mail) e workspace GrupoTom.
+- Navegação segmentada por seção: Principal, Movimentações, Planejar, Analisar,
+  Configurações. Cada item abre o módulo correspondente como janela flutuante.
+- Itens RBAC-gated: Usuários aparece apenas para quem tem permissão.
+- Overlay com backdrop e fechamento por toque fora ou swipe-left no sidebar (mobile).
+
 ## v2.9.12 — 2026-08-28
 
 ### Corrigido
