@@ -103,31 +103,32 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
 
       <!-- Barra de título e navegação -->
       <div style="
-        display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+        display:flex;flex-direction:column;gap:6px;
         padding:8px 10px;background:var(--bg-card,#fff);
         border:1px solid var(--border,#d1d5db);border-bottom:none;
       ">
-        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+        <!-- Linha 1: nav -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
           <button data-action="mes-prev" style="
             background:none;border:1px solid var(--border,#d1d5db);
-            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);flex-shrink:0;
+            padding:4px 14px;cursor:pointer;font-size:14px;color:var(--text,#111);
           ">&#9664;</button>
-          <span style="font-size:13px;font-weight:600;white-space:nowrap;text-align:center;flex:1;">
+          <span style="font-size:14px;font-weight:700;white-space:nowrap;min-width:160px;text-align:center;">
             ${I()}
           </span>
           <button data-action="mes-next" style="
             background:none;border:1px solid var(--border,#d1d5db);
-            padding:3px 10px;cursor:pointer;font-size:13px;color:var(--text,#111);flex-shrink:0;
+            padding:4px 14px;cursor:pointer;font-size:14px;color:var(--text,#111);
           ">&#9654;</button>
           ${n?"":`<button data-action="mes-hoje" style="
             font-size:11px;color:#2563eb;background:none;
-            border:1px solid #2563eb;padding:2px 8px;cursor:pointer;flex-shrink:0;
+            border:1px solid #2563eb;padding:2px 8px;cursor:pointer;
           ">Hoje</button>`}
         </div>
-        <!-- Resumo inline -->
-        <div style="display:flex;align-items:center;gap:10px;font-size:11px;flex-wrap:wrap;">
-          <span>Rec: <strong style="color:#166534;font-variant-numeric:tabular-nums;">${M(d)}</strong></span>
-          <span>Desp: <strong style="color:#991b1b;font-variant-numeric:tabular-nums;">${M(s)}</strong></span>
+        <!-- Linha 2: resumo -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:16px;font-size:12px;">
+          <span>Receitas: <strong style="color:#166534;font-variant-numeric:tabular-nums;">${M(d)}</strong></span>
+          <span>Despesas: <strong style="color:#991b1b;font-variant-numeric:tabular-nums;">${M(s)}</strong></span>
           <span>Saldo: <strong style="color:${i>=0?"#1d4ed8":"#92400e"};font-variant-numeric:tabular-nums;">${i>=0?"":"-"}${M(Math.abs(i))}</strong></span>
         </div>
       </div>

@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.7 — 2026-08-28
+
+### Corrigido
+- Financeiro mobile: navegação (◄ mês ►) e resumo (Receitas/Despesas/Saldo)
+  agora em duas linhas separadas — nav centralizada acima, resumo centralizado abaixo.
+
 ## v2.8.6 — 2026-08-28
 
 ### Alterado
