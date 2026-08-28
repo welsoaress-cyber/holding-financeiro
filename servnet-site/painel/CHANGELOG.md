@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.2 — 2026-08-28
+
+### Corrigido
+- Módulo Financeiro: renomeado arquivo de `page-lancamentos-BfWtlLw7b.js`
+  para `page-lancamentos-v290.js` — força o browser a baixar versão nova,
+  eliminando problema de cache HTTP que mascarava a correção anterior.
+- Registry `app-CkIaDDom.js` simplificado: remoção do `.then(r=>r.i)`
+  desnecessário — o módulo agora é carregado diretamente como todos os outros.
+
 ## v2.9.1 — 2026-08-28
 
 ### Corrigido
