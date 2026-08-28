@@ -2,6 +2,20 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.16 — 2026-08-28
+
+### Adicionado
+- **Módulo Contas** implementado com menus e submenus estilo Organizze:
+  - Lista de contas com logo do banco, tipo, nome, saldo atual, saldo previsto, status
+  - Menu de contexto (⋮) por conta: Editar, Extrato, Abrir app do banco, Reajustar saldo, Adicionar, Transações, Excluir/Arquivar, Calculadora, Exibir na tela de Resumo
+  - Menu global: Ordenar contas, Exibir contas arquivadas
+  - Formulário Nova/Editar Conta com todos os campos e toggles
+  - Popup de Calculadora financeira
+  - Tela de Reajustar saldo
+  - Modal de Excluir/Arquivar conta
+  - Tela de Extrato da conta
+- Versão bumped 2.9.15 → 2.9.16
+
 ## v2.9.15 — 2026-08-28
 
 ### Alterado
