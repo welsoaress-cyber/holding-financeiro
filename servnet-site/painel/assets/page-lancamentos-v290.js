@@ -1001,3 +1001,5 @@ export async function initLancamentos(el){
   el.innerHTML=buildShell();
   await renderTab(el);
 }
+
+export function u(){return crypto.randomUUID();}
