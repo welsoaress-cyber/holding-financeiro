@@ -11,10 +11,11 @@
 
 ---
 
-### 1. Banco PAN — Processo 4059609-66.2026.8.26.0002
+### 1. Banco PAN — Processo 4059613-66.2026.8.26.0002
 - **Réu:** Banco PAN S.A.
-- **Status:** Conclusos para julgamento
-- **Réplica gerada:** `replica_banco_pan.docx` ✅ (protocolar pessoalmente no JEC)
+- **Juíza:** Debora Romano Menezes
+- **Status:** AGUARDA SENTENÇA
+- **Réplica protocolada:** 24/08/2026 ✅
 - **Argumento central:** Contradição interna na contestação — e-mail ao autor diz "desinteresse comercial", mas §59 da contestação revela "movimentações atípicas". PIX bloqueado 7 dias ANTES da notificação de encerramento. Violação da Resolução BACEN 2.025/93.
 - **Pedido:** Indenização por danos morais
 
