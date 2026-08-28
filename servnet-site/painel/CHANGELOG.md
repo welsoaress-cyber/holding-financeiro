@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.3 — 2026-08-28
+
+### Removido
+- Módulo **Clientes** completamente excluído: arquivos JS (`page-clientes-BqMxNJfD.js`
+  e espelho F1), entrada no registry de módulos (`app-CkIaDDom.js`/F1),
+  card de navegação em `app.html`, e todas as permissões RBAC em todos os perfis
+  (master, admin, gerente, operador, visualizador).
+- SQL para remover tabelas de Clientes no Supabase fornecido separadamente.
+
 ## v2.9.2 — 2026-08-28
 
 ### Corrigido
