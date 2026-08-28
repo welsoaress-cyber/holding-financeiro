@@ -277,7 +277,7 @@ window._finNovaDesp=function(){
 </form>`);
 };
 window._finSaveDesp=async function(e){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{await fSave('fin_despesas',{...d,data_pagamento:d.status==='pago'?d.data_vencimento:null});toast.ok('Despesa salva!');closeModal();renderTab(_ct);}
   catch(ex){toast.err('Erro: '+ex.message);}
 };
@@ -294,7 +294,7 @@ window._finNovaDespFixa=function(){
 </form>`);
 };
 window._finSaveDespFixa=async function(e){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{await fSave('fin_despesas_fixas',{...d,ativo:true});toast.ok('Despesa fixa salva!');closeModal();renderTab(_ct);}
   catch(ex){toast.err('Erro: '+ex.message);}
 };
@@ -321,7 +321,7 @@ window._finEditDesp=async function(id,isFixa,fixaId){
   }catch(ex){toast.err('Erro: '+ex.message);}
 };
 window._finSaveEditDesp=async function(e,id,isFixa){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{
     if(isFixa===true||isFixa==='true')await fSave('fin_despesas_fixas',{id,...d});
     else await fSave('fin_despesas',{id,...d});
@@ -410,7 +410,7 @@ window._finNovaRec=function(){
 </form>`);
 };
 window._finSaveRec=async function(e){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{await fSave('fin_receitas',{...d,data_recebimento:d.status==='recebido'?d.data_previsao:null});toast.ok('Receita salva!');closeModal();renderTab(_ct);}
   catch(ex){toast.err('Erro: '+ex.message);}
 };
@@ -453,7 +453,7 @@ window._finEditRec=async function(id,isFixa,fixaId){
   }catch(ex){toast.err('Erro: '+ex.message);}
 };
 window._finSaveEditRec=async function(e,id,isFixa){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{
     if(isFixa===true||isFixa==='true')await fSave('fin_receitas_fixas',{id,...d});
     else await fSave('fin_receitas',{id,...d});
@@ -831,7 +831,7 @@ window._finNovaMeta=function(){
 </form>`);
 };
 window._finSaveMeta=async function(e){
-  e.preventDefault();const f=new FormData(e.target),d=Object.fromEntries(f);
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
   try{await fSave('fin_objetivos',{...d,valor_atual:0,concluido:false});toast.ok('Meta salva!');closeModal();renderTab(_ct);}
   catch(ex){toast.err('Erro: '+ex.message);}
 };
