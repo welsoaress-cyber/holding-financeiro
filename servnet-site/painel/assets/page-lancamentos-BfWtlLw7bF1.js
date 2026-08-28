@@ -325,9 +325,8 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
         </div>
       </label>
 
-      ${t?`
-        <!-- Recorrência -->
-        <div style="background:var(--bg,#f1f5f9);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+      <!-- Frequência -->
+      <div style="background:var(--bg,#f1f5f9);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
           <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
             🔁 Frequência
             <select name="frequencia" id="sel-frequencia"
@@ -343,7 +342,7 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
               <option value="anual"      ${(o.frequencia||"")==="anual"          ?"selected":""}>📅 Anual</option>
             </select>
           </label>
-          <div id="div-recorrencia" style="display:none;flex-direction:column;gap:8px;">
+          ${t?`          <div id="div-recorrencia" style="display:none;flex-direction:column;gap:8px;">
             <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
               Término da recorrência
               <select name="fim_tipo" id="sel-fim-tipo"
@@ -369,8 +368,8 @@ import{s as g,f as M,a as A,u as O,t as E,N as Y,b as H,h as j,c as U,d as V,e a
             </div>
             <p style="font-size:12px;color:var(--text-muted,#6b7280);margin:0;">Gera cópias automáticas com datas avançadas.</p>
           </div>
+        </div>`:""}
         </div>
-      `:""}
 
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
         ${t?"":`<button type="button" id="btn-excluir" style="

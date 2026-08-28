@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.4 — 2026-08-28
+
+### Corrigido
+- Modal "Editar lançamento": campo Frequência (🔁) voltou a aparecer —
+  estava escondido no modo edição (só aparecia em Novo). Agora o select
+  de frequência sempre exibe e mostra o valor gravado no lançamento;
+  as opções de término de recorrência permanecem exclusivas do Novo.
+
 ## v2.8.3 — 2026-08-27
 
 ### Corrigido
