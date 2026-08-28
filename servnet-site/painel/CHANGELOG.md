@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.8.3 — 2026-08-27
+
+### Corrigido
+- Autocomplete de Cliente no modal Novo/Editar lançamento não sugeria
+  nomes ao digitar: o código buscava na tabela inexistente "clientes"
+  em vez de "cli_clientes". Corrigido — agora funciona mesmo sem ter
+  aberto o módulo Clientes antes.
+
 ## v2.8.2 — 2026-08-27
 
 ### Corrigido
