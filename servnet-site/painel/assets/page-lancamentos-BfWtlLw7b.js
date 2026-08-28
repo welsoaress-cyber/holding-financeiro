@@ -33,6 +33,17 @@ async function fDel(t,id){
   const{error}=await sb.from(t).update({deleted_at:new Date().toISOString()}).eq('id',id).eq('user_id',u);
   if(error)throw error;
 }
+// fSaveValor: upsert seguro para fin_*_fixas_valor (UNIQUE fixa+mes)
+// Se valorId conhecido → atualiza; caso contrário busca o registro existente primeiro
+async function fSaveValor(tabela,fixaKey,fixaId,mesRef,valorId,fields){
+  const u=await uid();
+  let id=valorId&&valorId!=='undefined'?valorId:null;
+  if(!id){
+    const{data}=await sb.from(tabela).select('id').eq('user_id',u).eq(fixaKey,fixaId).eq('mes_ref',mesRef).is('deleted_at',null).maybeSingle();
+    id=data?.id||null;
+  }
+  return fSave(tabela,{id:id||undefined,[fixaKey]:fixaId,mes_ref:mesRef,...fields});
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const MESES=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -242,8 +253,7 @@ window._finToggleDesp=async function(id,pago,isFixa,fixaId,valorId,dataVenc){
   try{
     if(isFixa==='true'||isFixa===true){
       const data_pag=pago?new Date().toISOString().slice(0,10):null;
-      if(valorId&&valorId!=='undefined'){await fSave('fin_despesas_fixas_valor',{id:valorId,status:pago?'pago':'pendente',data_pagamento:data_pag});}
-      else{await fSave('fin_despesas_fixas_valor',{id_despesa_fixa:fixaId,mes_ref:_mes,status:pago?'pago':'pendente',data_pagamento:data_pag});}
+      await fSaveValor('fin_despesas_fixas_valor','id_despesa_fixa',fixaId,_mes,valorId,{status:pago?'pago':'pendente',data_pagamento:data_pag});
     }else{
       await fSave('fin_despesas',{id,status:pago?'pago':'pendente',data_pagamento:pago?new Date().toISOString().slice(0,10):null});
     }
@@ -321,8 +331,7 @@ window._finDelDesp=async function(id,isFixa,fixaId,valorId){
   try{
     if(isFixa==='true'||isFixa===true){
       if(confirm('OK = só este mês\nCancelar = desativar toda a série fixa')){
-        if(valorId&&valorId!=='undefined'){await fSave('fin_despesas_fixas_valor',{id:valorId,excluido_mes:true});}
-        else await fSave('fin_despesas_fixas_valor',{id_despesa_fixa:fixaId,mes_ref:_mes,excluido_mes:true,status:'cancelado'});
+        await fSaveValor('fin_despesas_fixas_valor','id_despesa_fixa',fixaId,_mes,valorId,{excluido_mes:true,status:'cancelado'});
       }else{await fSave('fin_despesas_fixas',{id:fixaId,ativo:false});}
     }else{await fDel('fin_despesas',id);}
     toast.ok('Exluída!');renderTab(_ct);
@@ -378,8 +387,7 @@ window._finToggleRec=async function(id,receb,isFixa,fixaId,valorId){
     const isF=isFixa==='true'||isFixa===true;
     if(isF){
       const data_r=receb?new Date().toISOString().slice(0,10):null;
-      if(valorId&&valorId!=='undefined'){await fSave('fin_receitas_fixas_valor',{id:valorId,status:receb?'recebido':'pendente',data_recebimento:data_r});}
-      else await fSave('fin_receitas_fixas_valor',{id_receita_fixa:fixaId,mes_ref:_mes,status:receb?'recebido':'pendente',data_recebimento:data_r});
+      await fSaveValor('fin_receitas_fixas_valor','id_receita_fixa',fixaId,_mes,valorId,{status:receb?'recebido':'pendente',data_recebimento:data_r});
     }else{
       await fSave('fin_receitas',{id,status:receb?'recebido':'pendente',data_recebimento:receb?new Date().toISOString().slice(0,10):null});
     }
@@ -456,8 +464,7 @@ window._finDelRec=async function(id,isFixa,fixaId,valorId){
   try{
     if(isF){
       if(confirm('OK = só este mês\nCancelar = desativar toda a série')){
-        if(valorId&&valorId!=='undefined'){await fSave('fin_receitas_fixas_valor',{id:valorId,excluido_mes:true});}
-        else await fSave('fin_receitas_fixas_valor',{id_receita_fixa:fixaId,mes_ref:_mes,excluido_mes:true,status:'cancelado'});
+        await fSaveValor('fin_receitas_fixas_valor','id_receita_fixa',fixaId,_mes,valorId,{excluido_mes:true,status:'cancelado'});
       }else await fSave('fin_receitas_fixas',{id:fixaId,ativo:false});
     }else{await fDel('fin_receitas',id);}
     toast.ok('Exluída!');renderTab(_ct);
