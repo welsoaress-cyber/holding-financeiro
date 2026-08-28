@@ -2,6 +2,36 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.6 — 2026-08-28
+
+### Removido
+- Módulo **Contas** completamente excluído: arquivos JS (`page-contas-ChlK-aHV.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`,
+  e todas as permissões RBAC em todos os perfis.
+
+## v2.9.5 — 2026-08-28
+
+### Corrigido
+- Erro `Could not find the 'obs' column of 'fin_despesas' in the schema cache` ao
+  salvar nova despesa/receita/meta: o campo `obs` (Observação) existia nos
+  formulários mas não nas tabelas do Supabase. Todas as 6 funções de salvamento em
+  `page-lancamentos-v290.js` (e espelho F1) agora excluem `obs` do payload antes
+  de enviar ao banco. Para habilitar obs no futuro, executar no Supabase:
+  ```sql
+  ALTER TABLE fin_despesas      ADD COLUMN IF NOT EXISTS obs text;
+  ALTER TABLE fin_despesas_fixas ADD COLUMN IF NOT EXISTS obs text;
+  ALTER TABLE fin_receitas       ADD COLUMN IF NOT EXISTS obs text;
+  ALTER TABLE fin_objetivos      ADD COLUMN IF NOT EXISTS obs text;
+  ```
+
+### Removido
+- Módulo **Relatórios** completamente excluído: arquivos JS (`index-B4kTMWCq.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`
+  (sidebar e grid), e todas as permissões RBAC em todos os perfis.
+- Módulo **Negócios** completamente excluído: arquivos JS (`index-vE4zJAUl.js`
+  e espelho F1), entrada no registry de módulos, card de navegação em `app.html`,
+  e todas as permissões RBAC em todos os perfis.
+
 ## v2.9.4 — 2026-08-28
 
 ### Removido
