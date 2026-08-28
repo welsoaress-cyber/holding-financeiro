@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.17 — 2026-08-28
+
+### Adicionado
+- **FAB lançamento rápido** no Resumo: botão "+" flutuante abre opções Receita / Despesa
+- **Modal bottom-sheet** com formulário completo (descrição, valor, data, categoria, status)
+- Salva direto na tabela `lancamentos` — aparece imediatamente no Resumo após salvar
+- Versão bumped 2.9.16 → 2.9.17
+
 ## v2.9.16 — 2026-08-28
 
 ### Adicionado
