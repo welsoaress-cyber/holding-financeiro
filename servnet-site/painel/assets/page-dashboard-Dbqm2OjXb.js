@@ -1,5 +1,5 @@
 import{c as H}from"./supabase-DthfXWp1.js";
-const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.16",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
+const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.17",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
 function L(t){($[t]||new Set).forEach(e=>{try{e(u[t])}catch(o){console.error("[store notify]",t,o)}})}
 const N={get(t){return u[t]},set(t,e){u[t]=e,L(t)},patch(t,e,o){const a=Array.isArray(u[t])?u[t]:[],n=a.findIndex(r=>r.id===e);n>=0?a[n]={...a[n],...o}:a.push({id:e,...o}),u[t]=a,L(t)},remove(t,e){const o=Array.isArray(u[t])?u[t]:[];u[t]=o.filter(a=>a.id!==e),L(t)},subscribe(t,e){return $[t]||($[t]=new Set),$[t].add(e),u[t]!==void 0&&e(u[t]),()=>this.unsubscribe(t,e)},unsubscribe(t,e){var o;(o=$[t])==null||o.delete(e)}};
 const h={view:"dashboard",user:null,mesNav:{ano:new Date().getFullYear(),mes:new Date().getMonth()}};
@@ -133,6 +133,32 @@ const RSM_STYLE = `
 .rsm-ver-mais{text-align:center;padding:10px;font-size:12px;color:var(--rsm-pri);cursor:pointer;border-top:1px solid var(--rsm-brd)}
 /* configurar */
 .rsm-config{text-align:center;padding:14px;font-size:13px;color:var(--rsm-mut);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+/* FAB lançamento rápido */
+.rsm-fab-wrap{position:sticky;bottom:20px;display:flex;flex-direction:column;align-items:flex-end;padding:0 16px 8px;pointer-events:none;z-index:100;margin-top:8px}
+.rsm-fab-main{width:52px;height:52px;border-radius:50%;background:var(--rsm-pri);color:#fff;border:none;cursor:pointer;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s;pointer-events:all;line-height:1}
+.rsm-fab-main:hover{transform:scale(1.07)}
+.rsm-fab-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;align-items:flex-end;pointer-events:none}
+.rsm-fab-opt{display:flex;align-items:center;gap:8px;cursor:pointer;pointer-events:all;opacity:0;transform:translateY(12px);transition:opacity .18s,transform .18s;background:var(--rsm-card);border-radius:30px;padding:8px 14px 8px 8px;box-shadow:0 2px 10px rgba(0,0,0,.15);border:none;font-size:13px;font-weight:600;color:var(--rsm-txt);white-space:nowrap}
+.rsm-fab-opts.open .rsm-fab-opt:nth-child(1){opacity:1;transform:translateY(0);transition-delay:.04s}
+.rsm-fab-opts.open .rsm-fab-opt:nth-child(2){opacity:1;transform:translateY(0);transition-delay:0s}
+.rsm-fab-dot2{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex-shrink:0}
+/* modal quick-launch */
+.rsm-ql-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center}
+.rsm-ql-box{background:var(--rsm-card);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;box-shadow:0 -4px 24px rgba(0,0,0,.15)}
+.rsm-ql-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.rsm-ql-title{font-size:17px;font-weight:700}
+.rsm-ql-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--rsm-mut);line-height:1;padding:4px}
+.rsm-ql-form{display:flex;flex-direction:column;gap:12px}
+.rsm-ql-lbl{font-size:11px;font-weight:700;color:var(--rsm-mut);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+.rsm-ql-inp{width:100%;border:1.5px solid var(--rsm-brd);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--rsm-txt);background:var(--rsm-bg);box-sizing:border-box;transition:border-color .15s}
+.rsm-ql-inp:focus{outline:none;border-color:var(--focus-color,#6366f1)}
+.rsm-ql-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rsm-ql-st-grp{display:flex;gap:8px}
+.rsm-ql-st-btn{flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid var(--rsm-brd);background:var(--rsm-bg);cursor:pointer;font-size:13px;font-weight:600;color:var(--rsm-mut);transition:all .15s;text-align:center}
+.rsm-ql-st-btn.sel{background:var(--sel-c,#6366f1);border-color:var(--sel-c,#6366f1);color:#fff}
+.rsm-ql-submit{width:100%;padding:13px;border-radius:12px;border:none;background:var(--btn-c,#6366f1);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:filter .15s}
+.rsm-ql-submit:hover{filter:brightness(1.08)}
+.rsm-ql-submit:disabled{opacity:.6;cursor:not-allowed}
 </style>`;
 
 const CAT_COLORS = ["#6366f1","#059669","#dc2626","#d97706","#0284c7","#7c3aed","#db2777","#0891b2","#65a30d","#ea580c","#8b5cf6","#14b8a6"];
@@ -384,6 +410,63 @@ function renderCatDonut(items, tipo){
   </div>`;
 }
 
+function openQuickLanc(tipo,container){
+  const isRec=tipo==="receita";
+  const cor=isRec?"#059669":"#dc2626";
+  const hoje=ht();
+  const overlay=document.createElement("div");
+  overlay.className="rsm-ql-overlay";
+  overlay.innerHTML=`<div class="rsm-ql-box">
+<div class="rsm-ql-hd">
+  <span class="rsm-ql-title" style="color:${cor}">${isRec?"💰 Nova Receita":"💸 Nova Despesa"}</span>
+  <button class="rsm-ql-close" id="rsm-ql-x">✕</button>
+</div>
+<form class="rsm-ql-form" id="rsm-ql-form">
+  <div><label class="rsm-ql-lbl">Descrição</label><input class="rsm-ql-inp" name="descricao" type="text" placeholder="${isRec?"Ex: Mensalidade cliente":"Ex: Conta de luz"}" required autocomplete="off" style="--focus-color:${cor}"></div>
+  <div class="rsm-ql-row2">
+    <div><label class="rsm-ql-lbl">Valor (R$)</label><input class="rsm-ql-inp" name="valor" type="number" step="0.01" min="0.01" placeholder="0,00" required style="--focus-color:${cor}"></div>
+    <div><label class="rsm-ql-lbl">${isRec?"Dt. recebimento":"Dt. vencimento"}</label><input class="rsm-ql-inp" name="data_v" type="date" value="${hoje}" required style="--focus-color:${cor}"></div>
+  </div>
+  <div><label class="rsm-ql-lbl">Categoria (opcional)</label><input class="rsm-ql-inp" name="categoria" type="text" placeholder="${isRec?"Ex: Provedor":"Ex: Conta fixa"}" style="--focus-color:${cor}"></div>
+  <div>
+    <label class="rsm-ql-lbl">Status</label>
+    <div class="rsm-ql-st-grp">
+      <button type="button" class="rsm-ql-st-btn sel" data-s="pendente" style="--sel-c:#d97706">Pendente</button>
+      <button type="button" class="rsm-ql-st-btn" data-s="${isRec?"recebido":"pago"}" style="--sel-c:${cor}">${isRec?"Recebido":"Pago"}</button>
+    </div>
+  </div>
+  <button type="submit" class="rsm-ql-submit" style="--btn-c:${cor}">Salvar ${isRec?"Receita":"Despesa"}</button>
+</form>
+</div>`;
+  document.body.appendChild(overlay);
+  let stSel="pendente";
+  overlay.querySelectorAll(".rsm-ql-st-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      stSel=btn.dataset.s;
+      overlay.querySelectorAll(".rsm-ql-st-btn").forEach(b=>b.classList.toggle("sel",b.dataset.s===stSel));
+    });
+  });
+  overlay.querySelector("#rsm-ql-x")?.addEventListener("click",()=>overlay.remove());
+  overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove();});
+  overlay.querySelector("#rsm-ql-form")?.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const fd=new FormData(e.target);
+    const dv=fd.get("data_v")||hoje;
+    const entry={id:crypto.randomUUID(),tipo,status:stSel,descricao:fd.get("descricao"),valor:parseFloat(fd.get("valor"))||0,data_vencimento:dv,mes_ref:dv.slice(0,7),categoria:fd.get("categoria")||null};
+    const sbtn=e.target.querySelector("[type=submit]");
+    sbtn.disabled=true;sbtn.textContent="Salvando…";
+    try{
+      await Z("lancamentos",entry);
+      X.ok(isRec?"Receita salva! ✅":"Despesa salva! ✅");
+      overlay.remove();
+      initDashboard(container);
+    }catch(err){
+      X.err("Erro: "+err.message);
+      sbtn.disabled=false;sbtn.textContent=`Salvar ${isRec?"Receita":"Despesa"}`;
+    }
+  });
+}
+
 function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, mesNav}){
   const hoje = ht();
   const mesKey = `${mesNav.ano}-${String(mesNav.mes+1).padStart(2,"0")}`;
@@ -477,6 +560,15 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
 
     <!-- Configurar resumo -->
     <div class="rsm-config" id="rsm-config">⚙️ Configurar resumo</div>
+
+    <!-- FAB lançamento rápido -->
+    <div class="rsm-fab-wrap">
+      <div class="rsm-fab-opts" id="rsm-fab-opts">
+        <button class="rsm-fab-opt" id="rsm-fab-rec"><span class="rsm-fab-dot2" style="background:#059669">💰</span>Receita</button>
+        <button class="rsm-fab-opt" id="rsm-fab-desp"><span class="rsm-fab-dot2" style="background:#dc2626">💸</span>Despesa</button>
+      </div>
+      <button class="rsm-fab-main" id="rsm-fab-btn" title="Novo lançamento">+</button>
+    </div>
   </div>`;
 
   // Month navigation
@@ -534,6 +626,24 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
 
   // Nav links
   container.querySelectorAll("[data-nav]").forEach(el=>el.addEventListener("click",()=>nt.ir(el.dataset.nav)));
+
+  // FAB lançamento rápido
+  let fabOpen=false;
+  const fabBtn=container.querySelector("#rsm-fab-btn");
+  const fabOpts=container.querySelector("#rsm-fab-opts");
+  fabBtn?.addEventListener("click",()=>{
+    fabOpen=!fabOpen;
+    fabOpts?.classList.toggle("open",fabOpen);
+    if(fabBtn)fabBtn.textContent=fabOpen?"✕":"+";
+  });
+  container.querySelector("#rsm-fab-rec")?.addEventListener("click",()=>{
+    fabOpts?.classList.remove("open");fabOpen=false;if(fabBtn)fabBtn.textContent="+";
+    openQuickLanc("receita",container);
+  });
+  container.querySelector("#rsm-fab-desp")?.addEventListener("click",()=>{
+    fabOpts?.classList.remove("open");fabOpen=false;if(fabBtn)fabBtn.textContent="+";
+    openQuickLanc("despesa",container);
+  });
 }
 
 function renderSkeleton(t){
