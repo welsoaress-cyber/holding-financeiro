@@ -103,12 +103,14 @@ function openModal(html){
   closeModal();
   _modal=document.createElement('div');
   Object.assign(_modal.style,{position:'fixed',inset:'0',background:'rgba(0,0,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:'2000',padding:'16px',overflowY:'auto'});
-  _modal.innerHTML=`<div id="fin-modal-box" style="background:var(--bg-card,#fff);border-radius:14px;width:100%;max-width:480px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative;max-height:90vh;overflow-y:auto;">${html}</div>`;
-  _modal.addEventListener('click',e=>{if(e.target===_modal)closeModal();});
+  _modal.innerHTML=`<div id="fin-modal-box" style="background:#ffffff;border-radius:14px;width:100%;max-width:480px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.3);position:relative;max-height:90vh;overflow-y:auto;">${html}</div>`;
+  let _mdDown=false;
+  _modal.addEventListener('mousedown',e=>{_mdDown=e.target===_modal;});
+  _modal.addEventListener('click',e=>{if(_mdDown&&e.target===_modal)closeModal();_mdDown=false;});
   document.body.appendChild(_modal);
 }
 function closeModal(){if(_modal){_modal.remove();_modal=null;}}
-function modalHdr(title){return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h2 style="font-size:17px;font-weight:700;margin:0;color:var(--text-1,#111)">${escHTML(title)}</h2><button onclick="window._finCloseModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2,#666)">✕</button></div>`}
+function modalHdr(title){return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h2 style="font-size:17px;font-weight:700;margin:0;color:#111">${escHTML(title)}</h2><button onclick="window._finCloseModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666">✕</button></div>`}
 window._finCloseModal=closeModal;
 
 // ── Select option helpers ─────────────────────────────────────────────────────
@@ -116,8 +118,8 @@ function contaOpts(sel=''){return _contas.map(c=>`<option value="${c.id}"${c.id=
 function catOpts(tipo='',sel=''){return _cats.filter(c=>!tipo||c.tipo===tipo).map(c=>`<option value="${c.id}"${c.id===sel?' selected':''}>${escHTML(c.nome)}</option>`).join('')}
 
 // ── Field style helpers ───────────────────────────────────────────────────────
-const fld=`width:100%;padding:9px 12px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:14px;background:var(--bg-card,#fff);color:var(--text-1,#111);margin-top:4px;box-sizing:border-box;`;
-const lbl=`display:block;font-size:12px;font-weight:600;color:var(--text-2,#555);margin-bottom:2px;margin-top:12px;`;
+const fld=`width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff;color:#111;margin-top:4px;box-sizing:border-box;`;
+const lbl=`display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:2px;margin-top:12px;`;
 function row2(a,b){return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${a}${b}</div>`}
 function actBtn(txt,color){return`style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:16px;"`}
 
