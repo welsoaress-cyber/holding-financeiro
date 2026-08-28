@@ -2,6 +2,15 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.8 — 2026-08-28
+
+### Corrigido
+- Erro `does not provide an export named 'u'` no módulo Planos (e potencialmente
+  em Receitas, Despesas, Transferências, Categorias, Ajustes): todos esses módulos
+  importavam de `page-lancamentos-BfWtlLw7b.js` (arquivo antigo renomeado na v2.9.2).
+  Substituído pelo nome correto `page-lancamentos-v290.js` em todos os 12 arquivos
+  afetados (6 normais + 6 F1).
+
 ## v2.9.7 — 2026-08-28
 
 ### Removido
