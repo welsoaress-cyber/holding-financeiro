@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.9 — 2026-08-28
+
+### Adicionado
+- **Pull-to-refresh** na tela principal: puxe para baixo a partir do topo (com
+  nenhum módulo aberto) para recarregar a página. Um indicador circular verde
+  aparece acompanhando o gesto; ao soltar após ~90px dispara o reload com animação.
+
 ## v2.9.8 — 2026-08-28
 
 ### Corrigido
