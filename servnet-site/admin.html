@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrupoTom — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0F2045;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:36px}
+.logo-dot{width:12px;height:12px;border-radius:50%;background:#00C4D8}
+.logo-name{color:#fff;font-size:22px;font-weight:800;letter-spacing:-.03em}
+.logo-sub{color:rgba(255,255,255,.4);font-size:13px;margin-top:2px;text-align:center}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;width:100%;max-width:720px}
+
+.card{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:22px 20px;
+  text-decoration:none;color:#fff;
+  transition:.18s;cursor:pointer;
+  display:flex;flex-direction:column;gap:8px;
+  position:relative;overflow:hidden;
+}
+.card:hover{background:rgba(255,255,255,.11);border-color:rgba(0,196,216,.4);transform:translateY(-1px)}
+.card:hover .card-arrow{opacity:1;transform:translateX(3px)}
+.card-icon{font-size:26px;margin-bottom:2px}
+.card-title{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.card-desc{font-size:12.5px;color:rgba(255,255,255,.5);line-height:1.5}
+.card-arrow{position:absolute;top:20px;right:18px;font-size:14px;color:rgba(255,255,255,.3);opacity:0;transition:.18s}
+.card-badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  background:rgba(0,196,216,.2);color:#00C4D8;
+  align-self:flex-start;
+}
+.card-badge.new{background:rgba(0,196,216,.25);color:#2DD4E4}
+
+.footer{margin-top:32px;color:rgba(255,255,255,.25);font-size:12px}
+</style>
+</head>
+<body>
+
+<div style="text-align:center">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-name">GrupoTom</div>
+  </div>
+  <div class="logo-sub" style="margin-top:-28px;margin-bottom:32px">Painel de Acesso — Módulos do Sistema</div>
+</div>
+
+<div class="grid">
+
+  <a class="card" href="usuarios.html">
+    <span class="card-icon">👤</span>
+    <span class="card-badge new">NOVO</span>
+    <div class="card-title">Usuários</div>
+    <div class="card-desc">Cadastro, perfis de acesso e permissões por módulo.</div>
+    <span class="card-arrow">→</span>
+  </a>
+
+  <a class="card" href="painel/app.html">
+    <span class="card-icon">📊</span>
+    <div class="card-title">Painel Principal</div>
+    <div class="card-desc">Dashboard, financeiro, clientes, estoque e RH.</div>
+    <span class="card-arrow">→</span>
+  </a>
+
+  <a class="card" href="sistema-financeiro-holding.html">
+    <span class="card-icon">💰</span>
+    <div class="card-title">Financeiro (Legacy)</div>
+    <div class="card-desc">Sistema financeiro completo da holding.</div>
+    <span class="card-arrow">→</span>
+  </a>
+
+  <a class="card" href="portal.html">
+    <span class="card-icon">🌐</span>
+    <div class="card-title">Portal do Cliente</div>
+    <div class="card-desc">Acesso do cliente: faturas, chamados e contratos.</div>
+    <span class="card-arrow">→</span>
+  </a>
+
+  <a class="card" href="status-admin.html">
+    <span class="card-icon">📡</span>
+    <div class="card-title">Status da Rede</div>
+    <div class="card-desc">Monitoramento e status dos serviços.</div>
+    <span class="card-arrow">→</span>
+  </a>
+
+</div>
+
+<div class="footer">GrupoTom · Sistema de Gestão Empresarial</div>
+
+</body>
+</html>

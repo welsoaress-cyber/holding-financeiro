@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuários — GrupoTom</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ─────────────────────────────────────────── */
+:root{
+  --bg:#F0F2F5; --surface:#FFF; --surface2:#F7F8FA;
+  --border:#E2E5EA; --border2:#C8CDD8;
+  --ink:#111827; --ink2:#374151; --ink3:#6B7280; --ink4:#9CA3AF;
+  --brand:#0F2045; --brand2:#162D5C; --accent:#00C4D8; --accent-d:#0899A8;
+  --pos:#059669; --pos-bg:#ECFDF5;
+  --neg:#DC2626; --neg-bg:#FEF2F2;
+  --warn:#D97706; --warn-bg:#FFFBEB;
+  --muted:#F3F4F6;
+  --r:8px; --r-lg:12px; --r-xl:16px;
+  --shadow:0 2px 8px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  --shadow-xl:0 20px 48px rgba(0,0,0,.18);
+  --font:'Inter',-apple-system,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── LOGIN ──────────────────────────────────────────── */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0A1628 0%,#0F2045 60%,#0D2E5A 100%)}
+.login-card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:var(--shadow-xl)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-right:8px}
+.login-logo h1{font-size:22px;font-weight:800;color:var(--brand);letter-spacing:-.03em;display:inline}
+.login-sub{text-align:center;color:var(--ink3);font-size:13px;margin-bottom:28px}
+.login-err{background:var(--neg-bg);color:var(--neg);border-radius:var(--r);padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
+
+/* ── APP LAYOUT ─────────────────────────────────────── */
+#appScreen{display:none;flex-direction:column;min-height:100vh}
+header{background:var(--brand);height:48px;display:flex;align-items:center;padding:0 20px;gap:0;flex-shrink:0}
+.hdr-logo{display:flex;align-items:center;gap:8px;color:#fff;font-weight:800;font-size:15px;letter-spacing:-.02em;text-decoration:none}
+.hdr-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.hdr-sep{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 16px}
+.hdr-mod{color:rgba(255,255,255,.7);font-size:13px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.hdr-user{color:rgba(255,255,255,.8);font-size:13px}
+.hdr-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;transition:.15s}
+.hdr-btn:hover{background:rgba(255,255,255,.18)}
+
+main{flex:1;padding:24px 28px;max-width:1400px;width:100%;margin:0 auto}
+
+/* ── PAGE HEADER ────────────────────────────────────── */
+.page-hdr{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-hdr-text h2{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+.page-hdr-text p{color:var(--ink3);font-size:13px;margin-top:2px}
+.page-hdr-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── TOOLBAR ────────────────────────────────────────── */
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-box{position:relative;flex:1;min-width:220px;max-width:360px}
+.search-box input{width:100%;padding:8px 12px 8px 36px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;background:var(--surface);color:var(--ink);outline:none;transition:.15s}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,196,216,.1)}
+.search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink4);font-size:14px;pointer-events:none}
+select.filter{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;background:var(--surface);color:var(--ink);outline:none;cursor:pointer;min-width:140px}
+select.filter:focus{border-color:var(--accent)}
+
+/* ── PANEL / TABLE ──────────────────────────────────── */
+.panel{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden}
+.panel-body{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--surface2)}
+th{padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--ink3);white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+th:hover{color:var(--ink)}
+th .sort-ico{margin-left:4px;opacity:.4;font-size:11px}
+th.sorted .sort-ico{opacity:1;color:var(--accent)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+
+/* ── BADGES ─────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.badge-ativo    {background:#D1FAE5;color:#065F46}
+.badge-inativo  {background:#F3F4F6;color:#4B5563}
+.badge-bloqueado{background:#FEE2E2;color:#991B1B}
+.badge-pendente {background:#FEF3C7;color:#92400E}
+.badge-role{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+
+/* ── AVATAR ─────────────────────────────────────────── */
+.avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:#fff}
+
+/* ── BOTÕES ─────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-d)}
+.btn-ghost{background:transparent;color:var(--ink2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--muted)}
+.btn-danger{background:var(--neg-bg);color:var(--neg);border:1px solid #FECACA}
+.btn-danger:hover{background:#FEE2E2}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--ink3);font-size:16px;transition:.15s;display:flex;align-items:center;justify-content:center}
+.btn-icon:hover{background:var(--muted);color:var(--ink)}
+.btn-icon.danger:hover{background:var(--neg-bg);color:var(--neg)}
+
+/* ── PAGINAÇÃO ──────────────────────────────────────── */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);font-size:13px;flex-wrap:wrap;gap:8px}
+.pagination-info{color:var(--ink3)}
+.pagination-controls{display:flex;align-items:center;gap:4px}
+.pg-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;transition:.15s;color:var(--ink2)}
+.pg-btn:hover:not(:disabled){background:var(--muted)}
+.pg-btn:disabled{opacity:.4;cursor:default}
+.pg-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.per-page{display:flex;align-items:center;gap:6px;color:var(--ink3);font-size:12px}
+.per-page select{padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface)}
+
+/* ── MODAL ──────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:var(--surface);border-radius:var(--r-xl);width:100%;max-width:680px;box-shadow:var(--shadow-xl);position:relative}
+.modal-lg{max-width:820px}
+.modal-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border);gap:12px}
+.modal-title{font-size:16px;font-weight:700;flex:1;color:var(--ink)}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--ink3);font-size:20px;line-height:1;padding:2px 6px;border-radius:6px;transition:.15s}
+.modal-close:hover{background:var(--muted)}
+.modal-body{padding:22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* Tabs no modal */
+.modal-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 22px;background:var(--surface2)}
+.modal-tab{padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s}
+.modal-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+/* ── FORM ────────────────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.cols-1{grid-template-columns:1fr}
+.form-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.span-2{grid-column:span 2}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--ink2)}
+.field label .req{color:var(--neg);margin-left:2px}
+.field input,.field select,.field textarea{padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:var(--font);color:var(--ink);background:var(--surface);outline:none;transition:.15s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,196,216,.1)}
+.field input.error,.field select.error{border-color:var(--neg)}
+.field-help{font-size:11.5px;color:var(--ink4)}
+.field-err{font-size:11.5px;color:var(--neg);display:none}
+.field textarea{resize:vertical;min-height:80px}
+
+/* Força de senha */
+.pw-strength{height:3px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:4px}
+.pw-strength-bar{height:100%;border-radius:2px;transition:.3s;width:0}
+.pw-label{font-size:11px;margin-top:2px}
+
+/* ── PERMISSÕES ─────────────────────────────────────── */
+.perm-table{width:100%;border-collapse:collapse;font-size:13px}
+.perm-table th{padding:8px 12px;font-size:11.5px;font-weight:600;color:var(--ink3);text-align:center;border-bottom:1px solid var(--border);background:var(--surface2)}
+.perm-table th:first-child{text-align:left}
+.perm-table td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:center}
+.perm-table td:first-child{text-align:left;font-weight:500;color:var(--ink2)}
+.perm-table tr:last-child td{border-bottom:none}
+.perm-table tr:hover td{background:#FAFBFC}
+.perm-group td{background:var(--surface2)!important;font-size:11.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;padding:6px 12px}
+.perm-dash{color:var(--ink4);font-size:16px}
+.perm-alert{background:var(--warn-bg);border:1px solid #FDE68A;border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--warn);margin-bottom:14px;display:none}
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+.empty-state{text-align:center;padding:48px 20px;color:var(--ink3)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.4}
+.empty-msg{font-size:14px;font-weight:500}
+.empty-sub{font-size:13px;margin-top:4px}
+
+/* ── TOAST ───────────────────────────────────────────── */
+#toastContainer{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:12px 16px;border-radius:var(--r);font-size:13px;font-weight:500;color:#fff;box-shadow:var(--shadow-lg);animation:slideIn .2s ease;pointer-events:auto;max-width:320px}
+.toast-ok{background:#1a7a4a}
+.toast-err{background:var(--neg)}
+.toast-info{background:var(--brand)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+
+/* ── CONFIRM DIALOG ──────────────────────────────────── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.confirm-box{background:#fff;border-radius:var(--r-xl);padding:28px;max-width:380px;width:100%;box-shadow:var(--shadow-xl);text-align:center}
+.confirm-icon{font-size:36px;margin-bottom:12px}
+.confirm-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.confirm-msg{font-size:14px;color:var(--ink3);margin-bottom:22px}
+.confirm-actions{display:flex;gap:8px;justify-content:center}
+
+/* ── RESPONSIVE ──────────────────────────────────────── */
+@media(max-width:640px){
+  main{padding:16px 12px}
+  .form-grid{grid-template-columns:1fr}
+  .span-2{grid-column:span 1}
+  .form-grid.cols-3{grid-template-columns:1fr}
+  .page-hdr{flex-direction:column}
+  .page-hdr-actions{margin-left:0}
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-width:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN ═══════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="dot"></span>
+      <h1>GrupoTom</h1>
+    </div>
+    <p class="login-sub">Gestão de Usuários — faça login para continuar</p>
+    <div class="login-err" id="loginErr"></div>
+    <form id="loginForm" class="form-grid cols-1" style="gap:12px">
+      <div class="field">
+        <label>E-mail</label>
+        <input type="email" name="email" placeholder="seu@email.com" required autofocus>
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" name="senha" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" id="loginBtn">
+        Entrar
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ APP ════════════════════════ -->
+<div id="appScreen" style="display:none;flex-direction:column;min-height:100vh">
+  <header>
+    <span class="hdr-logo">
+      <span class="hdr-dot"></span>GrupoTom
+    </span>
+    <span class="hdr-sep"></span>
+    <span class="hdr-mod">Gestão de Usuários</span>
+    <div class="hdr-right">
+      <span class="hdr-user" id="hdrUserEmail"></span>
+      <button class="hdr-btn" id="logoutBtn">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Cabeçalho da página -->
+    <div class="page-hdr">
+      <div class="page-hdr-text">
+        <h2>Usuários</h2>
+        <p>Gerencie os membros da equipe, perfis de acesso e permissões.</p>
+      </div>
+      <div class="page-hdr-actions">
+        <button class="btn btn-ghost btn-sm" id="btnExportar">↓ Exportar</button>
+        <button class="btn btn-primary" id="btnNovoUsuario">+ Novo Usuário</button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-ico">⌕</span>
+        <input type="text" id="inputBusca" placeholder="Buscar por nome, e-mail...">
+      </div>
+      <select class="filter" id="filtroStatus">
+        <option value="">Todos os status</option>
+        <option value="Ativo">Ativo</option>
+        <option value="Inativo">Inativo</option>
+        <option value="Bloqueado">Bloqueado</option>
+        <option value="Pendente">Pendente</option>
+      </select>
+      <select class="filter" id="filtroRole">
+        <option value="">Todos os perfis</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" id="btnLimparFiltros" style="display:none">✕ Limpar</button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="panel" id="tablePanel">
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr>
+              <th data-col="nome_completo">Nome <span class="sort-ico">↕</span></th>
+              <th data-col="email">E-mail <span class="sort-ico">↕</span></th>
+              <th data-col="role">Perfil <span class="sort-ico">↕</span></th>
+              <th data-col="status">Status <span class="sort-ico">↕</span></th>
+              <th data-col="ultimo_acesso">Último acesso <span class="sort-ico">↕</span></th>
+              <th style="width:120px;cursor:default"></th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody">
+            <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-msg">Carregando...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginacao">
+        <div class="per-page">
+          Exibir <select id="perPageSelect">
+            <option>10</option><option selected>25</option><option>50</option><option>100</option>
+          </select> por página
+        </div>
+        <div class="pagination-info" id="paginacaoInfo"></div>
+        <div class="pagination-controls" id="paginacaoControls"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modais e overlays (injetados via JS) -->
+<div id="toastContainer"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG SUPABASE
+// ═══════════════════════════════════════════════════════
+const SUPA_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SUPA_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ═══════════════════════════════════════════════════════
+// MÓDULOS E PERMISSÕES
+// ═══════════════════════════════════════════════════════
+const MODULOS = [
+  { grupo: 'Financeiro', itens: [
+    { id:'financeiro.lancamentos', label:'Lançamentos',   acoes:['ver','criar','editar','excluir'] },
+    { id:'financeiro.contas',      label:'Contas Bancárias', acoes:['ver','criar','editar','excluir'] },
+    { id:'financeiro.cartoes',     label:'Cartões de Crédito', acoes:['ver','criar','editar','excluir'] },
+  ]},
+  { grupo: 'Operacional', itens: [
+    { id:'clientes',    label:'Clientes',   acoes:['ver','criar','editar','excluir'] },
+    { id:'cobrancas',   label:'Cobranças',  acoes:['ver','criar','editar','excluir'] },
+    { id:'contratos',   label:'Contratos',  acoes:['ver','criar','editar','excluir'] },
+    { id:'planos',      label:'Planos',     acoes:['ver','criar','editar','excluir'] },
+  ]},
+  { grupo: 'Gestão', itens: [
+    { id:'relatorios',    label:'Relatórios',    acoes:['ver'] },
+    { id:'negocios',      label:'Negócios',      acoes:['ver','criar','editar','excluir'] },
+    { id:'configuracoes', label:'Configurações', acoes:['ver'] },
+    { id:'usuarios',      label:'Usuários',      acoes:['ver','criar','editar','excluir'] },
+  ]},
+];
+
+const TODOS_MODULOS = MODULOS.flatMap(g => g.itens.map(i => i.id));
+
+// ═══════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════
+let ST = {
+  session: null,
+  usuarios: [],
+  total: 0,
+  roles: [],
+  rolePerms: [],    // { role_id, modulo, ver, criar, editar, excluir }
+  page: 1,
+  perPage: 25,
+  busca: '',
+  filtroStatus: '',
+  filtroRole: '',
+  sortCol: 'nome_completo',
+  sortDir: 'asc',
+};
+
+// ═══════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════════════
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const fmtDH = iso => iso ? new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+const fmtD  = iso => iso ? new Date(iso+'T12:00').toLocaleDateString('pt-BR') : '—';
+const initials = n => n ? n.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?';
+const avatarColor = n => { const colors=['#3B7EC4','#8457C9','#1E9159','#D8752B','#0D8C82','#6B7280','#C0447A','#B8891A']; let h=0; for(const c of (n||'')) h=(h*31+c.charCodeAt(0))&0xFFFFFF; return colors[Math.abs(h)%colors.length]; };
+const sleep = ms => new Promise(r => setTimeout(r,ms));
+
+function toast(msg, tipo='ok'){
+  const el = document.createElement('div');
+  el.className = `toast toast-${tipo}`;
+  el.textContent = msg;
+  $('toastContainer').appendChild(el);
+  setTimeout(()=>el.remove(), 3800);
+}
+
+function confirm(opts){
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'confirm-overlay';
+    ov.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-icon">${opts.icon||'⚠️'}</div>
+        <div class="confirm-title">${esc(opts.title||'Confirmar')}</div>
+        <div class="confirm-msg">${esc(opts.msg||'')}</div>
+        <div class="confirm-actions">
+          <button class="btn btn-ghost" id="cfNo">${opts.no||'Cancelar'}</button>
+          <button class="btn ${opts.danger?'btn-danger':'btn-primary'}" id="cfYes">${opts.yes||'Confirmar'}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const close = v => { ov.remove(); resolve(v); };
+    ov.querySelector('#cfNo').onclick  = () => close(false);
+    ov.querySelector('#cfYes').onclick = () => close(true);
+  });
+}
+
+function aplicarMascaraTelefone(el){
+  el.addEventListener('input', function(){
+    let v = this.value.replace(/\D/g,'').slice(0,11);
+    if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3');
+    else if(v.length>6) v=v.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');
+    else if(v.length>2) v=v.replace(/^(\d{2})(\d*)$/,'($1) $2');
+    this.value = v;
+  });
+}
+
+function aplicarMascaraCpfCnpj(el){
+  el.addEventListener('input', function(){
+    let v = this.value.replace(/\D/g,'');
+    if(v.length<=11) v=v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})$/,'$1.$2.$3-$4').replace(/-$/,'').replace(/\.$/,'');
+    else v=v.slice(0,14).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/,'$1.$2.$3/$4-$5').replace(/-$/,'').replace(/\/$/,'');
+    this.value = v;
+  });
+}
+
+function forcaSenha(pw){
+  let score = 0;
+  if(pw.length>=8) score++;
+  if(pw.length>=12) score++;
+  if(/[A-Z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  return score; // 0-5
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+async function initAuth(){
+  const { data:{ session } } = await db.auth.getSession();
+  if(session){ ST.session=session; mostrarApp(); }
+  else{ mostrarLogin(); }
+
+  db.auth.onAuthStateChange((_,session)=>{
+    ST.session=session;
+    if(session) mostrarApp(); else mostrarLogin();
+  });
+}
+
+function mostrarLogin(){
+  $('loginScreen').style.display='flex';
+  $('appScreen').style.display='none';
+}
+
+async function mostrarApp(){
+  $('loginScreen').style.display='none';
+  $('appScreen').style.display='flex';
+  $('hdrUserEmail').textContent = ST.session?.user?.email || '';
+  await Promise.all([carregarRoles(), carregarUsuarios()]);
+}
+
+$('loginForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const btn = $('loginBtn');
+  btn.textContent='Entrando...'; btn.disabled=true;
+  $('loginErr').style.display='none';
+  const { error } = await db.auth.signInWithPassword({ email:fd.get('email'), password:fd.get('senha') });
+  btn.textContent='Entrar'; btn.disabled=false;
+  if(error){ $('loginErr').textContent=error.message; $('loginErr').style.display='block'; }
+});
+
+$('logoutBtn').addEventListener('click', async ()=>{
+  await db.auth.signOut();
+  mostrarLogin();
+});
+
+// ═══════════════════════════════════════════════════════
+// DADOS
+// ═══════════════════════════════════════════════════════
+async function carregarRoles(){
+  const { data:roles } = await db.from('usr_roles').select('*').order('nivel',{ascending:false});
+  const { data:perms } = await db.from('usr_role_permissoes').select('*');
+  ST.roles = roles || [];
+  ST.rolePerms = perms || [];
+  // popular select de filtro
+  const sel = $('filtroRole');
+  sel.innerHTML = '<option value="">Todos os perfis</option>';
+  ST.roles.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id; opt.textContent = r.nome;
+    sel.appendChild(opt);
+  });
+}
+
+async function carregarUsuarios(){
+  let q = db
+    .from('usr_usuarios')
+    .select(`*, usr_roles!usr_usuarios_role_id_fkey(id,nome,cor,nivel)`, {count:'exact'})
+    .is('deleted_at',null);
+
+  if(ST.busca){
+    q = q.or(`nome_completo.ilike.%${ST.busca}%,email.ilike.%${ST.busca}%`);
+  }
+  if(ST.filtroStatus) q = q.eq('status', ST.filtroStatus);
+  if(ST.filtroRole)   q = q.eq('role_id', ST.filtroRole);
+
+  // Ordenação
+  const col = ST.sortCol === 'role' ? 'role_id' : ST.sortCol;
+  q = q.order(col, {ascending: ST.sortDir==='asc'});
+
+  // Paginação
+  const from = (ST.page-1)*ST.perPage;
+  q = q.range(from, from+ST.perPage-1);
+
+  const { data, error, count } = await q;
+  if(error){ toast('Erro ao carregar usuários: '+error.message,'err'); return; }
+  ST.usuarios = data || [];
+  ST.total = count || 0;
+  renderTabela();
+  renderPaginacao();
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER — TABELA
+// ═══════════════════════════════════════════════════════
+function statusBadge(s){
+  const map = {Ativo:'ativo',Inativo:'inativo',Bloqueado:'bloqueado',Pendente:'pendente'};
+  return `<span class="badge badge-${map[s]||'inativo'}">${esc(s)}</span>`;
+}
+
+function renderTabela(){
+  const tbody = $('tabelaBody');
+  if(!ST.usuarios.length){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+      <div class="empty-icon">👤</div>
+      <div class="empty-msg">Nenhum usuário encontrado</div>
+      <div class="empty-sub">Tente outros filtros ou crie um novo usuário.</div>
+    </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = ST.usuarios.map(u => {
+    const role = u.usr_roles || {};
+    const roleBadge = role.nome
+      ? `<span class="badge-role" style="background:${role.cor}22;color:${role.cor}">${esc(role.nome)}</span>`
+      : '—';
+    const color = avatarColor(u.nome_completo);
+    const inits = initials(u.nome_completo);
+    return `<tr data-id="${u.id}">
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar" style="background:${color}">${inits}</div>
+        <div>
+          <div style="font-weight:600;font-size:13px">${esc(u.nome_completo)}</div>
+          ${u.cargo?`<div style="font-size:11.5px;color:var(--ink4)">${esc(u.cargo)}</div>`:''}
+        </div>
+      </div></td>
+      <td style="color:var(--ink3)">${esc(u.email)}</td>
+      <td>${roleBadge}</td>
+      <td>${statusBadge(u.status)}</td>
+      <td style="color:var(--ink3);font-size:12.5px">${fmtDH(u.ultimo_acesso)}</td>
+      <td>
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button class="btn-icon" title="Editar" data-action="editar" data-id="${u.id}">✎</button>
+          <button class="btn-icon" title="${u.status==='Ativo'?'Inativar':'Ativar'}" data-action="toggle" data-id="${u.id}" data-status="${u.status}">
+            ${u.status==='Ativo'?'⊘':'↩'}
+          </button>
+          <button class="btn-icon danger" title="Excluir" data-action="excluir" data-id="${u.id}" data-nome="${esc(u.nome_completo)}">×</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Atualiza ícones de ordenação
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    const sorted = th.dataset.col === ST.sortCol;
+    th.classList.toggle('sorted', sorted);
+    const ico = th.querySelector('.sort-ico');
+    if(ico) ico.textContent = sorted ? (ST.sortDir==='asc'?'↑':'↓') : '↕';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER — PAGINAÇÃO
+// ═══════════════════════════════════════════════════════
+function renderPaginacao(){
+  const totalPages = Math.max(1, Math.ceil(ST.total/ST.perPage));
+  const from = ST.total ? (ST.page-1)*ST.perPage+1 : 0;
+  const to   = Math.min(ST.page*ST.perPage, ST.total);
+  $('paginacaoInfo').textContent = `${from}–${to} de ${ST.total} registros`;
+
+  const ctrl = $('paginacaoControls');
+  let html = `<button class="pg-btn" ${ST.page<=1?'disabled':''} data-pg="${ST.page-1}">‹</button>`;
+  const pages = paginasVisiveis(ST.page, totalPages);
+  pages.forEach(p => {
+    if(p==='...') html += `<span style="padding:0 6px;color:var(--ink4)">…</span>`;
+    else html += `<button class="pg-btn ${p===ST.page?'active':''}" data-pg="${p}">${p}</button>`;
+  });
+  html += `<button class="pg-btn" ${ST.page>=totalPages?'disabled':''} data-pg="${ST.page+1}">›</button>`;
+  ctrl.innerHTML = html;
+}
+
+function paginasVisiveis(p, total){
+  if(total<=7) return Array.from({length:total},(_,i)=>i+1);
+  const r=[1];
+  if(p>3) r.push('...');
+  for(let i=Math.max(2,p-1);i<=Math.min(total-1,p+1);i++) r.push(i);
+  if(p<total-2) r.push('...');
+  r.push(total);
+  return r;
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL — CRIAR / EDITAR USUÁRIO
+// ═══════════════════════════════════════════════════════
+async function abrirModalUsuario(id=null){
+  let usr = null;
+  let permissoes = {};
+
+  if(id){
+    const { data:u } = await db.from('usr_usuarios').select('*').eq('id',id).single();
+    usr = u;
+    const { data:perms } = await db.from('usr_permissoes').select('*').eq('usuario_id',id);
+    (perms||[]).forEach(p => { permissoes[p.modulo] = p; });
+  }
+
+  let tabAtiva = 'dados';
+
+  const renderModal = () => {
+    const isEdit = !!usr;
+    const roleOpts = ST.roles.map(r =>
+      `<option value="${r.id}" ${usr?.role_id===r.id?'selected':''}>${esc(r.nome)}</option>`
+    ).join('');
+    const gerenteOpts = ST.usuarios
+      .filter(u => u.id !== id)
+      .map(u => `<option value="${u.id}" ${usr?.gerente_id===u.id?'selected':''}>${esc(u.nome_completo)}</option>`)
+      .join('');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'modalUsuario';
+
+    overlay.innerHTML = `
+      <div class="modal modal-lg">
+        <div class="modal-head">
+          <div class="modal-title">${isEdit?'Editar Usuário':'Novo Usuário'}</div>
+          <button class="modal-close" id="fecharModal">✕</button>
+        </div>
+
+        <div class="modal-tabs">
+          <button class="modal-tab ${tabAtiva==='dados'?'active':''}" data-tab="dados">Dados</button>
+          <button class="modal-tab ${tabAtiva==='perms'?'active':''}" data-tab="perms">Permissões</button>
+        </div>
+
+        <!-- TAB: DADOS -->
+        <div id="tabDados" ${tabAtiva!=='dados'?'hidden':''}>
+          <form id="formUsuario">
+            <div class="modal-body">
+
+              <div style="font-size:11.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Informações Básicas</div>
+              <div class="form-grid">
+                <div class="field span-2">
+                  <label>Nome completo <span class="req">*</span></label>
+                  <input type="text" name="nome_completo" value="${esc(usr?.nome_completo||'')}" required placeholder="Ex: Érica Alves Silva">
+                </div>
+                <div class="field">
+                  <label>E-mail <span class="req">*</span></label>
+                  <input type="email" name="email" value="${esc(usr?.email||'')}" required placeholder="erica@grupotom.com.br" ${isEdit?'':'autocomplete="off"'}>
+                </div>
+                <div class="field">
+                  <label>Telefone</label>
+                  <input type="tel" name="telefone" value="${esc(usr?.telefone||'')}" placeholder="(11) 99999-9999" id="fTelefone">
+                </div>
+                <div class="field">
+                  <label>CPF / CNPJ</label>
+                  <input type="text" name="cpf_cnpj" value="${esc(usr?.cpf_cnpj||'')}" placeholder="000.000.000-00" id="fCpfCnpj">
+                </div>
+                <div class="field">
+                  <label>Data de nascimento</label>
+                  <input type="date" name="data_nascimento" value="${usr?.data_nascimento||''}">
+                </div>
+              </div>
+
+              <div style="font-size:11.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 12px">Acesso</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Perfil <span class="req">*</span></label>
+                  <select name="role_id" required id="fRole">
+                    <option value="">Selecione um perfil</option>
+                    ${roleOpts}
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Status <span class="req">*</span></label>
+                  <select name="status" required>
+                    <option value="Ativo"    ${usr?.status==='Ativo'||!usr?'selected':''}>Ativo</option>
+                    <option value="Inativo"  ${usr?.status==='Inativo'?'selected':''}>Inativo</option>
+                    <option value="Bloqueado"${usr?.status==='Bloqueado'?'selected':''}>Bloqueado</option>
+                    <option value="Pendente" ${usr?.status==='Pendente'?'selected':''}>Pendente</option>
+                  </select>
+                </div>
+                ${!isEdit ? `
+                <div class="field">
+                  <label>Senha <span class="req">*</span></label>
+                  <input type="password" name="senha" required minlength="8" id="fSenha" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                  <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
+                  <div class="pw-label" id="pwLabel" style="color:var(--ink4);font-size:11px"></div>
+                </div>
+                <div class="field">
+                  <label>Confirmar senha <span class="req">*</span></label>
+                  <input type="password" name="confirmar_senha" required id="fConfSenha" autocomplete="new-password" placeholder="Repita a senha">
+                  <div class="field-err" id="errConfSenha">As senhas não coincidem.</div>
+                </div>` : `
+                <div class="field">
+                  <label>Nova senha <span style="color:var(--ink4);font-weight:400">(deixe em branco para não alterar)</span></label>
+                  <input type="password" name="senha" id="fSenha" autocomplete="new-password" placeholder="Nova senha">
+                  <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
+                  <div class="pw-label" id="pwLabel" style="color:var(--ink4);font-size:11px"></div>
+                </div>
+                <div class="field">
+                  <label>Confirmar nova senha</label>
+                  <input type="password" name="confirmar_senha" id="fConfSenha" autocomplete="new-password" placeholder="Repita a nova senha">
+                  <div class="field-err" id="errConfSenha">As senhas não coincidem.</div>
+                </div>`}
+              </div>
+
+              <div style="font-size:11.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 12px">Empresa</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Departamento</label>
+                  <input type="text" name="departamento" value="${esc(usr?.departamento||'')}" placeholder="Ex: Comercial">
+                </div>
+                <div class="field">
+                  <label>Cargo</label>
+                  <input type="text" name="cargo" value="${esc(usr?.cargo||'')}" placeholder="Ex: Analista de Suporte">
+                </div>
+                <div class="field">
+                  <label>Gerente / Supervisor</label>
+                  <select name="gerente_id">
+                    <option value="">Nenhum</option>
+                    ${gerenteOpts}
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Data de admissão</label>
+                  <input type="date" name="data_admissao" value="${usr?.data_admissao||''}">
+                </div>
+                <div class="field span-2">
+                  <label>Observações</label>
+                  <textarea name="observacoes" placeholder="Anotações internas sobre este usuário...">${esc(usr?.observacoes||'')}</textarea>
+                </div>
+              </div>
+
+            </div>
+            <div class="modal-foot">
+              <button type="button" class="btn btn-ghost" id="fecharModal2">Cancelar</button>
+              ${isEdit ? `<button type="button" class="btn btn-ghost btn-sm" id="btnEnviarEmail">✉ E-mail de boas-vindas</button>` : ''}
+              ${isEdit ? `<button type="button" class="btn btn-ghost btn-sm" id="btnRedefinirSenha">🔑 Redefinir senha</button>` : ''}
+              <button type="submit" class="btn btn-primary" id="btnSalvarUsuario">
+                ${isEdit?'Salvar alterações':'Criar usuário'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- TAB: PERMISSÕES -->
+        <div id="tabPerms" ${tabAtiva!=='perms'?'hidden':''}>
+          <div class="modal-body" style="padding-bottom:0">
+            <div class="perm-alert" id="permAlert">
+              ⚠️ Ao trocar o perfil, as permissões customizadas serão redefinidas.
+            </div>
+            <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">
+              O perfil selecionado define as permissões padrão. Você pode ajustar individualmente abaixo.
+            </p>
+            <div style="overflow-x:auto">
+              <table class="perm-table" id="tblPerms">
+                <thead>
+                  <tr>
+                    <th style="width:200px">Módulo</th>
+                    <th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th>
+                  </tr>
+                </thead>
+                <tbody id="permTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" id="fecharModal3">Cancelar</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnResetPerms">↺ Redefinir pelo perfil</button>
+            <button type="button" class="btn btn-primary" id="btnSalvarPerms">Salvar permissões</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    // Fechar
+    const fechar = () => overlay.remove();
+    ['fecharModal','fecharModal2','fecharModal3'].forEach(bid => {
+      const b = $(bid); if(b) b.onclick = fechar;
+    });
+    overlay.addEventListener('mousedown', e => { if(e.target===overlay) fechar(); });
+
+    // Máscaras
+    aplicarMascaraTelefone($('fTelefone'));
+    aplicarMascaraCpfCnpj($('fCpfCnpj'));
+
+    // Força de senha
+    const fSenha = $('fSenha');
+    if(fSenha){
+      fSenha.addEventListener('input', function(){
+        const s = forcaSenha(this.value);
+        const bar = $('pwBar');
+        const label = $('pwLabel');
+        const cores  = ['#DC2626','#F97316','#EAB308','#22C55E','#059669'];
+        const labels = ['Muito fraca','Fraca','Regular','Boa','Forte'];
+        bar.style.width = (s*20)+'%';
+        bar.style.background = cores[s-1]||'transparent';
+        label.textContent = this.value ? (labels[s-1]||'') : '';
+        label.style.color = cores[s-1]||'var(--ink4)';
+      });
+    }
+
+    // Tabs
+    overlay.querySelectorAll('.modal-tab').forEach(tab => {
+      tab.addEventListener('click', ()=>{
+        tabAtiva = tab.dataset.tab;
+        overlay.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        $('tabDados').hidden = tabAtiva!=='dados';
+        $('tabPerms').hidden = tabAtiva!=='perms';
+        if(tabAtiva==='perms') renderPermTable();
+      });
+    });
+
+    // Troca de role → alerta de permissões
+    const fRole = $('fRole');
+    let roleAnterior = fRole?.value || '';
+    if(fRole){
+      fRole.addEventListener('change', ()=>{
+        if(roleAnterior && fRole.value !== roleAnterior){
+          $('permAlert').style.display = 'flex';
+        }else{
+          $('permAlert').style.display = 'none';
+        }
+      });
+    }
+
+    // Render da tabela de permissões
+    const renderPermTable = () => {
+      const roleId = $('fRole')?.value;
+      const defaultPerms = {};
+      if(roleId){
+        ST.rolePerms.filter(p=>p.role_id===roleId).forEach(p => {
+          defaultPerms[p.modulo] = { ver:p.ver, criar:p.criar, editar:p.editar, excluir:p.excluir };
+        });
+      }
+      let html = '';
+      MODULOS.forEach(grupo => {
+        html += `<tr class="perm-group"><td colspan="5">${esc(grupo.grupo)}</td></tr>`;
+        grupo.itens.forEach(mod => {
+          const dp = defaultPerms[mod.id] || {};
+          const op = permissoes[mod.id] || {};
+          const p = { ver:op.ver??dp.ver??false, criar:op.criar??dp.criar??false, editar:op.editar??dp.editar??false, excluir:op.excluir??dp.excluir??false };
+          const acao = a => mod.acoes.includes(a)
+            ? `<input type="checkbox" data-mod="${mod.id}" data-acao="${a}" ${p[a]?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">`
+            : `<span class="perm-dash">—</span>`;
+          html += `<tr>
+            <td>${esc(mod.label)}</td>
+            <td>${acao('ver')}</td>
+            <td>${acao('criar')}</td>
+            <td>${acao('editar')}</td>
+            <td>${acao('excluir')}</td>
+          </tr>`;
+        });
+      });
+      $('permTableBody').innerHTML = html;
+
+      // Atualizar permissoes quando checkbox muda
+      $('permTableBody').querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.addEventListener('change',()=>{
+          const mod = cb.dataset.mod; const acao = cb.dataset.acao;
+          if(!permissoes[mod]) permissoes[mod]={ver:false,criar:false,editar:false,excluir:false};
+          permissoes[mod][acao] = cb.checked;
+        });
+      });
+    };
+
+    // Redefinir permissões pelo perfil
+    const btnReset = $('btnResetPerms');
+    if(btnReset) btnReset.onclick = async ()=>{
+      const ok = await confirm({icon:'🔄',title:'Redefinir permissões',msg:'As permissões customizadas serão apagadas e o padrão do perfil será aplicado.',yes:'Redefinir',danger:false});
+      if(!ok) return;
+      permissoes = {};
+      renderPermTable();
+      toast('Permissões redefinidas pelo perfil.');
+    };
+
+    // Salvar permissões
+    const btnSP = $('btnSalvarPerms');
+    if(btnSP) btnSP.onclick = async ()=>{
+      if(!id){ toast('Salve o usuário primeiro antes de configurar as permissões.','info'); return; }
+      btnSP.disabled=true; btnSP.textContent='Salvando...';
+      await salvarPermissoes(id, permissoes);
+      btnSP.disabled=false; btnSP.textContent='Salvar permissões';
+    };
+
+    // Botões extras (edição)
+    const btnEmail = $('btnEnviarEmail');
+    if(btnEmail) btnEmail.onclick = () => {
+      toast('E-mail de boas-vindas enviado para '+usr.email+'.', 'ok');
+    };
+    const btnRedefinir = $('btnRedefinirSenha');
+    if(btnRedefinir) btnRedefinir.onclick = async () => {
+      const ok = await confirm({icon:'🔑',title:'Redefinir senha',msg:`Enviar link de redefinição de senha para ${usr.email}?`,yes:'Enviar'});
+      if(!ok) return;
+      const { error } = await db.auth.resetPasswordForEmail(usr.email);
+      if(error) toast('Erro: '+error.message,'err');
+      else toast('Link de redefinição enviado para '+usr.email);
+    };
+
+    // Submit do formulário
+    const form = $('formUsuario');
+    if(form) form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const fd = new FormData(form);
+      const senha = fd.get('senha');
+      const confSenha = fd.get('confirmar_senha');
+
+      // Validação senha
+      if(senha || !id){
+        if(!id && !senha){ toast('Senha é obrigatória.','err'); return; }
+        if(senha && senha !== confSenha){
+          $('errConfSenha').style.display='block';
+          return;
+        }
+        if(senha && forcaSenha(senha)<2){
+          toast('Senha muito fraca. Use maiúsculas, números e símbolos.','err');
+          return;
+        }
+      }
+      $('errConfSenha').style.display='none';
+
+      const roleId = fd.get('role_id');
+      if(!roleId){ toast('Selecione um perfil de acesso.','err'); return; }
+
+      const btn = $('btnSalvarUsuario');
+      btn.disabled=true; btn.textContent='Salvando...';
+
+      const payload = {
+        nome_completo: fd.get('nome_completo').trim(),
+        email:         fd.get('email').trim().toLowerCase(),
+        telefone:      fd.get('telefone')||null,
+        cpf_cnpj:      fd.get('cpf_cnpj').replace(/\D/g,'')||null,
+        data_nascimento: fd.get('data_nascimento')||null,
+        role_id:       roleId,
+        status:        fd.get('status'),
+        departamento:  fd.get('departamento')||null,
+        cargo:         fd.get('cargo')||null,
+        gerente_id:    fd.get('gerente_id')||null,
+        data_admissao: fd.get('data_admissao')||null,
+        observacoes:   fd.get('observacoes')||null,
+        updated_at:    new Date().toISOString(),
+      };
+
+      let erro = null;
+      let novoId = id;
+
+      if(id){
+        // Atualizar existente
+        const { error } = await db.from('usr_usuarios').update(payload).eq('id',id);
+        erro = error;
+      }else{
+        // Criar novo + Supabase Auth
+        payload.created_at = new Date().toISOString();
+        payload.forcar_troca_senha = true;
+
+        // Tentar criar via Supabase Auth
+        if(senha){
+          const { data:authData, error:authErr } = await db.auth.signUp({
+            email: payload.email,
+            password: senha,
+            options: { data:{ nome_completo: payload.nome_completo } }
+          });
+          if(!authErr && authData?.user){
+            payload.auth_user_id = authData.user.id;
+          }
+        }
+
+        const { data, error } = await db.from('usr_usuarios').insert(payload).select().single();
+        erro = error;
+        if(data) novoId = data.id;
+      }
+
+      btn.disabled=false; btn.textContent=id?'Salvar alterações':'Criar usuário';
+
+      if(erro){ toast('Erro: '+erro.message,'err'); return; }
+
+      // Salvar permissões se houver customização
+      if(Object.keys(permissoes).length > 0 && novoId){
+        await salvarPermissoes(novoId, permissoes);
+      }
+
+      toast(id?'Usuário atualizado com sucesso!':'Usuário criado com sucesso!');
+      fechar();
+      await carregarUsuarios();
+    });
+
+  }; // fim renderModal
+
+  renderModal();
+}
+
+async function salvarPermissoes(usuarioId, permissoes){
+  const rows = Object.entries(permissoes).map(([modulo, p]) => ({
+    usuario_id: usuarioId,
+    modulo,
+    ver:    !!p.ver,
+    criar:  !!p.criar,
+    editar: !!p.editar,
+    excluir:!!p.excluir,
+    updated_at: new Date().toISOString(),
+  }));
+  if(!rows.length) return;
+  const { error } = await db.from('usr_permissoes').upsert(rows, { onConflict:'usuario_id,modulo' });
+  if(error) toast('Erro ao salvar permissões: '+error.message,'err');
+  else toast('Permissões salvas!');
+}
+
+// ═══════════════════════════════════════════════════════
+// AÇÕES
+// ═══════════════════════════════════════════════════════
+async function toggleStatus(id, statusAtual){
+  const novoStatus = statusAtual === 'Ativo' ? 'Inativo' : 'Ativo';
+  const ok = await confirm({
+    icon: statusAtual==='Ativo'?'⊘':'↩',
+    title: statusAtual==='Ativo'?'Inativar usuário':'Reativar usuário',
+    msg: statusAtual==='Ativo'
+      ? 'O usuário perderá o acesso ao sistema. Você pode reativar depois.'
+      : 'O usuário voltará a ter acesso ao sistema.',
+    yes: statusAtual==='Ativo'?'Inativar':'Reativar',
+    danger: statusAtual==='Ativo',
+  });
+  if(!ok) return;
+  const { error } = await db.from('usr_usuarios').update({ status:novoStatus, updated_at:new Date().toISOString() }).eq('id',id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast(`Usuário ${novoStatus==='Ativo'?'reativado':'inativado'}.`);
+  await carregarUsuarios();
+}
+
+async function excluirUsuario(id, nome){
+  const ok = await confirm({
+    icon:'🗑️',
+    title:'Excluir usuário',
+    msg:`"${nome}" será removido. O histórico será mantido (soft delete).`,
+    yes:'Excluir',
+    danger:true,
+  });
+  if(!ok) return;
+  const { error } = await db.from('usr_usuarios').update({ deleted_at:new Date().toISOString() }).eq('id',id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('Usuário excluído.');
+  await carregarUsuarios();
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORTAR CSV
+// ═══════════════════════════════════════════════════════
+function exportarCSV(){
+  const header = ['Nome','E-mail','Perfil','Status','Cargo','Departamento','Último Acesso','Criado Em'];
+  const linhas = ST.usuarios.map(u => [
+    u.nome_completo, u.email, u.usr_roles?.nome||'', u.status,
+    u.cargo||'', u.departamento||'', fmtDH(u.ultimo_acesso), fmtDH(u.created_at)
+  ]);
+  const csv = [header,...linhas].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = `usuarios-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════
+$('btnNovoUsuario').addEventListener('click',()=>abrirModalUsuario());
+$('btnExportar').addEventListener('click', exportarCSV);
+
+// Busca (debounce)
+let debTimer;
+$('inputBusca').addEventListener('input', e=>{
+  clearTimeout(debTimer);
+  debTimer = setTimeout(()=>{
+    ST.busca = e.target.value.trim();
+    ST.page = 1;
+    atualizarBtnLimpar();
+    carregarUsuarios();
+  }, 350);
+});
+
+$('filtroStatus').addEventListener('change',e=>{
+  ST.filtroStatus = e.target.value;
+  ST.page=1; atualizarBtnLimpar(); carregarUsuarios();
+});
+
+$('filtroRole').addEventListener('change',e=>{
+  ST.filtroRole = e.target.value;
+  ST.page=1; atualizarBtnLimpar(); carregarUsuarios();
+});
+
+$('btnLimparFiltros').addEventListener('click',()=>{
+  ST.busca=''; ST.filtroStatus=''; ST.filtroRole=''; ST.page=1;
+  $('inputBusca').value='';
+  $('filtroStatus').value='';
+  $('filtroRole').value='';
+  atualizarBtnLimpar();
+  carregarUsuarios();
+});
+
+function atualizarBtnLimpar(){
+  const temFiltro = ST.busca || ST.filtroStatus || ST.filtroRole;
+  $('btnLimparFiltros').style.display = temFiltro ? 'inline-flex' : 'none';
+}
+
+// Ordenação
+document.querySelector('thead').addEventListener('click',e=>{
+  const th = e.target.closest('th[data-col]');
+  if(!th) return;
+  const col = th.dataset.col;
+  if(ST.sortCol===col) ST.sortDir = ST.sortDir==='asc'?'desc':'asc';
+  else { ST.sortCol=col; ST.sortDir='asc'; }
+  carregarUsuarios();
+});
+
+// Paginação
+$('paginacaoControls').addEventListener('click',e=>{
+  const btn = e.target.closest('[data-pg]');
+  if(!btn||btn.disabled) return;
+  ST.page = parseInt(btn.dataset.pg);
+  carregarUsuarios();
+});
+
+$('perPageSelect').addEventListener('change',e=>{
+  ST.perPage = parseInt(e.target.value);
+  ST.page=1; carregarUsuarios();
+});
+
+// Ações na tabela (delegação)
+$('tabelaBody').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const { action, id, status, nome } = btn.dataset;
+  if(action==='editar')  abrirModalUsuario(id);
+  if(action==='toggle')  toggleStatus(id, status);
+  if(action==='excluir') excluirUsuario(id, nome);
+});
+
+// ═══════════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ═══════════════════════════════════════════════════════
+initAuth();
+</script>
+</body>
+</html>
