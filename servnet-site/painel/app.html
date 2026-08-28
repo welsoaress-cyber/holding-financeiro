@@ -596,6 +596,7 @@
       <div class="tb-dropdown">
         <button id="btn-profile">Meu perfil</button>
         <button onclick="window.openModule('config','Configurações','⚙️','#94a3b8')">Configurações</button>
+        <button id="btn-usuarios" onclick="window.openModule('usuarios','Usuários','👤','#6366f1')" style="display:none">Usuários</button>
         <hr>
         <button class="logout" id="btn-logout">Sair do sistema</button>
       </div>
@@ -649,6 +650,10 @@
   <button class="sheet-btn" id="sheet-btn-config"
     onclick="closeSheet(); window.openModule('config','Configurações','⚙️','#94a3b8')">
     <span class="sheet-icon">⚙️</span> Configurações
+  </button>
+  <button class="sheet-btn" id="sheet-btn-usuarios" style="display:none"
+    onclick="closeSheet(); window.openModule('usuarios','Usuários','👤','#6366f1')">
+    <span class="sheet-icon">👤</span> Usuários
   </button>
   <button class="sheet-btn danger" id="sheet-btn-logout">
     <span class="sheet-icon">🚪</span> Sair do sistema
@@ -774,8 +779,6 @@
 const ALL_MODULES = [
   { view:'lancamentos',  label:'Financeiro',       icon:'💰', tag:'FINAN', color:'#3FD68E', desc:'Lançamentos, receitas e despesas'    },
   { view:'planos',       label:'Planos',            icon:'📋', tag:'PLN',   color:'#f59e0b', desc:'Planos de serviço e preços'          },
-  { view:'config',       label:'Configurações',     icon:'⚙️', tag:'CFG',   color:'#94a3b8', desc:'Parâmetros e usuários do sistema'    },
-  { view:'usuarios',     label:'Usuários',          icon:'👤', tag:'USR',   color:'#6366f1', desc:'Gestão de usuários e permissões'     },
 ];
 
 /** Retorna apenas os módulos visíveis para o usuário logado */
@@ -1052,6 +1055,14 @@ window.applyLayout = applyLayout;
 // renderGrid chamado por app.js após auth
 window.renderGrid = function() {
   applyLayout(localStorage.getItem('gt_layout') || 'hex');
+
+  // Exibe botão Usuários no menu apenas para quem tem permissão
+  const perfil = window.GT_PERFIL;
+  const podeVerUsuarios = perfil && (perfil.isMaster || perfil.permissoes?.usuarios?.ver);
+  ['sheet-btn-usuarios', 'btn-usuarios'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = podeVerUsuarios ? '' : 'none';
+  });
 };
 
 // ── Tamanho da colmeia (ajustável pelo usuário) ─────────────

@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.11 — 2026-08-28
+
+### Alterado
+- **Configurações** removida da grade principal — continua acessível pelos 3 pontinhos
+  (menu desktop e sheet mobile). Módulo e arquivos intactos.
+- **Usuários** removido da grade principal — movido para os 3 pontinhos (desktop e
+  mobile sheet), visível somente para perfis com permissão `usuarios.ver`.
+
 ## v2.9.10 — 2026-08-28
 
 ### Corrigido
