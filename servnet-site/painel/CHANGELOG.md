@@ -2,6 +2,28 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.0 — 2026-08-28
+
+### Reformulado
+- Módulo Financeiro completamente reconstruído do zero sobre 13 tabelas
+  normalizadas (`fin_*`) com colunas diretas (sem wrapper JSONB `dados`),
+  soft-delete por `deleted_at` e RLS por usuário.
+- 10 abas independentes: Resumo, Despesas, Receitas, Transferências,
+  Contas, Cartões, Categorias, Orçamentos, Metas e Relatórios.
+- Despesas e Receitas distinguem avulsas (lançamento único) de fixas
+  (template + valor por mês com flag `excluido_mes`). Toggle de
+  pago/recebido atualiza o registro do mês sem duplicar o template.
+- Saldo de cada conta calculado em tempo real: saldo inicial + receitas
+  recebidas − despesas pagas ± transferências.
+- Resumo mensal com KPIs (saldo total, receitas, despesas, saldo do mês),
+  cards de contas e lista dos últimos lançamentos do mês.
+- Orçamentos com barra de progresso por categoria e alerta ao ultrapassar.
+- Metas de poupança com aporte e percentual de conclusão.
+- Relatórios: gráfico de barras dos últimos 6 meses + quebra por categoria.
+- Cartões de crédito com cor, limite e dia de vencimento.
+- Toda a lógica desacoplada do sistema antigo (`lancamentos`) — migração
+  total para as novas tabelas `fin_*`.
+
 ## v2.8.10 — 2026-08-28
 
 ### Corrigido
