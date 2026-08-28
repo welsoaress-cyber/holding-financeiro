@@ -999,4 +999,5 @@ export async function initLancamentos(el){
   el.innerHTML=buildShell();
   await renderTab(el);
 }
-export{initLancamentos as i};
+export{initLancamentos};
+export const i={initLancamentos};
