@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.21 — 2026-08-29
+
+### Corrigido
+- **Erro `date/time field value out of range: "2026-09-31"`**: queries de despesas/receitas/transferências usavam `-31` fixo para fim do mês — substituído por helper `mesEnd()` que calcula o último dia real do mês (setembro=30, fevereiro=28/29 etc.)
+- **Topbar com "GRUPOTOM" em maiúsculas**: `text-transform: uppercase` e `letter-spacing: 1px` removidos da classe `.tb-brand` — nome agora exibido como "GrupoTom"
+- Versão bumped 2.9.20 → 2.9.21
+
 ## v2.9.20 — 2026-08-29
 
 ### Corrigido
