@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.19 — 2026-08-29
+
+### Corrigido
+- **Status "Recebido" em Receitas**: campo status agora salva `"recebido"` (era `"pago"` por engano), corrigindo filtro e exibição na listagem
+- **Periodicidade e Parcelas** adicionados aos módulos standalone de Receitas (`index-DIt_wP4b.js`) e Despesas (`index-DCzEq81c.js`)
+- Formulários Nova Receita e Nova Despesa (módulos standalone) agora incluem: Única vez / Todo mês / Toda semana / Todo ano + campo Parcelas
+- Versão bumped 2.9.18 → 2.9.19
+
 ## v2.9.18 — 2026-08-29
 
 ### Corrigido
