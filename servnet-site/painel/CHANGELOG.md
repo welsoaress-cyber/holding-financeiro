@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.22 — 2026-08-29
+
+### Corrigido
+- **Topbar**: remove texto estático "Painel de Gestão" do `#tb-page-title` — topbar limpo por padrão
+- Versão bumped 2.9.21 → 2.9.22
+
 ## v2.9.21 — 2026-08-29
 
 ### Corrigido
