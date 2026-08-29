@@ -2,6 +2,18 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.18 — 2026-08-29
+
+### Corrigido
+- **Erro `invalid input syntax for type uuid: ""`** ao salvar despesa/receita: campos `id_categoria` e `id_conta` com valor vazio agora são convertidos para `null` antes do upsert
+- `fSave` agora sanitiza todos os campos: string vazia `""` → `null` automaticamente
+
+### Adicionado
+- **Periodicidade** nos formulários Nova Despesa e Nova Receita: Única vez / Todo mês / Toda semana / Todo ano
+- **Parcelas** no mesmo formulário para indicar quantas repetições
+- Despesas/Receitas recorrentes criadas como Fixa automaticamente ao escolher periodicidade
+- Versão bumped 2.9.17 → 2.9.18
+
 ## v2.9.17 — 2026-08-28
 
 ### Adicionado

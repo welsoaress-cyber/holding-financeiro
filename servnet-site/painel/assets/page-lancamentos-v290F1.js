@@ -23,7 +23,9 @@ async function fGet(t,opts={}){
 }
 async function fSave(t,item){
   const u=await uid(),now=new Date().toISOString();
-  const row={...item,user_id:u,updated_at:now};
+  // Converte string vazia para null (evita erro "invalid input syntax for type uuid: ''")
+  const clean=Object.fromEntries(Object.entries(item).map(([k,v])=>[k,v===''?null:v]));
+  const row={...clean,user_id:u,updated_at:now};
   if(!row.id){row.id=B();row.created_at=now;}
   const{error}=await sb.from(t).upsert(row,{onConflict:'id'});
   if(error)throw error;return row;
@@ -272,14 +274,26 @@ window._finNovaDesp=function(){
          `<div><label style="${lbl}">Conta</label><select name="id_conta" style="${fld}"><option value="">-- Nenhuma --</option>${contaOpts()}</select></div>`)}
   ${row2(`<div><label style="${lbl}">Categoria</label><select name="id_categoria" style="${fld}"><option value="">-- Nenhuma --</option>${catOpts('despesa')}</select></div>`,
          `<div><label style="${lbl}">Status</label><select name="status" style="${fld}"><option value="pendente">Pendente</option><option value="pago">Pago</option></select></div>`)}
+  ${row2(`<div><label style="${lbl}">Periodicidade</label><select name="periodicidade" style="${fld}"><option value="">Única vez</option><option value="mensal">Todo mês</option><option value="semanal">Toda semana</option><option value="anual">Todo ano</option></select></div>`,
+         `<div><label style="${lbl}">Parcelas</label><input name="parcelas" type="number" min="1" max="120" style="${fld}" placeholder="1" value="1"></div>`)}
   <label style="${lbl}">Observação</label><input name="obs" style="${fld}" placeholder="Opcional">
   <button type="submit" ${actBtn('Salvar Despesa','#dc2626')}>Salvar Despesa</button>
 </form>`);
 };
 window._finSaveDesp=async function(e){
-  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
-  try{await fSave('fin_despesas',{...d,data_pagamento:d.status==='pago'?d.data_vencimento:null});toast.ok('Despesa salva!');closeModal();renderTab(_ct);}
-  catch(ex){toast.err('Erro: '+ex.message);}
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,periodicidade,parcelas,...d}=Object.fromEntries(f);
+  try{
+    if(periodicidade&&periodicidade!==''){
+      // Despesa recorrente → salva como fixa
+      const dia=parseInt((d.data_vencimento||_mes+'-01').split('-')[2])||1;
+      await fSave('fin_despesas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_vencimento:dia,periodicidade,parcelas:parseInt(parcelas)||null,ativo:true});
+      toast.ok('Despesa recorrente salva!');
+    }else{
+      await fSave('fin_despesas',{...d,data_pagamento:d.status==='pago'?d.data_vencimento:null});
+      toast.ok('Despesa salva!');
+    }
+    closeModal();renderTab(_ct);
+  }catch(ex){toast.err('Erro: '+ex.message);}
 };
 window._finNovaDespFixa=function(){
   openModal(modalHdr('Nova Despesa Fixa')+`
@@ -402,17 +416,28 @@ window._finNovaRec=function(){
   <label style="${lbl}">Descrição *</label><input name="descricao" required style="${fld}" placeholder="Ex: Salário">
   <label style="${lbl}">Valor *</label><input name="valor" type="number" step="0.01" min="0.01" required style="${fld}" placeholder="0,00">
   ${row2(`<div><label style="${lbl}">Previsão *</label><input name="data_previsao" type="date" required style="${fld}" value="${_mes}-01"></div>`,
-         `<div><label style="${lbl}">Conta</label><select name="id_conta" style="${fld}"><option value="">--</option>${contaOpts()}</select></div>`)}
-  <label style="${lbl}">Categoria</label><select name="id_categoria" style="${fld}"><option value="">--</option>${catOpts('receita')}</select>
-  <label style="${lbl}">Status</label><select name="status" style="${fld}"><option value="pendente">Pendente</option><option value="recebido">Recebido</option></select>
+         `<div><label style="${lbl}">Conta</label><select name="id_conta" style="${fld}"><option value="">-- Nenhuma --</option>${contaOpts()}</select></div>`)}
+  ${row2(`<div><label style="${lbl}">Categoria</label><select name="id_categoria" style="${fld}"><option value="">-- Nenhuma --</option>${catOpts('receita')}</select></div>`,
+         `<div><label style="${lbl}">Status</label><select name="status" style="${fld}"><option value="pendente">Pendente</option><option value="recebido">Recebido</option></select></div>`)}
+  ${row2(`<div><label style="${lbl}">Periodicidade</label><select name="periodicidade" style="${fld}"><option value="">Única vez</option><option value="mensal">Todo mês</option><option value="semanal">Toda semana</option><option value="anual">Todo ano</option></select></div>`,
+         `<div><label style="${lbl}">Parcelas</label><input name="parcelas" type="number" min="1" max="120" style="${fld}" placeholder="1" value="1"></div>`)}
   <label style="${lbl}">Observação</label><input name="obs" style="${fld}" placeholder="Opcional">
   <button type="submit" ${actBtn('Salvar Receita','#059669')}>Salvar Receita</button>
 </form>`);
 };
 window._finSaveRec=async function(e){
-  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,...d}=Object.fromEntries(f);
-  try{await fSave('fin_receitas',{...d,data_recebimento:d.status==='recebido'?d.data_previsao:null});toast.ok('Receita salva!');closeModal();renderTab(_ct);}
-  catch(ex){toast.err('Erro: '+ex.message);}
+  e.preventDefault();const f=new FormData(e.target);const{obs:_obs,periodicidade,parcelas,...d}=Object.fromEntries(f);
+  try{
+    if(periodicidade&&periodicidade!==''){
+      const dia=parseInt((d.data_previsao||_mes+'-01').split('-')[2])||1;
+      await fSave('fin_receitas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_recebimento:dia,periodicidade,parcelas:parseInt(parcelas)||null,ativo:true});
+      toast.ok('Receita recorrente salva!');
+    }else{
+      await fSave('fin_receitas',{...d,data_recebimento:d.status==='recebido'?d.data_previsao:null});
+      toast.ok('Receita salva!');
+    }
+    closeModal();renderTab(_ct);
+  }catch(ex){toast.err('Erro: '+ex.message);}
 };
 window._finNovaRecFixa=function(){
   openModal(modalHdr('Nova Receita Fixa')+`
