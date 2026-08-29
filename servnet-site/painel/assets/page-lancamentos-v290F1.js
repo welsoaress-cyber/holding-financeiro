@@ -5,6 +5,10 @@ const B=()=>crypto.randomUUID();
 let _uid=null;
 async function uid(){return _uid??(_uid=(await sb.auth.getUser()).data?.user?.id)}
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+// Retorna o último dia real do mês (ex: '2026-09-30', não '-31' hardcoded)
+function mesEnd(m){const[y,mo]=m.split('-').map(Number);return new Date(y,mo,0).toISOString().slice(0,10);}
+
 // ── Module state ────────────────────────────────────────────────────────────
 let _tab='resumo';
 let _mes=new Date().toISOString().slice(0,7);
@@ -149,7 +153,7 @@ async function renderResumo(el){
   el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--text-2,#666)">Carregando...</div>`;
   try{
     await loadLookups();
-    const m0=_mes+'-01',m1=_mes+'-31',u=await uid();
+    const m0=_mes+'-01',m1=mesEnd(_mes),u=await uid();
     const[desp,rec,dFix,dFixV,rFix,rFixV]=await Promise.all([
       fGet('fin_despesas',{gte:['data_vencimento',m0],lte:['data_vencimento',m1]}),
       fGet('fin_receitas',{gte:['data_previsao',m0],lte:['data_previsao',m1]}),
@@ -216,7 +220,7 @@ async function renderDespesas(el){
   el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--text-2,#666)">Carregando...</div>`;
   try{
     await loadLookups();
-    const m0=_mes+'-01',m1=_mes+'-31';
+    const m0=_mes+'-01',m1=mesEnd(_mes);
     const[desp,dFix,dFixV]=await Promise.all([
       fGet('fin_despesas',{gte:['data_vencimento',m0],lte:['data_vencimento',m1]}),
       fGet('fin_despesas_fixas',{eq:{ativo:true}}),
@@ -361,7 +365,7 @@ async function renderReceitas(el){
   el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--text-2,#666)">Carregando...</div>`;
   try{
     await loadLookups();
-    const m0=_mes+'-01',m1=_mes+'-31';
+    const m0=_mes+'-01',m1=mesEnd(_mes);
     const[rec,rFix,rFixV]=await Promise.all([
       fGet('fin_receitas',{gte:['data_previsao',m0],lte:['data_previsao',m1]}),
       fGet('fin_receitas_fixas',{eq:{ativo:true}}),
@@ -503,7 +507,7 @@ window._finDelRec=async function(id,isFixa,fixaId,valorId){
 // ══════════════════════════════════════════════════════════════════════════════
 async function renderTransferencias(el){
   await loadLookups();
-  const m0=_mes+'-01',m1=_mes+'-31';
+  const m0=_mes+'-01',m1=mesEnd(_mes);
   const tr=await fGet('fin_transferencias',{gte:['data',m0],lte:['data',m1]});
   el.innerHTML=`
 <div style="padding:12px 16px;">
@@ -767,7 +771,7 @@ async function renderOrcamentos(el){
   await loadLookups();
   const[orcs,desp,dFix,dFixV]=await Promise.all([
     fGet('fin_orcamentos',{eq:{mes_ref:_mes}}),
-    fGet('fin_despesas',{gte:['data_vencimento',_mes+'-01'],lte:['data_vencimento',_mes+'-31']}),
+    fGet('fin_despesas',{gte:['data_vencimento',_mes+'-01'],lte:['data_vencimento',mesEnd(_mes)]}),
     fGet('fin_despesas_fixas',{eq:{ativo:true}}),
     fGet('fin_despesas_fixas_valor',{eq:{mes_ref:_mes}}),
   ]);
@@ -906,7 +910,7 @@ async function renderRelatorios(el){
     const months=[];for(let i=5;i>=0;i--)months.push(addMes(_mes,-i));
     const u=await uid();
     const mData=await Promise.all(months.map(async m=>{
-      const m0=m+'-01',m1=m+'-31';
+      const m0=m+'-01',m1=mesEnd(m);
       const[d,r,df,dfv,rf,rfv]=await Promise.all([
         sb.from('fin_despesas').select('valor').eq('user_id',u).gte('data_vencimento',m0).lte('data_vencimento',m1).is('deleted_at',null),
         sb.from('fin_receitas').select('valor').eq('user_id',u).gte('data_previsao',m0).lte('data_previsao',m1).is('deleted_at',null),
@@ -924,7 +928,7 @@ async function renderRelatorios(el){
       return{label:mNames[mo]+'/'+m.slice(2,4),desp,rec,saldo:rec-desp};
     }));
     // Cat breakdown
-    const m0=_mes+'-01',m1=_mes+'-31';
+    const m0=_mes+'-01',m1=mesEnd(_mes);
     const[dc,df2,dfv2]=await Promise.all([
       sb.from('fin_despesas').select('id_categoria,valor').eq('user_id',u).gte('data_vencimento',m0).lte('data_vencimento',m1).is('deleted_at',null),
       sb.from('fin_despesas_fixas').select('id,id_categoria,valor').eq('user_id',u).eq('ativo',true).is('deleted_at',null),
