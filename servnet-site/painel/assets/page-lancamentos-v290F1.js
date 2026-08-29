@@ -286,7 +286,7 @@ window._finSaveDesp=async function(e){
     if(periodicidade&&periodicidade!==''){
       // Despesa recorrente → salva como fixa
       const dia=parseInt((d.data_vencimento||_mes+'-01').split('-')[2])||1;
-      await fSave('fin_despesas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_vencimento:dia,periodicidade,parcelas:parseInt(parcelas)||null,ativo:true});
+      await fSave('fin_despesas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_vencimento:dia,periodicidade,ativo:true});
       toast.ok('Despesa recorrente salva!');
     }else{
       await fSave('fin_despesas',{...d,data_pagamento:d.status==='pago'?d.data_vencimento:null});
@@ -430,7 +430,7 @@ window._finSaveRec=async function(e){
   try{
     if(periodicidade&&periodicidade!==''){
       const dia=parseInt((d.data_previsao||_mes+'-01').split('-')[2])||1;
-      await fSave('fin_receitas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_recebimento:dia,periodicidade,parcelas:parseInt(parcelas)||null,ativo:true});
+      await fSave('fin_receitas_fixas',{descricao:d.descricao,valor:d.valor,id_conta:d.id_conta,id_categoria:d.id_categoria,dia_recebimento:dia,periodicidade,ativo:true});
       toast.ok('Receita recorrente salva!');
     }else{
       await fSave('fin_receitas',{...d,data_recebimento:d.status==='recebido'?d.data_previsao:null});

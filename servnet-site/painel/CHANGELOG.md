@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.20 — 2026-08-29
+
+### Corrigido
+- **Erro `parcelas` column not found em fin_despesas_fixas/fin_receitas_fixas**: ao salvar despesa/receita recorrente, o campo `parcelas` era enviado para tabelas que não têm essa coluna — removido do payload de fixas (coluna será adicionada via migration quando disponível)
+- Versão bumped 2.9.19 → 2.9.20
+
 ## v2.9.19 — 2026-08-29
 
 ### Corrigido
