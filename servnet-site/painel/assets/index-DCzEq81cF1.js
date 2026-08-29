@@ -1,4 +1,4 @@
-import{r as A,s as u,h as k,f as C,a as I,u as F,t as z,N as T,b as V,i as O,e as R,g as Y}from"./page-dashboard-Dbqm2OjXbF1.js";import{m as S,u as H}from"./page-lancamentos-v290F1.js";import"./supabase-DthfXWp1F1.js";let b=new Date().getFullYear(),l=new Date().getMonth()+1,y=null,w=!1,L=!1,c=null,g=null,E="",x="todos";function G(){return`${b}-${String(l).padStart(2,"0")}`}function M(){return`${T[l-1]} de ${b}`}function J(){l--,l<1&&(l=12,b--),y=null,w=!1,_(!0)}function K(){l++,l>12&&(l=1,b++),y=null,w=!1,_(!0)}function Q(){const e=new Date;b=e.getFullYear(),l=e.getMonth()+1,y=null,w=!1,_(!0)}function U(){let e=(u.get("despesas")??[]).filter(t=>t.tipo==="despesa");if(x==="pago"&&(e=e.filter(t=>t.status==="pago")),x==="pendente"&&(e=e.filter(t=>t.status==="pendente")),x==="vencido"&&(e=e.filter(t=>t.status==="pendente"&&t.data_vencimento&&t.data_vencimento<k())),E.trim()){const t=E.trim().toLowerCase();e=e.filter(n=>(n.descricao||"").toLowerCase().includes(t)||(n.categoria||"").toLowerCase().includes(t))}return e}function D(e,t,n){return`<button data-filtro-status="${n}" style="
+import{r as A,s as u,h as k,f as C,a as I,u as F,t as z,N as T,b as V,i as O,e as R,g as Y}from"./page-dashboard-Dbqm2OjXb.js";import{m as S,u as H}from"./page-lancamentos-v290.js";import"./supabase-DthfXWp1.js";let b=new Date().getFullYear(),l=new Date().getMonth()+1,y=null,w=!1,L=!1,c=null,g=null,E="",x="todos";function G(){return`${b}-${String(l).padStart(2,"0")}`}function M(){return`${T[l-1]} de ${b}`}function J(){l--,l<1&&(l=12,b--),y=null,w=!1,_(!0)}function K(){l++,l>12&&(l=1,b++),y=null,w=!1,_(!0)}function Q(){const e=new Date;b=e.getFullYear(),l=e.getMonth()+1,y=null,w=!1,_(!0)}function U(){let e=(u.get("despesas")??[]).filter(t=>t.tipo==="despesa");if(x==="pago"&&(e=e.filter(t=>t.status==="pago")),x==="pendente"&&(e=e.filter(t=>t.status==="pendente")),x==="vencido"&&(e=e.filter(t=>t.status==="pendente"&&t.data_vencimento&&t.data_vencimento<k())),E.trim()){const t=E.trim().toLowerCase();e=e.filter(n=>(n.descricao||"").toLowerCase().includes(t)||(n.categoria||"").toLowerCase().includes(t))}return e}function D(e,t,n){return`<button data-filtro-status="${n}" style="
     padding:4px 10px;font-size:12px;cursor:pointer;
     border:1px solid ${t?"#dc2626":"var(--border,#d1d5db)"};
     background:${t?"#dc2626":"var(--bg-card,#fff)"};
@@ -185,6 +185,24 @@ import{r as A,s as u,h as k,f as C,a as I,u as F,t as z,N as T,b as V,i as O,e a
             style="padding:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
         </label>
 
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
+            Periodicidade
+            <select name="periodicidade" style="padding:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);">
+              <option value="" ${!(s.periodicidade)?"selected":""}>Única vez</option>
+              <option value="mensal" ${(s.periodicidade||"")==="mensal"?"selected":""}>Todo mês</option>
+              <option value="semanal" ${(s.periodicidade||"")==="semanal"?"selected":""}>Toda semana</option>
+              <option value="anual" ${(s.periodicidade||"")==="anual"?"selected":""}>Todo ano</option>
+            </select>
+          </label>
+          <label style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
+            Parcelas
+            <input name="parcelas" type="number" min="1" max="120" value="${s.parcelas||1}"
+              placeholder="1"
+              style="padding:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
+          </label>
+        </div>
+
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
           ${n?"":`<button type="button" id="btn-excluir-desp" style="
             padding:8px 16px;border:1px solid #dc2626;
@@ -197,4 +215,4 @@ import{r as A,s as u,h as k,f as C,a as I,u as F,t as z,N as T,b as V,i as O,e a
           ">${n?"Criar":"Salvar"}</button>
         </div>
       </form>
-    `}),await new Promise(o=>setTimeout(o,60));const i=document.getElementById("form-despesa");i&&(i.addEventListener("submit",async o=>{o.preventDefault();const r=new FormData(i),p={id:(e==null?void 0:e.id)??H(),tipo:"despesa",status:r.get("status"),descricao:r.get("descricao"),valor:parseFloat(r.get("valor"))||0,data_vencimento:r.get("data_vencimento"),categoria:r.get("categoria")||null,negocio:r.get("negocio")||null,mes_ref:(r.get("data_vencimento")||"").slice(0,7)},m=i.querySelector("[type=submit]");m.disabled=!0,m.textContent="Salvando…";try{await R("lancamentos",p),u.patch("despesas",p.id,p),S.fechar(),z.ok(n?"Despesa criada!":"Despesa atualizada!"),h()}catch($){console.error($),z.err("Erro ao salvar: "+$.message),m.disabled=!1,m.textContent=n?"Criar":"Salvar"}}),(d=document.getElementById("btn-excluir-desp"))==null||d.addEventListener("click",async()=>{if(await S.confirmar(`Excluir "${e.descricao}"? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"}))try{await Y("lancamentos",e.id),u.remove("despesas",e.id),S.fechar(),z.ok("Despesa excluída."),h()}catch(r){z.err("Erro ao excluir: "+r.message)}}))}async function te(e){var n;c=e,g=((n=A.params())==null?void 0:n.negocio)??null,E="",x="todos";const t=new Date;b=t.getFullYear(),l=t.getMonth()+1,y=null,w=!1,L=!1,u.set("despesas",[]),h(),await _(!0)}export{te as initDespesas};
+    `}),await new Promise(o=>setTimeout(o,60));const i=document.getElementById("form-despesa");i&&(i.addEventListener("submit",async o=>{o.preventDefault();const r=new FormData(i),p={id:(e==null?void 0:e.id)??H(),tipo:"despesa",status:r.get("status"),descricao:r.get("descricao"),valor:parseFloat(r.get("valor"))||0,data_vencimento:r.get("data_vencimento"),categoria:r.get("categoria")||null,negocio:r.get("negocio")||null,periodicidade:r.get("periodicidade")||null,parcelas:parseInt(r.get("parcelas"))||1,mes_ref:(r.get("data_vencimento")||"").slice(0,7)},m=i.querySelector("[type=submit]");m.disabled=!0,m.textContent="Salvando…";try{await R("lancamentos",p),u.patch("despesas",p.id,p),S.fechar(),z.ok(n?"Despesa criada!":"Despesa atualizada!"),h()}catch($){console.error($),z.err("Erro ao salvar: "+$.message),m.disabled=!1,m.textContent=n?"Criar":"Salvar"}}),(d=document.getElementById("btn-excluir-desp"))==null||d.addEventListener("click",async()=>{if(await S.confirmar(`Excluir "${e.descricao}"? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"}))try{await Y("lancamentos",e.id),u.remove("despesas",e.id),S.fechar(),z.ok("Despesa excluída."),h()}catch(r){z.err("Erro ao excluir: "+r.message)}}))}async function te(e){var n;c=e,g=((n=A.params())==null?void 0:n.negocio)??null,E="",x="todos";const t=new Date;b=t.getFullYear(),l=t.getMonth()+1,y=null,w=!1,L=!1,u.set("despesas",[]),h(),await _(!0)}export{te as initDespesas};

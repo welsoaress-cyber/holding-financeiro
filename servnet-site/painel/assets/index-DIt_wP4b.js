@@ -125,7 +125,7 @@ import{r as O,s as f,f as E,a as I,u as P,t as k,N as T,h as q,b as A,i as V,e a
             Status
             <select name="status" style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);">
               <option value="pendente"  ${o.status==="pendente"?"selected":""}>⏰ Pendente</option>
-              <option value="pago"      ${o.status==="pago"?"selected":""}>✅ Recebido</option>
+              <option value="recebido"  ${o.status==="recebido"?"selected":""}>✅ Recebido</option>
               <option value="cancelado" ${o.status==="cancelado"?"selected":""}>❌ Cancelado</option>
             </select>
           </label>
@@ -167,6 +167,24 @@ import{r as O,s as f,f as E,a as I,u as P,t as k,N as T,h as q,b as A,i as V,e a
             style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
         </label>
 
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
+            Periodicidade
+            <select name="periodicidade" style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);">
+              <option value="" ${!(o.periodicidade)?"selected":""}>Única vez</option>
+              <option value="mensal" ${(o.periodicidade||"")==="mensal"?"selected":""}>Todo mês</option>
+              <option value="semanal" ${(o.periodicidade||"")==="semanal"?"selected":""}>Toda semana</option>
+              <option value="anual" ${(o.periodicidade||"")==="anual"?"selected":""}>Todo ano</option>
+            </select>
+          </label>
+          <label style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;">
+            Parcelas
+            <input name="parcelas" type="number" min="1" max="120" value="${o.parcelas||1}"
+              placeholder="1"
+              style="padding:8px;border-radius:8px;border:1px solid var(--border,#e5e7eb);font-size:14px;background:var(--bg-card);color:var(--text);" />
+          </label>
+        </div>
+
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
           ${a?"":`<button type="button" id="btn-excluir-rec" style="
             padding:8px 16px;border-radius:8px;border:1px solid #dc2626;
@@ -179,4 +197,4 @@ import{r as O,s as f,f as E,a as I,u as P,t as k,N as T,h as q,b as A,i as V,e a
           ">${a?"Criar":"Salvar"}</button>
         </div>
       </form>
-    `}),await new Promise(r=>setTimeout(r,60));const d=document.getElementById("form-receita");d&&(d.addEventListener("submit",async r=>{r.preventDefault();const i=new FormData(d),p={id:(e==null?void 0:e.id)??W(),tipo:"receita",status:i.get("status"),descricao:i.get("descricao"),valor:parseFloat(i.get("valor"))||0,data_vencimento:i.get("data_vencimento"),categoria:i.get("categoria")||null,negocio:i.get("negocio")||null,mes_ref:(i.get("data_vencimento")||"").slice(0,7)},v=d.querySelector("[type=submit]");v.disabled=!0,v.textContent="Salvando…";try{await Y("lancamentos",p),f.patch("receitas",p.id,p),_.fechar(),k.ok(a?"Receita criada!":"Receita atualizada!"),h()}catch(z){console.error(z),k.err("Erro ao salvar: "+z.message),v.disabled=!1,v.textContent=a?"Criar":"Salvar"}}),(u=document.getElementById("btn-excluir-rec"))==null||u.addEventListener("click",async()=>{if(await _.confirmar(`Excluir "${e.descricao}"? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"}))try{await H("lancamentos",e.id),f.remove("receitas",e.id),_.fechar(),k.ok("Receita excluída."),h()}catch(i){k.err("Erro ao excluir: "+i.message)}}))}async function oe(e){var a;l=e,b=((a=O.params())==null?void 0:a.negocio)??null,m="",y="todos";const t=new Date;g=t.getFullYear(),s=t.getMonth()+1,$=null,w=!1,C=!1,f.set("receitas",[]),h(),await S(!0)}export{oe as initReceitas};
+    `}),await new Promise(r=>setTimeout(r,60));const d=document.getElementById("form-receita");d&&(d.addEventListener("submit",async r=>{r.preventDefault();const i=new FormData(d),p={id:(e==null?void 0:e.id)??W(),tipo:"receita",status:i.get("status"),descricao:i.get("descricao"),valor:parseFloat(i.get("valor"))||0,data_vencimento:i.get("data_vencimento"),categoria:i.get("categoria")||null,negocio:i.get("negocio")||null,periodicidade:i.get("periodicidade")||null,parcelas:parseInt(i.get("parcelas"))||1,mes_ref:(i.get("data_vencimento")||"").slice(0,7)},v=d.querySelector("[type=submit]");v.disabled=!0,v.textContent="Salvando…";try{await Y("lancamentos",p),f.patch("receitas",p.id,p),_.fechar(),k.ok(a?"Receita criada!":"Receita atualizada!"),h()}catch(z){console.error(z),k.err("Erro ao salvar: "+z.message),v.disabled=!1,v.textContent=a?"Criar":"Salvar"}}),(u=document.getElementById("btn-excluir-rec"))==null||u.addEventListener("click",async()=>{if(await _.confirmar(`Excluir "${e.descricao}"? Esta ação não pode ser desfeita.`,{textoBotao:"Excluir",tipo:"danger"}))try{await H("lancamentos",e.id),f.remove("receitas",e.id),_.fechar(),k.ok("Receita excluída."),h()}catch(i){k.err("Erro ao excluir: "+i.message)}}))}async function oe(e){var a;l=e,b=((a=O.params())==null?void 0:a.negocio)??null,m="",y="todos";const t=new Date;g=t.getFullYear(),s=t.getMonth()+1,$=null,w=!1,C=!1,f.set("receitas",[]),h(),await S(!0)}export{oe as initReceitas};
