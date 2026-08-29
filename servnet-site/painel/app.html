@@ -165,24 +165,15 @@
     .tb-dropdown .logout { color: #f87171; }
     .tb-dropdown .logout:hover { background: rgba(248,113,113,0.1); color: #f87171; }
 
-    /* ═══ MAIN SCREEN ═══════════════════════════════════════ */
-    #main-screen {
-      position: fixed; inset: 0; z-index: 10;
-      display: none; flex-direction: column;
-      align-items: center; justify-content: flex-start;
-      padding: 116px 24px 20px;
-      overflow-y: auto;
+    /* ═══ PAGE CONTENT ══════════════════════════════════════ */
+    #page-content {
+      position: fixed; top: 58px; left: 0; right: 0; bottom: 0;
+      z-index: 10; display: none; overflow-y: auto;
+      background: var(--bg);
     }
-    .home-greeting {
-      position: fixed; top: 62px; left: 0; right: 0;
-      text-align: center; margin: 0; z-index: 5; pointer-events: none;
+    @media (max-width: 640px) {
+      #page-content { top: 58px; bottom: 60px; }
     }
-    .home-greeting h1 {
-      font-family: var(--font-head); font-size: 16px; font-weight: 600;
-      color: var(--text-2); margin-bottom: 0; display: inline;
-    }
-    .home-greeting p { font-size: 12px; color: var(--text-3); display: inline; margin-left: 8px; }
-    .home-greeting .accent { color: var(--accent); }
 
 
     /* ═══ v2.5.3 — clean com vida: cores suavizadas ~20% ══════ */
@@ -821,19 +812,10 @@
   </div>
 </header>
 
-<!-- Tela principal: hex + alt grid -->
-<div id="main-screen">
-  <div class="home-greeting">
-    <h1>Bom dia, <span class="accent" id="greeting-name">Gestor</span></h1>
-  </div>
-  <!-- Hex navigation grid -->
-  <div id="hex-grid"></div>
-  <!-- Alternate layout grid -->
-  <div id="alt-grid"></div>
-</div>
-
-<!-- Camada de janelas flutuantes -->
-<div id="windows-layer"></div>
+<!-- Área principal de conteúdo (substitui hex grid + janelas flutuantes) -->
+<div id="page-content"></div>
+<!-- greeting-name: mantido oculto para compat com app-CkIaDDom.js -->
+<span id="greeting-name" hidden></span>
 
 <!-- Mobile: barra de navegação inferior -->
 <nav id="mobile-bottom-nav">
@@ -1349,36 +1331,35 @@ document.addEventListener('click', () => {
 })();
 
 /* ══════════════════════════════════════════════════════════
-   WINDOW MANAGER — janelas flutuantes
+   PAGE ROUTER — renderiza módulos em tela cheia
 ══════════════════════════════════════════════════════════ */
-const _layer    = document.getElementById('windows-layer');
-const _wins     = new Map();
-let   _zTop     = 500;
+let _currentView = null;
 
 window.openModule = function(view, label, icon, color) {
-  if (_wins.has(view)) { activateWin(view); return; }
+  const pageContent = document.getElementById('page-content');
+  if (!pageContent) return;
 
-  const mobile = isMobile();
-  const offset = mobile ? 0 : Math.min(_wins.size * 28, 120);
-  const el = buildWin({ view, label, icon, color, offset });
-  _wins.set(view, { el, view, label, color });
-  _layer.appendChild(el);
-  activateWin(view);
+  _currentView = view;
 
-  el.style.opacity   = '0';
-  el.style.transform = `translate(-50%,-50%) translate(${offset}px,${offset}px) scale(0.92)`;
-  requestAnimationFrame(() => {
-    el.style.transition = 'transform 0.22s cubic-bezier(0.2,0,0.2,1), opacity 0.22s ease, box-shadow 0.25s, border-color 0.25s';
-    el.style.transform  = `translate(-50%,-50%) translate(${offset}px,${offset}px)`;
-    el.style.opacity    = '1';
+  // Atualiza sidebar item ativo
+  document.querySelectorAll('.sb-item').forEach(b => {
+    const oc = b.getAttribute('onclick') || '';
+    b.classList.toggle('active', oc.includes(`'${view}'`) || oc.includes(`"${view}"`));
   });
-
   document.querySelectorAll('.bn-item').forEach(b => {
     b.classList.toggle('active', b.dataset.bn === view);
   });
 
+  // Atualiza título
+  const titleEl = document.getElementById('tb-page-title');
+  if (titleEl) titleEl.textContent = view === 'dashboard' ? '' : label;
+
+  // Loading placeholder
+  pageContent.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--text-2,#94a3b8);font-size:14px;gap:10px;"><span style="display:inline-block;width:18px;height:18px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;"></span>Carregando ${label}…</div>`;
+  pageContent.style.display = 'block';
+
   window.dispatchEvent(new CustomEvent('gt:loadModule', {
-    detail: { view, contentEl: el.querySelector('.win-body > div') }
+    detail: { view, contentEl: pageContent }
   }));
 };
 
