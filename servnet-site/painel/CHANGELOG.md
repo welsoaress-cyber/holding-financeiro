@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.23 — 2026-08-29
+
+### Alterado
+- **UX — tela cheia**: substituída arquitetura de janelas flutuantes por roteamento de página inteira — módulos abrem em `#page-content` (tela cheia), sem sobreposições
+- **Dashboard pós-login**: após autenticação, o painel abre direto no Resumo (dashboard) em vez de exibir grade de ícones hex
+- **`window.openModule`**: reescrito para injetar conteúdo em `#page-content` via evento `gt:loadModule`
+- Versão bumped 2.9.22 → 2.9.23
+
 ## v2.9.22 — 2026-08-29
 
 ### Corrigido
