@@ -1,5 +1,5 @@
 import{c as H}from"./supabase-DthfXWp1.js";
-const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.24",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
+const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.25",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
 function L(t){($[t]||new Set).forEach(e=>{try{e(u[t])}catch(o){console.error("[store notify]",t,o)}})}
 const N={get(t){return u[t]},set(t,e){u[t]=e,L(t)},patch(t,e,o){const a=Array.isArray(u[t])?u[t]:[],n=a.findIndex(r=>r.id===e);n>=0?a[n]={...a[n],...o}:a.push({id:e,...o}),u[t]=a,L(t)},remove(t,e){const o=Array.isArray(u[t])?u[t]:[];u[t]=o.filter(a=>a.id!==e),L(t)},subscribe(t,e){return $[t]||($[t]=new Set),$[t].add(e),u[t]!==void 0&&e(u[t]),()=>this.unsubscribe(t,e)},unsubscribe(t,e){var o;(o=$[t])==null||o.delete(e)}};
 const h={view:"dashboard",user:null,mesNav:{ano:new Date().getFullYear(),mes:new Date().getMonth()}};
@@ -150,7 +150,7 @@ const RSM_STYLE = `
 .rsm-ql-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--rsm-mut);line-height:1;padding:4px}
 .rsm-ql-form{display:flex;flex-direction:column;gap:12px}
 .rsm-ql-lbl{font-size:11px;font-weight:700;color:var(--rsm-mut);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
-.rsm-ql-inp{width:100%;border:1.5px solid var(--rsm-brd);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--rsm-txt);background:var(--rsm-bg);box-sizing:border-box;transition:border-color .15s}
+.rsm-ql-inp{width:100%;border:1.5px solid var(--rsm-brd);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--rsm-txt);background:rgba(128,128,128,.1);box-sizing:border-box;transition:border-color .15s}
 .rsm-ql-inp:focus{outline:none;border-color:var(--focus-color,#6366f1)}
 .rsm-ql-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .rsm-ql-st-grp{display:flex;gap:8px}
