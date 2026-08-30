@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.24 — 2026-08-30
+
+### Segurança
+- **RLS ativado** em todas as tabelas: `fin_*`, `lancamentos`, `user_profiles`, `cli_clientes`, `cli_planos` — cada usuário vê apenas seus próprios dados
+- **`mp-gerar-pix`**: exige JWT Supabase ou `x-function-secret` — rejeita chamadas não autenticadas (401)
+- **`whatsapp-lembretes`**: exige `CRON_SECRET` no header — acesso bloqueado sem autenticação
+- **`mp-webhook`**: valida assinatura HMAC x-signature do Mercado Pago — rejeita notificações forjadas (403)
+- Diagnóstico GET do mp-webhook protegido com `CRON_SECRET`
+- Instruções de secrets em `supabase/SECURITY_SECRETS.md`
+- Versão bumped 2.9.23 → 2.9.24
+
 ## v2.9.23 — 2026-08-29
 
 ### Alterado

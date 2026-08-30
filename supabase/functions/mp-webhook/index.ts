@@ -4,9 +4,32 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // ----------------------------------------------------------------
 // Variáveis de ambiente
 // ----------------------------------------------------------------
-const SB_URL    = Deno.env.get('SUPABASE_URL')!
-const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const MP_TOKEN  = Deno.env.get('MP_ACCESS_TOKEN') || ''
+const SB_URL         = Deno.env.get('SUPABASE_URL')!
+const SB_SECRET      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const MP_TOKEN       = Deno.env.get('MP_ACCESS_TOKEN') || ''
+const MP_WEBHOOK_SECRET = Deno.env.get('MP_WEBHOOK_SECRET') || ''  // set via: supabase secrets set MP_WEBHOOK_SECRET=<valor do MP Dashboard>
+const ADMIN_TOKEN    = Deno.env.get('CRON_SECRET') || ''           // reutiliza CRON_SECRET para chamadas manuais GET
+
+// ─── Valida assinatura HMAC do Mercado Pago ───────────────────────────────
+// Ref: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+async function validarAssinaturaMP(req: Request, body: string, url: URL): Promise<boolean> {
+  if (!MP_WEBHOOK_SECRET) return true  // sem secret configurado: aceita (modo dev)
+  const xSig  = req.headers.get('x-signature') || ''
+  const xReqId = req.headers.get('x-request-id') || ''
+  const dataId = url.searchParams.get('data.id') || ''
+
+  // Formato: ts=<timestamp>,v1=<hash>
+  const parts = Object.fromEntries(xSig.split(',').map(p => p.split('=')))
+  const ts    = parts['ts'] || ''
+  const v1    = parts['v1'] || ''
+  if (!ts || !v1) return false
+
+  const manifest = `id:${dataId};request-id:${xReqId};ts:${ts};`
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(MP_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(manifest))
+  const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+  return hex === v1
+}
 
 // ----------------------------------------------------------------
 // Processa baixa automática para um paymentId do Mercado Pago
@@ -112,6 +135,16 @@ async function processarBaixa(paymentId: string): Promise<{ ok: boolean; msg: st
 serve(async (req) => {
   const url = new URL(req.url)
 
+  // ── Autenticação por role ─────────────────────────────────────────────────
+  // GET (diagnóstico manual): exige CRON_SECRET
+  // POST (webhook MP): valida assinatura HMAC do MP
+  if (req.method === 'GET' && ADMIN_TOKEN) {
+    const provided = (req.headers.get('Authorization') || '').replace('Bearer ', '')
+    if (provided !== ADMIN_TOKEN) {
+      return new Response(JSON.stringify({ ok: false, msg: 'Não autorizado' }), { status: 401 })
+    }
+  }
+
   // ----------------------------------------------------------------
   // GET → diagnóstico e recuperação manual
   // ?paymentId=xxx  → busca pagamento no MP e processa baixa
@@ -188,12 +221,19 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = await req.json()
-  } catch {
-    return new Response('Bad request', { status: 400 })
+  // Lê body como texto para validação de assinatura
+  let bodyText: string
+  try { bodyText = await req.text() } catch { return new Response('Bad request', { status: 400 }) }
+
+  // Valida assinatura HMAC do Mercado Pago
+  const assinaturaValida = await validarAssinaturaMP(req, bodyText, url)
+  if (!assinaturaValida) {
+    console.warn('⚠️ Assinatura MP inválida — requisição rejeitada')
+    return new Response('Forbidden', { status: 403 })
   }
+
+  let body: Record<string, unknown>
+  try { body = JSON.parse(bodyText) } catch { return new Response('Bad request', { status: 400 }) }
 
   console.log('📩 MP Webhook recebido:', JSON.stringify(body))
 
