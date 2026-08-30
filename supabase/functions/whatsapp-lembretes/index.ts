@@ -10,6 +10,7 @@ const EVO_URL       = Deno.env.get('EVOLUTION_API_URL') || 'http://163.176.122.1
 const EVO_KEY       = Deno.env.get('EVOLUTION_API_KEY') || 'servnet-evo-2026'
 const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
 const MP_TOKEN      = Deno.env.get('MP_ACCESS_TOKEN') || ''
+const CRON_SECRET   = Deno.env.get('CRON_SECRET') || ''   // set via: supabase secrets set CRON_SECRET=<valor>
 
 // ----------------------------------------------------------------
 // Normaliza telefone para formato internacional (55XXXXXXXXXXX)
@@ -273,6 +274,16 @@ serve(async (req) => {
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS })
+  }
+
+  // ── Autenticação: exige CRON_SECRET no header Authorization ─────────────
+  if (CRON_SECRET) {
+    const auth = req.headers.get('Authorization') || ''
+    const secret = req.headers.get('x-cron-secret') || ''
+    const provided = auth.startsWith('Bearer ') ? auth.slice(7) : secret
+    if (provided !== CRON_SECRET) {
+      return new Response(JSON.stringify({ ok: false, msg: 'Não autorizado' }), { status: 401, headers: CORS_HEADERS })
+    }
   }
 
   // Filtro opcional: clienteId pode vir como ?clienteId=xxx (GET/cron)

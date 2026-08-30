@@ -1,19 +1,44 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const MP_TOKEN  = Deno.env.get('MP_ACCESS_TOKEN')!
-const SB_URL    = Deno.env.get('SUPABASE_URL')!
-const SB_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const MP_TOKEN       = Deno.env.get('MP_ACCESS_TOKEN')!
+const SB_URL         = Deno.env.get('SUPABASE_URL')!
+const SB_SECRET      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SB_ANON        = Deno.env.get('SUPABASE_ANON_KEY')!
+const FUNCTION_SECRET = Deno.env.get('FUNCTION_SECRET') || ''   // set via: supabase secrets set FUNCTION_SECRET=<valor>
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, apikey, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, apikey, Authorization, x-function-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  // ── Autenticação: aceita JWT do Supabase OU x-function-secret ───────────
+  const authHeader = req.headers.get('Authorization') || ''
+  const funcSecret = req.headers.get('x-function-secret') || ''
+
+  let autenticado = false
+
+  // Opção 1: secret compartilhado (admin panel / portal)
+  if (FUNCTION_SECRET && funcSecret === FUNCTION_SECRET) {
+    autenticado = true
+  }
+
+  // Opção 2: JWT válido do Supabase
+  if (!autenticado && authHeader.startsWith('Bearer ')) {
+    const jwt = authHeader.slice(7)
+    const sbCheck = createClient(SB_URL, SB_ANON, { global: { headers: { Authorization: `Bearer ${jwt}` } } })
+    const { data: { user } } = await sbCheck.auth.getUser()
+    if (user) autenticado = true
+  }
+
+  if (!autenticado) {
+    return new Response(JSON.stringify({ ok: false, msg: 'Não autorizado' }), { status: 401, headers: CORS })
+  }
 
   try {
     const { cliente_id, contrato_id, valor, descricao, mes_ref, lancamento_id: lancamento_id_existente } = await req.json()
