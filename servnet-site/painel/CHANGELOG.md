@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.42 — 2026-08-31
+
+### Alterado
+- **Contas a Receber agrupado por cliente**: cartão com 👤 nome do cliente, nº de cobranças e total em aberto; os serviços dele listados dentro (plano + negócio, vencimento, parcela, status), cada um com ✓/↩ e ⋮
+
 ## v2.9.41 — 2026-08-31
 
 ### Alterado

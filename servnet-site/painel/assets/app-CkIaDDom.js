@@ -885,21 +885,40 @@ _['receber']=async function(el){
     const pend=doMes.filter(l=>l.status!=='pago'&&l.status!=='recebido');
     const receb=doMes.filter(l=>l.status==='pago'||l.status==='recebido');
     const soma=a=>a.reduce((s,l)=>s+(Number(l.valor)||0),0);
-    const rows=doMes.map(l=>{
+    // ── Agrupa por cliente: nome como cabeçalho, serviços embaixo ──
+    const grupos=new Map();
+    for(const l of doMes){
+      const key=l.clienteId||l.cliente||l.clienteNome||('sem-'+(l.descricao||l.id));
+      if(!grupos.has(key))grupos.set(key,{nome:l.cliente||l.clienteNome||l.descricao||'—',itens:[]});
+      grupos.get(key).itens.push(l);
+    }
+    const itemRow=l=>{
       const ok=l.status==='pago'||l.status==='recebido';
       const atrasado=!ok&&l.data_vencimento&&l.data_vencimento<hoje;
       const cor=ok?'#059669':atrasado?'#dc2626':'#d97706';
       const lbl=ok?'Recebido':atrasado?'Atrasado':'Pendente';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border,#e5e7eb)">
-        <div style="width:8px;height:36px;border-radius:4px;background:${cor};flex-shrink:0"></div>
+      const rotulo=l.plano||String(l.descricao||'').split(' — ')[0]||'—';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 22px;border-top:1px solid var(--border,#e5e7eb)">
+        <div style="width:6px;height:30px;border-radius:3px;background:${cor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.descricao||l.cliente||'—')}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span></div>
         </div>
-        <div style="font-size:14px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
+        <div style="font-size:13px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
         ${ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
             :`<button class="cr-ok" data-id="${l.id}" title="Marcar recebido" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
         <button class="cr-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>
+      </div>`;
+    };
+    const rows=[...grupos.values()].map(g=>{
+      const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
+      return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 14px">
+          <span style="font-size:16px">👤</span>
+          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${g.itens.length} cobrança${g.itens.length>1?'s':''}${totPend>0?` · <b style=\"color:#d97706\">${fmt(totPend)} em aberto</b>`:''}</div>
+        </div>
+        ${g.itens.map(itemRow).join('')}
       </div>`;
     }).join('');
     el.innerHTML=`
