@@ -918,12 +918,13 @@ _['receber']=async function(el){
     const rows=[...grupos.values()].map(g=>{
       const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
       const temAglut=g.itens.some(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
-      const podeAglut=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').length>1;
+      const totPago=g.itens.filter(l=>l.status==='pago'||l.status==='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const nCob=g.itens.reduce((s,l)=>s+((l.aglutinado&&Array.isArray(l.itens))?l.itens.length:1),0);
       return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
         <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           <span style="font-size:16px">👤</span>
-          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)} <span style="font-size:11px;font-weight:500;color:#6366f1">${temAglut?'▸ expandir':podeAglut?'▾ aglutinar':''}</span></div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${g.itens.length} cobrança${g.itens.length>1?'s':''}${totPend>0?` · <b style=\"color:#d97706\">${fmt(totPend)} em aberto</b>`:''}</div>
+          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${temAglut?'aglutinado · ':''}${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
         </div>
         ${g.itens.map(itemRow).join('')}
       </div>`;

@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.49 — 2026-08-31
+
+### Alterado
+- **Cabeçalho do cliente em Contas a Receber**: removido o rótulo aglutinar/expandir (o clique no nome continua alternando); resumo permanente no título: "aglutinado · N cobranças · R$ X em aberto · R$ Y recebido" — a contagem considera os itens dentro da fatura aglutinada
+
 ## v2.9.48 — 2026-08-31
 
 ### Alterado — Resumo
