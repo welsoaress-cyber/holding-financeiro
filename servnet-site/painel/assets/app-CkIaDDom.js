@@ -1002,18 +1002,30 @@ _['receber']=async function(el){
         <button class="cr-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>
       </div>`;
     };
-    const rows=[...grupos.values()].map(g=>{
+    const rows=[...grupos.values()].sort((a,b)=>{
+      // Ordena grupos: vencimento mais próximo → nome
+      const vA=[...a.itens].map(l=>l.data_vencimento||'9').sort()[0];
+      const vB=[...b.itens].map(l=>l.data_vencimento||'9').sort()[0];
+      if(vA!==vB)return vA.localeCompare(vB);
+      return String(a.nome||'').localeCompare(String(b.nome||''));
+    }).map(g=>{
       const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
       const temAglut=g.itens.some(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
       const totPago=g.itens.filter(l=>l.status==='pago'||l.status==='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
       const nCob=g.itens.reduce((s,l)=>s+((l.aglutinado&&Array.isArray(l.itens))?l.itens.length:1),0);
+      // Ordena itens dentro do grupo: vencimento → plano
+      const itensSorted=[...g.itens].sort((a,b)=>{
+        const vA=a.data_vencimento||'9';const vB=b.data_vencimento||'9';
+        if(vA!==vB)return vA.localeCompare(vB);
+        return String(a.plano||a.descricao||'').localeCompare(String(b.plano||b.descricao||''));
+      });
       return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
         <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           <span style="font-size:16px">👤</span>
           <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${temAglut?'aglutinado · ':''}${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
         </div>
-        ${g.itens.map(itemRow).join('')}
+        ${itensSorted.map(itemRow).join('')}
       </div>`;
     }).join('');
     el.innerHTML=`

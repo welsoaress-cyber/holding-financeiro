@@ -828,3 +828,7 @@ Toda alteração no painel exige atualização de versão e registro aqui.
 - Hex nav, alternância de tema, 4 modos de layout, login redesenhado,
   RBAC por perfil (tabela user_profiles), clientes multi-negócio,
   CRUD de planos.
+
+## v2.9.66 — 2026-08-31
+### Melhorias
+- **Contas a Receber**: lista ordenada por dia de vencimento → nome → plano (era agrupada por cliente sem ordenação consistente)
