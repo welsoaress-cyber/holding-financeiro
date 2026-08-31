@@ -917,12 +917,13 @@ _['receber']=async function(el){
     };
     const rows=[...grupos.values()].map(g=>{
       const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const temAglut=g.itens.some(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
+      const podeAglut=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').length>1;
       return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 14px">
+        <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           <span style="font-size:16px">👤</span>
-          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
+          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)} <span style="font-size:11px;font-weight:500;color:#6366f1">${temAglut?'▸ expandir':podeAglut?'▾ aglutinar':''}</span></div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${g.itens.length} cobrança${g.itens.length>1?'s':''}${totPend>0?` · <b style=\"color:#d97706\">${fmt(totPend)} em aberto</b>`:''}</div>
-          ${g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').length>1?`<button class="cr-aglut" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="Aglutinar cobranças pendentes do mês em uma só" style="background:#6366f115;border:1px solid #6366f144;border-radius:8px;font-size:12px;cursor:pointer;padding:6px 10px;color:#6366f1;font-weight:700">🧾 Aglutinar</button>`:''}
         </div>
         ${g.itens.map(itemRow).join('')}
       </div>`;
@@ -951,17 +952,31 @@ _['receber']=async function(el){
     el.querySelector('#cr-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
     el.querySelector('#cr-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
     el.querySelector('#cr-novo').addEventListener('click',()=>formCobranca());
-    el.querySelectorAll('.cr-aglut').forEach(b=>b.addEventListener('click',async()=>{
+    el.querySelectorAll('.cr-toggle').forEach(b=>b.addEventListener('click',async()=>{
       const key=b.dataset.key;
       const grupo=[...grupos.values()].find(g=>String(g.itens[0].clienteId||g.nome)===key);
       if(!grupo)return;
-      const pend=grupo.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
-      if(pend.length<2)return;
-      const total=pend.reduce((s,l)=>s+(Number(l.valor)||0),0);
-      const rotulos=pend.map(l=>l.plano||String(l.descricao||'').split(' — ')[0]);
-      if(!confirm('Aglutinar '+pend.length+' cobranças de '+grupo.nome+' em uma única fatura de '+fmt(total)+'?\n\nItens: '+rotulos.join(' + ')))return;
-      b.disabled=true;
+      const merged=grupo.itens.find(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
       try{
+        if(merged){
+          // ── Expandir: restaura as originais e remove a fatura única ──
+          const orig=todosCache.filter(x=>x.aglutinadoEm===merged.id);
+          for(const x of orig){
+            const {id,...d}=x;
+            delete d.inativo;delete d.aglutinadoEm;
+            const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+            if(error)throw error;
+          }
+          const {error:eDel}=await sb.from('lancamentos').delete().eq('id',merged.id).eq('user_id',uid);
+          if(eDel)throw eDel;
+          toast.ok('Expandido: '+orig.length+' cobranças separadas de volta');render();
+          return;
+        }
+        const pend=grupo.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
+        if(pend.length<2)return;
+        // ── Aglutinar ──
+        const total=pend.reduce((s,l)=>s+(Number(l.valor)||0),0);
+        const rotulos=pend.map(l=>l.plano||String(l.descricao||'').split(' — ')[0]);
         const base=pend[0];
         const venc=pend.map(l=>l.data_vencimento).sort()[0];
         const novoId=crypto.randomUUID();
@@ -978,8 +993,8 @@ _['receber']=async function(el){
           const {error:e2}=await sb.from('lancamentos').update({dados:{...d,inativo:true,aglutinadoEm:novoId},updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
           if(e2)throw e2;
         }
-        toast.ok('Cobranças aglutinadas em uma fatura de '+fmt(total)+' ✅');render();
-      }catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+        toast.ok('Aglutinado em uma fatura de '+fmt(total)+' ✅');render();
+      }catch(err){toast.err('Erro: '+err.message);}
     }));
     el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',async()=>{
       const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;

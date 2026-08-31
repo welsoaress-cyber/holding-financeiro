@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.47 — 2026-08-31
+
+### Alterado
+- **Aglutinar/expandir com clique no nome do cliente**: separadas → clique aglutina em fatura única (▾); aglutinada → clique expande de volta, restaurando as cobranças originais e removendo a fatura única (▸). Botão 🧾 removido
+
 ## v2.9.46 — 2026-08-31
 
 ### Alterado
