@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.60 — 2026-08-31
+
+### Corrigido
+- **Dropdowns ilegíveis no modo escuro**: menus nativos de select e calendário de datas agora seguem o tema (`color-scheme`) — opções escuras no tema escuro, claras no claro
+
 ## v2.9.59 — 2026-08-31
 
 ### Alterado — Importar Planilha
