@@ -589,10 +589,7 @@ _['negocios']=async function(el){
       </div>
       <form id="pl-form" style="display:flex;flex-direction:column;gap:11px">
         <div><label class="cl-lbl">Nome do plano *</label><input class="cl-inp" name="nome" required value="${esc(p.nome||'')}" placeholder="Ex: Fibra 300MB"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="cl-lbl">Valor mensal (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${p.valor??''}" placeholder="79.90"></div>
-          <div><label class="cl-lbl">Dia vencimento padrão</label><input class="cl-inp" name="diaVencimento" type="number" min="1" max="28" value="${p.diaVencimento??'10'}"></div>
-        </div>
+        <div><label class="cl-lbl">Valor mensal (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${p.valor??''}" placeholder="79.90"></div>
         <div><label class="cl-lbl">Detalhes (opcional)</label><input class="cl-inp" name="velocidade" value="${esc(p.velocidade||'')}" placeholder="Ex: 300MB fibra / casa 2 quartos"></div>
         <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar plano</button>
       </form>
@@ -604,7 +601,7 @@ _['negocios']=async function(el){
       e.preventDefault();
       const fd=new FormData(e.target);
       const dados={nome:fd.get('nome').trim(),valor:parseFloat(fd.get('valor'))||0,
-        diaVencimento:parseInt(fd.get('diaVencimento'))||10,velocidade:(fd.get('velocidade')||'').trim(),
+        velocidade:(fd.get('velocidade')||'').trim(),
         negocioId:negocio.id,negocio:negocio.nome,ativo:p.ativo!==false};
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
       const {error}=await sb.from('cli_planos').upsert({id:p.id||crypto.randomUUID(),user_id:uid,dados,updated_at:new Date().toISOString()},{onConflict:'id'});
@@ -624,7 +621,7 @@ _['negocios']=async function(el){
           <span style="font-size:15px">📦</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:var(--text,#111)">${esc(p.nome)}</div>
-            <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${fmt(p.valor)}/mês · venc. dia ${esc(p.diaVencimento||10)}${p.velocidade?' · '+esc(p.velocidade):''}</div>
+            <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${fmt(p.valor)}/mês${p.velocidade?' · '+esc(p.velocidade):''}</div>
           </div>
           <button class="ng-pl-edit" data-id="${p.id}" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:var(--text-muted,#6b7280)">✏️</button>
           <button class="ng-pl-del" data-id="${p.id}" style="background:none;border:1px solid #fca5a5;border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:#dc2626">🗑️</button>
@@ -705,7 +702,7 @@ _['receber']=async function(el){
     }catch(e){}
     const hoje=new Date().toISOString().slice(0,10);
     const optCli=clientes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-    const optPl=planos.map(p=>`<option value="${p.id}" data-valor="${p.valor||''}" data-dia="${p.diaVencimento||''}" data-negocio="${esc(p.negocio||'')}" data-nome="${esc(p.nome||'')}">${esc(p.nome)} — ${fmt(p.valor)} (${esc(p.negocio||'')})</option>`).join('');
+    const optPl=planos.map(p=>`<option value="${p.id}" data-valor="${p.valor||''}" data-negocio="${esc(p.negocio||'')}" data-nome="${esc(p.nome||'')}">${esc(p.nome)} — ${fmt(p.valor)} (${esc(p.negocio||'')})</option>`).join('');
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
@@ -747,7 +744,6 @@ _['receber']=async function(el){
     selPl.addEventListener('change',()=>{
       const o=selPl.selectedOptions[0];if(!o||!o.value)return;
       if(o.dataset.valor)inpV.value=o.dataset.valor;
-      if(o.dataset.dia){const m=inpD.value?inpD.value.slice(0,7):hoje.slice(0,7);inpD.value=m+'-'+String(o.dataset.dia).padStart(2,'0');}
     });
     const selRec=ov.querySelector('#cr-rec'),repW=ov.querySelector('#cr-repwrap');
     selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});

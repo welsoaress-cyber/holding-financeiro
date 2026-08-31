@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.34 — 2026-08-31
+
+### Alterado
+- **Plano sem dia de vencimento**: removido "Dia vencimento padrão" do cadastro de plano — vencimento pertence ao vínculo plano↔cliente, definido no campo "1º vencimento" de Contas a Receber
+
 ## v2.9.33 — 2026-08-31
 
 ### Alterado
