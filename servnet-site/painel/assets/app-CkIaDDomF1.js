@@ -3,7 +3,7 @@ import"./modulepreload-polyfill-B5Qt9EMX.js";import{initAuth as h}from"./auth-8d
 /* ── Contas module inline ── */
 _['contas']=async function(el){
   const mod=await import('./page-dashboard-Dbqm2OjXb.js');
-  const {j,T,w,ht,h,X}=mod;
+  const {i:j,u:T,f:w,h:ht,k:h,t:X}=mod;
   const hoje=ht();
   let mesNav={...h.mesNav};
   let _contaFoco=null;
@@ -563,6 +563,438 @@ _['clientes']=async function(el){
       try{const ok=await gerarMensalidade(c,mes,val);if(ok)toast.ok('Mensalidade '+mes+' gerada! Já aparece no portal do cliente. ✅');}
       catch(err){toast.err('Erro: '+err.message);}
       b.disabled=false;
+    }));
+  }
+  await render();
+};
+;
+/* ── Tipos de Negócio + Planos module inline ── */
+_['negocios']=async function(el){
+  const mod=await import('./page-dashboard-Dbqm2OjXb.js');
+  const sb=mod.j, toast=mod.t, fmt=mod.f;
+  const {data:{user}}=await sb.auth.getUser();
+  const uid=user&&user.id;
+  if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  async function listNeg(){
+    const {data,error}=await sb.from('negocios').select('*').eq('user_id',uid);
+    if(error)throw error;
+    return (data||[]).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||'')));
+  }
+  async function listPlanos(){
+    const {data,error}=await sb.from('cli_planos').select('*').eq('user_id',uid);
+    if(error)throw error;
+    return (data||[]).map(r=>({id:r.id,...(r.dados||{})}));
+  }
+
+  function formNeg(neg){
+    const nome=prompt(neg?'Editar tipo de negócio:':'Nome do tipo de negócio (ex: ServNet, Holding, Aluguéis):',neg?neg.nome:'');
+    if(!nome||!nome.trim())return;
+    sb.from('negocios').upsert({id:neg?neg.id:crypto.randomUUID(),user_id:uid,nome:nome.trim(),updated_at:new Date().toISOString()},{onConflict:'id'})
+      .then(({error})=>{if(error){toast.err('Erro: '+error.message+(error.message.includes('does not exist')?' — rode o SQL de estrutura que o Claude passou.':''));}else{toast.ok('Negócio salvo! ✅');render();}});
+  }
+
+  function formPlano(negocio,plano){
+    const p=plano||{};
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:#8b5cf6">${plano?'✏️ Editar plano':'📦 Novo plano'} — ${esc(negocio.nome)}</span>
+        <button id="pl-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="pl-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Nome do plano *</label><input class="cl-inp" name="nome" required value="${esc(p.nome||'')}" placeholder="Ex: Fibra 300MB"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor mensal (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${p.valor??''}" placeholder="79.90"></div>
+          <div><label class="cl-lbl">Dia vencimento padrão</label><input class="cl-inp" name="diaVencimento" type="number" min="1" max="28" value="${p.diaVencimento??'10'}"></div>
+        </div>
+        <div><label class="cl-lbl">Detalhes (opcional)</label><input class="cl-inp" name="velocidade" value="${esc(p.velocidade||'')}" placeholder="Ex: 300MB fibra / casa 2 quartos"></div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar plano</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#pl-x').addEventListener('click',()=>ov.remove());
+    ov.querySelector('#pl-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const dados={nome:fd.get('nome').trim(),valor:parseFloat(fd.get('valor'))||0,
+        diaVencimento:parseInt(fd.get('diaVencimento'))||10,velocidade:(fd.get('velocidade')||'').trim(),
+        negocioId:negocio.id,negocio:negocio.nome,ativo:p.ativo!==false};
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      const {error}=await sb.from('cli_planos').upsert({id:p.id||crypto.randomUUID(),user_id:uid,dados,updated_at:new Date().toISOString()},{onConflict:'id'});
+      if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='Salvar plano';}
+      else{toast.ok('Plano salvo! ✅');ov.remove();render();}
+    });
+  }
+
+  async function render(){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando…</div>';
+    let negs=[],planos=[];
+    try{[negs,planos]=await Promise.all([listNeg(),listPlanos()]);}
+    catch(e){el.innerHTML='<div style="padding:24px;color:#f87171;font-size:14px">Erro: '+esc(e.message)+'<br><br>Se a tabela não existir ou der "permission denied", rode o SQL de estrutura que o Claude te passou.</div>';return;}
+    const secs=negs.map(n=>{
+      const pls=planos.filter(p=>p.negocioId===n.id);
+      const plRows=pls.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 24px;border-top:1px solid var(--border,#e5e7eb)">
+          <span style="font-size:15px">📦</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text,#111)">${esc(p.nome)}</div>
+            <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${fmt(p.valor)}/mês · venc. dia ${esc(p.diaVencimento||10)}${p.velocidade?' · '+esc(p.velocidade):''}</div>
+          </div>
+          <button class="ng-pl-edit" data-id="${p.id}" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:var(--text-muted,#6b7280)">✏️</button>
+          <button class="ng-pl-del" data-id="${p.id}" style="background:none;border:1px solid #fca5a5;border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:#dc2626">🗑️</button>
+        </div>`).join('');
+      return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+        <div style="display:flex;align-items:center;gap:10px;padding:13px 14px">
+          <span style="font-size:20px">🏢</span>
+          <div style="flex:1;font-size:15px;font-weight:700;color:var(--text,#111)">${esc(n.nome)} <span style="font-size:11px;font-weight:500;color:var(--text-muted,#9ca3af)">· ${pls.length} plano${pls.length===1?'':'s'}</span></div>
+          <button class="ng-pl-add" data-id="${n.id}" style="background:#8b5cf615;border:1px solid #8b5cf644;border-radius:8px;font-size:12px;cursor:pointer;padding:6px 10px;color:#8b5cf6;font-weight:700">+ Plano</button>
+          <button class="ng-edit" data-id="${n.id}" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:var(--text-muted,#6b7280)">✏️</button>
+        </div>
+        ${plRows||'<div style="padding:8px 24px 12px;font-size:12px;color:var(--text-muted,#9ca3af)">Nenhum plano. Toque em + Plano.</div>'}
+      </div>`;
+    }).join('');
+    el.innerHTML=`
+      <style>
+        .cl-lbl{font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+        .cl-inp{width:100%;border:1.5px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--text,#111);background:rgba(128,128,128,.1);box-sizing:border-box}
+        .cl-inp:focus{outline:none;border-color:#8b5cf6}
+      </style>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Tipos de Negócio</div>
+          <div style="font-size:13px;color:var(--text-muted,#6b7280)">${negs.length} negócio${negs.length===1?'':'s'} · ${planos.length} plano${planos.length===1?'':'s'}</div>
+        </div>
+        <button id="ng-novo" style="background:#8b5cf6;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Negócio</button>
+      </div>
+      <div style="background:var(--bg,#f4f5f7);padding:2px 0 80px">
+        ${secs||'<div style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px">Nenhum tipo de negócio.<br><br>Toque em <b>+ Negócio</b> para criar (ex: ServNet).</div>'}
+      </div>`;
+    el.querySelector('#ng-novo').addEventListener('click',()=>formNeg(null));
+    el.querySelectorAll('.ng-edit').forEach(b=>b.addEventListener('click',()=>{const n=negs.find(x=>x.id===b.dataset.id);if(n)formNeg(n);}));
+    el.querySelectorAll('.ng-pl-add').forEach(b=>b.addEventListener('click',()=>{const n=negs.find(x=>x.id===b.dataset.id);if(n)formPlano(n,null);}));
+    el.querySelectorAll('.ng-pl-edit').forEach(b=>b.addEventListener('click',()=>{
+      const p=planos.find(x=>x.id===b.dataset.id);if(!p)return;
+      const n=negs.find(x=>x.id===p.negocioId)||{id:p.negocioId,nome:p.negocio||'—'};
+      formPlano(n,p);
+    }));
+    el.querySelectorAll('.ng-pl-del').forEach(b=>b.addEventListener('click',async()=>{
+      const p=planos.find(x=>x.id===b.dataset.id);if(!p)return;
+      if(!confirm('Excluir o plano "'+p.nome+'"?'))return;
+      const {error}=await sb.from('cli_planos').delete().eq('id',p.id).eq('user_id',uid);
+      if(error)toast.err('Erro: '+error.message);else{toast.ok('Plano excluído');render();}
+    }));
+  }
+  await render();
+};
+
+/* ── Contas a Receber module inline ── */
+_['receber']=async function(el){
+  const mod=await import('./page-dashboard-Dbqm2OjXb.js');
+  const sb=mod.j, toast=mod.t, fmt=mod.f, addM=mod.c, unpack=mod.u, fetchAll=mod.i, saveBatch=mod.d;
+  const {data:{user}}=await sb.auth.getUser();
+  const uid=user&&user.id;
+  if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const W2=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const now=new Date();let nav={ano:now.getFullYear(),mes:now.getMonth()};
+  const mesKey=()=>nav.ano+'-'+String(nav.mes+1).padStart(2,'0');
+  const dtBr=s=>{if(!s)return'—';const[a,m,d]=String(s).slice(0,10).split('-');return d+'/'+m;};
+
+  async function marcar(id,dados,novoStatus){
+    const d={...dados,status:novoStatus};
+    if(novoStatus==='pago')d.dataPagamento=new Date().toISOString().slice(0,10);else delete d.dataPagamento;
+    const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',uid);
+    if(error)throw error;
+  }
+
+  async function formCobranca(){
+    let clientes=[],planos=[];
+    try{
+      const [cr,pr]=await Promise.all([
+        sb.from('cli_clientes').select('id,dados').eq('user_id',uid),
+        sb.from('cli_planos').select('id,dados').eq('user_id',uid)
+      ]);
+      clientes=((cr&&cr.data)||[]).map(r=>({id:r.id,nome:(r.dados||{}).nome||'—'})).sort((a,b)=>a.nome.localeCompare(b.nome));
+      planos=((pr&&pr.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
+    }catch(e){}
+    const hoje=new Date().toISOString().slice(0,10);
+    const optCli=clientes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    const optPl=planos.map(p=>`<option value="${p.id}" data-valor="${p.valor||''}" data-dia="${p.diaVencimento||''}" data-negocio="${esc(p.negocio||'')}" data-nome="${esc(p.nome||'')}">${esc(p.nome)} — ${fmt(p.valor)} (${esc(p.negocio||'')})</option>`).join('');
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:#059669">📥 Nova cobrança</span>
+        <button id="cr-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="cr-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Cliente *</label>
+          <select class="cl-inp" name="cliente" required><option value="">— selecione —</option>${optCli}</select>
+          ${clientes.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum cliente. Cadastre em Clientes ServNet.</div>'}
+        </div>
+        <div><label class="cl-lbl">Plano / serviço *</label>
+          <select class="cl-inp" name="plano" id="cr-plano" required><option value="">— selecione —</option>${optPl}</select>
+          ${planos.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum plano. Cadastre em Tipos de Negócio → + Plano.</div>'}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" id="cr-valor" type="number" step="0.01" min="0.01" required placeholder="0,00"></div>
+          <div><label class="cl-lbl">1º vencimento *</label><input class="cl-inp" name="data_v" id="cr-dv" type="date" value="${hoje}" required></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Recorrência</label>
+            <select class="cl-inp" name="recorrencia" id="cr-rec">
+              <option value="unica">Única</option><option value="mensal" selected>Mensal</option>
+              <option value="trimestral">Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option>
+            </select>
+          </div>
+          <div id="cr-repwrap"><label class="cl-lbl">Repetições</label>
+            <input class="cl-inp" name="repeticoes" type="number" min="2" max="60" value="12">
+          </div>
+        </div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#059669;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Gerar cobrança</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#cr-x').addEventListener('click',()=>ov.remove());
+    const selPl=ov.querySelector('#cr-plano'),inpV=ov.querySelector('#cr-valor'),inpD=ov.querySelector('#cr-dv');
+    selPl.addEventListener('change',()=>{
+      const o=selPl.selectedOptions[0];if(!o||!o.value)return;
+      if(o.dataset.valor)inpV.value=o.dataset.valor;
+      if(o.dataset.dia){const m=inpD.value?inpD.value.slice(0,7):hoje.slice(0,7);inpD.value=m+'-'+String(o.dataset.dia).padStart(2,'0');}
+    });
+    const selRec=ov.querySelector('#cr-rec'),repW=ov.querySelector('#cr-repwrap');
+    selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});
+    ov.querySelector('#cr-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const cli=clientes.find(c=>c.id===fd.get('cliente'));
+      const pl=planos.find(p=>p.id===fd.get('plano'));
+      if(!cli||!pl){toast.err('Selecione cliente e plano.');return;}
+      const dv=fd.get('data_v'),rec=fd.get('recorrencia');
+      const nrep=rec==='unica'?1:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:1;
+      const grupo=nrep>1?crypto.randomUUID():null;
+      const entries=[];
+      for(let i=0;i<nrep;i++){
+        const dvi=i===0?dv:addM(dv,i*step);
+        entries.push({id:crypto.randomUUID(),tipo:'receita',status:'pendente',
+          descricao:pl.nome+' — '+cli.nome,valor:parseFloat(fd.get('valor'))||0,
+          data_vencimento:dvi,mes_ref:dvi.slice(0,7),categoria:'Mensalidade',
+          clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,
+          planoId:pl.id,plano:pl.nome,negocio:pl.negocio||'Provedor/Servnet',
+          ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+'/'+nrep}:{})});
+      }
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Gerando…';
+      try{await saveBatch('lancamentos',entries);toast.ok(nrep+' cobrança'+(nrep>1?'s geradas':' gerada')+'! ✅');ov.remove();render();}
+      catch(err){toast.err('Erro: '+err.message);btn.disabled=false;btn.textContent='Gerar cobrança';}
+    });
+  }
+
+  async function render(){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando…</div>';
+    let raw=[];
+    try{raw=await fetchAll('lancamentos');}
+    catch(e){el.innerHTML='<div style="padding:24px;color:#f87171">Erro: '+esc(e.message)+'</div>';return;}
+    const todos=unpack('lancamentos',raw);
+    const doMes=todos.filter(l=>l.tipo==='receita'&&l.mes_ref===mesKey()).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
+    const hoje=new Date().toISOString().slice(0,10);
+    const pend=doMes.filter(l=>l.status!=='pago'&&l.status!=='recebido');
+    const receb=doMes.filter(l=>l.status==='pago'||l.status==='recebido');
+    const soma=a=>a.reduce((s,l)=>s+(Number(l.valor)||0),0);
+    const rows=doMes.map(l=>{
+      const ok=l.status==='pago'||l.status==='recebido';
+      const atrasado=!ok&&l.data_vencimento&&l.data_vencimento<hoje;
+      const cor=ok?'#059669':atrasado?'#dc2626':'#d97706';
+      const lbl=ok?'Recebido':atrasado?'Atrasado':'Pendente';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border,#e5e7eb)">
+        <div style="width:8px;height:36px;border-radius:4px;background:${cor};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.descricao||l.cliente||'—')}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span></div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
+        ${ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
+            :`<button class="cr-ok" data-id="${l.id}" title="Marcar recebido" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
+      </div>`;
+    }).join('');
+    el.innerHTML=`
+      <style>
+        .cl-lbl{font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+        .cl-inp{width:100%;border:1.5px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--text,#111);background:rgba(128,128,128,.1);box-sizing:border-box}
+        .cl-inp:focus{outline:none;border-color:#059669}
+      </style>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Contas a Receber</div>
+          <div style="font-size:12px;color:var(--text-muted,#6b7280)">A receber: <b style="color:#d97706">${fmt(soma(pend))}</b> · Recebido: <b style="color:#059669">${fmt(soma(receb))}</b></div>
+        </div>
+        <button id="cr-novo" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Cobrança</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb)">
+        <button id="cr-prev" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">‹</button>
+        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}</span>
+        <button id="cr-next" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">›</button>
+      </div>
+      <div style="background:var(--bg,#f4f5f7);padding-bottom:80px">
+        ${rows||'<div style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px">Nenhuma cobrança neste mês.<br><br>Toque em <b>+ Cobrança</b>.</div>'}
+      </div>`;
+    el.querySelector('#cr-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
+    el.querySelector('#cr-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
+    el.querySelector('#cr-novo').addEventListener('click',()=>formCobranca());
+    el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',async()=>{
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
+      const {id,...dados}=l;
+      try{await marcar(l.id,dados,'pago');toast.ok('Recebido! ✅');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+    }));
+    el.querySelectorAll('.cr-undo').forEach(b=>b.addEventListener('click',async()=>{
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
+      const {id,...dados}=l;
+      try{await marcar(l.id,dados,'pendente');toast.ok('Voltou para pendente');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+    }));
+  }
+  await render();
+};
+
+/* ── Contas a Pagar module inline ── */
+_['pagar']=async function(el){
+  const mod=await import('./page-dashboard-Dbqm2OjXb.js');
+  const sb=mod.j, toast=mod.t, fmt=mod.f, addM=mod.c, unpack=mod.u, fetchAll=mod.i, saveBatch=mod.d;
+  const {data:{user}}=await sb.auth.getUser();
+  const uid=user&&user.id;
+  if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const W2=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const now=new Date();let nav={ano:now.getFullYear(),mes:now.getMonth()};
+  const mesKey=()=>nav.ano+'-'+String(nav.mes+1).padStart(2,'0');
+  const dtBr=s=>{if(!s)return'—';const[a,m,d]=String(s).slice(0,10).split('-');return d+'/'+m;};
+
+  async function marcar(id,dados,novoStatus){
+    const d={...dados,status:novoStatus};
+    if(novoStatus==='pago')d.dataPagamento=new Date().toISOString().slice(0,10);else delete d.dataPagamento;
+    const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',uid);
+    if(error)throw error;
+  }
+
+  function formDespesa(){
+    const hoje=new Date().toISOString().slice(0,10);
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:#dc2626">📤 Nova conta a pagar</span>
+        <button id="cp-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="cp-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Descrição *</label><input class="cl-inp" name="descricao" required placeholder="Ex: Energia elétrica"></div>
+        <div><label class="cl-lbl">Categoria (opcional)</label><input class="cl-inp" name="categoria" placeholder="Ex: Infraestrutura"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required placeholder="0,00"></div>
+          <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" value="${hoje}" required></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Recorrência</label>
+            <select class="cl-inp" name="recorrencia" id="cp-rec">
+              <option value="unica">Única</option><option value="mensal">Mensal</option>
+              <option value="trimestral">Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option>
+            </select>
+          </div>
+          <div id="cp-repwrap" style="display:none"><label class="cl-lbl">Repetições</label>
+            <input class="cl-inp" name="repeticoes" type="number" min="2" max="60" value="12">
+          </div>
+        </div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#dc2626;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar conta</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#cp-x').addEventListener('click',()=>ov.remove());
+    const selRec=ov.querySelector('#cp-rec'),repW=ov.querySelector('#cp-repwrap');
+    selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});
+    ov.querySelector('#cp-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const dv=fd.get('data_v'),rec=fd.get('recorrencia');
+      const nrep=rec==='unica'?1:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:1;
+      const grupo=nrep>1?crypto.randomUUID():null;
+      const entries=[];
+      for(let i=0;i<nrep;i++){
+        const dvi=i===0?dv:addM(dv,i*step);
+        entries.push({id:crypto.randomUUID(),tipo:'despesa',status:'pendente',
+          descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,
+          data_vencimento:dvi,mes_ref:dvi.slice(0,7),categoria:fd.get('categoria')||null,
+          ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+'/'+nrep}:{})});
+      }
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      try{await saveBatch('lancamentos',entries);toast.ok(nrep>1?nrep+' contas geradas! ✅':'Conta salva! ✅');ov.remove();render();}
+      catch(err){toast.err('Erro: '+err.message);btn.disabled=false;btn.textContent='Salvar conta';}
+    });
+  }
+
+  async function render(){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando…</div>';
+    let raw=[];
+    try{raw=await fetchAll('lancamentos');}
+    catch(e){el.innerHTML='<div style="padding:24px;color:#f87171">Erro: '+esc(e.message)+'</div>';return;}
+    const todos=unpack('lancamentos',raw);
+    const doMes=todos.filter(l=>l.tipo==='despesa'&&l.mes_ref===mesKey()).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
+    const hoje=new Date().toISOString().slice(0,10);
+    const pend=doMes.filter(l=>l.status!=='pago');
+    const pagas=doMes.filter(l=>l.status==='pago');
+    const soma=a=>a.reduce((s,l)=>s+(Number(l.valor)||0),0);
+    const rows=doMes.map(l=>{
+      const ok=l.status==='pago';
+      const atrasado=!ok&&l.data_vencimento&&l.data_vencimento<hoje;
+      const cor=ok?'#059669':atrasado?'#dc2626':'#d97706';
+      const lbl=ok?'Pago':atrasado?'Atrasado':'Pendente';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border,#e5e7eb)">
+        <div style="width:8px;height:36px;border-radius:4px;background:${cor};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.descricao||'—')}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''}${l.categoria?' · '+esc(l.categoria):''} · <span style="color:${cor};font-weight:600">${lbl}</span></div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
+        ${ok?`<button class="cp-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
+            :`<button class="cp-ok" data-id="${l.id}" title="Marcar pago" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
+      </div>`;
+    }).join('');
+    el.innerHTML=`
+      <style>
+        .cl-lbl{font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+        .cl-inp{width:100%;border:1.5px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--text,#111);background:rgba(128,128,128,.1);box-sizing:border-box}
+        .cl-inp:focus{outline:none;border-color:#dc2626}
+      </style>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Contas a Pagar</div>
+          <div style="font-size:12px;color:var(--text-muted,#6b7280)">A pagar: <b style="color:#d97706">${fmt(soma(pend))}</b> · Pago: <b style="color:#059669">${fmt(soma(pagas))}</b></div>
+        </div>
+        <button id="cp-novo" style="background:#dc2626;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Conta</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb)">
+        <button id="cp-prev" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">‹</button>
+        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}</span>
+        <button id="cp-next" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">›</button>
+      </div>
+      <div style="background:var(--bg,#f4f5f7);padding-bottom:80px">
+        ${rows||'<div style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px">Nenhuma conta neste mês.<br><br>Toque em <b>+ Conta</b>.</div>'}
+      </div>`;
+    el.querySelector('#cp-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
+    el.querySelector('#cp-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
+    el.querySelector('#cp-novo').addEventListener('click',()=>formDespesa());
+    el.querySelectorAll('.cp-ok').forEach(b=>b.addEventListener('click',async()=>{
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
+      const {id,...dados}=l;
+      try{await marcar(l.id,dados,'pago');toast.ok('Pago! ✅');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+    }));
+    el.querySelectorAll('.cp-undo').forEach(b=>b.addEventListener('click',async()=>{
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
+      const {id,...dados}=l;
+      try{await marcar(l.id,dados,'pendente');toast.ok('Voltou para pendente');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
     }));
   }
   await render();

@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.32 — 2026-08-31
+
+### Novo
+- **Tipos de Negócio** (🏢): cadastro de negócios (ServNet, Holding…) e, dentro de cada um, seus **Planos** (nome, valor mensal, dia de vencimento padrão, detalhes) — armazenados em `cli_planos`, integrados ao portal
+- **Contas a Receber** (📥): lista mensal de receitas com navegação por mês, totais A receber/Recebido, marcação de recebimento (e desfazer), status Atrasado automático; **+ Cobrança** vincula Cliente + Plano (valor e vencimento preenchem sozinhos) com recorrência
+- **Contas a Pagar** (📤): lista mensal de despesas com totais, marcar pago/desfazer, status Atrasado; **+ Conta** com recorrência
+
+### Corrigido
+- **Módulo Contas quebrado** ("ht is not a function"): o módulo importava funções com nomes errados dos exports minificados — agora mapeia os aliases corretos; lançar contas com saldo e ajustes volta a funcionar
+- **Topbar**: título da página não sobrepõe mais a marca GrupoTom — marca fixa à esquerda, título centralizado com reticências quando falta espaço
+
 ## v2.9.31 — 2026-08-31
 
 ### Novo

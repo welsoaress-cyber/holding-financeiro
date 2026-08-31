@@ -90,7 +90,7 @@
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       height: 58px; display: none;
       align-items: center; justify-content: space-between;
-      padding: 0 32px;
+      padding: 0 16px 0 10px;
       background: var(--topbar-bg);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
@@ -110,10 +110,13 @@
       box-shadow: 0 0 16px var(--accent-glow);
     }
     #tb-page-title {
-      position: absolute; left: 50%; transform: translateX(-50%);
+      flex: 1; text-align: center; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin: 0 14px;
       font-family: var(--font-head); font-size: 14px; font-weight: 600;
       color: var(--text-2); letter-spacing: 0.3px;
     }
+    .tb-brand { flex-shrink: 0; }
     .tb-right { display: flex; align-items: center; gap: 10px; }
 
     /* Theme toggle */
@@ -645,7 +648,7 @@
       .win-titlebar { cursor: default; }
       #tb-user-menu { display: none; }
       #btn-mobile-menu { display: flex !important; }
-      #tb-page-title { top: auto; bottom: 4px; transform: translateX(-50%); font-size: 11px; }
+      #tb-page-title { font-size: 11px; }
     }
   </style>
   <script type="module" crossorigin src="/painel/assets/app-CkIaDDomF1.js"></script>
@@ -693,6 +696,18 @@
     <button class="sb-item" onclick="sbOpen('clientes','Clientes ServNet','👥','#0ea5e9')">
       <span class="sb-item-icon">👥</span>
       <span class="sb-item-label">Clientes ServNet</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('negocios','Tipos de Negócio','🏢','#8b5cf6')">
+      <span class="sb-item-icon">🏢</span>
+      <span class="sb-item-label">Tipos de Negócio</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('receber','Contas a Receber','📥','#059669')">
+      <span class="sb-item-icon">📥</span>
+      <span class="sb-item-label">Contas a Receber</span>
+    </button>
+    <button class="sb-item" onclick="sbOpen('pagar','Contas a Pagar','📤','#dc2626')">
+      <span class="sb-item-icon">📤</span>
+      <span class="sb-item-label">Contas a Pagar</span>
     </button>
     <button class="sb-item" onclick="sbOpen('cartoes','Cartões de crédito','💳','#6366f1')">
       <span class="sb-item-icon">🪪</span>
