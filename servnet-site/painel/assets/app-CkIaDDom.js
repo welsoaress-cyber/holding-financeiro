@@ -1050,6 +1050,8 @@ _['receber']=async function(el){
   }
 
   function serieDe(l){
+    // Fatura aglutinada: a série são TODAS as cobranças do mesmo cliente
+    if(l.aglutinado&&l.clienteId)return todosCache.filter(x=>x.tipo===l.tipo&&x.clienteId===l.clienteId);
     if(l.grupoRecorrencia)return todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia);
     // Séries antigas sem grupo: mesma descrição e mesmo tipo
     const s=todosCache.filter(x=>x.tipo===l.tipo&&String(x.descricao||'')===String(l.descricao||''));
@@ -1311,6 +1313,8 @@ _['pagar']=async function(el){
   }
 
   function serieDe(l){
+    // Fatura aglutinada: a série são TODAS as cobranças do mesmo cliente
+    if(l.aglutinado&&l.clienteId)return todosCache.filter(x=>x.tipo===l.tipo&&x.clienteId===l.clienteId);
     if(l.grupoRecorrencia)return todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia);
     // Séries antigas sem grupo: mesma descrição e mesmo tipo
     const s=todosCache.filter(x=>x.tipo===l.tipo&&String(x.descricao||'')===String(l.descricao||''));
