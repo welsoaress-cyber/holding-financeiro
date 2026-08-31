@@ -2,6 +2,10 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.71 — 2026-08-31
+- **Cortesia**: cobranças podem ser marcadas como cortesia via menu ⋮ → "🎁 Marcar como cortesia". Entradas cortesia aparecem em roxo com riscado e não entram nos totais financeiros (a receber / recebido). Escopo: este mês / este mês e os próximos / toda a série. Badge 🎁 cortesia exibido no header do cliente.
+- **Contas a Receber — colapso**: cards de clientes são exibidos colapsados por padrão. Clique no nome expande e mostra as cobranças. Botões "Aglutinar" e "Separar cobranças" agora ficam dentro do card expandido (não mais no clique do header).
+
 ## v2.9.70 — 2026-08-31
 - **Excluir em lote**: agora pergunta o escopo — "Apenas este mês", "Este mês e os próximos" ou "Toda a série, incluindo pagas" — com contagem de cobranças de cada opção antes de confirmar
 
