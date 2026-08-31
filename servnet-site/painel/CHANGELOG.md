@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.59 — 2026-08-31
+
+### Alterado — Importar Planilha
+- **Novas colunas na revisão**: Telefone/WhatsApp (mapeável da planilha), Tipo de Negócio e Plano por linha — escolher o plano preenche valor e descrição vazios e define o negócio
+- **Barra "Aplicar a todas as linhas"**: define negócio, plano e recorrência de uma vez para toda a lista
+- Clientes criados na importação levam telefone e negócio; lançamentos levam negócio/plano (roteia o WhatsApp certo)
+
 ## v2.9.58 — 2026-08-31
 
 ### Alterado — Importar Planilha

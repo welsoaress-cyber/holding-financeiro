@@ -1436,8 +1436,19 @@ _['importar']=async function(el){
   const uid=user&&user.id;
   if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let linhas=[]; // {cliente,descricao,valor,vencimento,recorrencia,repeticoes,destino}
+  let linhas=[]; // {cliente,telefone,descricao,valor,vencimento,recorrencia,repeticoes,destino,negocioId,negocio,planoId,plano}
   let rawRows=[],headers=[];
+  let negociosL=[],planosL=[];
+  try{
+    const [ng,pl]=await Promise.all([
+      sb.from('negocios').select('id,nome').eq('user_id',uid),
+      sb.from('cli_planos').select('id,dados').eq('user_id',uid)
+    ]);
+    negociosL=((ng&&ng.data)||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+    planosL=((pl&&pl.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
+  }catch(e){}
+  const optNeg=(sel)=>'<option value="">—</option>'+negociosL.map(n=>`<option value="${n.id}"${n.id===sel?' selected':''}>${esc(n.nome)}</option>`).join('');
+  const optPl=(negId,sel)=>'<option value="">—</option>'+planosL.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${esc(p.nome)} (R$ ${p.valor})</option>`).join('');
 
   // ── Normalização de datas: serial Excel, DD/MM/AAAA ou ISO ──
   function normData(v){
@@ -1486,6 +1497,7 @@ _['importar']=async function(el){
   function aplicarMapa(rows,mapa){
     return rows.map(r=>({
       cliente:String(mapa.cliente?r[mapa.cliente]:'').trim(),
+      telefone:String(mapa.telefone?r[mapa.telefone]:'').trim(),
       descricao:String(mapa.descricao?r[mapa.descricao]:'').trim(),
       valor:normValor(mapa.valor?r[mapa.valor]:0),
       vencimento:normData(mapa.vencimento?r[mapa.vencimento]:''),
@@ -1539,6 +1551,9 @@ _['importar']=async function(el){
     if(!tb)return;
     tb.innerHTML=linhas.map((l,i)=>`<tr data-i="${i}">
       <td><input class="imp-inp" data-f="cliente" value="${esc(l.cliente)}" placeholder="Cliente"></td>
+      <td><input class="imp-inp" data-f="telefone" value="${esc(l.telefone||'')}" placeholder="(11) 90000-0000" style="width:130px"></td>
+      <td><select class="imp-inp imp-neg" data-f="negocioId" style="width:110px">${optNeg(l.negocioId)}</select></td>
+      <td><select class="imp-inp imp-pl" data-f="planoId" style="width:150px">${optPl(l.negocioId,l.planoId)}</select></td>
       <td><input class="imp-inp" data-f="descricao" value="${esc(l.descricao)}" placeholder="Serviço/descrição"></td>
       <td><input class="imp-inp" data-f="valor" type="number" step="0.01" value="${l.valor||''}" style="width:90px"></td>
       <td><input class="imp-inp" data-f="vencimento" type="date" value="${esc(l.vencimento)}" style="width:140px"></td>
@@ -1557,6 +1572,18 @@ _['importar']=async function(el){
       const tr=inp.closest('tr');const i=parseInt(tr.dataset.i);const f=inp.dataset.f;
       linhas[i][f]=f==='valor'?parseFloat(inp.value)||0:f==='repeticoes'?parseInt(inp.value)||12:inp.value;
       if(f==='recorrencia'){const rep=tr.querySelector('[data-f=repeticoes]');rep.disabled=(inp.value==='unica'||inp.value==='fixa');}
+      if(f==='negocioId'){
+        const n=negociosL.find(x=>x.id===inp.value);
+        linhas[i].negocio=n?n.nome:null;linhas[i].planoId=null;linhas[i].plano=null;
+        tr.querySelector('.imp-pl').innerHTML=optPl(inp.value,null);
+      }
+      if(f==='planoId'){
+        const p=planosL.find(x=>x.id===inp.value);
+        if(p){linhas[i].plano=p.nome;linhas[i].negocioId=p.negocioId;linhas[i].negocio=p.negocio;
+          if(!linhas[i].valor){linhas[i].valor=p.valor;tr.querySelector('[data-f=valor]').value=p.valor;}
+          if(!linhas[i].descricao){linhas[i].descricao=p.nome;tr.querySelector('[data-f=descricao]').value=p.nome;}
+        }else{linhas[i].plano=null;}
+      }
     }));
     tb.querySelectorAll('.imp-del').forEach(b=>b.addEventListener('click',()=>{
       linhas.splice(parseInt(b.dataset.i),1);renderTabela();
@@ -1582,7 +1609,9 @@ _['importar']=async function(el){
           if(!cli&&criarCli&&l.destino==='receber'){
             cli={id:crypto.randomUUID(),nome:l.cliente.trim()};
             porNome.set(l.cliente.toLowerCase().trim(),cli);
-            novosClientes.push({id:cli.id,user_id:uid,dados:{nome:cli.nome,status:'Ativo',dataCadastro:new Date().toISOString().slice(0,10),origem:'importacao'},updated_at:new Date().toISOString()});
+            novosClientes.push({id:cli.id,user_id:uid,dados:{nome:cli.nome,telefone:l.telefone||'',status:'Ativo',
+              negocioId:l.negocioId||null,negocio:l.negocio||null,
+              dataCadastro:new Date().toISOString().slice(0,10),origem:'importacao'},updated_at:new Date().toISOString()});
           }
         }
         const rec=l.recorrencia;
@@ -1596,6 +1625,8 @@ _['importar']=async function(el){
             descricao:l.descricao+(l.cliente&&l.destino==='receber'?' — '+l.cliente:''),
             valor:l.valor,data_vencimento:dv,mes_ref:dv.slice(0,7),
             categoria:'Importado',origem:'importacao',
+            ...(l.negocio?{negocio:l.negocio}:{}),
+            ...(l.planoId?{planoId:l.planoId,plano:l.plano}:{}),
             ...(cli&&l.destino==='receber'?{clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome}:{}),
             ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+'/'+nrep}:{})});
         }
@@ -1642,9 +1673,19 @@ _['importar']=async function(el){
             </label>
             <button id="imp-go" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer">⬆️ Importar tudo</button>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.3);border-radius:10px;padding:8px 10px;margin-bottom:10px">
+            <b style="font-size:12px;color:var(--text,#111)">Aplicar a todas as linhas:</b>
+            <select id="imp-all-neg" class="imp-inp" style="width:130px">${optNeg(null)}</select>
+            <select id="imp-all-pl" class="imp-inp" style="width:170px">${optPl(null,null)}</select>
+            <select id="imp-all-rec" class="imp-inp" style="width:120px">
+              <option value="">Recorrência…</option>
+              ${['unica','fixa','mensal','bimestral','trimestral','semestral','anual'].map(o=>`<option value="${o}">${o==='unica'?'Única':o==='fixa'?'Fixa':o.charAt(0).toUpperCase()+o.slice(1)}</option>`).join('')}
+            </select>
+            <button id="imp-all-go" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">Aplicar ↓</button>
+          </div>
           <div style="overflow-x:auto">
             <table id="imp-table">
-              <thead><tr><th>Cliente</th><th>Serviço / Descrição</th><th>Valor</th><th>Vencimento</th><th>Recorrência</th><th>Rep.</th><th>Destino</th><th></th></tr></thead>
+              <thead><tr><th>Cliente</th><th>Telefone</th><th>Negócio</th><th>Plano</th><th>Serviço / Descrição</th><th>Valor</th><th>Vencimento</th><th>Recorrência</th><th>Rep.</th><th>Destino</th><th></th></tr></thead>
               <tbody id="imp-tbody"></tbody>
             </table>
           </div>
@@ -1667,6 +1708,7 @@ _['importar']=async function(el){
     function mostrarMapeamento(){
       const campos=[
         ['cliente','Cliente',['cliente','nome','assinante','razao','razão']],
+        ['telefone','Telefone/WhatsApp',['tel','whats','celular','fone','contato']],
         ['descricao','Descrição / Serviço',['descri','servi','plano','item','produto','mensalidade']],
         ['valor','Valor',['valor','preço','preco','r$','mensalidade']],
         ['vencimento','Vencimento',['venc','data','dia']],
@@ -1699,6 +1741,25 @@ _['importar']=async function(el){
       });
     }
     el.querySelector('#imp-go').addEventListener('click',importar);
+    el.querySelector('#imp-all-neg')?.addEventListener('change',e=>{
+      el.querySelector('#imp-all-pl').innerHTML=optPl(e.target.value,null);
+    });
+    el.querySelector('#imp-all-go')?.addEventListener('click',()=>{
+      const negId=el.querySelector('#imp-all-neg').value;
+      const plId=el.querySelector('#imp-all-pl').value;
+      const rec=el.querySelector('#imp-all-rec').value;
+      const n=negociosL.find(x=>x.id===negId);
+      const p=planosL.find(x=>x.id===plId);
+      for(const l of linhas){
+        if(negId){l.negocioId=negId;l.negocio=n?n.nome:null;if(!p){l.planoId=null;l.plano=null;}}
+        if(p){l.planoId=p.id;l.plano=p.nome;l.negocioId=p.negocioId;l.negocio=p.negocio;
+          if(!l.valor)l.valor=p.valor;
+          if(!l.descricao)l.descricao=p.nome;}
+        if(rec)l.recorrencia=rec;
+      }
+      renderTabela();
+      toast.ok('Aplicado a '+linhas.length+' linhas');
+    });
     if(linhas.length)renderTabela();
   }
   render();
