@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.38 — 2026-08-31
+
+### Novo
+- **Plano vinculado ao cliente**: no cadastro/edição do cliente, campo "Plano vinculado" filtrado pelo tipo de negócio escolhido (troca de negócio refiltra os planos na hora); o plano define o valor padrão do cliente
+- **Cobrança inteligente**: em Contas a Receber, ao digitar o cliente, o plano vinculado e o valor são pré-selecionados automaticamente
+- Lista de clientes mostra o plano vinculado (📦)
+
 ## v2.9.37 — 2026-08-31
 
 ### Novo

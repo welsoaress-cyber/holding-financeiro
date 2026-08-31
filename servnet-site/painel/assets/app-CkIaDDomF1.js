@@ -419,9 +419,17 @@ _['clientes']=async function(el){
   }
   async function showForm(cli){
     const c=cli||{};
-    let negs=[];
-    try{const {data}=await sb.from('negocios').select('id,nome').eq('user_id',uid);negs=(data||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));}catch(e){}
+    let negs=[],planosAll=[];
+    try{
+      const [ng,pl]=await Promise.all([
+        sb.from('negocios').select('id,nome').eq('user_id',uid),
+        sb.from('cli_planos').select('id,dados').eq('user_id',uid)
+      ]);
+      negs=((ng&&ng.data)||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+      planosAll=((pl&&pl.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
+    }catch(e){}
     const optNeg=negs.map(n=>`<option value="${n.id}"${c.negocioId===n.id?' selected':''}>${esc(n.nome)}</option>`).join('');
+    const optPlano=negId=>planosAll.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${c.planoId===p.id?' selected':''}>${esc(p.nome)} — R$ ${p.valor}</option>`).join('');
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
@@ -444,10 +452,16 @@ _['clientes']=async function(el){
         <div><label class="cl-lbl">Endereço</label><input class="cl-inp" name="logradouro" id="cl-logr" value="${esc(c.logradouro||c.endereco||'')}" placeholder="Preenchido automaticamente pelo CEP"><div id="cl-cep-st" style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px"></div></div>
         <div><label class="cl-lbl">Ponto de referência (opcional)</label><input class="cl-inp" name="referencia" value="${esc(c.referencia||'')}" placeholder="Ex: próximo ao mercado"></div>
         <div><label class="cl-lbl">Tipo de negócio</label>
-          <select class="cl-inp" name="negocioId">
+          <select class="cl-inp" name="negocioId" id="cl-neg">
             <option value="">— sem vínculo —</option>${optNeg}
           </select>
           ${negs.length?'':'<div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px">Nenhum tipo de negócio. Cadastre em ☰ → Tipos de Negócio.</div>'}
+        </div>
+        <div><label class="cl-lbl">Plano vinculado</label>
+          <select class="cl-inp" name="planoId" id="cl-plano">
+            <option value="">— sem plano —</option>${optPlano(c.negocioId)}
+          </select>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px">Filtrado pelo tipo de negócio. Usado como padrão nas cobranças.</div>
         </div>
         <div><label class="cl-lbl">Status</label>
           <select class="cl-inp" name="status">
@@ -462,6 +476,11 @@ _['clientes']=async function(el){
     document.body.appendChild(ov);
     ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#cl-x').addEventListener('click',()=>ov.remove());
+    // Negócio muda → refiltra os planos
+    const selNeg=ov.querySelector('#cl-neg'),selPlano=ov.querySelector('#cl-plano');
+    selNeg?.addEventListener('change',()=>{
+      selPlano.innerHTML='<option value="">— sem plano —</option>'+optPlano(selNeg.value);
+    });
     // ── CEP → ViaCEP: preenche endereço automaticamente ──
     const cepInp=ov.querySelector('#cl-cep'),logrInp=ov.querySelector('#cl-logr'),cepSt=ov.querySelector('#cl-cep-st');
     cepInp?.addEventListener('input',async()=>{
@@ -486,10 +505,13 @@ _['clientes']=async function(el){
         cep:(fd.get('cep')||'').trim(),logradouro:(fd.get('logradouro')||'').trim(),
         numero:(fd.get('numero')||'').trim(),referencia:(fd.get('referencia')||'').trim(),
         endereco:[(fd.get('logradouro')||'').trim(),(fd.get('numero')||'').trim()].filter(Boolean).join(', '),
-        valorMensal:c.valorMensal??null,diaVencimento:c.diaVencimento??null,
+        diaVencimento:c.diaVencimento??null,
         status:fd.get('status'),
         negocioId:fd.get('negocioId')||null,
         negocio:(negs.find(n=>n.id===fd.get('negocioId'))||{}).nome||null,
+        planoId:fd.get('planoId')||null,
+        plano:(planosAll.find(p=>p.id===fd.get('planoId'))||{}).nome||null,
+        valorMensal:(planosAll.find(p=>p.id===fd.get('planoId'))||{}).valor??c.valorMensal??null,
         dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Verificando…';
       const dig=s=>String(s||'').replace(/\D/g,'');
@@ -522,7 +544,7 @@ _['clientes']=async function(el){
         <div style="width:38px;height:38px;border-radius:50%;background:${cor}22;border:2px solid ${cor}55;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${cor};flex-shrink:0">${esc((c.nome||'?')[0].toUpperCase())}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nome||'—')}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))}${c.telefone?' · '+esc(c.telefone):''}${c.negocio?' · 🏢 '+esc(c.negocio):''} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))}${c.telefone?' · '+esc(c.telefone):''}${c.negocio?' · 🏢 '+esc(c.negocio):''}${c.plano?' · 📦 '+esc(c.plano):''} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
         </div>
         <button class="cl-edit" data-id="${c.id}" title="Editar" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:15px;cursor:pointer;padding:6px 9px;color:var(--text-muted,#6b7280)">✏️</button>
       </div>`;
@@ -712,7 +734,7 @@ _['receber']=async function(el){
         sb.from('cli_clientes').select('id,dados').eq('user_id',uid),
         sb.from('cli_planos').select('id,dados').eq('user_id',uid)
       ]);
-      clientes=((cr&&cr.data)||[]).map(r=>({id:r.id,nome:(r.dados||{}).nome||'—'})).sort((a,b)=>a.nome.localeCompare(b.nome));
+      clientes=((cr&&cr.data)||[]).map(r=>({id:r.id,nome:(r.dados||{}).nome||'—',planoId:(r.dados||{}).planoId||null})).sort((a,b)=>a.nome.localeCompare(b.nome));
       planos=((pr&&pr.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
     }catch(e){}
     const hoje=new Date().toISOString().slice(0,10);
@@ -760,6 +782,16 @@ _['receber']=async function(el){
     document.body.appendChild(ov);
     ov.querySelector('#cr-x').addEventListener('click',()=>ov.remove());
     const selPl=ov.querySelector('#cr-plano'),inpV=ov.querySelector('#cr-valor'),inpD=ov.querySelector('#cr-dv');
+    // cliente digitado → pré-seleciona o plano vinculado e o valor
+    const inpCli=ov.querySelector('input[name=clienteNome]');
+    inpCli?.addEventListener('change',()=>{
+      const c=clientes.find(x=>String(x.nome).toLowerCase()===inpCli.value.trim().toLowerCase());
+      if(c&&c.planoId){
+        selPl.value=c.planoId;
+        const o=selPl.selectedOptions[0];
+        if(o&&o.dataset.valor)inpV.value=o.dataset.valor;
+      }
+    });
     selPl.addEventListener('change',()=>{
       const o=selPl.selectedOptions[0];if(!o||!o.value)return;
       if(o.dataset.valor)inpV.value=o.dataset.valor;
