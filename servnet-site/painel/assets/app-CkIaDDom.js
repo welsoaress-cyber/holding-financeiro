@@ -1027,7 +1027,7 @@ _['receber']=async function(el){
       return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
         <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           <span style="font-size:16px">👤</span>
-          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
+          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);word-break:break-word">${esc(g.nome)}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
         </div>
         ${itensSorted.map(itemRow).join('')}

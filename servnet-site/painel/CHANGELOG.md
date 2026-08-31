@@ -837,3 +837,7 @@ Toda alteração no painel exige atualização de versão e registro aqui.
 ### Correções
 - **Contas a Receber**: nome do cliente voltou a aparecer no cabeçalho de cobranças aglutinadas
 - **Contas a Receber**: removido rótulo "aglutinado" do subtítulo do cabeçalho
+
+## v2.9.68 — 2026-08-31
+### Correções
+- **Contas a Receber**: nome do cliente quebra linha ao invés de cortar com "..."
