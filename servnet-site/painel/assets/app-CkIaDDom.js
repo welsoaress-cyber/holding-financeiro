@@ -1018,7 +1018,7 @@ _['receber']=async function(el){
       pop.innerHTML='<div class="cr-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
         +'<div class="cr-pop-i" data-a="portal" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111);border-top:1px solid var(--border,#e5e7eb)">'+(l.ocultarPortal?'👁 Mostrar no portal':'🙈 Ocultar do portal')+'</div>'
         +'<div class="cr-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
-        +(l.grupoRecorrencia?'<div class="cr-pop-i" data-a="delfut" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir esta e futuras</div>':'');
+        ;
       document.body.appendChild(pop);
       setTimeout(()=>document.addEventListener('click',()=>pop.remove(),{once:true}),0);
       pop.querySelectorAll('.cr-pop-i').forEach(it=>it.addEventListener('click',async()=>{
@@ -1044,18 +1044,38 @@ _['receber']=async function(el){
           else toast.ok(ocultar?alvos.length+' fatura(s) da série ocultas do portal 🙈':alvos.length+' fatura(s) da série visíveis no portal 👁');
           render();
         }
-        if(a==='del'){
-          if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
-          const {error}=await sb.from('lancamentos').delete().eq('id',l.id).eq('user_id',uid);
-          if(error)toast.err('Erro: '+error.message);else{toast.ok('Excluído');render();}
-        }
-        if(a==='delfut'){
-          const futuras=todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia&&String(x.mes_ref)>=String(l.mes_ref));
-          if(!confirm('Excluir '+futuras.length+' lançamento(s) — este e os futuros do mesmo grupo?'))return;
-          const {error}=await sb.from('lancamentos').delete().in('id',futuras.map(x=>x.id)).eq('user_id',uid);
-          if(error)toast.err('Erro: '+error.message);else{toast.ok(futuras.length+' excluídos');render();}
-        }
+        if(a==='del')return escolherExclusao(l);
       }));
+    }));
+  }
+
+  function escolherExclusao(l){
+    const serie=l.grupoRecorrencia?todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia):[l];
+    const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
+    const btn='width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left';
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3200;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:16px;width:100%;max-width:420px;padding:20px">
+      <div style="font-size:15px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🗑️ Excluir cobrança</div>
+      <div style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:14px">${String(l.descricao||'').replace(/</g,'&lt;')} — ${fmt(l.valor)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:none;color:var(--text,#111)">Apenas esta</button>
+        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid #f59e0b66;background:#f59e0b12;color:#d97706">Esta e as futuras (${fut.length})</button>
+        <button class="exc-op" data-op="todas" style="${btn};border:1px solid #dc262666;background:#dc262612;color:#dc2626">Toda a série, incluindo pagas (${serie.length})</button>`:''}
+        <button id="exc-cancel" style="${btn};border:none;background:none;color:var(--text-muted,#6b7280);text-align:center">Cancelar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#exc-cancel').addEventListener('click',()=>ov.remove());
+    ov.querySelectorAll('.exc-op').forEach(b=>b.addEventListener('click',async()=>{
+      const op=b.dataset.op;
+      const alvos=op==='uma'?[l]:op==='fut'?fut:serie;
+      if(!confirm('Confirma excluir '+alvos.length+' lançamento(s)? Essa ação não pode ser desfeita.'))return;
+      const {error}=await sb.from('lancamentos').delete().in('id',alvos.map(x=>x.id)).eq('user_id',uid);
+      if(error)toast.err('Erro: '+error.message);
+      else toast.ok(alvos.length+' lançamento(s) excluído(s)');
+      ov.remove();render();
     }));
   }
 
@@ -1246,25 +1266,45 @@ _['pagar']=async function(el){
       pop.style.cssText='position:fixed;z-index:3500;top:'+Math.min(r.bottom+4,window.innerHeight-160)+'px;right:14px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:hidden;min-width:220px';
       pop.innerHTML='<div class="cp-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
         +'<div class="cp-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
-        +(l.grupoRecorrencia?'<div class="cp-pop-i" data-a="delfut" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir esta e futuras</div>':'');
+        ;
       document.body.appendChild(pop);
       setTimeout(()=>document.addEventListener('click',()=>pop.remove(),{once:true}),0);
       pop.querySelectorAll('.cp-pop-i').forEach(it=>it.addEventListener('click',async()=>{
         pop.remove();
         const a=it.dataset.a;
         if(a==='editar')return editLanc(l);
-        if(a==='del'){
-          if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
-          const {error}=await sb.from('lancamentos').delete().eq('id',l.id).eq('user_id',uid);
-          if(error)toast.err('Erro: '+error.message);else{toast.ok('Excluído');render();}
-        }
-        if(a==='delfut'){
-          const futuras=todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia&&String(x.mes_ref)>=String(l.mes_ref));
-          if(!confirm('Excluir '+futuras.length+' lançamento(s) — este e os futuros do mesmo grupo?'))return;
-          const {error}=await sb.from('lancamentos').delete().in('id',futuras.map(x=>x.id)).eq('user_id',uid);
-          if(error)toast.err('Erro: '+error.message);else{toast.ok(futuras.length+' excluídos');render();}
-        }
+        if(a==='del')return escolherExclusao(l);
       }));
+    }));
+  }
+
+  function escolherExclusao(l){
+    const serie=l.grupoRecorrencia?todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia):[l];
+    const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
+    const btn='width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left';
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3200;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:16px;width:100%;max-width:420px;padding:20px">
+      <div style="font-size:15px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🗑️ Excluir cobrança</div>
+      <div style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:14px">${String(l.descricao||'').replace(/</g,'&lt;')} — ${fmt(l.valor)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:none;color:var(--text,#111)">Apenas esta</button>
+        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid #f59e0b66;background:#f59e0b12;color:#d97706">Esta e as futuras (${fut.length})</button>
+        <button class="exc-op" data-op="todas" style="${btn};border:1px solid #dc262666;background:#dc262612;color:#dc2626">Toda a série, incluindo pagas (${serie.length})</button>`:''}
+        <button id="exc-cancel" style="${btn};border:none;background:none;color:var(--text-muted,#6b7280);text-align:center">Cancelar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#exc-cancel').addEventListener('click',()=>ov.remove());
+    ov.querySelectorAll('.exc-op').forEach(b=>b.addEventListener('click',async()=>{
+      const op=b.dataset.op;
+      const alvos=op==='uma'?[l]:op==='fut'?fut:serie;
+      if(!confirm('Confirma excluir '+alvos.length+' lançamento(s)? Essa ação não pode ser desfeita.'))return;
+      const {error}=await sb.from('lancamentos').delete().in('id',alvos.map(x=>x.id)).eq('user_id',uid);
+      if(error)toast.err('Erro: '+error.message);
+      else toast.ok(alvos.length+' lançamento(s) excluído(s)');
+      ov.remove();render();
     }));
   }
 

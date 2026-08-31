@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.50 — 2026-08-31
+
+### Alterado
+- **Excluir com 3 opções** (Receber e Pagar): ⋮ → Excluir abre seletor — **Apenas esta** / **Esta e as futuras (N)** / **Toda a série, incluindo pagas (N)**; avulsas vão direto para "apenas esta". Confirmação com a contagem antes de apagar
+
 ## v2.9.49 — 2026-08-31
 
 ### Alterado
