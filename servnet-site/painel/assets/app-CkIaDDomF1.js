@@ -440,8 +440,8 @@ _['clientes']=async function(el){
       <form id="cl-form" style="display:flex;flex-direction:column;gap:11px">
         <div><label class="cl-lbl">Nome completo</label><input class="cl-inp" name="nome" required value="${esc(c.nome||'')}" placeholder="Ex: João da Silva"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="cl-lbl">CPF</label><input class="cl-inp" name="cpfCnpj" required value="${esc(c.cpfCnpj||'')}" placeholder="000.000.000-00" inputmode="numeric"></div>
-          <div><label class="cl-lbl">Nascimento</label><input class="cl-inp" name="dataNascimento" type="date" required value="${esc(c.dataNascimento||'')}"></div>
+          <div><label class="cl-lbl">CPF</label><input class="cl-inp" name="cpfCnpj" required value="${esc(c.cpfCnpj||c.cpf||'')}" placeholder="000.000.000-00" inputmode="numeric"></div>
+          <div><label class="cl-lbl">Nascimento</label><input class="cl-inp" name="dataNascimento" type="date" value="${esc(c.dataNascimento||'')}"></div>
         </div>
         <div><label class="cl-lbl">Telefone / WhatsApp</label><input class="cl-inp" name="telefone" value="${esc(c.telefone||'')}" placeholder="(11) 90000-0000" inputmode="tel"></div>
         <div><label class="cl-lbl">E-mail (opcional)</label><input class="cl-inp" name="email" type="email" value="${esc(c.email||'')}" placeholder="cliente@email.com"></div>

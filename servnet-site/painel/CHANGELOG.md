@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.73 — 2026-08-31
+- **Fix Clientes**: formulário de edição agora carrega CPF dos clientes importados via Provedor (`cpf` → fallback de `cpfCnpj`); nascimento deixou de ser campo obrigatório
+
 ## v2.9.72 — 2026-08-31
 - **Fix Contas**: corrige erro "Could not find the 'saldo' column" ao reajustar/salvar conta — tabela `contas` usa `dados` JSONB, não colunas planas
 
