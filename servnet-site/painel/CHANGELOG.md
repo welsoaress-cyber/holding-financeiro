@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.65 — 2026-08-31
+- **Editar cobrança**: toggle "📲 Receber lembretes WhatsApp" aparece para todos os clientes existentes — alteração salva direto no cadastro do cliente, sem precisar ir ao módulo Clientes
+
 ## v2.9.64 — 2026-08-31
 - **Clientes**: toggle "📲 Receber lembretes WhatsApp" no cadastro (ativado por padrão); desativado = cliente não recebe cobranças automáticas
 - **Edge Function**: respeita o flag `receberLembretes=false` — pula o cliente no envio automático; botão manual 📲 Cobrar ignora o flag (clique é intencional)

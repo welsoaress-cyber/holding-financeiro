@@ -1187,6 +1187,9 @@ _['receber']=async function(el){
       negociosE=((ng&&ng.data)||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
       planosE=((pl&&pl.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
     }catch(e){}
+    // Carrega dados atuais do cliente (para receberLembretes)
+    let cliAtual=null;let receberLem=true;
+    if(l.clienteId){try{const{data:cr}=await sb.from('cli_clientes').select('id,dados').eq('id',l.clienteId).single();if(cr){cliAtual=cr;receberLem=cr.dados?.receberLembretes!==false;}}catch(e){}}
     const optNeg=selId=>'<option value="">— sem negócio —</option>'+negociosE.map(n=>`<option value="${n.id}"${n.id===selId?' selected':''}>${esc(n.nome)}</option>`).join('');
     const optPlE=(negId,selId)=>'<option value="">— sem plano —</option>'+planosE.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${p.id===selId?' selected':''}>${esc(p.nome)} — ${fmt(p.valor||0)}</option>`).join('');
     const ov=document.createElement('div');
@@ -1204,6 +1207,13 @@ _['receber']=async function(el){
         </div>
         <div><label class="cl-lbl">Tipo de Negócio</label><select class="cl-inp" id="cre-neg" name="negocioId">${optNeg(l.negocioId)}</select></div>
         <div><label class="cl-lbl">Plano</label><select class="cl-inp" id="cre-pl" name="planoId">${optPlE(l.negocioId,l.planoId)}</select></div>
+        ${l.clienteId?`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:rgba(128,128,128,.08);border-radius:10px;border:1.5px solid var(--border,#e5e7eb)">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text,#111)">📲 Receber lembretes WhatsApp</div>
+            <div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:2px">Desative para clientes que não querem receber cobranças automáticas</div>
+          </div>
+          <input type="checkbox" name="receberLembretes" style="width:22px;height:22px;accent-color:#0ea5e9;cursor:pointer;flex-shrink:0" ${receberLem?'checked':''}>
+        </div>`:''}
         ${multi?`<div><label class="cl-lbl">Aplicar alteração em</label>
           <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--text,#111)">
             <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="uma" checked style="accent-color:#2563eb"> Apenas esta</label>
@@ -1248,8 +1258,16 @@ _['receber']=async function(el){
         const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
         if(error)errs++;
       }
-      if(errs){toast.err(errs+' lançamento(s) falharam');btn.disabled=false;btn.textContent='Salvar alterações';}
-      else{toast.ok(alvos.length+' lançamento(s) alterado(s) ✅');ov.remove();render();}
+      if(errs){toast.err(errs+' lançamento(s) falharam');btn.disabled=false;btn.textContent='Salvar alterações';return;}
+      // Atualiza receberLembretes no cadastro do cliente
+      if(l.clienteId&&cliAtual){
+        const novoLem=fd.get('receberLembretes')==='on';
+        if(novoLem!==receberLem){
+          const cd=cliAtual.dados||{};
+          await sb.from('cli_clientes').update({dados:{...cd,receberLembretes:novoLem},updated_at:new Date().toISOString()}).eq('id',l.clienteId).eq('user_id',uid);
+        }
+      }
+      toast.ok(alvos.length+' lançamento(s) alterado(s) ✅');ov.remove();render();
     });
   }
   await render();
