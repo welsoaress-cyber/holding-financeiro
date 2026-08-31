@@ -1407,6 +1407,235 @@ _['pagar']=async function(el){
   }
   await render();
 };
+;
+/* ── Importar Planilha module inline ── */
+_['importar']=async function(el){
+  const mod=await import('./page-dashboard-Dbqm2OjXb.js');
+  const sb=mod.j, toast=mod.t, fmt=mod.f, addM=mod.c, saveBatch=mod.d;
+  const {data:{user}}=await sb.auth.getUser();
+  const uid=user&&user.id;
+  if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let linhas=[]; // {cliente,descricao,valor,vencimento,recorrencia,repeticoes,destino}
+
+  // ── Normalização de datas: serial Excel, DD/MM/AAAA ou ISO ──
+  function normData(v){
+    if(v==null||v==='')return'';
+    if(typeof v==='number'&&v>25000&&v<80000){ // serial excel
+      const d=new Date(Math.round((v-25569)*86400*1000));
+      return d.toISOString().slice(0,10);
+    }
+    const s=String(v).trim();
+    let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m)return m[0];
+    return'';
+  }
+  function normValor(v){
+    if(typeof v==='number')return v;
+    const s=String(v||'').replace(/[R$\s.]/g,'').replace(',','.');
+    return parseFloat(s)||0;
+  }
+  function normRec(v){
+    const s=String(v||'').toLowerCase();
+    if(s.includes('fix'))return'fixa';
+    if(s.includes('bim'))return'bimestral';
+    if(s.includes('tri'))return'trimestral';
+    if(s.includes('sem'))return'semestral';
+    if(s.includes('anu')||s.includes('ano'))return'anual';
+    if(s.includes('men')||s==='sim'||s==='s')return'mensal';
+    return'unica';
+  }
+
+  async function carregarXLSX(){
+    if(window.XLSX)return;
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res;s.onerror=()=>rej(new Error('Falha ao carregar leitor de Excel'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function mapearLinhas(rows){
+    // rows = array de objetos com cabeçalhos da 1ª linha
+    const achar=(obj,...nomes)=>{
+      for(const k of Object.keys(obj)){
+        const kl=k.toLowerCase().trim();
+        for(const n of nomes)if(kl.includes(n))return obj[k];
+      }
+      return'';
+    };
+    return rows.map(r=>({
+      cliente:String(achar(r,'cliente','nome')||'').trim(),
+      descricao:String(achar(r,'descri','servi','plano','item')||'').trim(),
+      valor:normValor(achar(r,'valor','preço','preco','r$')),
+      vencimento:normData(achar(r,'venc','data')),
+      recorrencia:normRec(achar(r,'recorr','period','mensal','frequ')),
+      repeticoes:parseInt(achar(r,'repet','parcel','meses'))||12,
+      destino:String(achar(r,'destino','tipo')||'').toLowerCase().includes('pag')?'pagar':'receber'
+    })).filter(l=>l.descricao||l.cliente||l.valor);
+  }
+
+  async function lerArquivo(file){
+    const nome=file.name.toLowerCase();
+    if(nome.endsWith('.csv')){
+      const txt=await file.text();
+      const sep=txt.includes(';')?';':',';
+      const rows=txt.split(/\r?\n/).filter(x=>x.trim());
+      const heads=rows[0].split(sep).map(h=>h.trim());
+      return rows.slice(1).map(r=>{
+        const cols=r.split(sep);
+        const o={};heads.forEach((h,i)=>o[h]=cols[i]!==undefined?cols[i].trim():'');
+        return o;
+      });
+    }
+    await carregarXLSX();
+    const buf=await file.arrayBuffer();
+    const wb=window.XLSX.read(buf,{type:'array',cellDates:false});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    return window.XLSX.utils.sheet_to_json(ws,{defval:''});
+  }
+
+  function renderTabela(){
+    const tb=el.querySelector('#imp-tbody');
+    if(!tb)return;
+    tb.innerHTML=linhas.map((l,i)=>`<tr data-i="${i}">
+      <td><input class="imp-inp" data-f="cliente" value="${esc(l.cliente)}" placeholder="Cliente"></td>
+      <td><input class="imp-inp" data-f="descricao" value="${esc(l.descricao)}" placeholder="Serviço/descrição"></td>
+      <td><input class="imp-inp" data-f="valor" type="number" step="0.01" value="${l.valor||''}" style="width:90px"></td>
+      <td><input class="imp-inp" data-f="vencimento" type="date" value="${esc(l.vencimento)}" style="width:140px"></td>
+      <td><select class="imp-inp" data-f="recorrencia" style="width:110px">
+        ${['unica','fixa','mensal','bimestral','trimestral','semestral','anual'].map(o=>`<option value="${o}"${l.recorrencia===o?' selected':''}>${o==='unica'?'Única':o==='fixa'?'Fixa':o.charAt(0).toUpperCase()+o.slice(1)}</option>`).join('')}
+      </select></td>
+      <td><input class="imp-inp" data-f="repeticoes" type="number" min="2" max="60" value="${l.repeticoes}" style="width:60px"${(l.recorrencia==='unica'||l.recorrencia==='fixa')?' disabled':''}></td>
+      <td><select class="imp-inp" data-f="destino" style="width:100px">
+        <option value="receber"${l.destino==='receber'?' selected':''}>📥 Receber</option>
+        <option value="pagar"${l.destino==='pagar'?' selected':''}>📤 Pagar</option>
+      </select></td>
+      <td><button class="imp-del" data-i="${i}" style="background:none;border:none;color:#dc2626;font-size:15px;cursor:pointer">✕</button></td>
+    </tr>`).join('');
+    el.querySelector('#imp-count').textContent=linhas.length+' linha'+(linhas.length===1?'':'s');
+    tb.querySelectorAll('.imp-inp').forEach(inp=>inp.addEventListener('change',()=>{
+      const tr=inp.closest('tr');const i=parseInt(tr.dataset.i);const f=inp.dataset.f;
+      linhas[i][f]=f==='valor'?parseFloat(inp.value)||0:f==='repeticoes'?parseInt(inp.value)||12:inp.value;
+      if(f==='recorrencia'){const rep=tr.querySelector('[data-f=repeticoes]');rep.disabled=(inp.value==='unica'||inp.value==='fixa');}
+    }));
+    tb.querySelectorAll('.imp-del').forEach(b=>b.addEventListener('click',()=>{
+      linhas.splice(parseInt(b.dataset.i),1);renderTabela();
+    }));
+  }
+
+  async function importar(){
+    const invalidas=linhas.filter(l=>!l.descricao||!(l.valor>0)||!l.vencimento);
+    if(invalidas.length){toast.err(invalidas.length+' linha(s) sem descrição, valor ou vencimento — corrija ou remova (✕).',6000);return;}
+    if(!linhas.length){toast.err('Nada para importar.');return;}
+    if(!confirm('Importar '+linhas.length+' linha(s)? Recorrências geram as parcelas futuras automaticamente.'))return;
+    const btn=el.querySelector('#imp-go');btn.disabled=true;btn.textContent='Importando…';
+    try{
+      // clientes existentes para vincular por nome
+      const {data:cliRows}=await sb.from('cli_clientes').select('id,dados').eq('user_id',uid);
+      const porNome=new Map(((cliRows)||[]).map(r=>[String((r.dados||{}).nome||'').toLowerCase().trim(),{id:r.id,nome:(r.dados||{}).nome}]));
+      const criarCli=el.querySelector('#imp-criacli').checked;
+      const novosClientes=[];const entries=[];
+      for(const l of linhas){
+        let cli=null;
+        if(l.cliente){
+          cli=porNome.get(l.cliente.toLowerCase().trim())||null;
+          if(!cli&&criarCli&&l.destino==='receber'){
+            cli={id:crypto.randomUUID(),nome:l.cliente.trim()};
+            porNome.set(l.cliente.toLowerCase().trim(),cli);
+            novosClientes.push({id:cli.id,user_id:uid,dados:{nome:cli.nome,status:'Ativo',dataCadastro:new Date().toISOString().slice(0,10),origem:'importacao'},updated_at:new Date().toISOString()});
+          }
+        }
+        const rec=l.recorrencia;
+        const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(l.repeticoes||12,2),60);
+        const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
+        const grupo=nrep>1?crypto.randomUUID():null;
+        for(let i=0;i<nrep;i++){
+          const dv=i===0?l.vencimento:addM(l.vencimento,i*step);
+          entries.push({id:crypto.randomUUID(),
+            tipo:l.destino==='pagar'?'despesa':'receita',status:'pendente',
+            descricao:l.descricao+(l.cliente&&l.destino==='receber'?' — '+l.cliente:''),
+            valor:l.valor,data_vencimento:dv,mes_ref:dv.slice(0,7),
+            categoria:'Importado',origem:'importacao',
+            ...(cli&&l.destino==='receber'?{clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome}:{}),
+            ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+'/'+nrep}:{})});
+        }
+      }
+      if(novosClientes.length){
+        const {error:eC}=await sb.from('cli_clientes').upsert(novosClientes,{onConflict:'id'});
+        if(eC)throw eC;
+      }
+      for(let i=0;i<entries.length;i+=100)await saveBatch('lancamentos',entries.slice(i,i+100));
+      toast.ok('Importação concluída: '+entries.length+' lançamentos'+(novosClientes.length?' + '+novosClientes.length+' clientes novos':'')+' ✅',7000);
+      linhas=[];render();
+    }catch(err){
+      toast.err('Erro na importação: '+err.message,7000);
+      btn.disabled=false;btn.textContent='⬆️ Importar tudo';
+    }
+  }
+
+  function render(){
+    el.innerHTML=`
+      <style>
+        .imp-inp{border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:7px 9px;font-size:13px;color:var(--text,#111);background:rgba(128,128,128,.1);box-sizing:border-box;width:100%}
+        .imp-inp:focus{outline:none;border-color:#0ea5e9}
+        #imp-table{width:100%;border-collapse:collapse}
+        #imp-table th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#6b7280);text-align:left;padding:8px 6px;border-bottom:1px solid var(--border,#e5e7eb)}
+        #imp-table td{padding:5px 4px;border-bottom:1px solid var(--border,#e5e7eb)}
+      </style>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Importar Planilha</div>
+          <div style="font-size:12px;color:var(--text-muted,#6b7280)">Excel (.xlsx) ou CSV — colunas: Cliente, Descrição/Serviço, Valor, Vencimento, Recorrência, Destino</div>
+        </div>
+        <label style="background:#0ea5e9;color:#fff;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">
+          📂 Escolher arquivo
+          <input id="imp-file" type="file" accept=".xlsx,.xls,.csv" style="display:none">
+        </label>
+      </div>
+      <div id="imp-area" style="background:var(--bg,#f4f5f7);padding:12px 12px 90px" ${linhas.length?'':'hidden'}>
+        <div style="background:var(--bg-card,#fff);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+            <b id="imp-count" style="font-size:13px;color:var(--text,#111)">0 linhas</b>
+            <span style="font-size:12px;color:var(--text-muted,#9ca3af)">— revise e edite antes de importar</span>
+            <label style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text,#111);cursor:pointer">
+              <input id="imp-criacli" type="checkbox" checked style="accent-color:#0ea5e9"> Criar clientes que não existem
+            </label>
+            <button id="imp-go" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer">⬆️ Importar tudo</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table id="imp-table">
+              <thead><tr><th>Cliente</th><th>Serviço / Descrição</th><th>Valor</th><th>Vencimento</th><th>Recorrência</th><th>Rep.</th><th>Destino</th><th></th></tr></thead>
+              <tbody id="imp-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="imp-vazio" style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px" ${linhas.length?'hidden':''}>
+        Escolha um arquivo Excel ou CSV.<br><br>
+        A 1ª linha deve ter os títulos das colunas — o sistema reconhece automaticamente<br>
+        <b>Cliente · Descrição/Serviço · Valor · Vencimento · Recorrência (mensal/única…) · Destino (receber/pagar)</b>
+      </div>`;
+    el.querySelector('#imp-file').addEventListener('change',async e=>{
+      const file=e.target.files[0];if(!file)return;
+      try{
+        const rows=await lerArquivo(file);
+        linhas=mapearLinhas(rows);
+        if(!linhas.length){toast.err('Nenhuma linha reconhecida — confira os títulos das colunas.');return;}
+        toast.ok(linhas.length+' linha(s) lidas — revise antes de importar');
+        el.querySelector('#imp-area').hidden=false;
+        el.querySelector('#imp-vazio').hidden=true;
+        renderTabela();
+      }catch(err){toast.err('Erro ao ler arquivo: '+err.message,6000);}
+    });
+    el.querySelector('#imp-go').addEventListener('click',importar);
+    if(linhas.length)renderTabela();
+  }
+  render();
+};
 ;window.getVisibleModules=P;const b=`
   <div style="
     display:flex;align-items:center;justify-content:center;

@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.56 — 2026-08-31
+
+### Novo — Importar Planilha (📄 no menu)
+- **Upload de Excel (.xlsx/.xls) ou CSV** com reconhecimento automático de colunas: Cliente, Descrição/Serviço, Valor, Vencimento, Recorrência, Destino
+- **Tabela de revisão editável antes de subir**: cada linha permite ajustar nome do cliente, serviço, valor, data de vencimento, recorrência (Única/Fixa/Mensal…), repetições e destino (Receber/Pagar); linhas indesejadas saem no ✕
+- **Importação inteligente**: vincula clientes existentes pelo nome, cria os que não existem (opcional), gera as parcelas das recorrências e grava em lotes; valores "R$ 1.234,56", datas DD/MM/AAAA e datas seriais do Excel são normalizados
+
 ## v2.9.55 — 2026-08-31
 
 ### Novo
