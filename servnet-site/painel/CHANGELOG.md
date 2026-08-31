@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.40 — 2026-08-31
+
+### Novo — Serviços contratados (contratos por cliente)
+- **Cadastro do cliente aceita 1 ou mais serviços**: cada serviço vincula negócio → plano (filtrado) → periodicidade (Fixa/Mensal/Bimestral/Trimestral/Semestral/Anual) → dia de vencimento; adicionar com + e remover com ✕
+- **Contas a Receber usa o serviço**: ao digitar o cliente, plano, valor, periodicidade e dia de vencimento do 1º serviço preenchem o formulário automaticamente
+- Lista de clientes mostra a contagem de serviços (📦 2 serviços)
+- Campos antigos (negócio/plano únicos) migram automaticamente para o novo formato ao editar
+
 ## v2.9.39 — 2026-08-31
 
 ### Novo — WhatsApp por negócio
