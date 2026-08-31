@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.41 — 2026-08-31
+
+### Alterado
+- **Nova cobrança: negócio primeiro**: campo "Tipo de negócio" antes do plano; a lista de planos só mostra os do negócio escolhido. O autofill do cliente seleciona negócio e plano do serviço vinculado automaticamente
+
 ## v2.9.40 — 2026-08-31
 
 ### Novo — Serviços contratados (contratos por cliente)

@@ -752,12 +752,14 @@ _['receber']=async function(el){
   }
 
   async function formCobranca(){
-    let clientes=[],planos=[];
+    let clientes=[],planos=[],negocios=[];
     try{
-      const [cr,pr]=await Promise.all([
+      const [cr,pr,ng]=await Promise.all([
         sb.from('cli_clientes').select('id,dados').eq('user_id',uid),
-        sb.from('cli_planos').select('id,dados').eq('user_id',uid)
+        sb.from('cli_planos').select('id,dados').eq('user_id',uid),
+        sb.from('negocios').select('id,nome').eq('user_id',uid)
       ]);
+      negocios=((ng&&ng.data)||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
       clientes=((cr&&cr.data)||[]).map(r=>({id:r.id,nome:(r.dados||{}).nome||'—',planoId:(r.dados||{}).planoId||null,servicos:Array.isArray((r.dados||{}).servicos)?(r.dados||{}).servicos:[]})).sort((a,b)=>a.nome.localeCompare(b.nome));
       planos=((pr&&pr.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
     }catch(e){}
@@ -776,8 +778,12 @@ _['receber']=async function(el){
           <datalist id="cr-cli-list">${clientes.map(c=>`<option value="${esc(c.nome)}">`).join('')}</datalist>
           ${clientes.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum cliente. Cadastre em Clientes.</div>'}
         </div>
+        <div><label class="cl-lbl">Tipo de negócio *</label>
+          <select class="cl-inp" name="negocio" id="cr-neg" required><option value="">— selecione —</option>${negocios.map(n=>`<option value="${n.id}">${esc(n.nome)}</option>`).join('')}</select>
+          ${negocios.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum negócio. Cadastre em Tipos de Negócio.</div>'}
+        </div>
         <div><label class="cl-lbl">Plano / serviço *</label>
-          <select class="cl-inp" name="plano" id="cr-plano" required><option value="">— selecione —</option>${optPl}</select>
+          <select class="cl-inp" name="plano" id="cr-plano" required><option value="">— escolha o negócio primeiro —</option></select>
           ${planos.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum plano. Cadastre em Tipos de Negócio → + Plano.</div>'}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -806,6 +812,11 @@ _['receber']=async function(el){
     document.body.appendChild(ov);
     ov.querySelector('#cr-x').addEventListener('click',()=>ov.remove());
     const selPl=ov.querySelector('#cr-plano'),inpV=ov.querySelector('#cr-valor'),inpD=ov.querySelector('#cr-dv');
+    const selNeg=ov.querySelector('#cr-neg');
+    const optPlFor=negId=>planos.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}" data-valor="${p.valor||''}" data-negocio="${esc(p.negocio||'')}">${esc(p.nome)} — ${fmt(p.valor)}</option>`).join('');
+    selNeg?.addEventListener('change',()=>{
+      selPl.innerHTML='<option value="">— selecione —</option>'+optPlFor(selNeg.value);
+    });
     // cliente digitado → pré-seleciona o plano vinculado e o valor
     const inpCli=ov.querySelector('input[name=clienteNome]');
     inpCli?.addEventListener('change',()=>{
@@ -814,6 +825,8 @@ _['receber']=async function(el){
       const sv=(c.servicos&&c.servicos[0])||null;
       const planoAlvo=sv?sv.planoId:c.planoId;
       if(planoAlvo){
+        const pl=planos.find(p=>p.id===planoAlvo);
+        if(pl&&selNeg){selNeg.value=pl.negocioId||'';selNeg.dispatchEvent(new Event('change'));}
         selPl.value=planoAlvo;
         const o=selPl.selectedOptions[0];
         if(o&&o.dataset.valor)inpV.value=o.dataset.valor;
