@@ -456,7 +456,7 @@ a{color:inherit;}
     </div>
     <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="loginErr"></div>
-    <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=551111966961138">Fale pelo WhatsApp</a></div>
+    <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=5511966961138">Fale pelo WhatsApp</a></div>
   </div>
   <div style="text-align:center;margin-top:1rem;font-size:0.68rem;color:#aaa;opacity:0.6;letter-spacing:0.04em;">v2026.08.17</div>
 </div>
@@ -600,7 +600,7 @@ a{color:inherit;}
           </button>
           <div class="ticket-ok" id="ticketOk">✅ Redirecionando para o WhatsApp…</div>
         </div>
-        <div class="sup-info" style="margin-top:1rem">Ou ligue: <a href="tel:+551111966961138">(11) 96696-1138</a></div>
+        <div class="sup-info" style="margin-top:1rem">Ou ligue: <a href="tel:+5511966961138">(11) 96696-1138</a></div>
       </div>
 
     </div>
@@ -708,7 +708,7 @@ async function doLogin(){
     if(error) throw error;
     if(!data||!data.ok){
       const baseMsg = data?.msg || 'CPF ou data de nascimento incorretos.';
-      showErr(baseMsg + ' Se você se cadastrou recentemente, <a href="whatsapp://send?phone=551111966961138" style="color:inherit;text-decoration:underline">fale pelo WhatsApp</a> para ativar seu acesso.');
+      showErr(baseMsg + ' Se você se cadastrou recentemente, <a href="whatsapp://send?phone=5511966961138" style="color:inherit;text-decoration:underline">fale pelo WhatsApp</a> para ativar seu acesso.');
       return;
     }
     session=data;
@@ -1601,7 +1601,7 @@ async function loadIndicacoes(data){
 function renderIndicacoes(res,data,codigo){
   const lista=res?.indicacoes||[];
   const totalAtivos=res?.total_ativos||0;
-  const waMsg=encodeURIComponent(`Olá! Assine a internet da Servnet e diz que fui eu que te indiquei! Meu código: *${codigo}*. Entre em contato pelo WhatsApp: wa.me/551111966961138`);
+  const waMsg=encodeURIComponent(`Olá! Assine a internet da Servnet e diz que fui eu que te indiquei! Meu código: *${codigo}*. Entre em contato pelo WhatsApp: wa.me/5511966961138`);
 
   const listHtml=lista.length
     ?lista.map(i=>`
@@ -1740,7 +1740,7 @@ function abrirChamado(){
   btn.disabled = true;
   ok.style.display = 'block';
   setTimeout(() => {
-    window.open(`https://wa.me/551111966961138?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/5511966961138?text=${encodeURIComponent(msg)}`, '_blank');
     btn.disabled = false;
     ok.style.display = 'none';
     document.getElementById('ticketTipo').value = '';

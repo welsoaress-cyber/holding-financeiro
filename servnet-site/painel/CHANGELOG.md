@@ -2,6 +2,18 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.69 — 2026-08-31
+- **Contas a Receber — Seleção em lote**: botão "☑ Selecionar" no header entra em modo de seleção; checkboxes em cada card de cliente; barra azul flutuante mostra quantos estão selecionados com ações: "Todos", "📲 Ativar WhatsApp", "🔕 Desativar WhatsApp", "🗑 Excluir". Permite gerenciar dezenas de clientes sem entrar um a um.
+
+## v2.9.68 — 2026-08-31
+- **Contas a Receber**: nome do cliente quebra linha (`word-break:break-word`) em vez de cortar com ellipsis
+
+## v2.9.67 — 2026-08-31
+- **Contas a Receber — aglutinado**: nome do cliente agora aparece corretamente (extrai da descrição quando `l.cliente` está vazio); label "aglutinado ·" removido do subtítulo
+
+## v2.9.66 — 2026-08-31
+- **Contas a Receber**: ordenação por dia de vencimento → nome do cliente → plano
+
 ## v2.9.65 — 2026-08-31
 - **Editar cobrança**: toggle "📲 Receber lembretes WhatsApp" aparece para todos os clientes existentes — alteração salva direto no cadastro do cliente, sem precisar ir ao módulo Clientes
 
@@ -828,3 +840,16 @@ Toda alteração no painel exige atualização de versão e registro aqui.
 - Hex nav, alternância de tema, 4 modos de layout, login redesenhado,
   RBAC por perfil (tabela user_profiles), clientes multi-negócio,
   CRUD de planos.
+
+## v2.9.66 — 2026-08-31
+### Melhorias
+- **Contas a Receber**: lista ordenada por dia de vencimento → nome → plano (era agrupada por cliente sem ordenação consistente)
+
+## v2.9.67 — 2026-08-31
+### Correções
+- **Contas a Receber**: nome do cliente voltou a aparecer no cabeçalho de cobranças aglutinadas
+- **Contas a Receber**: removido rótulo "aglutinado" do subtítulo do cabeçalho
+
+## v2.9.68 — 2026-08-31
+### Correções
+- **Contas a Receber**: nome do cliente quebra linha ao invés de cortar com "..."

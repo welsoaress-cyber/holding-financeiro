@@ -60,7 +60,7 @@ p { color: var(--text-2); line-height: 1.7; font-size: 0.98rem; margin-bottom: 1
   <div class="check">✅</div>
   <h1>Pedido recebido com <span>sucesso</span>!</h1>
   <p>Agora é só finalizar pelo WhatsApp — sua mensagem já está pronta, é só enviar. Vamos confirmar a cobertura do seu endereço e agendar a instalação.</p>
-  <a class="btn-wa" id="btn-wa" href="https://wa.me/551111966961138">💬 Abrir o WhatsApp</a>
+  <a class="btn-wa" id="btn-wa" href="https://wa.me/5511966961138">💬 Abrir o WhatsApp</a>
   <div class="aguarde" id="aguarde">Abrindo o WhatsApp automaticamente…</div>
   <div class="voltar"><a href="index.html">← Voltar ao site</a></div>
 </div>
@@ -68,7 +68,7 @@ p { color: var(--text-2); line-height: 1.7; font-size: 0.98rem; margin-bottom: 1
 // A mensagem do lead chega pela URL (?m=...) montada pelo formulário do site.
 (function(){
   const m = new URLSearchParams(location.search).get('m');
-  const url = 'https://wa.me/551111966961138' + (m ? '?text=' + encodeURIComponent(m) : '');
+  const url = 'https://wa.me/5511966961138' + (m ? '?text=' + encodeURIComponent(m) : '');
   const btn = document.getElementById('btn-wa');
   btn.href = url;
   // navegação na mesma aba não é bloqueada como popup
