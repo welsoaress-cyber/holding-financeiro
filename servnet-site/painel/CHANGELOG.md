@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.52 — 2026-08-31
+
+### Corrigido
+- **Fatura aglutinada com opções completas**: para uma aglutinada, a "série" passa a ser todas as cobranças do mesmo cliente — Excluir/Editar oferecem "Apenas esta / Esta e as próximas / Todas incluindo pagas" também nelas
+
 ## v2.9.51 — 2026-08-31
 
 ### Alterado
