@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.26 — 2026-08-31
+
+### Novo
+- **Módulo Clientes ServNet** (sidebar → 👥 Clientes ServNet): cadastro de clientes com nome, CPF, data de nascimento (login do portal), telefone, valor mensal, dia de vencimento e status
+- **Gerar mensalidade** (💰 na lista de clientes): cria receita em `lancamentos` com `clienteId` — aparece imediatamente como fatura no portal do cliente (servnet.net.br/portal); com aviso contra duplicidade no mesmo mês
+
+### Corrigido
+- **Painel travado em "Verificando acesso"**: artefatos de merge (linha duplicada + marcador `>>>>>>>`) quebravam o `page-dashboard` com SyntaxError — removidos e sintaxe validada nos 4 arquivos críticos
+- **Login sem perfil**: usuário master entra mesmo quando `user_profiles` está vazio (fallback em memória)
+- **Inputs ilegíveis no modo escuro**: campos do modal Nova Receita/Despesa usavam fundo escuro com texto escuro — trocado para fundo neutro translúcido
+
 ## v2.9.24 — 2026-08-30
 
 ### Segurança

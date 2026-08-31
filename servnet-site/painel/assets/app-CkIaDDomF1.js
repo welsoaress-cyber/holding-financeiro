@@ -394,7 +394,139 @@ _['contas']=async function(el){
 
   // Inicia
   await showList();
-};;window.getVisibleModules=P;const b=`
+};;
+/* ── Clientes ServNet module inline ── */
+_['clientes']=async function(el){
+  const mod=await import('./page-dashboard-Dbqm2OjXb.js');
+  const sb=mod.j, toast=mod.t, fmt=mod.f;
+  const {data:{user}}=await sb.auth.getUser();
+  const uid=user&&user.id;
+  if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
+  const unpack=r=>({id:r.id,...(r.dados||{})});
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const cpfFmt=v=>{v=String(v||'').replace(/\D/g,'');return v.length===11?v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9):v;};
+  const mesAtual=()=>{const t=new Date;return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');};
+
+  async function listar(){
+    const {data,error}=await sb.from('cli_clientes').select('*').eq('user_id',uid);
+    if(error)throw error;
+    return (data||[]).map(unpack).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||'')));
+  }
+  async function salvar(cli){
+    const {id,...dados}=cli;
+    const {error}=await sb.from('cli_clientes').upsert({id,user_id:uid,dados,updated_at:new Date().toISOString()},{onConflict:'id'});
+    if(error)throw error;
+  }
+  async function gerarMensalidade(cli,mesRef){
+    const {data:exist}=await sb.from('lancamentos').select('id').eq('user_id',uid).contains('dados',{clienteId:cli.id,mes_ref:mesRef});
+    if(exist&&exist.length&&!confirm('Já existe mensalidade de '+mesRef+' para '+cli.nome+'. Gerar outra?'))return false;
+    const dia=String(cli.diaVencimento||'10').padStart(2,'0');
+    const dados={tipo:'receita',status:'pendente',clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,
+      descricao:'Mensalidade '+cli.nome+' — '+mesRef,valor:Number(cli.valorMensal||0),
+      data_vencimento:mesRef+'-'+dia,mes_ref:mesRef,negocio:'Provedor/Servnet',categoria:'Mensalidade'};
+    const {error}=await sb.from('lancamentos').insert({id:crypto.randomUUID(),user_id:uid,dados,updated_at:new Date().toISOString()});
+    if(error)throw error;
+    return true;
+  }
+
+  function showForm(cli){
+    const c=cli||{};
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:#0ea5e9">${cli?'✏️ Editar cliente':'👥 Novo cliente'}</span>
+        <button id="cl-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="cl-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Nome completo</label><input class="cl-inp" name="nome" required value="${esc(c.nome||'')}" placeholder="Ex: João da Silva"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">CPF</label><input class="cl-inp" name="cpfCnpj" required value="${esc(c.cpfCnpj||'')}" placeholder="000.000.000-00" inputmode="numeric"></div>
+          <div><label class="cl-lbl">Nascimento</label><input class="cl-inp" name="dataNascimento" type="date" required value="${esc(c.dataNascimento||'')}"></div>
+        </div>
+        <div><label class="cl-lbl">Telefone / WhatsApp</label><input class="cl-inp" name="telefone" value="${esc(c.telefone||'')}" placeholder="(11) 90000-0000" inputmode="tel"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor mensal (R$)</label><input class="cl-inp" name="valorMensal" type="number" step="0.01" min="0" required value="${c.valorMensal??''}" placeholder="79.90"></div>
+          <div><label class="cl-lbl">Dia vencimento</label><input class="cl-inp" name="diaVencimento" type="number" min="1" max="28" required value="${c.diaVencimento??'10'}"></div>
+        </div>
+        <div><label class="cl-lbl">Status</label>
+          <select class="cl-inp" name="status">
+            <option${(c.status||'Ativo')==='Ativo'?' selected':''}>Ativo</option>
+            <option${c.status==='Suspenso'?' selected':''}>Suspenso</option>
+            <option${c.status==='Cancelado'?' selected':''}>Cancelado</option>
+          </select>
+        </div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar cliente</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    ov.querySelector('#cl-x').addEventListener('click',()=>ov.remove());
+    ov.querySelector('#cl-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const novo={id:c.id||crypto.randomUUID(),nome:fd.get('nome').trim(),cpfCnpj:fd.get('cpfCnpj').trim(),
+        dataNascimento:fd.get('dataNascimento'),telefone:fd.get('telefone').trim(),
+        valorMensal:parseFloat(fd.get('valorMensal'))||0,diaVencimento:parseInt(fd.get('diaVencimento'))||10,
+        status:fd.get('status'),negocio:'Provedor/Servnet',dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      try{await salvar(novo);toast.ok('Cliente salvo! ✅');ov.remove();render();}
+      catch(err){toast.err('Erro: '+err.message);btn.disabled=false;btn.textContent='Salvar cliente';}
+    });
+  }
+
+  async function render(){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando clientes…</div>';
+    let clientes=[];
+    try{clientes=await listar();}
+    catch(e){el.innerHTML='<div style="padding:24px;color:#f87171;font-size:14px">Erro ao carregar clientes: '+esc(e.message)+'<br><br>Se aparecer "permission denied", rode o SQL de políticas que o Claude te passou.</div>';return;}
+    const ativos=clientes.filter(c=>c.status!=='Cancelado');
+    const rows=clientes.map(c=>{
+      const cor=c.status==='Ativo'?'#059669':c.status==='Suspenso'?'#d97706':'#6b7280';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border,#e5e7eb)">
+        <div style="width:38px;height:38px;border-radius:50%;background:${cor}22;border:2px solid ${cor}55;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${cor};flex-shrink:0">${esc((c.nome||'?')[0].toUpperCase())}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nome||'—')}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))} · ${fmt(c.valorMensal)} · venc. dia ${esc(c.diaVencimento||'—')} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
+        </div>
+        <button class="cl-gerar" data-id="${c.id}" title="Gerar mensalidade" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:16px;cursor:pointer;padding:6px 9px">💰</button>
+        <button class="cl-edit" data-id="${c.id}" title="Editar" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:15px;cursor:pointer;padding:6px 9px;color:var(--text-muted,#6b7280)">✏️</button>
+      </div>`;
+    }).join('');
+    el.innerHTML=`
+      <style>
+        .cl-lbl{font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+        .cl-inp{width:100%;border:1.5px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--text,#111);background:rgba(128,128,128,.1);box-sizing:border-box}
+        .cl-inp:focus{outline:none;border-color:#0ea5e9}
+      </style>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Clientes ServNet</div>
+          <div style="font-size:13px;color:var(--text-muted,#6b7280)">${ativos.length} ativo${ativos.length===1?'':'s'} · ${clientes.length} total</div>
+        </div>
+        <button id="cl-novo" style="background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Novo</button>
+      </div>
+      <div style="background:var(--bg,#f4f5f7);padding-bottom:80px">
+        ${rows||'<div style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px">Nenhum cliente cadastrado.<br><br>Toque em <b>+ Novo</b> para começar.</div>'}
+      </div>`;
+    el.querySelector('#cl-novo').addEventListener('click',()=>showForm(null));
+    el.querySelectorAll('.cl-edit').forEach(b=>b.addEventListener('click',()=>{
+      const c=clientes.find(x=>x.id===b.dataset.id);if(c)showForm(c);
+    }));
+    el.querySelectorAll('.cl-gerar').forEach(b=>b.addEventListener('click',async()=>{
+      const c=clientes.find(x=>x.id===b.dataset.id);if(!c)return;
+      const mes=prompt('Gerar mensalidade de '+c.nome+' ('+fmt(c.valorMensal)+')\nMês de referência (AAAA-MM):',mesAtual());
+      if(!mes)return;
+      if(!/^\d{4}-\d{2}$/.test(mes)){toast.err('Mês inválido. Use o formato AAAA-MM, ex: '+mesAtual());return;}
+      b.disabled=true;
+      try{const ok=await gerarMensalidade(c,mes);if(ok)toast.ok('Mensalidade '+mes+' gerada! Já aparece no portal do cliente. ✅');}
+      catch(err){toast.err('Erro: '+err.message);}
+      b.disabled=false;
+    }));
+  }
+  await render();
+};
+;window.getVisibleModules=P;const b=`
   <div style="
     display:flex;align-items:center;justify-content:center;
     height:100%;min-height:200px;gap:14px;flex-direction:column;
