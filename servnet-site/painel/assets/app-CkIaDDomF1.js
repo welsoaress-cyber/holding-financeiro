@@ -1049,8 +1049,15 @@ _['receber']=async function(el){
     }));
   }
 
+  function serieDe(l){
+    if(l.grupoRecorrencia)return todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia);
+    // Séries antigas sem grupo: mesma descrição e mesmo tipo
+    const s=todosCache.filter(x=>x.tipo===l.tipo&&String(x.descricao||'')===String(l.descricao||''));
+    return s.length?s:[l];
+  }
+
   function escolherExclusao(l){
-    const serie=l.grupoRecorrencia?todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia):[l];
+    const serie=serieDe(l);
     const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
     const btn='width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left';
     const ov=document.createElement('div');
@@ -1080,6 +1087,9 @@ _['receber']=async function(el){
   }
 
   function editLanc(l){
+    const serie=serieDe(l);
+    const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
+    const multi=serie.length>1;
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
@@ -1093,6 +1103,13 @@ _['receber']=async function(el){
           <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${l.valor??''}"></div>
           <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" required value="${String(l.data_vencimento||'').slice(0,10)}"></div>
         </div>
+        ${multi?`<div><label class="cl-lbl">Aplicar alteração em</label>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--text,#111)">
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="uma" checked style="accent-color:#2563eb"> Apenas esta</label>
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="fut" style="accent-color:#d97706"> Esta e as próximas (${fut.length})</label>
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="todas" style="accent-color:#dc2626"> Todas da série, incluindo pagas (${serie.length})</label>
+          </div>
+        </div>`:''}
         <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar alterações</button>
       </form>
     </div>`;
@@ -1102,12 +1119,27 @@ _['receber']=async function(el){
       e.preventDefault();
       const fd=new FormData(e.target);
       const dv=fd.get('data_v');
-      const {id,...dados}=l;
-      const novo={...dados,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:dv,mes_ref:dv.slice(0,7)};
+      const escopo=multi?(fd.get('escopo')||'uma'):'uma';
+      const alvos=escopo==='uma'?[l]:escopo==='fut'?fut:serie;
+      const dd=parseInt(dv.slice(8,10))||1;
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
-      const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
-      if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='Salvar alterações';}
-      else{toast.ok('Alterado! ✅');ov.remove();render();}
+      let errs=0;
+      for(const x of alvos){
+        const {id,...d}=x;
+        // A data escolhida vale para o lançamento editado; nos demais da série
+        // muda apenas o DIA do vencimento, preservando o mês de cada um
+        let ndv=dv;
+        if(x.id!==l.id&&x.mes_ref){
+          const [yy,mm]=String(x.mes_ref).split('-').map(Number);
+          const ultimo=new Date(yy,mm,0).getDate();
+          ndv=x.mes_ref+'-'+String(Math.min(dd,ultimo)).padStart(2,'0');
+        }
+        const novo={...d,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:ndv,mes_ref:ndv.slice(0,7)};
+        const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+        if(error)errs++;
+      }
+      if(errs){toast.err(errs+' lançamento(s) falharam');btn.disabled=false;btn.textContent='Salvar alterações';}
+      else{toast.ok(alvos.length+' lançamento(s) alterado(s) ✅');ov.remove();render();}
     });
   }
   await render();
@@ -1278,8 +1310,15 @@ _['pagar']=async function(el){
     }));
   }
 
+  function serieDe(l){
+    if(l.grupoRecorrencia)return todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia);
+    // Séries antigas sem grupo: mesma descrição e mesmo tipo
+    const s=todosCache.filter(x=>x.tipo===l.tipo&&String(x.descricao||'')===String(l.descricao||''));
+    return s.length?s:[l];
+  }
+
   function escolherExclusao(l){
-    const serie=l.grupoRecorrencia?todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia):[l];
+    const serie=serieDe(l);
     const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
     const btn='width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left';
     const ov=document.createElement('div');
@@ -1309,6 +1348,9 @@ _['pagar']=async function(el){
   }
 
   function editLanc(l){
+    const serie=serieDe(l);
+    const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
+    const multi=serie.length>1;
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
@@ -1322,6 +1364,13 @@ _['pagar']=async function(el){
           <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${l.valor??''}"></div>
           <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" required value="${String(l.data_vencimento||'').slice(0,10)}"></div>
         </div>
+        ${multi?`<div><label class="cl-lbl">Aplicar alteração em</label>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--text,#111)">
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="uma" checked style="accent-color:#2563eb"> Apenas esta</label>
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="fut" style="accent-color:#d97706"> Esta e as próximas (${fut.length})</label>
+            <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="todas" style="accent-color:#dc2626"> Todas da série, incluindo pagas (${serie.length})</label>
+          </div>
+        </div>`:''}
         <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar alterações</button>
       </form>
     </div>`;
@@ -1331,12 +1380,27 @@ _['pagar']=async function(el){
       e.preventDefault();
       const fd=new FormData(e.target);
       const dv=fd.get('data_v');
-      const {id,...dados}=l;
-      const novo={...dados,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:dv,mes_ref:dv.slice(0,7)};
+      const escopo=multi?(fd.get('escopo')||'uma'):'uma';
+      const alvos=escopo==='uma'?[l]:escopo==='fut'?fut:serie;
+      const dd=parseInt(dv.slice(8,10))||1;
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
-      const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
-      if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='Salvar alterações';}
-      else{toast.ok('Alterado! ✅');ov.remove();render();}
+      let errs=0;
+      for(const x of alvos){
+        const {id,...d}=x;
+        // A data escolhida vale para o lançamento editado; nos demais da série
+        // muda apenas o DIA do vencimento, preservando o mês de cada um
+        let ndv=dv;
+        if(x.id!==l.id&&x.mes_ref){
+          const [yy,mm]=String(x.mes_ref).split('-').map(Number);
+          const ultimo=new Date(yy,mm,0).getDate();
+          ndv=x.mes_ref+'-'+String(Math.min(dd,ultimo)).padStart(2,'0');
+        }
+        const novo={...d,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:ndv,mes_ref:ndv.slice(0,7)};
+        const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+        if(error)errs++;
+      }
+      if(errs){toast.err(errs+' lançamento(s) falharam');btn.disabled=false;btn.textContent='Salvar alterações';}
+      else{toast.ok(alvos.length+' lançamento(s) alterado(s) ✅');ov.remove();render();}
     });
   }
   await render();

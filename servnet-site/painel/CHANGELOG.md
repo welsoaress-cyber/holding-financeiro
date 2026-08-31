@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.51 — 2026-08-31
+
+### Alterado
+- **Editar também pergunta o alcance**: Apenas esta / Esta e as próximas (N) / Todas da série incluindo pagas (N) — descrição e valor aplicam a todas as escolhidas; a data muda só o DIA nas demais, preservando o mês de cada uma
+- **Série reconhecida pela descrição**: cobranças sem grupo de recorrência (séries antigas como Empréstimo/Casa e faturas aglutinadas) agora são tratadas como série pela descrição+tipo — as 3 opções de excluir e o escopo de edição funcionam nelas
+
 ## v2.9.50 — 2026-08-31
 
 ### Alterado
