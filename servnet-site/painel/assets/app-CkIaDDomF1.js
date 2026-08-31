@@ -749,6 +749,67 @@ _['receber']=async function(el){
     if(error)throw error;
   }
 
+  function marcarRecebido(l){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    const hoje=new Date().toISOString().slice(0,10);
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:380px;padding:22px 20px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:16px;font-weight:700;color:var(--text,#111)">✅ Confirmar Recebimento</div>
+        <button id="mr-x" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted,#9ca3af)">✕</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted,#6b7280);margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border,#e5e7eb)">${esc(l.descricao||'—')} · <b>${fmt(l.valor)}</b></div>
+      <div style="margin-bottom:12px">
+        <label class="cl-lbl">Data do pagamento</label>
+        <input class="cl-inp" id="mr-data" type="date" value="${hoje}">
+      </div>
+      <div style="margin-bottom:20px">
+        <label class="cl-lbl">Conta recebida em</label>
+        <input class="cl-inp" id="mr-conta" list="mr-contas-list" placeholder="Ex: Pix, Dinheiro, Banco…">
+        <datalist id="mr-contas-list">
+          <option value="Pix"><option value="Dinheiro"><option value="Banco Sicoob">
+          <option value="Banco Nubank"><option value="Cartão"><option value="Boleto">
+        </datalist>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="mr-cancel" style="flex:1;background:rgba(128,128,128,.1);border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px;font-size:14px;cursor:pointer;color:var(--text,#111)">Cancelar</button>
+        <button id="mr-ok" style="flex:2;background:#059669;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer">Confirmar ✅</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#mr-x').onclick=()=>ov.remove();
+    ov.querySelector('#mr-cancel').onclick=()=>ov.remove();
+    ov.querySelector('#mr-ok').onclick=async()=>{
+      const dataPag=ov.querySelector('#mr-data').value;
+      const conta=ov.querySelector('#mr-conta').value.trim();
+      if(!dataPag){toast.err('Informe a data do pagamento.');return;}
+      const btn=ov.querySelector('#mr-ok');btn.disabled=true;
+      try{
+        const {id,...dados}=l;
+        const d={...dados,status:'pago',dataPagamento:dataPag};
+        if(conta)d.contaRecebimento=conta;
+        const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
+        if(error)throw error;
+        // Pago atrasado → reagenda próximas parcelas a partir da data de pagamento
+        const venc=String(l.data_vencimento||'').slice(0,10);
+        if(l.grupoRecorrencia&&dataPag>venc){
+          const futuras=todosCache.filter(x=>
+            x.grupoRecorrencia===l.grupoRecorrencia&&x.id!==l.id&&
+            !x.inativo&&x.status!=='pago'&&x.status!=='recebido'&&
+            String(x.data_vencimento||'').slice(0,10)>venc
+          ).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
+          for(let i=0;i<futuras.length;i++){
+            const f=futuras[i];const {id:fid,...fd}=f;
+            const nd=new Date(dataPag+'T12:00:00');nd.setDate(nd.getDate()+30*(i+1));
+            const ndv=nd.toISOString().slice(0,10);
+            await sb.from('lancamentos').update({dados:{...fd,data_vencimento:ndv,mes_ref:ndv.slice(0,7)},updated_at:new Date().toISOString()}).eq('id',fid).eq('user_id',uid);
+          }
+        }
+        toast.ok('Recebido! ✅');ov.remove();render();
+      }catch(err){toast.err('Erro: '+err.message);btn.disabled=false;}
+    };
+  }
+
   async function formCobranca(){
     let clientes=[],planos=[],negocios=[];
     try{
@@ -925,7 +986,7 @@ _['receber']=async function(el){
         <div style="width:6px;height:30px;border-radius:3px;background:${cor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}${l.ocultarPortal?' <span title=\"Oculta no portal\">🙈</span>':''}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span></div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span>${ok&&l.dataPagamento?' · <span style="color:#059669">pago '+dtBr(l.dataPagamento)+(l.contaRecebimento?' via '+esc(l.contaRecebimento):'')+'</span>':''}</div>
         </div>
         <div style="font-size:13px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
         ${ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
@@ -1016,10 +1077,9 @@ _['receber']=async function(el){
         toast.ok('Aglutinado em uma fatura de '+fmt(total)+' ✅');render();
       }catch(err){toast.err('Erro: '+err.message);}
     }));
-    el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',async()=>{
-      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
-      const {id,...dados}=l;
-      try{await marcar(l.id,dados,'pago');toast.ok('Recebido! ✅');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+    el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',()=>{
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;
+      marcarRecebido(l);
     }));
     el.querySelectorAll('.cr-undo').forEach(b=>b.addEventListener('click',async()=>{
       const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;

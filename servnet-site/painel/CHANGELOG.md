@@ -2,6 +2,10 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.62 — 2026-08-31
+- **Contas a Receber**: ao marcar como recebido abre popup pedindo data do pagamento + conta (Pix, Dinheiro, Banco…); data e conta ficam visíveis na linha após confirmação
+- **Contas a Receber**: se pagamento foi atrasado (data pag > vencimento), reagenda automaticamente todas as parcelas futuras da série deslocando 30 dias a partir da data de pagamento; se pagou em dia ou adiantado, vencimentos futuros não mudam
+
 ## v2.9.61 — 2026-08-31
 - **Importar Planilha**: tabela de revisão simplificada — removidas colunas Negócio e Plano por linha; ficam apenas Cliente, Telefone e Serviço/Descrição inline; Negócio, Plano e Recorrência globais ficam na barra "Aplicar a todos"
 
