@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.45 — 2026-08-31
+
+### Alterado
+- **Ocultar do portal vale para a série inteira**: o toggle ⋮ 🙈/👁 aplica a flag a todos os lançamentos do mesmo grupo de recorrência (ex: as 24 mensalidades fixas), não só ao mês clicado; avulsos continuam individuais
+
 ## v2.9.44 — 2026-08-31
 
 ### Novo

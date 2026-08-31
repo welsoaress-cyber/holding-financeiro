@@ -1010,11 +1010,23 @@ _['receber']=async function(el){
         const a=it.dataset.a;
         if(a==='editar')return editLanc(l);
         if(a==='portal'){
-          const {id,...dados}=l;
-          const novo={...dados};
-          if(novo.ocultarPortal)delete novo.ocultarPortal;else novo.ocultarPortal=true;
-          const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
-          if(error)toast.err('Erro: '+error.message);else{toast.ok(novo.ocultarPortal?'Oculto do portal 🙈':'Visível no portal 👁');render();}
+          // Vale para a série inteira: todos os lançamentos do mesmo grupo de
+          // recorrência (ou só este, se for avulso)
+          const alvos=l.grupoRecorrencia
+            ? todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia)
+            : [l];
+          const ocultar=!l.ocultarPortal;
+          let errs=0;
+          for(const x of alvos){
+            const {id,...d}=x;
+            const novo={...d};
+            if(ocultar)novo.ocultarPortal=true;else delete novo.ocultarPortal;
+            const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+            if(error)errs++;
+          }
+          if(errs)toast.err(errs+' fatura(s) falharam ao atualizar');
+          else toast.ok(ocultar?alvos.length+' fatura(s) da série ocultas do portal 🙈':alvos.length+' fatura(s) da série visíveis no portal 👁');
+          render();
         }
         if(a==='del'){
           if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
