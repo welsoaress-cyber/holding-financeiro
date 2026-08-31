@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.28 — 2026-08-31
+
+### Novo
+- **Anti-duplicidade no cadastro de clientes**: ao salvar, o sistema verifica se já existe outro cliente com o mesmo CPF ou telefone (comparação apenas por dígitos — máscara não engana). Se houver, bloqueia o salvamento e aponta qual cliente já usa o dado
+
 ## v2.9.27 — 2026-08-31
 
 ### Alterado — formulário de lançamento profissional

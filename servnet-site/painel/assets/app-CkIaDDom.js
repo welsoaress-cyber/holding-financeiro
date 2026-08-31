@@ -469,8 +469,21 @@ _['clientes']=async function(el){
         dataNascimento:fd.get('dataNascimento'),telefone:fd.get('telefone').trim(),
         valorMensal:parseFloat(fd.get('valorMensal'))||0,diaVencimento:parseInt(fd.get('diaVencimento'))||10,
         status:fd.get('status'),negocio:'Provedor/Servnet',dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
-      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
-      try{await salvar(novo);toast.ok('Cliente salvo! ✅');ov.remove();render();}
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Verificando…';
+      const dig=s=>String(s||'').replace(/\D/g,'');
+      try{
+        // ── Anti-duplicidade: CPF ou telefone já cadastrado em outro cliente ──
+        const todos=await listar();
+        const cpfN=dig(novo.cpfCnpj),telN=dig(novo.telefone);
+        const dupCpf=cpfN&&todos.find(t=>t.id!==novo.id&&dig(t.cpfCnpj)===cpfN);
+        const dupTel=telN&&todos.find(t=>t.id!==novo.id&&dig(t.telefone)===telN);
+        if(dupCpf||dupTel){
+          const d=dupCpf||dupTel;
+          toast.err('⚠️ Duplicado: o cliente "'+d.nome+'" já usa este '+(dupCpf?'CPF':'telefone')+'. Cadastro não salvo.',7000);
+          btn.disabled=false;btn.textContent='Salvar cliente';return;
+        }
+        btn.textContent='Salvando…';
+        await salvar(novo);toast.ok('Cliente salvo! ✅');ov.remove();render();}
       catch(err){toast.err('Erro: '+err.message);btn.disabled=false;btn.textContent='Salvar cliente';}
     });
   }
