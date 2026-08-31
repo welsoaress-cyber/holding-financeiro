@@ -885,7 +885,7 @@ _['receber']=async function(el){
     try{raw=await fetchAll('lancamentos');}
     catch(e){el.innerHTML='<div style="padding:24px;color:#f87171">Erro: '+esc(e.message)+'</div>';return;}
     const todos=unpack('lancamentos',raw);todosCache=todos;
-    const doMes=todos.filter(l=>l.tipo==='receita'&&l.mes_ref===mesKey()).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
+    const doMes=todos.filter(l=>l.tipo==='receita'&&l.mes_ref===mesKey()&&!l.inativo).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
     const hoje=new Date().toISOString().slice(0,10);
     const pend=doMes.filter(l=>l.status!=='pago'&&l.status!=='recebido');
     const receb=doMes.filter(l=>l.status==='pago'||l.status==='recebido');
@@ -922,6 +922,7 @@ _['receber']=async function(el){
           <span style="font-size:16px">👤</span>
           <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${g.itens.length} cobrança${g.itens.length>1?'s':''}${totPend>0?` · <b style=\"color:#d97706\">${fmt(totPend)} em aberto</b>`:''}</div>
+          ${g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').length>1?`<button class="cr-aglut" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="Aglutinar cobranças pendentes do mês em uma só" style="background:#6366f115;border:1px solid #6366f144;border-radius:8px;font-size:12px;cursor:pointer;padding:6px 10px;color:#6366f1;font-weight:700">🧾 Aglutinar</button>`:''}
         </div>
         ${g.itens.map(itemRow).join('')}
       </div>`;
@@ -950,6 +951,36 @@ _['receber']=async function(el){
     el.querySelector('#cr-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
     el.querySelector('#cr-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
     el.querySelector('#cr-novo').addEventListener('click',()=>formCobranca());
+    el.querySelectorAll('.cr-aglut').forEach(b=>b.addEventListener('click',async()=>{
+      const key=b.dataset.key;
+      const grupo=[...grupos.values()].find(g=>String(g.itens[0].clienteId||g.nome)===key);
+      if(!grupo)return;
+      const pend=grupo.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
+      if(pend.length<2)return;
+      const total=pend.reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const rotulos=pend.map(l=>l.plano||String(l.descricao||'').split(' — ')[0]);
+      if(!confirm('Aglutinar '+pend.length+' cobranças de '+grupo.nome+' em uma única fatura de '+fmt(total)+'?\n\nItens: '+rotulos.join(' + ')))return;
+      b.disabled=true;
+      try{
+        const base=pend[0];
+        const venc=pend.map(l=>l.data_vencimento).sort()[0];
+        const novoId=crypto.randomUUID();
+        const dados={tipo:'receita',status:'pendente',
+          clienteId:base.clienteId||null,cliente:base.cliente||grupo.nome,clienteNome:base.clienteNome||grupo.nome,
+          descricao:rotulos.join(' + ')+' — '+grupo.nome,valor:total,
+          data_vencimento:venc,mes_ref:venc.slice(0,7),categoria:'Mensalidade',
+          negocio:base.negocio||null,aglutinado:true,
+          itens:pend.map(l=>({plano:l.plano||l.descricao,valor:l.valor,negocio:l.negocio||null}))};
+        const {error:e1}=await sb.from('lancamentos').insert({id:novoId,user_id:uid,dados,updated_at:new Date().toISOString()});
+        if(e1)throw e1;
+        for(const l of pend){
+          const {id,...d}=l;
+          const {error:e2}=await sb.from('lancamentos').update({dados:{...d,inativo:true,aglutinadoEm:novoId},updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
+          if(e2)throw e2;
+        }
+        toast.ok('Cobranças aglutinadas em uma fatura de '+fmt(total)+' ✅');render();
+      }catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
+    }));
     el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',async()=>{
       const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
       const {id,...dados}=l;

@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.44 — 2026-08-31
+
+### Novo
+- **🧾 Aglutinar cobranças**: no cabeçalho do cliente em Contas a Receber (quando há 2+ pendentes no mês), junta tudo numa fatura única — soma dos valores, itens na descrição, vencimento mais próximo; as originais são arquivadas (`inativo` + referência) e somem do painel, portal e WhatsApp
+- **Fidelidade por tipo de negócio no portal**: um cartão 🏆 para cada negócio (agrupado pelas faturas), em vez de um por contrato; base do cartão é o mês da 1ª fatura do negócio
+- `fix-portal-faturas-v4.sql`: RPC devolve o campo `negocio` por fatura (rodar no SQL Editor — substitui o v3)
+
 ## v2.9.43 — 2026-08-31
 
 ### Novo

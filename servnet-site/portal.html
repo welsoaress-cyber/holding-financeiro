@@ -980,10 +980,6 @@ function renderContratos(){
       <div class="card glow">
         <div class="card-lbl">Minhas Faturas${sufixo}</div>
         <div id="inv-${key}" class="loading-center"><span class="spin"></span></div>
-      </div>
-      <div class="card span2" id="fidelCard-${key}">
-        <div class="card-lbl">🏆 Fidelidade${sufixo}</div>
-        <div id="fidel-${key}" class="loading-center"><span class="spin"></span></div>
       </div>`;
   }).join('');
 }
@@ -1217,12 +1213,32 @@ function irParaFidelidade(ev){
 }
 
 function loadFidelidades(){
-  // Os cards já foram criados em renderContratos() — só preenche o conteúdo
-  contratos.forEach((ct,i)=>{
-    const key=ctKey(ct,i);
-    const fat=faturasPorContrato[key]||[];
+  // Um cartão de fidelidade por TIPO DE NEGÓCIO: cada negócio tem a sua
+  // própria série de faturas, o seu streak e os seus prêmios.
+  const porNeg = new Map();
+  for(const f of faturasList){
+    const raw = String(f.negocio||'Servnet');
+    const nomeNeg = (raw.split('/').pop()||raw).trim()||'Servnet';
+    if(!porNeg.has(nomeNeg)) porNeg.set(nomeNeg,[]);
+    porNeg.get(nomeNeg).push(f);
+  }
+  document.querySelectorAll('[id^="fidelCard-"]').forEach(el=>el.remove());
+  const slot=document.getElementById('contratosSlot');
+  if(!slot) return;
+  let i=0;
+  for(const [neg,fat] of porNeg){
+    const key='neg'+i;
+    // Base do cartão: mês anterior à 1ª fatura do negócio (a 1ª fatura é o slot 1)
+    const meses=fat.map(f=>f.mes_referencia).filter(Boolean).sort();
+    const dataBase=meses.length?somaMeses(meses[0],-1)+'-01':((contratos[0]&&contratos[0].dataContrato)||null);
+    const ct={contrato_id:key, dataContrato:dataBase, plano:{nome:neg}};
+    slot.insertAdjacentHTML('beforeend',`<div class="card span2" id="fidelCard-${key}">
+      <div class="card-lbl">🏆 Fidelidade — ${esc(neg)}</div>
+      <div id="fidel-${key}" class="loading-center"><span class="spin"></span></div>
+    </div>`);
     renderFidelidade(session?.nome, ct, i, fat);
-  });
+    i++;
+  }
 }
 
 function renderHistoricoFidelidade(fatContrato){
