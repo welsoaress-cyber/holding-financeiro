@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.63 — 2026-08-31
+- **Editar cobrança**: agora exibe e permite alterar Tipo de Negócio e Plano; ao trocar o negócio, a lista de planos filtra automaticamente
+
 ## v2.9.62 — 2026-08-31
 - **Contas a Receber**: ao marcar como recebido abre popup pedindo data do pagamento + conta (Pix, Dinheiro, Banco…); data e conta ficam visíveis na linha após confirmação
 - **Contas a Receber**: se pagamento foi atrasado (data pag > vencimento), reagenda automaticamente todas as parcelas futuras da série deslocando 30 dias a partir da data de pagamento; se pagou em dia ou adiantado, vencimentos futuros não mudam

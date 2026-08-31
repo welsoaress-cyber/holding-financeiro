@@ -1166,10 +1166,21 @@ _['receber']=async function(el){
     }));
   }
 
-  function editLanc(l){
+  async function editLanc(l){
     const serie=serieDe(l);
     const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
     const multi=serie.length>1;
+    let negociosE=[],planosE=[];
+    try{
+      const [ng,pl]=await Promise.all([
+        sb.from('negocios').select('id,nome').eq('user_id',uid),
+        sb.from('cli_planos').select('id,dados').eq('user_id',uid)
+      ]);
+      negociosE=((ng&&ng.data)||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+      planosE=((pl&&pl.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
+    }catch(e){}
+    const optNeg=selId=>'<option value="">— sem negócio —</option>'+negociosE.map(n=>`<option value="${n.id}"${n.id===selId?' selected':''}>${esc(n.nome)}</option>`).join('');
+    const optPlE=(negId,selId)=>'<option value="">— sem plano —</option>'+planosE.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${p.id===selId?' selected':''}>${esc(p.nome)} — ${fmt(p.valor||0)}</option>`).join('');
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
@@ -1183,6 +1194,8 @@ _['receber']=async function(el){
           <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${l.valor??''}"></div>
           <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" required value="${String(l.data_vencimento||'').slice(0,10)}"></div>
         </div>
+        <div><label class="cl-lbl">Tipo de Negócio</label><select class="cl-inp" id="cre-neg" name="negocioId">${optNeg(l.negocioId)}</select></div>
+        <div><label class="cl-lbl">Plano</label><select class="cl-inp" id="cre-pl" name="planoId">${optPlE(l.negocioId,l.planoId)}</select></div>
         ${multi?`<div><label class="cl-lbl">Aplicar alteração em</label>
           <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--text,#111)">
             <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="escopo" value="uma" checked style="accent-color:#2563eb"> Apenas esta</label>
@@ -1194,6 +1207,9 @@ _['receber']=async function(el){
       </form>
     </div>`;
     document.body.appendChild(ov);
+    ov.querySelector('#cre-neg').addEventListener('change',e=>{
+      ov.querySelector('#cre-pl').innerHTML=optPlE(e.target.value,null);
+    });
     ov.querySelector('#cre-x').addEventListener('click',()=>ov.remove());
     ov.querySelector('#cre-form').addEventListener('submit',async e=>{
       e.preventDefault();
@@ -1203,6 +1219,10 @@ _['receber']=async function(el){
       const alvos=escopo==='uma'?[l]:escopo==='fut'?fut:serie;
       const dd=parseInt(dv.slice(8,10))||1;
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      const negId=fd.get('negocioId')||null;
+      const plId=fd.get('planoId')||null;
+      const negObj=negociosE.find(x=>x.id===negId);
+      const plObj=planosE.find(x=>x.id===plId);
       let errs=0;
       for(const x of alvos){
         const {id,...d}=x;
@@ -1215,6 +1235,8 @@ _['receber']=async function(el){
           ndv=x.mes_ref+'-'+String(Math.min(dd,ultimo)).padStart(2,'0');
         }
         const novo={...d,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:ndv,mes_ref:ndv.slice(0,7)};
+        if(negId){novo.negocioId=negId;novo.negocio=negObj?negObj.nome:null;}else{delete novo.negocioId;delete novo.negocio;}
+        if(plId){novo.planoId=plId;novo.plano=plObj?plObj.nome:null;}else{delete novo.planoId;delete novo.plano;}
         const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
         if(error)errs++;
       }
