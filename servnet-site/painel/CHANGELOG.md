@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.36 — 2026-08-31
+
+### Alterado
+- **Periodicidade completa** em Contas a Receber e Contas a Pagar: Única, **Fixa (mensal, sem prazo — gera 24 meses à frente)**, Mensal, **Bimestral**, Trimestral, Semestral, Anual; campo Repetições oculto em Única e Fixa
+
 ## v2.9.35 — 2026-08-31
 
 ### Alterado

@@ -740,8 +740,13 @@ _['receber']=async function(el){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label class="cl-lbl">Recorrência</label>
             <select class="cl-inp" name="recorrencia" id="cr-rec">
-              <option value="unica">Única</option><option value="mensal" selected>Mensal</option>
-              <option value="trimestral">Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option>
+              <option value="unica">Única</option>
+              <option value="fixa">Fixa (mensal, sem prazo)</option>
+              <option value="mensal" selected>Mensal</option>
+              <option value="bimestral">Bimestral</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="semestral">Semestral</option>
+              <option value="anual">Anual</option>
             </select>
           </div>
           <div id="cr-repwrap"><label class="cl-lbl">Repetições</label>
@@ -759,7 +764,7 @@ _['receber']=async function(el){
       if(o.dataset.valor)inpV.value=o.dataset.valor;
     });
     const selRec=ov.querySelector('#cr-rec'),repW=ov.querySelector('#cr-repwrap');
-    selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});
+    selRec.addEventListener('change',()=>{repW.style.display=(selRec.value==='unica'||selRec.value==='fixa')?'none':'block';});
     ov.querySelector('#cr-form').addEventListener('submit',async e=>{
       e.preventDefault();
       const fd=new FormData(e.target);
@@ -769,8 +774,8 @@ _['receber']=async function(el){
       if(!cli){toast.err('Cliente não encontrado — digite e escolha um nome da lista.');return;}
       if(!pl){toast.err('Selecione o plano.');return;}
       const dv=fd.get('data_v'),rec=fd.get('recorrencia');
-      const nrep=rec==='unica'?1:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
-      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:1;
+      const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
       const grupo=nrep>1?crypto.randomUUID():null;
       const entries=[];
       for(let i=0;i<nrep;i++){
@@ -892,8 +897,13 @@ _['pagar']=async function(el){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label class="cl-lbl">Recorrência</label>
             <select class="cl-inp" name="recorrencia" id="cp-rec">
-              <option value="unica">Única</option><option value="mensal">Mensal</option>
-              <option value="trimestral">Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option>
+              <option value="unica">Única</option>
+              <option value="fixa">Fixa (mensal, sem prazo)</option>
+              <option value="mensal">Mensal</option>
+              <option value="bimestral">Bimestral</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="semestral">Semestral</option>
+              <option value="anual">Anual</option>
             </select>
           </div>
           <div id="cp-repwrap" style="display:none"><label class="cl-lbl">Repetições</label>
@@ -906,13 +916,13 @@ _['pagar']=async function(el){
     document.body.appendChild(ov);
     ov.querySelector('#cp-x').addEventListener('click',()=>ov.remove());
     const selRec=ov.querySelector('#cp-rec'),repW=ov.querySelector('#cp-repwrap');
-    selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});
+    selRec.addEventListener('change',()=>{repW.style.display=(selRec.value==='unica'||selRec.value==='fixa')?'none':'block';});
     ov.querySelector('#cp-form').addEventListener('submit',async e=>{
       e.preventDefault();
       const fd=new FormData(e.target);
       const dv=fd.get('data_v'),rec=fd.get('recorrencia');
-      const nrep=rec==='unica'?1:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
-      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:1;
+      const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
       const grupo=nrep>1?crypto.randomUUID():null;
       const entries=[];
       for(let i=0;i<nrep;i++){
