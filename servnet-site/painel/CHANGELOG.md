@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.70 — 2026-08-31
+- **Excluir em lote**: agora pergunta o escopo — "Apenas este mês", "Este mês e os próximos" ou "Toda a série, incluindo pagas" — com contagem de cobranças de cada opção antes de confirmar
+
 ## v2.9.69 — 2026-08-31
 - **Contas a Receber — Seleção em lote**: botão "☑ Selecionar" no header entra em modo de seleção; checkboxes em cada card de cliente; barra azul flutuante mostra quantos estão selecionados com ações: "Todos", "📲 Ativar WhatsApp", "🔕 Desativar WhatsApp", "🗑 Excluir". Permite gerenciar dezenas de clientes sem entrar um a um.
 

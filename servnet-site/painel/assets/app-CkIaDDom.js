@@ -978,21 +978,84 @@ _['receber']=async function(el){
     bar.querySelector('#cr-sel-count').textContent=n+' selecionado'+(n>1?'s':'');
   }
 
-  async function excluirLote(){
+  function excluirLote(){
     if(!selKeys.size)return;
     const grupos=gruposRef;
-    const ids=[];
-    for(const key of selKeys){
-      const g=grupos.get(key);if(!g)continue;
-      g.itens.forEach(l=>ids.push(l.id));
-      todosCache.filter(x=>ids.includes(x.aglutinadoEm)).forEach(x=>ids.push(x.id));
+    const nCli=selKeys.size;
+    // Calcula preview de ids por escopo
+    function idsDoEscopo(escopo){
+      const ids=[];
+      const mk=mesKey();
+      for(const key of selKeys){
+        const g=grupos.get(key);if(!g)continue;
+        for(const l of g.itens){
+          if(escopo==='mes'){
+            ids.push(l.id);
+          }else{
+            // Encontra toda a série deste lançamento no cache
+            let serie;
+            if(l.aglutinado&&l.clienteId){
+              serie=todosCache.filter(x=>x.tipo===l.tipo&&x.clienteId===l.clienteId);
+            }else if(l.grupoRecorrencia){
+              serie=todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia);
+            }else{
+              serie=todosCache.filter(x=>x.tipo===l.tipo&&String(x.descricao||'')===String(l.descricao||''));
+              if(!serie.length)serie=[l];
+            }
+            if(escopo==='fut'){
+              serie.filter(x=>String(x.mes_ref||'')>=mk).forEach(x=>ids.push(x.id));
+            }else{
+              serie.forEach(x=>ids.push(x.id));
+            }
+          }
+          // sempre inclui os inativo=aglutinadoEm vinculados
+          todosCache.filter(x=>x.aglutinadoEm===l.id).forEach(x=>ids.push(x.id));
+        }
+      }
+      return [...new Set(ids)];
     }
-    const uniq=[...new Set(ids)];
-    if(!confirm('Excluir '+uniq.length+' cobrança(s) de '+selKeys.size+' cliente(s)? Não pode ser desfeito.'))return;
-    const {error}=await sb.from('lancamentos').delete().in('id',uniq).eq('user_id',uid);
-    if(error){toast.err('Erro: '+error.message);return;}
-    toast.ok(uniq.length+' cobrança(s) excluída(s) ✅');
-    selKeys.clear();selMode=false;render();
+    const idsMes=idsDoEscopo('mes');
+    const idsFut=idsDoEscopo('fut');
+    const idsTodas=idsDoEscopo('todas');
+    const btn='width:100%;padding:12px 14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center';
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3200;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:16px;width:100%;max-width:440px;padding:22px 20px">
+      <div style="font-size:15px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🗑️ Excluir em lote</div>
+      <div style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:18px">${nCli} cliente${nCli>1?'s':''} selecionado${nCli>1?'s':''}. Qual escopo?</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="exc-lote-op" data-op="mes" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.1);color:var(--text,#111)">
+          <span>Apenas este mês</span>
+          <span style="font-size:12px;color:var(--text-muted,#9ca3af)">${idsMes.length} cobrança${idsMes.length!==1?'s':''}</span>
+        </button>
+        <button class="exc-lote-op" data-op="fut" style="${btn};border:1px solid #d97706;background:rgba(217,119,6,.08);color:#92400e">
+          <span>Este mês e os próximos</span>
+          <span style="font-size:12px;color:#d97706">${idsFut.length} cobrança${idsFut.length!==1?'s':''}</span>
+        </button>
+        <button class="exc-lote-op" data-op="todas" style="${btn};border:1px solid #dc2626;background:rgba(220,38,38,.08);color:#991b1b">
+          <span>Toda a série, incluindo pagas</span>
+          <span style="font-size:12px;color:#dc2626">${idsTodas.length} cobrança${idsTodas.length!==1?'s':''}</span>
+        </button>
+        <button id="exc-lote-cancel" style="${btn};border:none;background:none;color:var(--text-muted,#6b7280);justify-content:center">Cancelar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#exc-lote-cancel').addEventListener('click',()=>ov.remove());
+    ov.querySelectorAll('.exc-lote-op').forEach(b=>b.addEventListener('click',async()=>{
+      const op=b.dataset.op;
+      const alvos=op==='mes'?idsMes:op==='fut'?idsFut:idsTodas;
+      if(!confirm('Confirma excluir '+alvos.length+' cobrança(s) de '+nCli+' cliente(s)? Não pode ser desfeito.'))return;
+      b.disabled=true;b.textContent='Excluindo…';
+      const BS=500;let errs=0;
+      for(let i=0;i<alvos.length;i+=BS){
+        const {error}=await sb.from('lancamentos').delete().in('id',alvos.slice(i,i+BS)).eq('user_id',uid);
+        if(error)errs++;
+      }
+      ov.remove();
+      if(errs)toast.err('Alguns lançamentos falharam ao excluir');
+      else toast.ok(alvos.length+' cobrança(s) excluída(s) ✅');
+      selKeys.clear();selMode=false;render();
+    }));
   }
 
   async function toggleWhatsLote(ativar){
