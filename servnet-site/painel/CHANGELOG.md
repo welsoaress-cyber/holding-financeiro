@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.29 — 2026-08-31
+
+### Alterado
+- **Cadastro de cliente é só cadastro**: removidos Valor mensal e Dia de vencimento do formulário — dados de cobrança pertencem ao serviço/contrato, não à pessoa. Adicionados E-mail e Endereço (opcionais)
+- **Gerar mensalidade** pergunta o valor na hora quando o cliente ainda não tem serviço vinculado
+- Lista de clientes mostra CPF · telefone · status (sem dados de cobrança)
+
 ## v2.9.28 — 2026-08-31
 
 ### Novo

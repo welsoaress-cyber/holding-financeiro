@@ -417,12 +417,12 @@ _['clientes']=async function(el){
     const {error}=await sb.from('cli_clientes').upsert({id,user_id:uid,dados,updated_at:new Date().toISOString()},{onConflict:'id'});
     if(error)throw error;
   }
-  async function gerarMensalidade(cli,mesRef){
+  async function gerarMensalidade(cli,mesRef,valor){
     const {data:exist}=await sb.from('lancamentos').select('id').eq('user_id',uid).contains('dados',{clienteId:cli.id,mes_ref:mesRef});
     if(exist&&exist.length&&!confirm('Já existe mensalidade de '+mesRef+' para '+cli.nome+'. Gerar outra?'))return false;
     const dia=String(cli.diaVencimento||'10').padStart(2,'0');
     const dados={tipo:'receita',status:'pendente',clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,
-      descricao:'Mensalidade '+cli.nome+' — '+mesRef,valor:Number(cli.valorMensal||0),
+      descricao:'Mensalidade '+cli.nome+' — '+mesRef,valor:Number(valor||cli.valorMensal||0),
       data_vencimento:mesRef+'-'+dia,mes_ref:mesRef,negocio:'Provedor/Servnet',categoria:'Mensalidade'};
     const {error}=await sb.from('lancamentos').insert({id:crypto.randomUUID(),user_id:uid,dados,updated_at:new Date().toISOString()});
     if(error)throw error;
@@ -445,10 +445,8 @@ _['clientes']=async function(el){
           <div><label class="cl-lbl">Nascimento</label><input class="cl-inp" name="dataNascimento" type="date" required value="${esc(c.dataNascimento||'')}"></div>
         </div>
         <div><label class="cl-lbl">Telefone / WhatsApp</label><input class="cl-inp" name="telefone" value="${esc(c.telefone||'')}" placeholder="(11) 90000-0000" inputmode="tel"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="cl-lbl">Valor mensal (R$)</label><input class="cl-inp" name="valorMensal" type="number" step="0.01" min="0" required value="${c.valorMensal??''}" placeholder="79.90"></div>
-          <div><label class="cl-lbl">Dia vencimento</label><input class="cl-inp" name="diaVencimento" type="number" min="1" max="28" required value="${c.diaVencimento??'10'}"></div>
-        </div>
+        <div><label class="cl-lbl">E-mail (opcional)</label><input class="cl-inp" name="email" type="email" value="${esc(c.email||'')}" placeholder="cliente@email.com"></div>
+        <div><label class="cl-lbl">Endereço (opcional)</label><input class="cl-inp" name="endereco" value="${esc(c.endereco||'')}" placeholder="Rua, número, bairro"></div>
         <div><label class="cl-lbl">Status</label>
           <select class="cl-inp" name="status">
             <option${(c.status||'Ativo')==='Ativo'?' selected':''}>Ativo</option>
@@ -467,7 +465,8 @@ _['clientes']=async function(el){
       const fd=new FormData(e.target);
       const novo={id:c.id||crypto.randomUUID(),nome:fd.get('nome').trim(),cpfCnpj:fd.get('cpfCnpj').trim(),
         dataNascimento:fd.get('dataNascimento'),telefone:fd.get('telefone').trim(),
-        valorMensal:parseFloat(fd.get('valorMensal'))||0,diaVencimento:parseInt(fd.get('diaVencimento'))||10,
+        email:(fd.get('email')||'').trim(),endereco:(fd.get('endereco')||'').trim(),
+        valorMensal:c.valorMensal??null,diaVencimento:c.diaVencimento??null,
         status:fd.get('status'),negocio:'Provedor/Servnet',dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Verificando…';
       const dig=s=>String(s||'').replace(/\D/g,'');
@@ -500,7 +499,7 @@ _['clientes']=async function(el){
         <div style="width:38px;height:38px;border-radius:50%;background:${cor}22;border:2px solid ${cor}55;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${cor};flex-shrink:0">${esc((c.nome||'?')[0].toUpperCase())}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nome||'—')}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))} · ${fmt(c.valorMensal)} · venc. dia ${esc(c.diaVencimento||'—')} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))}${c.telefone?' · '+esc(c.telefone):''} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
         </div>
         <button class="cl-gerar" data-id="${c.id}" title="Gerar mensalidade" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:16px;cursor:pointer;padding:6px 9px">💰</button>
         <button class="cl-edit" data-id="${c.id}" title="Editar" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:15px;cursor:pointer;padding:6px 9px;color:var(--text-muted,#6b7280)">✏️</button>
@@ -528,11 +527,17 @@ _['clientes']=async function(el){
     }));
     el.querySelectorAll('.cl-gerar').forEach(b=>b.addEventListener('click',async()=>{
       const c=clientes.find(x=>x.id===b.dataset.id);if(!c)return;
-      const mes=prompt('Gerar mensalidade de '+c.nome+' ('+fmt(c.valorMensal)+')\nMês de referência (AAAA-MM):',mesAtual());
+      let val=Number(c.valorMensal||0);
+      if(!val){
+        const v=prompt('Valor da mensalidade de '+c.nome+' (R$):','');
+        val=parseFloat(String(v||'').replace(',','.'))||0;
+        if(!val)return;
+      }
+      const mes=prompt('Gerar mensalidade de '+c.nome+' ('+fmt(val)+')\nMês de referência (AAAA-MM):',mesAtual());
       if(!mes)return;
       if(!/^\d{4}-\d{2}$/.test(mes)){toast.err('Mês inválido. Use o formato AAAA-MM, ex: '+mesAtual());return;}
       b.disabled=true;
-      try{const ok=await gerarMensalidade(c,mes);if(ok)toast.ok('Mensalidade '+mes+' gerada! Já aparece no portal do cliente. ✅');}
+      try{const ok=await gerarMensalidade(c,mes,val);if(ok)toast.ok('Mensalidade '+mes+' gerada! Já aparece no portal do cliente. ✅');}
       catch(err){toast.err('Erro: '+err.message);}
       b.disabled=false;
     }));
