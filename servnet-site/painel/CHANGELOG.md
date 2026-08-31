@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.30 — 2026-08-31
+
+### Removido
+- **Menu enxuto**: excluídos da sidebar os itens Orçamentos, Objetivos, Relatórios, Gráficos, Categorias, Calendário, Recursos Premium, Ferramentas e Cafezinho (com as seções Planejar/Analisar). Ficam: Resumo, Contas, Transações, Clientes ServNet, Cartões, Configurações, Usuários e Sair
+- **Tela inicial vazia**: o painel não abre mais o dashboard automaticamente após o login — escolha o módulo pelo menu
+
 ## v2.9.29 — 2026-08-31
 
 ### Alterado
