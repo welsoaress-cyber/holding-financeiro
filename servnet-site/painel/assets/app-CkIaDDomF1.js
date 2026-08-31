@@ -1066,9 +1066,9 @@ _['receber']=async function(el){
       <div style="font-size:15px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🗑️ Excluir cobrança</div>
       <div style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:14px">${String(l.descricao||'').replace(/</g,'&lt;')} — ${fmt(l.valor)}</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:none;color:var(--text,#111)">Apenas esta</button>
-        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid #f59e0b66;background:#f59e0b12;color:#d97706">Esta e as futuras (${fut.length})</button>
-        <button class="exc-op" data-op="todas" style="${btn};border:1px solid #dc262666;background:#dc262612;color:#dc2626">Toda a série, incluindo pagas (${serie.length})</button>`:''}
+        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Apenas esta</button>
+        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Esta e as futuras (${fut.length})</button>
+        <button class="exc-op" data-op="todas" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Toda a série, incluindo pagas (${serie.length})</button>`:''}
         <button id="exc-cancel" style="${btn};border:none;background:none;color:var(--text-muted,#6b7280);text-align:center">Cancelar</button>
       </div>
     </div>`;
@@ -1328,9 +1328,9 @@ _['pagar']=async function(el){
       <div style="font-size:15px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🗑️ Excluir cobrança</div>
       <div style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:14px">${String(l.descricao||'').replace(/</g,'&lt;')} — ${fmt(l.valor)}</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:none;color:var(--text,#111)">Apenas esta</button>
-        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid #f59e0b66;background:#f59e0b12;color:#d97706">Esta e as futuras (${fut.length})</button>
-        <button class="exc-op" data-op="todas" style="${btn};border:1px solid #dc262666;background:#dc262612;color:#dc2626">Toda a série, incluindo pagas (${serie.length})</button>`:''}
+        <button class="exc-op" data-op="uma" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Apenas esta</button>
+        ${serie.length>1?`<button class="exc-op" data-op="fut" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Esta e as futuras (${fut.length})</button>
+        <button class="exc-op" data-op="todas" style="${btn};border:1px solid var(--border,#e5e7eb);background:rgba(128,128,128,.12);color:var(--text,#111)">Toda a série, incluindo pagas (${serie.length})</button>`:''}
         <button id="exc-cancel" style="${btn};border:none;background:none;color:var(--text-muted,#6b7280);text-align:center">Cancelar</button>
       </div>
     </div>`;

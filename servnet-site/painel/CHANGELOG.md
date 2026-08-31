@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.54 — 2026-08-31
+
+### Alterado
+- **Seletor de exclusão com visual uniforme**: as três opções com o mesmo fundo cinza claro e texto padrão
+
 ## v2.9.53 — 2026-08-31
 
 ### Alterado
