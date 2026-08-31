@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.35 — 2026-08-31
+
+### Alterado
+- **Popup de cobrança centralizado**: Nova cobrança e Nova conta a pagar abrem no centro da tela e só fecham pelo ✕ ou ao concluir (clique fora não fecha mais)
+- **Cliente com autocompletar**: em Nova cobrança, digite o nome e as sugestões aparecem enquanto digita
+- **Planos antigos visíveis**: planos legados do portal (Prata, Ouro…) sem tipo de negócio vinculado aparecem em seção própria em Tipos de Negócio, com botão de exclusão
+
 ## v2.9.34 — 2026-08-31
 
 ### Alterado

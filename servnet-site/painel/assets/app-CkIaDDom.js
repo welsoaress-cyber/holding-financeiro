@@ -636,6 +636,19 @@ _['negocios']=async function(el){
         ${plRows||'<div style="padding:8px 24px 12px;font-size:12px;color:var(--text-muted,#9ca3af)">Nenhum plano. Toque em + Plano.</div>'}
       </div>`;
     }).join('');
+    const orfaos=planos.filter(p=>!negs.find(n=>n.id===p.negocioId));
+    const orfSec=orfaos.length?`<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px dashed #d97706">
+        <div style="padding:12px 14px 4px;font-size:13px;font-weight:700;color:#d97706">📦 Planos antigos (sem tipo de negócio vinculado)</div>
+        <div style="padding:0 14px 6px;font-size:11px;color:var(--text-muted,#9ca3af)">Vieram do cadastro anterior do portal. Exclua os que não usa ou edite para revincular.</div>
+        ${orfaos.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 24px;border-top:1px solid var(--border,#e5e7eb)">
+          <span style="font-size:15px">📦</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text,#111)">${esc(p.nome)}</div>
+            <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${fmt(p.valor)}/mês${p.negocio?' · era: '+esc(p.negocio):''}</div>
+          </div>
+          <button class="ng-pl-del" data-id="${p.id}" style="background:none;border:1px solid #fca5a5;border-radius:8px;font-size:13px;cursor:pointer;padding:5px 8px;color:#dc2626">🗑️</button>
+        </div>`).join('')}
+      </div>`:'';
     el.innerHTML=`
       <style>
         .cl-lbl{font-size:11px;font-weight:700;color:var(--text-muted,#6b7280);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
@@ -651,6 +664,7 @@ _['negocios']=async function(el){
       </div>
       <div style="background:var(--bg,#f4f5f7);padding:2px 0 80px">
         ${secs||'<div style="padding:40px;text-align:center;color:var(--text-muted,#9ca3af);font-size:14px">Nenhum tipo de negócio.<br><br>Toque em <b>+ Negócio</b> para criar (ex: ServNet).</div>'}
+        ${orfSec}
       </div>`;
     el.querySelector('#ng-novo').addEventListener('click',()=>formNeg(null));
     el.querySelectorAll('.ng-edit').forEach(b=>b.addEventListener('click',()=>{const n=negs.find(x=>x.id===b.dataset.id);if(n)formNeg(n);}));
@@ -701,19 +715,19 @@ _['receber']=async function(el){
       planos=((pr&&pr.data)||[]).map(r=>({id:r.id,...(r.dados||{})})).filter(p=>p.ativo!==false);
     }catch(e){}
     const hoje=new Date().toISOString().slice(0,10);
-    const optCli=clientes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
     const optPl=planos.map(p=>`<option value="${p.id}" data-valor="${p.valor||''}" data-negocio="${esc(p.negocio||'')}" data-nome="${esc(p.nome||'')}">${esc(p.nome)} — ${fmt(p.valor)} (${esc(p.negocio||'')})</option>`).join('');
     const ov=document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
-    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-size:17px;font-weight:700;color:#059669">📥 Nova cobrança</span>
         <button id="cr-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
       </div>
       <form id="cr-form" style="display:flex;flex-direction:column;gap:11px">
         <div><label class="cl-lbl">Cliente *</label>
-          <select class="cl-inp" name="cliente" required><option value="">— selecione —</option>${optCli}</select>
-          ${clientes.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum cliente. Cadastre em Clientes ServNet.</div>'}
+          <input class="cl-inp" name="clienteNome" list="cr-cli-list" required placeholder="Digite o nome do cliente…" autocomplete="off">
+          <datalist id="cr-cli-list">${clientes.map(c=>`<option value="${esc(c.nome)}">`).join('')}</datalist>
+          ${clientes.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum cliente. Cadastre em Clientes.</div>'}
         </div>
         <div><label class="cl-lbl">Plano / serviço *</label>
           <select class="cl-inp" name="plano" id="cr-plano" required><option value="">— selecione —</option>${optPl}</select>
@@ -738,7 +752,6 @@ _['receber']=async function(el){
       </form>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#cr-x').addEventListener('click',()=>ov.remove());
     const selPl=ov.querySelector('#cr-plano'),inpV=ov.querySelector('#cr-valor'),inpD=ov.querySelector('#cr-dv');
     selPl.addEventListener('change',()=>{
@@ -750,9 +763,11 @@ _['receber']=async function(el){
     ov.querySelector('#cr-form').addEventListener('submit',async e=>{
       e.preventDefault();
       const fd=new FormData(e.target);
-      const cli=clientes.find(c=>c.id===fd.get('cliente'));
+      const nomeDig=String(fd.get('clienteNome')||'').trim().toLowerCase();
+      const cli=clientes.find(c=>String(c.nome).toLowerCase()===nomeDig);
       const pl=planos.find(p=>p.id===fd.get('plano'));
-      if(!cli||!pl){toast.err('Selecione cliente e plano.');return;}
+      if(!cli){toast.err('Cliente não encontrado — digite e escolha um nome da lista.');return;}
+      if(!pl){toast.err('Selecione o plano.');return;}
       const dv=fd.get('data_v'),rec=fd.get('recorrencia');
       const nrep=rec==='unica'?1:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
       const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:1;
@@ -861,8 +876,8 @@ _['pagar']=async function(el){
   function formDespesa(){
     const hoje=new Date().toISOString().slice(0,10);
     const ov=document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
-    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-size:17px;font-weight:700;color:#dc2626">📤 Nova conta a pagar</span>
         <button id="cp-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
@@ -889,7 +904,6 @@ _['pagar']=async function(el){
       </form>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#cp-x').addEventListener('click',()=>ov.remove());
     const selRec=ov.querySelector('#cp-rec'),repW=ov.querySelector('#cp-repwrap');
     selRec.addEventListener('change',()=>{repW.style.display=selRec.value==='unica'?'none':'block';});
