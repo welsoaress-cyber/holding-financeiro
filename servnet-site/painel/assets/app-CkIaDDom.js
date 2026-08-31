@@ -981,7 +981,12 @@ _['receber']=async function(el){
     const grupos=new Map();
     for(const l of doMes){
       const key=l.clienteId||l.cliente||l.clienteNome||('sem-'+(l.descricao||l.id));
-      if(!grupos.has(key))grupos.set(key,{nome:l.cliente||l.clienteNome||l.descricao||'—',itens:[]});
+      if(!grupos.has(key)){
+        // Para itens aglutinados o nome do cliente pode estar só na segunda parte da descricao ("Serv1 + Serv2 — NomeCliente")
+        const nomeBruto=l.cliente||l.clienteNome||'';
+        const nomeDesc=String(l.descricao||'').includes(' — ')?String(l.descricao||'').split(' — ').pop():'';
+        grupos.set(key,{nome:nomeBruto||nomeDesc||'—',itens:[]});
+      }
       grupos.get(key).itens.push(l);
     }
     const itemRow=l=>{
@@ -1023,7 +1028,7 @@ _['receber']=async function(el){
         <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           <span style="font-size:16px">👤</span>
           <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.nome)}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${temAglut?'aglutinado · ':''}${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
         </div>
         ${itensSorted.map(itemRow).join('')}
       </div>`;

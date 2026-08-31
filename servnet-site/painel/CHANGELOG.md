@@ -832,3 +832,8 @@ Toda alteração no painel exige atualização de versão e registro aqui.
 ## v2.9.66 — 2026-08-31
 ### Melhorias
 - **Contas a Receber**: lista ordenada por dia de vencimento → nome → plano (era agrupada por cliente sem ordenação consistente)
+
+## v2.9.67 — 2026-08-31
+### Correções
+- **Contas a Receber**: nome do cliente voltou a aparecer no cabeçalho de cobranças aglutinadas
+- **Contas a Receber**: removido rótulo "aglutinado" do subtítulo do cabeçalho
