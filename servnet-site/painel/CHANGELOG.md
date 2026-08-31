@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.31 — 2026-08-31
+
+### Novo
+- **Endereço por CEP (ViaCEP)**: no cadastro de cliente, digite o CEP e o sistema preenche rua, bairro e cidade automaticamente; campos separados para Número e Ponto de referência (opcional). CEP inválido ou falha de rede permitem preenchimento manual
+
 ## v2.9.30 — 2026-08-31
 
 ### Removido

@@ -446,7 +446,12 @@ _['clientes']=async function(el){
         </div>
         <div><label class="cl-lbl">Telefone / WhatsApp</label><input class="cl-inp" name="telefone" value="${esc(c.telefone||'')}" placeholder="(11) 90000-0000" inputmode="tel"></div>
         <div><label class="cl-lbl">E-mail (opcional)</label><input class="cl-inp" name="email" type="email" value="${esc(c.email||'')}" placeholder="cliente@email.com"></div>
-        <div><label class="cl-lbl">Endereço (opcional)</label><input class="cl-inp" name="endereco" value="${esc(c.endereco||'')}" placeholder="Rua, número, bairro"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">CEP</label><input class="cl-inp" name="cep" id="cl-cep" value="${esc(c.cep||'')}" placeholder="00000-000" inputmode="numeric" maxlength="9"></div>
+          <div><label class="cl-lbl">Número</label><input class="cl-inp" name="numero" value="${esc(c.numero||'')}" placeholder="123"></div>
+        </div>
+        <div><label class="cl-lbl">Endereço</label><input class="cl-inp" name="logradouro" id="cl-logr" value="${esc(c.logradouro||c.endereco||'')}" placeholder="Preenchido automaticamente pelo CEP"><div id="cl-cep-st" style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px"></div></div>
+        <div><label class="cl-lbl">Ponto de referência (opcional)</label><input class="cl-inp" name="referencia" value="${esc(c.referencia||'')}" placeholder="Ex: próximo ao mercado"></div>
         <div><label class="cl-lbl">Status</label>
           <select class="cl-inp" name="status">
             <option${(c.status||'Ativo')==='Ativo'?' selected':''}>Ativo</option>
@@ -460,12 +465,30 @@ _['clientes']=async function(el){
     document.body.appendChild(ov);
     ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#cl-x').addEventListener('click',()=>ov.remove());
+    // ── CEP → ViaCEP: preenche endereço automaticamente ──
+    const cepInp=ov.querySelector('#cl-cep'),logrInp=ov.querySelector('#cl-logr'),cepSt=ov.querySelector('#cl-cep-st');
+    cepInp?.addEventListener('input',async()=>{
+      const v=cepInp.value.replace(/\D/g,'').slice(0,8);
+      cepInp.value=v.length>5?v.slice(0,5)+'-'+v.slice(5):v;
+      if(v.length!==8){cepSt.textContent='';return;}
+      cepSt.textContent='Buscando endereço…';
+      try{
+        const r=await fetch('https://viacep.com.br/ws/'+v+'/json/');
+        const d=await r.json();
+        if(d.erro){cepSt.textContent='⚠️ CEP não encontrado — preencha manualmente.';return;}
+        logrInp.value=[d.logradouro,d.bairro,(d.localidade&&d.uf)?d.localidade+' - '+d.uf:''].filter(Boolean).join(', ');
+        cepSt.textContent='✓ Endereço encontrado — confira o número';
+      }catch(err){cepSt.textContent='⚠️ Falha ao buscar CEP — preencha manualmente.';}
+    });
     ov.querySelector('#cl-form').addEventListener('submit',async e=>{
       e.preventDefault();
       const fd=new FormData(e.target);
       const novo={id:c.id||crypto.randomUUID(),nome:fd.get('nome').trim(),cpfCnpj:fd.get('cpfCnpj').trim(),
         dataNascimento:fd.get('dataNascimento'),telefone:fd.get('telefone').trim(),
-        email:(fd.get('email')||'').trim(),endereco:(fd.get('endereco')||'').trim(),
+        email:(fd.get('email')||'').trim(),
+        cep:(fd.get('cep')||'').trim(),logradouro:(fd.get('logradouro')||'').trim(),
+        numero:(fd.get('numero')||'').trim(),referencia:(fd.get('referencia')||'').trim(),
+        endereco:[(fd.get('logradouro')||'').trim(),(fd.get('numero')||'').trim()].filter(Boolean).join(', '),
         valorMensal:c.valorMensal??null,diaVencimento:c.diaVencimento??null,
         status:fd.get('status'),negocio:'Provedor/Servnet',dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Verificando…';
