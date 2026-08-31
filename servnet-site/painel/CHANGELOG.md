@@ -2,6 +2,14 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.27 — 2026-08-31
+
+### Alterado — formulário de lançamento profissional
+- **Nova Receita/Despesa reformulado**: agora com Descrição, **Cliente** (busca do cadastro `cli_clientes`, apenas receitas), **Categoria** (busca do menu Categorias), Valor, **Data de vencimento** (era "recebimento"), Status e **Recorrência**
+- **Recorrência com periodicidade**: Única / Mensal / Trimestral / Semestral / Anual + número de repetições (2–60) — gera todos os lançamentos futuros de uma vez, agrupados por `grupoRecorrencia` com `parcela` (ex: 3/12)
+- **Cliente selecionado preenche automaticamente** valor mensal e dia de vencimento do cadastro
+- Receita com cliente recebe `negocio: Provedor/Servnet` e `clienteId` — integra com o portal do cliente
+
 ## v2.9.26 — 2026-08-31
 
 ### Novo

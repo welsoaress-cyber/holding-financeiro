@@ -1,5 +1,5 @@
 import{c as H}from"./supabase-DthfXWp1.js";
-const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.26",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
+const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.27",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
 function L(t){($[t]||new Set).forEach(e=>{try{e(u[t])}catch(o){console.error("[store notify]",t,o)}})}
 const N={get(t){return u[t]},set(t,e){u[t]=e,L(t)},patch(t,e,o){const a=Array.isArray(u[t])?u[t]:[],n=a.findIndex(r=>r.id===e);n>=0?a[n]={...a[n],...o}:a.push({id:e,...o}),u[t]=a,L(t)},remove(t,e){const o=Array.isArray(u[t])?u[t]:[];u[t]=o.filter(a=>a.id!==e),L(t)},subscribe(t,e){return $[t]||($[t]=new Set),$[t].add(e),u[t]!==void 0&&e(u[t]),()=>this.unsubscribe(t,e)},unsubscribe(t,e){var o;(o=$[t])==null||o.delete(e)}};
 const h={view:"dashboard",user:null,mesNav:{ano:new Date().getFullYear(),mes:new Date().getMonth()}};
@@ -410,24 +410,61 @@ function renderCatDonut(items, tipo){
   </div>`;
 }
 
-function openQuickLanc(tipo,container){
+async function openQuickLanc(tipo,container){
   const isRec=tipo==="receita";
   const cor=isRec?"#059669":"#dc2626";
   const hoje=ht();
+  // ── Carrega clientes e categorias do banco (em paralelo) ──
+  let clientes=[],cats=[];
+  try{
+    const uid=await S();
+    const [cliRes,catRaw]=await Promise.all([
+      x.from("cli_clientes").select("id,dados").eq("user_id",uid),
+      j("categorias").catch(()=>[])
+    ]);
+    clientes=((cliRes&&cliRes.data)||[]).map(r=>({id:r.id,nome:((r.dados||{}).nome)||"—",valor:(r.dados||{}).valorMensal||"",dia:(r.dados||{}).diaVencimento||""})).sort((a,b)=>a.nome.localeCompare(b.nome));
+    cats=T("categorias",catRaw).filter(c=>c.nome).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  }catch(e){console.warn("[quicklanc] carga aux:",e)}
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const optCli=clientes.map(c=>`<option value="${c.id}" data-valor="${esc(c.valor)}" data-dia="${esc(c.dia)}">${esc(c.nome)}</option>`).join("");
+  const optCat=cats.map(c=>`<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join("");
   const overlay=document.createElement("div");
   overlay.className="rsm-ql-overlay";
-  overlay.innerHTML=`<div class="rsm-ql-box">
+  overlay.innerHTML=`<div class="rsm-ql-box" style="max-height:90vh;overflow-y:auto">
 <div class="rsm-ql-hd">
   <span class="rsm-ql-title" style="color:${cor}">${isRec?"💰 Nova Receita":"💸 Nova Despesa"}</span>
   <button class="rsm-ql-close" id="rsm-ql-x">✕</button>
 </div>
 <form class="rsm-ql-form" id="rsm-ql-form">
-  <div><label class="rsm-ql-lbl">Descrição</label><input class="rsm-ql-inp" name="descricao" type="text" placeholder="${isRec?"Ex: Mensalidade cliente":"Ex: Conta de luz"}" required autocomplete="off" style="--focus-color:${cor}"></div>
-  <div class="rsm-ql-row2">
-    <div><label class="rsm-ql-lbl">Valor (R$)</label><input class="rsm-ql-inp" name="valor" type="number" step="0.01" min="0.01" placeholder="0,00" required style="--focus-color:${cor}"></div>
-    <div><label class="rsm-ql-lbl">${isRec?"Dt. recebimento":"Dt. vencimento"}</label><input class="rsm-ql-inp" name="data_v" type="date" value="${hoje}" required style="--focus-color:${cor}"></div>
+  <div><label class="rsm-ql-lbl">Descrição *</label><input class="rsm-ql-inp" name="descricao" type="text" placeholder="${isRec?"Ex: Mensalidade internet":"Ex: Conta de luz"}" required autocomplete="off" style="--focus-color:${cor}"></div>
+  ${isRec?`<div><label class="rsm-ql-lbl">Cliente</label>
+    <select class="rsm-ql-inp" name="cliente" id="rsm-ql-cli" style="--focus-color:${cor}">
+      <option value="">— sem cliente —</option>${optCli}
+    </select>
+    ${clientes.length?"":'<div style="font-size:11px;color:var(--rsm-mut);margin-top:3px">Nenhum cliente cadastrado. Cadastre em ☰ → Clientes ServNet.</div>'}
+  </div>`:""}
+  <div><label class="rsm-ql-lbl">Categoria</label>
+    ${cats.length?`<select class="rsm-ql-inp" name="categoria" style="--focus-color:${cor}"><option value="">— sem categoria —</option>${optCat}</select>`
+      :`<input class="rsm-ql-inp" name="categoria" type="text" placeholder="${isRec?"Ex: Provedor":"Ex: Conta fixa"}" style="--focus-color:${cor}">`}
   </div>
-  <div><label class="rsm-ql-lbl">Categoria (opcional)</label><input class="rsm-ql-inp" name="categoria" type="text" placeholder="${isRec?"Ex: Provedor":"Ex: Conta fixa"}" style="--focus-color:${cor}"></div>
+  <div class="rsm-ql-row2">
+    <div><label class="rsm-ql-lbl">Valor (R$) *</label><input class="rsm-ql-inp" name="valor" id="rsm-ql-val" type="number" step="0.01" min="0.01" placeholder="0,00" required style="--focus-color:${cor}"></div>
+    <div><label class="rsm-ql-lbl">Dt. vencimento *</label><input class="rsm-ql-inp" name="data_v" id="rsm-ql-dv" type="date" value="${hoje}" required style="--focus-color:${cor}"></div>
+  </div>
+  <div class="rsm-ql-row2">
+    <div><label class="rsm-ql-lbl">Recorrência</label>
+      <select class="rsm-ql-inp" name="recorrencia" id="rsm-ql-rec" style="--focus-color:${cor}">
+        <option value="unica">Única</option>
+        <option value="mensal"${isRec&&clientes.length?" ":""}>Mensal</option>
+        <option value="trimestral">Trimestral</option>
+        <option value="semestral">Semestral</option>
+        <option value="anual">Anual</option>
+      </select>
+    </div>
+    <div id="rsm-ql-repwrap" style="display:none"><label class="rsm-ql-lbl">Repetições</label>
+      <input class="rsm-ql-inp" name="repeticoes" type="number" min="2" max="60" value="12" style="--focus-color:${cor}">
+    </div>
+  </div>
   <div>
     <label class="rsm-ql-lbl">Status</label>
     <div class="rsm-ql-st-grp">
@@ -446,18 +483,45 @@ function openQuickLanc(tipo,container){
       overlay.querySelectorAll(".rsm-ql-st-btn").forEach(b=>b.classList.toggle("sel",b.dataset.s===stSel));
     });
   });
+  // Recorrência: mostra campo repetições quando não é única
+  const selRec=overlay.querySelector("#rsm-ql-rec");
+  const repWrap=overlay.querySelector("#rsm-ql-repwrap");
+  selRec?.addEventListener("change",()=>{repWrap.style.display=selRec.value==="unica"?"none":"block";});
+  // Cliente selecionado: preenche valor e dia de vencimento do cadastro
+  const selCli=overlay.querySelector("#rsm-ql-cli");
+  selCli?.addEventListener("change",()=>{
+    const opt=selCli.selectedOptions[0];if(!opt||!opt.value)return;
+    const v=opt.dataset.valor,d=opt.dataset.dia;
+    const inpV=overlay.querySelector("#rsm-ql-val"),inpD=overlay.querySelector("#rsm-ql-dv");
+    if(v&&inpV&&!inpV.value)inpV.value=v;
+    if(d&&inpD){const m=inpD.value?inpD.value.slice(0,7):hoje.slice(0,7);inpD.value=m+"-"+String(d).padStart(2,"0");}
+  });
   overlay.querySelector("#rsm-ql-x")?.addEventListener("click",()=>overlay.remove());
   overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove();});
   overlay.querySelector("#rsm-ql-form")?.addEventListener("submit",async e=>{
     e.preventDefault();
     const fd=new FormData(e.target);
     const dv=fd.get("data_v")||hoje;
-    const entry={id:crypto.randomUUID(),tipo,status:stSel,descricao:fd.get("descricao"),valor:parseFloat(fd.get("valor"))||0,data_vencimento:dv,mes_ref:dv.slice(0,7),categoria:fd.get("categoria")||null};
+    const rec=fd.get("recorrencia")||"unica";
+    const nrep=rec==="unica"?1:Math.min(Math.max(parseInt(fd.get("repeticoes"))||12,2),60);
+    const step=rec==="anual"?12:rec==="semestral"?6:rec==="trimestral"?3:1;
+    const cliId=fd.get("cliente")||null;
+    const cli=cliId?clientes.find(c=>c.id===cliId):null;
+    const grupo=nrep>1?crypto.randomUUID():null;
+    const entries=[];
+    for(let i=0;i<nrep;i++){
+      const dvi=i===0?dv:yt(dv,i*step);
+      entries.push({id:crypto.randomUUID(),tipo,status:i===0?stSel:"pendente",
+        descricao:fd.get("descricao"),valor:parseFloat(fd.get("valor"))||0,
+        data_vencimento:dvi,mes_ref:dvi.slice(0,7),categoria:fd.get("categoria")||null,
+        ...(cli?{clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,negocio:"Provedor/Servnet"}:{}),
+        ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+"/"+nrep}:{})});
+    }
     const sbtn=e.target.querySelector("[type=submit]");
     sbtn.disabled=true;sbtn.textContent="Salvando…";
     try{
-      await Z("lancamentos",entry);
-      X.ok(isRec?"Receita salva! ✅":"Despesa salva! ✅");
+      await Q("lancamentos",entries);
+      X.ok(nrep>1?nrep+" lançamentos gerados! ✅":(isRec?"Receita salva! ✅":"Despesa salva! ✅"));
       overlay.remove();
       initDashboard(container);
     }catch(err){
