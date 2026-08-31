@@ -806,6 +806,10 @@ _['receber']=async function(el){
             <input class="cl-inp" name="repeticoes" type="number" min="2" max="60" value="12">
           </div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text,#111);cursor:pointer;margin-top:2px">
+          <input type="checkbox" name="mostrarPortal" checked style="width:16px;height:16px;accent-color:#059669">
+          Mostrar no portal do cliente
+        </label>
         <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#059669;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Gerar cobrança</button>
       </form>
     </div>`;
@@ -866,6 +870,7 @@ _['receber']=async function(el){
           data_vencimento:dvi,mes_ref:dvi.slice(0,7),categoria:'Mensalidade',
           clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,
           planoId:pl.id,plano:pl.nome,negocio:pl.negocio||'Provedor/Servnet',
+          ...(fd.get('mostrarPortal')?{}:{ocultarPortal:true}),
           ...(grupo?{recorrencia:rec,grupoRecorrencia:grupo,parcela:(i+1)+'/'+nrep}:{})});
       }
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Gerando…';
@@ -901,7 +906,7 @@ _['receber']=async function(el){
       return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 22px;border-top:1px solid var(--border,#e5e7eb)">
         <div style="width:6px;height:30px;border-radius:3px;background:${cor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}${l.ocultarPortal?' <span title=\"Oculta no portal\">🙈</span>':''}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span></div>
         </div>
         <div style="font-size:13px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
@@ -964,6 +969,7 @@ _['receber']=async function(el){
       pop.className='cr-pop';
       pop.style.cssText='position:fixed;z-index:3500;top:'+Math.min(r.bottom+4,window.innerHeight-160)+'px;right:14px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:hidden;min-width:220px';
       pop.innerHTML='<div class="cr-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
+        +'<div class="cr-pop-i" data-a="portal" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111);border-top:1px solid var(--border,#e5e7eb)">'+(l.ocultarPortal?'👁 Mostrar no portal':'🙈 Ocultar do portal')+'</div>'
         +'<div class="cr-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
         +(l.grupoRecorrencia?'<div class="cr-pop-i" data-a="delfut" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir esta e futuras</div>':'');
       document.body.appendChild(pop);
@@ -972,6 +978,13 @@ _['receber']=async function(el){
         pop.remove();
         const a=it.dataset.a;
         if(a==='editar')return editLanc(l);
+        if(a==='portal'){
+          const {id,...dados}=l;
+          const novo={...dados};
+          if(novo.ocultarPortal)delete novo.ocultarPortal;else novo.ocultarPortal=true;
+          const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
+          if(error)toast.err('Erro: '+error.message);else{toast.ok(novo.ocultarPortal?'Oculto do portal 🙈':'Visível no portal 👁');render();}
+        }
         if(a==='del'){
           if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
           const {error}=await sb.from('lancamentos').delete().eq('id',l.id).eq('user_id',uid);

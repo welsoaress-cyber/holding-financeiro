@@ -2,6 +2,12 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.43 — 2026-08-31
+
+### Novo
+- **Visibilidade da cobrança no portal**: checkbox "Mostrar no portal do cliente" na Nova cobrança (marcado por padrão) e ação ⋮ → 🙈 Ocultar/👁 Mostrar em cada lançamento; ocultas exibem 🙈 na lista
+- `fix-portal-faturas-v3.sql`: função do portal atualizada para não listar faturas com `ocultarPortal` (rodar no SQL Editor)
+
 ## v2.9.42 — 2026-08-31
 
 ### Alterado
