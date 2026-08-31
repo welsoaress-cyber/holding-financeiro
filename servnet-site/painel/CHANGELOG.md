@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.55 — 2026-08-31
+
+### Novo
+- **Botão "Hoje" em Contas a Receber e Contas a Pagar**: aparece ao lado do mês quando você navega para outro período — um clique volta ao mês atual (igual ao Resumo)
+
 ## v2.9.54 — 2026-08-31
 
 ### Alterado

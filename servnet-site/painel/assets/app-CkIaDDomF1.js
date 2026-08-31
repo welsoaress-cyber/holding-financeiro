@@ -942,7 +942,7 @@ _['receber']=async function(el){
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb)">
         <button id="cr-prev" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">‹</button>
-        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}</span>
+        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}${mesKey()===new Date().toISOString().slice(0,7)?'':`<button id="cr-hoje" style="margin-left:8px;background:none;border:1px solid #6366f1;color:#6366f1;border-radius:999px;font-size:11px;font-weight:700;padding:3px 12px;cursor:pointer;vertical-align:middle">Hoje</button>`}</span>
         <button id="cr-next" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">›</button>
       </div>
       <div style="background:var(--bg,#f4f5f7);padding-bottom:80px">
@@ -950,6 +950,7 @@ _['receber']=async function(el){
       </div>`;
     el.querySelector('#cr-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
     el.querySelector('#cr-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
+    el.querySelector('#cr-hoje')?.addEventListener('click',()=>{const t=new Date();nav={ano:t.getFullYear(),mes:t.getMonth()};render();});
     el.querySelector('#cr-novo').addEventListener('click',()=>formCobranca());
     el.querySelectorAll('.cr-toggle').forEach(b=>b.addEventListener('click',async()=>{
       const key=b.dataset.key;
@@ -1268,7 +1269,7 @@ _['pagar']=async function(el){
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb)">
         <button id="cp-prev" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">‹</button>
-        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}</span>
+        <span style="font-size:15px;font-weight:600;color:var(--text,#111)">${W2[nav.mes]} ${nav.ano}${mesKey()===new Date().toISOString().slice(0,7)?'':`<button id="cp-hoje" style="margin-left:8px;background:none;border:1px solid #6366f1;color:#6366f1;border-radius:999px;font-size:11px;font-weight:700;padding:3px 12px;cursor:pointer;vertical-align:middle">Hoje</button>`}</span>
         <button id="cp-next" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">›</button>
       </div>
       <div style="background:var(--bg,#f4f5f7);padding-bottom:80px">
@@ -1276,6 +1277,7 @@ _['pagar']=async function(el){
       </div>`;
     el.querySelector('#cp-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
     el.querySelector('#cp-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
+    el.querySelector('#cp-hoje')?.addEventListener('click',()=>{const t=new Date();nav={ano:t.getFullYear(),mes:t.getMonth()};render();});
     el.querySelector('#cp-novo').addEventListener('click',()=>formDespesa());
     el.querySelectorAll('.cp-ok').forEach(b=>b.addEventListener('click',async()=>{
       const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;b.disabled=true;
