@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.57 — 2026-08-31
+
+### Novo
+- **Cadastro rápido na Nova cobrança**: se o cliente digitado não existir, aparece "➕ Cadastrar cliente" abaixo do campo — cria na hora (complete CPF/telefone depois em Clientes) e segue a cobrança sem sair do formulário
+
 ## v2.9.56 — 2026-08-31
 
 ### Novo — Importar Planilha (📄 no menu)

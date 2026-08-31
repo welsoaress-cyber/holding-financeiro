@@ -774,6 +774,7 @@ _['receber']=async function(el){
         <div><label class="cl-lbl">Cliente *</label>
           <input class="cl-inp" name="clienteNome" list="cr-cli-list" required placeholder="Digite o nome do cliente…" autocomplete="off">
           <datalist id="cr-cli-list">${clientes.map(c=>`<option value="${esc(c.nome)}">`).join('')}</datalist>
+          <div id="cr-cli-hint" style="margin-top:5px"></div>
           ${clientes.length?'':'<div style="font-size:11px;color:#d97706;margin-top:3px">Nenhum cliente. Cadastre em Clientes.</div>'}
         </div>
         <div><label class="cl-lbl">Tipo de negócio *</label>
@@ -821,7 +822,26 @@ _['receber']=async function(el){
     });
     // cliente digitado → pré-seleciona o plano vinculado e o valor
     const inpCli=ov.querySelector('input[name=clienteNome]');
+    const hint=ov.querySelector('#cr-cli-hint');
+    function checarNovoCliente(){
+      const nomeDig=inpCli.value.trim();
+      const existe=clientes.some(x=>String(x.nome).toLowerCase()===nomeDig.toLowerCase());
+      if(!nomeDig||existe){hint.innerHTML='';return;}
+      hint.innerHTML=`<button type="button" id="cr-cli-novo" style="background:#0ea5e915;border:1px solid #0ea5e955;color:#0ea5e9;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">➕ Cadastrar cliente "${nomeDig.replace(/</g,'&lt;')}"</button>`;
+      hint.querySelector('#cr-cli-novo').addEventListener('click',async()=>{
+        const btn=hint.querySelector('#cr-cli-novo');btn.disabled=true;btn.textContent='Cadastrando…';
+        const novo={id:crypto.randomUUID(),nome:nomeDig};
+        const {error}=await sb.from('cli_clientes').insert({id:novo.id,user_id:uid,dados:{nome:nomeDig,status:'Ativo',dataCadastro:new Date().toISOString().slice(0,10),origem:'cadastro-rapido'},updated_at:new Date().toISOString()});
+        if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='➕ Cadastrar';return;}
+        clientes.push({id:novo.id,nome:nomeDig,planoId:null,servicos:[]});
+        ov.querySelector('#cr-cli-list').insertAdjacentHTML('beforeend',`<option value="${nomeDig.replace(/"/g,'&quot;')}">`);
+        hint.innerHTML='<span style="font-size:12px;color:#059669;font-weight:600">✓ Cliente cadastrado — complete CPF/telefone depois em Clientes</span>';
+        toast.ok('Cliente "'+nomeDig+'" cadastrado! ✅');
+      });
+    }
+    inpCli?.addEventListener('input',checarNovoCliente);
     inpCli?.addEventListener('change',()=>{
+      checarNovoCliente();
       const c=clientes.find(x=>String(x.nome).toLowerCase()===inpCli.value.trim().toLowerCase());
       if(!c)return;
       const sv=(c.servicos&&c.servicos[0])||null;
