@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.61 — 2026-08-31
+- **Importar Planilha**: tabela de revisão simplificada — removidas colunas Negócio e Plano por linha; ficam apenas Cliente, Telefone e Serviço/Descrição inline; Negócio, Plano e Recorrência globais ficam na barra "Aplicar a todos"
+
 ## v2.9.60 — 2026-08-31
 
 ### Corrigido

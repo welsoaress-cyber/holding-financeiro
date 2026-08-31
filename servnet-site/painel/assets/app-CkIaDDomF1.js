@@ -1552,8 +1552,6 @@ _['importar']=async function(el){
     tb.innerHTML=linhas.map((l,i)=>`<tr data-i="${i}">
       <td><input class="imp-inp" data-f="cliente" value="${esc(l.cliente)}" placeholder="Cliente"></td>
       <td><input class="imp-inp" data-f="telefone" value="${esc(l.telefone||'')}" placeholder="(11) 90000-0000" style="width:130px"></td>
-      <td><select class="imp-inp imp-neg" data-f="negocioId" style="width:110px">${optNeg(l.negocioId)}</select></td>
-      <td><select class="imp-inp imp-pl" data-f="planoId" style="width:150px">${optPl(l.negocioId,l.planoId)}</select></td>
       <td><input class="imp-inp" data-f="descricao" value="${esc(l.descricao)}" placeholder="Serviço/descrição"></td>
       <td><input class="imp-inp" data-f="valor" type="number" step="0.01" value="${l.valor||''}" style="width:90px"></td>
       <td><input class="imp-inp" data-f="vencimento" type="date" value="${esc(l.vencimento)}" style="width:140px"></td>
@@ -1572,18 +1570,6 @@ _['importar']=async function(el){
       const tr=inp.closest('tr');const i=parseInt(tr.dataset.i);const f=inp.dataset.f;
       linhas[i][f]=f==='valor'?parseFloat(inp.value)||0:f==='repeticoes'?parseInt(inp.value)||12:inp.value;
       if(f==='recorrencia'){const rep=tr.querySelector('[data-f=repeticoes]');rep.disabled=(inp.value==='unica'||inp.value==='fixa');}
-      if(f==='negocioId'){
-        const n=negociosL.find(x=>x.id===inp.value);
-        linhas[i].negocio=n?n.nome:null;linhas[i].planoId=null;linhas[i].plano=null;
-        tr.querySelector('.imp-pl').innerHTML=optPl(inp.value,null);
-      }
-      if(f==='planoId'){
-        const p=planosL.find(x=>x.id===inp.value);
-        if(p){linhas[i].plano=p.nome;linhas[i].negocioId=p.negocioId;linhas[i].negocio=p.negocio;
-          if(!linhas[i].valor){linhas[i].valor=p.valor;tr.querySelector('[data-f=valor]').value=p.valor;}
-          if(!linhas[i].descricao){linhas[i].descricao=p.nome;tr.querySelector('[data-f=descricao]').value=p.nome;}
-        }else{linhas[i].plano=null;}
-      }
     }));
     tb.querySelectorAll('.imp-del').forEach(b=>b.addEventListener('click',()=>{
       linhas.splice(parseInt(b.dataset.i),1);renderTabela();
@@ -1685,7 +1671,7 @@ _['importar']=async function(el){
           </div>
           <div style="overflow-x:auto">
             <table id="imp-table">
-              <thead><tr><th>Cliente</th><th>Telefone</th><th>Negócio</th><th>Plano</th><th>Serviço / Descrição</th><th>Valor</th><th>Vencimento</th><th>Recorrência</th><th>Rep.</th><th>Destino</th><th></th></tr></thead>
+              <thead><tr><th>Cliente</th><th>Telefone</th><th>Serviço / Descrição</th><th>Valor</th><th>Vencimento</th><th>Recorrência</th><th>Rep.</th><th>Destino</th><th></th></tr></thead>
               <tbody id="imp-tbody"></tbody>
             </table>
           </div>
