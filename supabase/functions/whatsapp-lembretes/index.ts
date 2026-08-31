@@ -8,7 +8,17 @@ const SB_URL        = Deno.env.get('SUPABASE_URL')!
 const SB_SECRET     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const EVO_URL       = Deno.env.get('EVOLUTION_API_URL') || 'http://163.176.122.177:8080'
 const EVO_KEY       = Deno.env.get('EVOLUTION_API_KEY') || 'servnet-evo-2026'
-const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'
+const EVO_INSTANCE  = Deno.env.get('EVOLUTION_INSTANCE') || 'servnet'            // Provedor → 11 96696-1138
+const EVO_INSTANCE_SERVIDOR = Deno.env.get('EVOLUTION_INSTANCE_SERVIDOR') || 'servidor'  // Servidor → 11 95449-0001
+
+// ----------------------------------------------------------------
+// Escolhe a instância WhatsApp pelo negócio do lançamento/cliente
+// ----------------------------------------------------------------
+function instanciaPorNegocio(negocio: string): string {
+  const n = (negocio || '').toLowerCase()
+  if (n.startsWith('servidor')) return EVO_INSTANCE_SERVIDOR
+  return EVO_INSTANCE // Provedor / Servnet / demais
+}
 const MP_TOKEN      = Deno.env.get('MP_ACCESS_TOKEN') || ''
 const CRON_SECRET   = Deno.env.get('CRON_SECRET') || ''   // set via: supabase secrets set CRON_SECRET=<valor>
 
@@ -87,11 +97,11 @@ function sleep(ms: number): Promise<void> {
 // ----------------------------------------------------------------
 // Verifica se a instância Evolution API está conectada (antes de disparar)
 // ----------------------------------------------------------------
-async function verificarInstancia(): Promise<{ ok: boolean; estado: string }> {
+async function verificarInstancia(instancia: string = EVO_INSTANCE): Promise<{ ok: boolean; estado: string }> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
-    const res = await fetch(`${EVO_URL}/instance/connectionState/${EVO_INSTANCE}`, {
+    const res = await fetch(`${EVO_URL}/instance/connectionState/${instancia}`, {
       headers: { 'apikey': EVO_KEY },
       signal: controller.signal,
     })
@@ -109,13 +119,13 @@ async function verificarInstancia(): Promise<{ ok: boolean; estado: string }> {
 // ----------------------------------------------------------------
 // Envia mensagem WhatsApp via Evolution API (com retry e backoff)
 // ----------------------------------------------------------------
-async function enviarWhatsApp(numero: string, mensagem: string): Promise<boolean> {
+async function enviarWhatsApp(numero: string, mensagem: string, instancia: string = EVO_INSTANCE): Promise<boolean> {
   const MAX = 3
   for (let t = 1; t <= MAX; t++) {
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 15000)
-      const res = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+      const res = await fetch(`${EVO_URL}/message/sendText/${instancia}`, {
         method: 'POST',
         headers: { 'apikey': EVO_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ number: numero, text: mensagem }),
@@ -304,16 +314,18 @@ serve(async (req) => {
   // Falha rápida: evita tentar enviar para todos os clientes quando a
   // instância está desconectada (sessão expirada, servidor reiniciado, etc.)
   // ----------------------------------------------------------------
-  const { ok: apiOK, estado: apiEstado } = await verificarInstancia()
-  if (!apiOK) {
-    const msg = `🔴 Evolution API OFFLINE — instância '${EVO_INSTANCE}' estado: ${apiEstado}. Acesse o painel para reconectar.`
-    console.error(msg)
-    return jsonRes({
-      ok: false,
-      error: `Evolution API offline (estado: ${apiEstado}). Reconecte a instância '${EVO_INSTANCE}' no painel da Evolution API e dispare novamente.`,
-    }, 503)
+  // Cada negócio usa sua instância WhatsApp; verifica cada uma só quando
+  // for usada (cache por execução). Uma instância offline não bloqueia a outra.
+  const estadoInstancias = new Map<string, { ok: boolean; estado: string }>()
+  const instanciaDisponivel = async (inst: string) => {
+    if (!estadoInstancias.has(inst)) {
+      const st = await verificarInstancia(inst)
+      estadoInstancias.set(inst, st)
+      if (st.ok) console.log(`✅ Instância '${inst}' conectada (${st.estado})`)
+      else console.error(`🔴 Instância '${inst}' OFFLINE — estado: ${st.estado}`)
+    }
+    return estadoInstancias.get(inst)!
   }
-  console.log(`✅ Evolution API conectada (estado: ${apiEstado})`)
 
   // Data de hoje ajustada para Brasília (UTC-3)
   const agora = new Date()
@@ -531,7 +543,16 @@ serve(async (req) => {
 
     const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, linkPix)
 
-    const ok = await enviarWhatsApp(telefone, mensagem)
+    // Roteia pelo negócio: Servidor → instância própria; Provedor/demais → servnet
+    const negocio = dados?.negocio || cliDados?.negocio || ''
+    const instancia = instanciaPorNegocio(negocio)
+    const instState = await instanciaDisponivel(instancia)
+    if (!instState.ok) {
+      resultados.push({ cliente: nome, numero: telefone, status: 'pulado', motivo: `instância '${instancia}' offline (${instState.estado})` })
+      continue
+    }
+
+    const ok = await enviarWhatsApp(telefone, mensagem, instancia)
     if (ok) {
       enviados++
       resultados.push({ cliente: nome, numero: telefone, status: 'enviado' })

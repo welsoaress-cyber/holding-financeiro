@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.39 — 2026-08-31
+
+### Novo — WhatsApp por negócio
+- **`whatsapp-lembretes` roteia por tipo de negócio**: cobranças do Provedor saem pela instância `servnet` (11 96696-1138); cobranças do Servidor pela instância `servidor` (11 95449-0001, env `EVOLUTION_INSTANCE_SERVIDOR`)
+- Cada instância é verificada separadamente com cache por execução — uma offline não bloqueia a outra (as faturas dela são puladas com o motivo no relatório)
+- Requer redeploy da função e criação/conexão da instância `servidor` no Evolution Manager
+
 ## v2.9.38 — 2026-08-31
 
 ### Novo
