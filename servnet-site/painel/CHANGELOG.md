@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.46 — 2026-08-31
+
+### Alterado
+- **Resumo abre automaticamente** ao entrar/atualizar o painel — o dash simples (saldos + contas a receber/pagar) substitui a tela vazia
+
 ## v2.9.45 — 2026-08-31
 
 ### Alterado
