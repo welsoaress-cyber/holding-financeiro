@@ -431,8 +431,8 @@ _['clientes']=async function(el){
     const optNeg=negs.map(n=>`<option value="${n.id}"${c.negocioId===n.id?' selected':''}>${esc(n.nome)}</option>`).join('');
     const optPlano=negId=>planosAll.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${c.planoId===p.id?' selected':''}>${esc(p.nome)} — R$ ${p.valor}</option>`).join('');
     const ov=document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
-    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-size:17px;font-weight:700;color:#0ea5e9">${cli?'✏️ Editar cliente':'👥 Novo cliente'}</span>
         <button id="cl-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
@@ -479,7 +479,6 @@ _['clientes']=async function(el){
       </form>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#cl-x').addEventListener('click',()=>ov.remove());
     // ── Serviços contratados (multi negócio/plano/periodicidade) ──
     const servs=Array.isArray(c.servicos)?[...c.servicos]:(c.planoId?[{id:crypto.randomUUID(),negocioId:c.negocioId||null,negocio:c.negocio||null,planoId:c.planoId,plano:c.plano||null,valor:c.valorMensal||null,periodicidade:'fixa',diaVencimento:c.diaVencimento||10}]:[]);
@@ -627,8 +626,8 @@ _['negocios']=async function(el){
   function formPlano(negocio,plano){
     const p=plano||{};
     const ov=document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
-    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-size:17px;font-weight:700;color:#8b5cf6">${plano?'✏️ Editar plano':'📦 Novo plano'} — ${esc(negocio.nome)}</span>
         <button id="pl-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
@@ -641,7 +640,6 @@ _['negocios']=async function(el){
       </form>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#pl-x').addEventListener('click',()=>ov.remove());
     ov.querySelector('#pl-form').addEventListener('submit',async e=>{
       e.preventDefault();
@@ -1075,7 +1073,6 @@ _['receber']=async function(el){
       </div>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#exc-cancel').addEventListener('click',()=>ov.remove());
     ov.querySelectorAll('.exc-op').forEach(b=>b.addEventListener('click',async()=>{
       const op=b.dataset.op;
@@ -1338,7 +1335,6 @@ _['pagar']=async function(el){
       </div>
     </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.querySelector('#exc-cancel').addEventListener('click',()=>ov.remove());
     ov.querySelectorAll('.exc-op').forEach(b=>b.addEventListener('click',async()=>{
       const op=b.dataset.op;

@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.53 — 2026-08-31
+
+### Alterado
+- **Todos os popups centralizados e sem fechar por clique fora**: formulários de Cliente, Plano e seletor de exclusão agora só fecham pelo ✕/Cancelar ou ao concluir — seleção de texto fora da caixa não perde mais o preenchimento
+
 ## v2.9.52 — 2026-08-31
 
 ### Corrigido
