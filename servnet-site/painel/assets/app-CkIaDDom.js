@@ -695,6 +695,7 @@ _['receber']=async function(el){
   const W2=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const now=new Date();let nav={ano:now.getFullYear(),mes:now.getMonth()};
   const mesKey=()=>nav.ano+'-'+String(nav.mes+1).padStart(2,'0');
+  let todosCache=[];
   const dtBr=s=>{if(!s)return'—';const[a,m,d]=String(s).slice(0,10).split('-');return d+'/'+m;};
 
   async function marcar(id,dados,novoStatus){
@@ -798,7 +799,7 @@ _['receber']=async function(el){
     let raw=[];
     try{raw=await fetchAll('lancamentos');}
     catch(e){el.innerHTML='<div style="padding:24px;color:#f87171">Erro: '+esc(e.message)+'</div>';return;}
-    const todos=unpack('lancamentos',raw);
+    const todos=unpack('lancamentos',raw);todosCache=todos;
     const doMes=todos.filter(l=>l.tipo==='receita'&&l.mes_ref===mesKey()).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
     const hoje=new Date().toISOString().slice(0,10);
     const pend=doMes.filter(l=>l.status!=='pago'&&l.status!=='recebido');
@@ -818,6 +819,7 @@ _['receber']=async function(el){
         <div style="font-size:14px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
         ${ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
             :`<button class="cr-ok" data-id="${l.id}" title="Marcar recebido" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
+        <button class="cr-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>
       </div>`;
     }).join('');
     el.innerHTML=`
@@ -854,6 +856,68 @@ _['receber']=async function(el){
       const {id,...dados}=l;
       try{await marcar(l.id,dados,'pendente');toast.ok('Voltou para pendente');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
     }));
+    el.querySelectorAll('.cr-menu').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cr-pop').forEach(p=>p.remove());
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;
+      const r=b.getBoundingClientRect();
+      const pop=document.createElement('div');
+      pop.className='cr-pop';
+      pop.style.cssText='position:fixed;z-index:3500;top:'+Math.min(r.bottom+4,window.innerHeight-160)+'px;right:14px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:hidden;min-width:220px';
+      pop.innerHTML='<div class="cr-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
+        +'<div class="cr-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
+        +(l.grupoRecorrencia?'<div class="cr-pop-i" data-a="delfut" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir esta e futuras</div>':'');
+      document.body.appendChild(pop);
+      setTimeout(()=>document.addEventListener('click',()=>pop.remove(),{once:true}),0);
+      pop.querySelectorAll('.cr-pop-i').forEach(it=>it.addEventListener('click',async()=>{
+        pop.remove();
+        const a=it.dataset.a;
+        if(a==='editar')return editLanc(l);
+        if(a==='del'){
+          if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
+          const {error}=await sb.from('lancamentos').delete().eq('id',l.id).eq('user_id',uid);
+          if(error)toast.err('Erro: '+error.message);else{toast.ok('Excluído');render();}
+        }
+        if(a==='delfut'){
+          const futuras=todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia&&String(x.mes_ref)>=String(l.mes_ref));
+          if(!confirm('Excluir '+futuras.length+' lançamento(s) — este e os futuros do mesmo grupo?'))return;
+          const {error}=await sb.from('lancamentos').delete().in('id',futuras.map(x=>x.id)).eq('user_id',uid);
+          if(error)toast.err('Erro: '+error.message);else{toast.ok(futuras.length+' excluídos');render();}
+        }
+      }));
+    }));
+  }
+
+  function editLanc(l){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:var(--text,#111)">✏️ Editar cobrança</span>
+        <button id="cre-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="cre-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Descrição *</label><input class="cl-inp" name="descricao" required value="${String(l.descricao||'').replace(/"/g,'&quot;')}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${l.valor??''}"></div>
+          <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" required value="${String(l.data_vencimento||'').slice(0,10)}"></div>
+        </div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar alterações</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#cre-x').addEventListener('click',()=>ov.remove());
+    ov.querySelector('#cre-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const dv=fd.get('data_v');
+      const {id,...dados}=l;
+      const novo={...dados,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:dv,mes_ref:dv.slice(0,7)};
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
+      if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='Salvar alterações';}
+      else{toast.ok('Alterado! ✅');ov.remove();render();}
+    });
   }
   await render();
 };
@@ -869,6 +933,7 @@ _['pagar']=async function(el){
   const W2=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const now=new Date();let nav={ano:now.getFullYear(),mes:now.getMonth()};
   const mesKey=()=>nav.ano+'-'+String(nav.mes+1).padStart(2,'0');
+  let todosCache=[];
   const dtBr=s=>{if(!s)return'—';const[a,m,d]=String(s).slice(0,10).split('-');return d+'/'+m;};
 
   async function marcar(id,dados,novoStatus){
@@ -943,7 +1008,7 @@ _['pagar']=async function(el){
     let raw=[];
     try{raw=await fetchAll('lancamentos');}
     catch(e){el.innerHTML='<div style="padding:24px;color:#f87171">Erro: '+esc(e.message)+'</div>';return;}
-    const todos=unpack('lancamentos',raw);
+    const todos=unpack('lancamentos',raw);todosCache=todos;
     const doMes=todos.filter(l=>l.tipo==='despesa'&&l.mes_ref===mesKey()).sort((a,b)=>String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
     const hoje=new Date().toISOString().slice(0,10);
     const pend=doMes.filter(l=>l.status!=='pago');
@@ -963,6 +1028,7 @@ _['pagar']=async function(el){
         <div style="font-size:14px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
         ${ok?`<button class="cp-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
             :`<button class="cp-ok" data-id="${l.id}" title="Marcar pago" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
+        <button class="cp-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>
       </div>`;
     }).join('');
     el.innerHTML=`
@@ -999,6 +1065,68 @@ _['pagar']=async function(el){
       const {id,...dados}=l;
       try{await marcar(l.id,dados,'pendente');toast.ok('Voltou para pendente');render();}catch(err){toast.err('Erro: '+err.message);b.disabled=false;}
     }));
+    el.querySelectorAll('.cp-menu').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.cp-pop').forEach(p=>p.remove());
+      const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;
+      const r=b.getBoundingClientRect();
+      const pop=document.createElement('div');
+      pop.className='cp-pop';
+      pop.style.cssText='position:fixed;z-index:3500;top:'+Math.min(r.bottom+4,window.innerHeight-160)+'px;right:14px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:hidden;min-width:220px';
+      pop.innerHTML='<div class="cp-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
+        +'<div class="cp-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
+        +(l.grupoRecorrencia?'<div class="cp-pop-i" data-a="delfut" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir esta e futuras</div>':'');
+      document.body.appendChild(pop);
+      setTimeout(()=>document.addEventListener('click',()=>pop.remove(),{once:true}),0);
+      pop.querySelectorAll('.cp-pop-i').forEach(it=>it.addEventListener('click',async()=>{
+        pop.remove();
+        const a=it.dataset.a;
+        if(a==='editar')return editLanc(l);
+        if(a==='del'){
+          if(!confirm('Excluir "'+(l.descricao||'')+'" de '+fmt(l.valor)+'?'))return;
+          const {error}=await sb.from('lancamentos').delete().eq('id',l.id).eq('user_id',uid);
+          if(error)toast.err('Erro: '+error.message);else{toast.ok('Excluído');render();}
+        }
+        if(a==='delfut'){
+          const futuras=todosCache.filter(x=>x.grupoRecorrencia===l.grupoRecorrencia&&String(x.mes_ref)>=String(l.mes_ref));
+          if(!confirm('Excluir '+futuras.length+' lançamento(s) — este e os futuros do mesmo grupo?'))return;
+          const {error}=await sb.from('lancamentos').delete().in('id',futuras.map(x=>x.id)).eq('user_id',uid);
+          if(error)toast.err('Erro: '+error.message);else{toast.ok(futuras.length+' excluídos');render();}
+        }
+      }));
+    }));
+  }
+
+  function editLanc(l){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:17px;font-weight:700;color:var(--text,#111)">✏️ Editar conta</span>
+        <button id="cpe-x" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">✕</button>
+      </div>
+      <form id="cpe-form" style="display:flex;flex-direction:column;gap:11px">
+        <div><label class="cl-lbl">Descrição *</label><input class="cl-inp" name="descricao" required value="${String(l.descricao||'').replace(/"/g,'&quot;')}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="cl-lbl">Valor (R$) *</label><input class="cl-inp" name="valor" type="number" step="0.01" min="0.01" required value="${l.valor??''}"></div>
+          <div><label class="cl-lbl">Vencimento *</label><input class="cl-inp" name="data_v" type="date" required value="${String(l.data_vencimento||'').slice(0,10)}"></div>
+        </div>
+        <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar alterações</button>
+      </form>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#cpe-x').addEventListener('click',()=>ov.remove());
+    ov.querySelector('#cpe-form').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.target);
+      const dv=fd.get('data_v');
+      const {id,...dados}=l;
+      const novo={...dados,descricao:fd.get('descricao'),valor:parseFloat(fd.get('valor'))||0,data_vencimento:dv,mes_ref:dv.slice(0,7)};
+      const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Salvando…';
+      const {error}=await sb.from('lancamentos').update({dados:novo,updated_at:new Date().toISOString()}).eq('id',l.id).eq('user_id',uid);
+      if(error){toast.err('Erro: '+error.message);btn.disabled=false;btn.textContent='Salvar alterações';}
+      else{toast.ok('Alterado! ✅');ov.remove();render();}
+    });
   }
   await render();
 };

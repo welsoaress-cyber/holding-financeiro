@@ -172,7 +172,15 @@
     #page-content {
       position: fixed; top: 58px; left: 0; right: 0; bottom: 0;
       z-index: 10; display: none; overflow-y: auto;
+      /* tokens de módulo — tema escuro (padrão) */
+      --primary:#2563eb; --bg:#0d1424; --bg-card:#131c30; --text:#e5e9f2;
+      --text-muted:#8b96ab; --border:rgba(255,255,255,.09);
+      --surface:rgba(255,255,255,.05); --text-1:#e5e9f2; --text-2:#8b96ab; --text-3:#5b6579;
       background: var(--bg);
+    }
+    [data-theme="light"] #page-content {
+      --bg:#f0f4f8; --bg-card:#ffffff; --text:#0f172a; --text-muted:#64748b;
+      --border:#e2e8f0; --surface:rgba(15,23,42,.04); --text-1:#0f172a; --text-2:#64748b; --text-3:#94a3b8;
     }
     @media (max-width: 640px) {
       #page-content { top: 58px; bottom: 60px; }

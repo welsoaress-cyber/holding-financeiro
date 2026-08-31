@@ -2,6 +2,17 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.37 — 2026-08-31
+
+### Novo
+- **Menu ⋮ nas linhas de Contas a Receber/Pagar**: ✏️ Editar (descrição, valor, vencimento), 🗑️ Excluir e 🗑️ Excluir esta e futuras (para recorrências)
+
+### Corrigido
+- **Texto invisível no modo escuro**: `#page-content` agora define os tokens de tema (claro e escuro) — descrições de lançamentos, nomes de clientes e cards legíveis nos dois temas
+
+### Alterado
+- **Resumo enxuto — dash único**: removidas todas as seções (contas, discriminações, fluxo de caixa, economia, pendentes, últimas receitas/despesas, categorias, configurar resumo). Ficam: **Saldo início do mês**, **Saldo final previsto**, card **Contas a Receber (Previsto × Realizado)** e card **Contas a Pagar (Previsto × Realizado)** — os cards abrem os módulos ao clicar. Navegação de mês e botão + de lançamento rápido mantidos
+
 ## v2.9.36 — 2026-08-31
 
 ### Alterado

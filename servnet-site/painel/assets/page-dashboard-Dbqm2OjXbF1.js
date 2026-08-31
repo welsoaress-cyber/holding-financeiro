@@ -1,5 +1,5 @@
 import{c as H}from"./supabase-DthfXWp1.js";
-const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.36",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
+const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.37",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
 function L(t){($[t]||new Set).forEach(e=>{try{e(u[t])}catch(o){console.error("[store notify]",t,o)}})}
 const N={get(t){return u[t]},set(t,e){u[t]=e,L(t)},patch(t,e,o){const a=Array.isArray(u[t])?u[t]:[],n=a.findIndex(r=>r.id===e);n>=0?a[n]={...a[n],...o}:a.push({id:e,...o}),u[t]=a,L(t)},remove(t,e){const o=Array.isArray(u[t])?u[t]:[];u[t]=o.filter(a=>a.id!==e),L(t)},subscribe(t,e){return $[t]||($[t]=new Set),$[t].add(e),u[t]!==void 0&&e(u[t]),()=>this.unsubscribe(t,e)},unsubscribe(t,e){var o;(o=$[t])==null||o.delete(e)}};
 const h={view:"dashboard",user:null,mesNav:{ano:new Date().getFullYear(),mes:new Date().getMonth()}};
@@ -559,71 +559,33 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
       <button class="rsm-nav-btn" id="rsm-next" title="Próximo mês" ${ehFuturo?"disabled style='opacity:.3'":""}>›</button>
     </div>
 
-    <!-- Métricas top -->
-    <div class="rsm-metrics">
+    <!-- Dash único -->
+    <div class="rsm-metrics" style="grid-template-columns:1fr 1fr">
       <div class="rsm-metric">
-        <div class="rsm-metric-lbl">Saldo inicial</div>
+        <div class="rsm-metric-lbl">Saldo início do mês</div>
         <div class="rsm-metric-val ${saldoInicial>=0?"pos":"neg"}">${w(saldoInicial)}</div>
       </div>
-      <div class="rsm-metric" style="border-left:1px solid var(--rsm-brd);border-right:1px solid var(--rsm-brd)">
-        <div class="rsm-metric-lbl">Saldo atual</div>
-        <div class="rsm-metric-val ${saldoAtual>=0?"pos":"neg"}">${w(saldoAtual)}</div>
-      </div>
-      <div class="rsm-metric">
-        <div class="rsm-metric-lbl">Saldo previsto</div>
+      <div class="rsm-metric" style="border-left:1px solid var(--rsm-brd)">
+        <div class="rsm-metric-lbl">Saldo final previsto</div>
         <div class="rsm-metric-val ${saldoPrevisto>=0?"pos":"neg"}">${w(saldoPrevisto)}</div>
       </div>
     </div>
 
-    <!-- 1. Contas -->
-    ${renderContasSection(contas)}
-
-    <!-- 2. Discriminação receitas -->
-    ${renderDiscriminacaoSection("Discriminação das receitas", lancRec, hoje)}
-
-    <!-- 3. Discriminação despesas -->
-    ${renderDiscriminacaoSection("Discriminação das despesas", lancDesp, hoje)}
-
-    <!-- 4. Fluxo de caixa -->
-    ${renderFluxoCaixa(recEf, despEf)}
-
-    <!-- 5. Economia mensal -->
-    ${renderEconomiaMensal(recEf, despEf)}
-
-    <!-- 6. Transações pendentes (carousel) -->
-    ${renderPendentes(lancAll, hoje)}
-
-    <!-- 7. Saldo consolidado -->
-    ${renderSaldoConsolidado(contas)}
-
-    <!-- 8. Últimas receitas -->
-    <div class="rsm-sec">
-      <div class="rsm-sec-hd"><span class="rsm-sec-title">Últimas receitas</span><span class="rsm-sec-link" data-nav="lancamentos">Ver todas →</span></div>
-      ${renderLancList(ultiRec,"receita",hoje)}
-      ${lancRec.length>5?`<div class="rsm-ver-mais" id="rsm-more-rec">Ver todas as receitas (${lancRec.length})</div>`:""}
+    <div class="rsm-sec" id="rsm-card-rec" style="cursor:pointer">
+      <div class="rsm-sec-hd"><span class="rsm-sec-title">📥 Contas a Receber</span><span class="rsm-sec-link">Abrir →</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px 14px;gap:8px">
+        <div><div class="rsm-metric-lbl">Previsto</div><div style="font-size:18px;font-weight:800;color:#d97706">${w(recEf+recPend)}</div></div>
+        <div><div class="rsm-metric-lbl">Realizado</div><div style="font-size:18px;font-weight:800;color:#059669">${w(recEf)}</div></div>
+      </div>
     </div>
 
-    <!-- 9. Receitas por categoria -->
-    <div class="rsm-sec">
-      <div class="rsm-sec-hd" style="padding-bottom:0"><span class="rsm-sec-title">Receitas por categoria</span></div>
-      ${renderCatDonut(lancRec,"receita")}
+    <div class="rsm-sec" id="rsm-card-pag" style="cursor:pointer">
+      <div class="rsm-sec-hd"><span class="rsm-sec-title">📤 Contas a Pagar</span><span class="rsm-sec-link">Abrir →</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px 14px;gap:8px">
+        <div><div class="rsm-metric-lbl">Previsto</div><div style="font-size:18px;font-weight:800;color:#d97706">${w(despEf+despPend)}</div></div>
+        <div><div class="rsm-metric-lbl">Realizado</div><div style="font-size:18px;font-weight:800;color:#dc2626">${w(despEf)}</div></div>
+      </div>
     </div>
-
-    <!-- 10. Últimas despesas -->
-    <div class="rsm-sec">
-      <div class="rsm-sec-hd"><span class="rsm-sec-title">Últimas despesas</span><span class="rsm-sec-link" data-nav="lancamentos">Ver todas →</span></div>
-      ${renderLancList(ultiDesp,"despesa",hoje)}
-      ${lancDesp.length>5?`<div class="rsm-ver-mais" id="rsm-more-desp">Ver todas as despesas (${lancDesp.length})</div>`:""}
-    </div>
-
-    <!-- 11. Despesas por categoria -->
-    <div class="rsm-sec">
-      <div class="rsm-sec-hd" style="padding-bottom:0"><span class="rsm-sec-title">Despesas por categoria</span></div>
-      ${renderCatDonut(lancDesp,"despesa")}
-    </div>
-
-    <!-- Configurar resumo -->
-    <div class="rsm-config" id="rsm-config">⚙️ Configurar resumo</div>
 
     <!-- FAB lançamento rápido -->
     <div class="rsm-fab-wrap">
@@ -645,6 +607,8 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
     h.mesNav.mes++; if(h.mesNav.mes>11){h.mesNav.mes=0;h.mesNav.ano++;}
     initDashboard(container);
   });
+  container.querySelector("#rsm-card-rec")?.addEventListener("click",()=>{typeof window.openModule=="function"&&window.openModule("receber","Contas a Receber","📥","#059669")});
+  container.querySelector("#rsm-card-pag")?.addEventListener("click",()=>{typeof window.openModule=="function"&&window.openModule("pagar","Contas a Pagar","📤","#dc2626")});
 
   // Carousel
   let slide=0;
