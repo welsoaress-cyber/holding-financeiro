@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.33 — 2026-08-31
+
+### Alterado
+- **"Clientes ServNet" → "Clientes"**: clientes são independentes do tipo de negócio (menu, título e lista renomeados)
+- **Vínculo de negócio no cadastro**: ao editar/criar cliente há o campo "Tipo de negócio" (busca do menu Tipos de Negócio); o negócio vinculado aparece na lista (🏢)
+- **Removido o botão 💰 (gerar mensalidade)** da lista de clientes — cobrança agora é exclusiva de Contas a Receber
+
 ## v2.9.32 — 2026-08-31
 
 ### Novo

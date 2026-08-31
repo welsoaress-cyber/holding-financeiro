@@ -417,20 +417,11 @@ _['clientes']=async function(el){
     const {error}=await sb.from('cli_clientes').upsert({id,user_id:uid,dados,updated_at:new Date().toISOString()},{onConflict:'id'});
     if(error)throw error;
   }
-  async function gerarMensalidade(cli,mesRef,valor){
-    const {data:exist}=await sb.from('lancamentos').select('id').eq('user_id',uid).contains('dados',{clienteId:cli.id,mes_ref:mesRef});
-    if(exist&&exist.length&&!confirm('Já existe mensalidade de '+mesRef+' para '+cli.nome+'. Gerar outra?'))return false;
-    const dia=String(cli.diaVencimento||'10').padStart(2,'0');
-    const dados={tipo:'receita',status:'pendente',clienteId:cli.id,cliente:cli.nome,clienteNome:cli.nome,
-      descricao:'Mensalidade '+cli.nome+' — '+mesRef,valor:Number(valor||cli.valorMensal||0),
-      data_vencimento:mesRef+'-'+dia,mes_ref:mesRef,negocio:'Provedor/Servnet',categoria:'Mensalidade'};
-    const {error}=await sb.from('lancamentos').insert({id:crypto.randomUUID(),user_id:uid,dados,updated_at:new Date().toISOString()});
-    if(error)throw error;
-    return true;
-  }
-
-  function showForm(cli){
+  async function showForm(cli){
     const c=cli||{};
+    let negs=[];
+    try{const {data}=await sb.from('negocios').select('id,nome').eq('user_id',uid);negs=(data||[]).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));}catch(e){}
+    const optNeg=negs.map(n=>`<option value="${n.id}"${c.negocioId===n.id?' selected':''}>${esc(n.nome)}</option>`).join('');
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center';
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
@@ -452,6 +443,12 @@ _['clientes']=async function(el){
         </div>
         <div><label class="cl-lbl">Endereço</label><input class="cl-inp" name="logradouro" id="cl-logr" value="${esc(c.logradouro||c.endereco||'')}" placeholder="Preenchido automaticamente pelo CEP"><div id="cl-cep-st" style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px"></div></div>
         <div><label class="cl-lbl">Ponto de referência (opcional)</label><input class="cl-inp" name="referencia" value="${esc(c.referencia||'')}" placeholder="Ex: próximo ao mercado"></div>
+        <div><label class="cl-lbl">Tipo de negócio</label>
+          <select class="cl-inp" name="negocioId">
+            <option value="">— sem vínculo —</option>${optNeg}
+          </select>
+          ${negs.length?'':'<div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:3px">Nenhum tipo de negócio. Cadastre em ☰ → Tipos de Negócio.</div>'}
+        </div>
         <div><label class="cl-lbl">Status</label>
           <select class="cl-inp" name="status">
             <option${(c.status||'Ativo')==='Ativo'?' selected':''}>Ativo</option>
@@ -490,7 +487,10 @@ _['clientes']=async function(el){
         numero:(fd.get('numero')||'').trim(),referencia:(fd.get('referencia')||'').trim(),
         endereco:[(fd.get('logradouro')||'').trim(),(fd.get('numero')||'').trim()].filter(Boolean).join(', '),
         valorMensal:c.valorMensal??null,diaVencimento:c.diaVencimento??null,
-        status:fd.get('status'),negocio:'Provedor/Servnet',dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
+        status:fd.get('status'),
+        negocioId:fd.get('negocioId')||null,
+        negocio:(negs.find(n=>n.id===fd.get('negocioId'))||{}).nome||null,
+        dataCadastro:c.dataCadastro||new Date().toISOString().slice(0,10)};
       const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent='Verificando…';
       const dig=s=>String(s||'').replace(/\D/g,'');
       try{
@@ -522,9 +522,8 @@ _['clientes']=async function(el){
         <div style="width:38px;height:38px;border-radius:50%;background:${cor}22;border:2px solid ${cor}55;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${cor};flex-shrink:0">${esc((c.nome||'?')[0].toUpperCase())}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nome||'—')}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))}${c.telefone?' · '+esc(c.telefone):''} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${esc(cpfFmt(c.cpfCnpj))}${c.telefone?' · '+esc(c.telefone):''}${c.negocio?' · 🏢 '+esc(c.negocio):''} · <span style="color:${cor};font-weight:600">${esc(c.status||'Ativo')}</span></div>
         </div>
-        <button class="cl-gerar" data-id="${c.id}" title="Gerar mensalidade" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:16px;cursor:pointer;padding:6px 9px">💰</button>
         <button class="cl-edit" data-id="${c.id}" title="Editar" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:15px;cursor:pointer;padding:6px 9px;color:var(--text-muted,#6b7280)">✏️</button>
       </div>`;
     }).join('');
@@ -536,7 +535,7 @@ _['clientes']=async function(el){
       </style>
       <div style="display:flex;align-items:center;padding:12px 16px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb);gap:8px">
         <div style="flex:1">
-          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Clientes ServNet</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Clientes</div>
           <div style="font-size:13px;color:var(--text-muted,#6b7280)">${ativos.length} ativo${ativos.length===1?'':'s'} · ${clientes.length} total</div>
         </div>
         <button id="cl-novo" style="background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Novo</button>
@@ -547,22 +546,6 @@ _['clientes']=async function(el){
     el.querySelector('#cl-novo').addEventListener('click',()=>showForm(null));
     el.querySelectorAll('.cl-edit').forEach(b=>b.addEventListener('click',()=>{
       const c=clientes.find(x=>x.id===b.dataset.id);if(c)showForm(c);
-    }));
-    el.querySelectorAll('.cl-gerar').forEach(b=>b.addEventListener('click',async()=>{
-      const c=clientes.find(x=>x.id===b.dataset.id);if(!c)return;
-      let val=Number(c.valorMensal||0);
-      if(!val){
-        const v=prompt('Valor da mensalidade de '+c.nome+' (R$):','');
-        val=parseFloat(String(v||'').replace(',','.'))||0;
-        if(!val)return;
-      }
-      const mes=prompt('Gerar mensalidade de '+c.nome+' ('+fmt(val)+')\nMês de referência (AAAA-MM):',mesAtual());
-      if(!mes)return;
-      if(!/^\d{4}-\d{2}$/.test(mes)){toast.err('Mês inválido. Use o formato AAAA-MM, ex: '+mesAtual());return;}
-      b.disabled=true;
-      try{const ok=await gerarMensalidade(c,mes,val);if(ok)toast.ok('Mensalidade '+mes+' gerada! Já aparece no portal do cliente. ✅');}
-      catch(err){toast.err('Erro: '+err.message);}
-      b.disabled=false;
     }));
   }
   await render();
