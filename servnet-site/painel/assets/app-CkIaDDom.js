@@ -753,6 +753,7 @@ _['receber']=async function(el){
   let selMode=false;
   const selKeys=new Set(); // keys dos grupos selecionados
   let gruposRef=new Map(); // referência ao mapa de grupos do último render
+  const expandedKeys=new Set(); // cards expandidos (itens visíveis)
 
   async function marcar(id,dados,novoStatus){
     const d={...dados,status:novoStatus};
@@ -1076,6 +1077,40 @@ _['receber']=async function(el){
     selKeys.clear();selMode=false;render();
   }
 
+  async function toggleCortesia(l){
+    const serie=serieDe(l);
+    const novoEstado=!l.cortesia;
+    const mes=serie.filter(x=>x.mes_ref===l.mes_ref);
+    const fut=serie.filter(x=>String(x.mes_ref)>=String(l.mes_ref));
+    const md=document.createElement('div');
+    md.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center';
+    md.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:24px 20px 36px">
+      <div style="font-size:16px;font-weight:700;color:var(--text,#111);margin-bottom:8px">${novoEstado?'🎁 Marcar como cortesia':'↩ Remover cortesia'}</div>
+      <div style="font-size:13px;color:var(--text-muted,#6b7280);margin-bottom:20px">Aplicar para:</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button data-s="mes" style="background:var(--bg,#f4f5f7);border:1.5px solid var(--border,#e5e7eb);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-size:14px;font-weight:600;color:var(--text,#111)">Apenas este mês <span style="color:var(--text-muted,#9ca3af);font-weight:400;font-size:12px">(${mes.length} cobrança${mes.length!==1?'s':''})</span></button>
+        ${serie.length>1?`<button data-s="fut" style="background:var(--bg,#f4f5f7);border:1.5px solid var(--border,#e5e7eb);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-size:14px;font-weight:600;color:var(--text,#111)">Este mês e os próximos <span style="color:var(--text-muted,#9ca3af);font-weight:400;font-size:12px">(${fut.length} cobrança${fut.length!==1?'s':''})</span></button>
+        <button data-s="tudo" style="background:var(--bg,#f4f5f7);border:1.5px solid var(--border,#e5e7eb);border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;font-size:14px;font-weight:600;color:var(--text,#111)">Toda a série <span style="color:var(--text-muted,#9ca3af);font-weight:400;font-size:12px">(${serie.length} cobrança${serie.length!==1?'s':''})</span></button>`:''}
+        <button data-s="cancel" style="background:none;border:none;color:var(--text-muted,#6b7280);font-size:14px;cursor:pointer;padding:10px">Cancelar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(md);
+    const escolha=await new Promise(res=>{md.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click',()=>res(b.dataset.s)));});
+    md.remove();
+    if(escolha==='cancel')return;
+    const alvo=escolha==='mes'?mes:escolha==='fut'?fut:serie;
+    let errs=0;
+    for(const x of alvo){
+      const {id,...d}=x;
+      if(novoEstado)d.cortesia=true;else delete d.cortesia;
+      const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+      if(error)errs++;
+    }
+    if(errs)toast.err(errs+' falharam');
+    else toast.ok(novoEstado?'🎁 Cortesia marcada em '+alvo.length+' cobrança(s)':'↩ Cortesia removida de '+alvo.length+' cobrança(s)');
+    render();
+  }
+
   async function render(){
     el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando…</div>';
     let raw=[];
@@ -1086,7 +1121,8 @@ _['receber']=async function(el){
     const hoje=new Date().toISOString().slice(0,10);
     const pend=doMes.filter(l=>l.status!=='pago'&&l.status!=='recebido');
     const receb=doMes.filter(l=>l.status==='pago'||l.status==='recebido');
-    const soma=a=>a.reduce((s,l)=>s+(Number(l.valor)||0),0);
+    // cortesia = não entra na soma financeira
+    const soma=a=>a.reduce((s,l)=>l.cortesia?s:s+(Number(l.valor)||0),0);
     // ── Agrupa por cliente: nome como cabeçalho, serviços embaixo ──
     const grupos=new Map();
     for(const l of doMes){
@@ -1105,19 +1141,21 @@ _['receber']=async function(el){
     const itemRow=l=>{
       const ok=l.status==='pago'||l.status==='recebido';
       const atrasado=!ok&&l.data_vencimento&&l.data_vencimento<hoje;
-      const cor=ok?'#059669':atrasado?'#dc2626':'#d97706';
-      const lbl=ok?'Recebido':atrasado?'Atrasado':'Pendente';
+      const isCortesia=!!l.cortesia;
+      const cor=isCortesia?'#7c3aed':ok?'#059669':atrasado?'#dc2626':'#d97706';
+      const lbl=isCortesia?'Cortesia':ok?'Recebido':atrasado?'Atrasado':'Pendente';
       const rotulo=l.plano||String(l.descricao||'').split(' — ')[0]||'—';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 22px;border-top:1px solid var(--border,#e5e7eb)">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 22px;border-top:1px solid var(--border,#e5e7eb);${isCortesia?'opacity:.7;':''}">
         <div style="width:6px;height:30px;border-radius:3px;background:${cor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}${l.ocultarPortal?' <span title=\"Oculta no portal\">🙈</span>':''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text,#111);white-space:nowrap;overflow:hidden;text-overflow:ellipsis${isCortesia?';text-decoration:line-through;text-decoration-color:#7c3aed55':''}">${esc(rotulo)}${l.negocio?` <span style=\"font-weight:500;color:var(--text-muted,#9ca3af)\">(${esc(l.negocio)})</span>`:''}${l.ocultarPortal?' <span title=\"Oculta no portal\">🙈</span>':''}${isCortesia?' 🎁':''}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">venc. ${dtBr(l.data_vencimento)}${l.parcela?' · '+esc(l.parcela):''} · <span style="color:${cor};font-weight:600">${lbl}</span>${ok&&l.dataPagamento?' · <span style="color:#059669">pago '+dtBr(l.dataPagamento)+(l.contaRecebimento?' via '+esc(l.contaRecebimento):'')+'</span>':''}</div>
         </div>
-        <div style="font-size:13px;font-weight:700;color:${cor}">${fmt(l.valor)}</div>
-        ${ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
+        <div style="font-size:13px;font-weight:700;color:${cor};${isCortesia?'text-decoration:line-through;':''}">${fmt(l.valor)}</div>
+        ${isCortesia?`<button class="cr-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>`:
+          ok?`<button class="cr-undo" data-id="${l.id}" title="Desfazer" style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;cursor:pointer;padding:6px 8px;color:var(--text-muted,#6b7280)">↩</button>`
             :`<button class="cr-ok" data-id="${l.id}" title="Marcar recebido" style="background:#05966915;border:1px solid #05966944;border-radius:8px;font-size:14px;cursor:pointer;padding:6px 10px;color:#059669;font-weight:700">✓</button>`}
-        <button class="cr-menu" data-id="${l.id}" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>
+        ${isCortesia?'':'<button class="cr-menu" data-id="'+l.id+'" title="Mais opções" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--text-muted,#9ca3af);padding:4px 2px;line-height:1">⋮</button>'}
       </div>`;
     };
     const rows=[...grupos.values()].sort((a,b)=>{
@@ -1127,9 +1165,10 @@ _['receber']=async function(el){
       if(vA!==vB)return vA.localeCompare(vB);
       return String(a.nome||'').localeCompare(String(b.nome||''));
     }).map(g=>{
-      const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const totPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido'&&!l.cortesia).reduce((s,l)=>s+(Number(l.valor)||0),0);
       const temAglut=g.itens.some(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
-      const totPago=g.itens.filter(l=>l.status==='pago'||l.status==='recebido').reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const totPago=g.itens.filter(l=>(l.status==='pago'||l.status==='recebido')&&!l.cortesia).reduce((s,l)=>s+(Number(l.valor)||0),0);
+      const temCortesia=g.itens.some(l=>l.cortesia);
       const nCob=g.itens.reduce((s,l)=>s+((l.aglutinado&&Array.isArray(l.itens))?l.itens.length:1),0);
       // Ordena itens dentro do grupo: vencimento → plano
       const itensSorted=[...g.itens].sort((a,b)=>{
@@ -1139,14 +1178,20 @@ _['receber']=async function(el){
       });
       const gKey=String(g.itens[0].clienteId||g.nome);
       const isSel=selKeys.has(gKey);
+      const gPend=g.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
+      const isExpanded=!selMode&&expandedKeys.has(gKey);
       return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);${isSel?'outline:2px solid #0ea5e9;':''}">
-        <div class="${selMode?'cr-sel-card':'cr-toggle'}" data-key="${esc(gKey)}" title="${selMode?'Selecionar':'('+temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'+')'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
+        <div class="${selMode?'cr-sel-card':'cr-head'}" data-key="${esc(gKey)}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
           ${selMode?`<input type="checkbox" class="cr-chk" data-key="${esc(gKey)}" ${isSel?'checked':''} style="width:20px;height:20px;accent-color:#0ea5e9;flex-shrink:0;cursor:pointer">`:
-            `<span style="font-size:16px">👤</span>`}
-          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);word-break:break-word">${esc(g.nome)}</div>
-          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
+            `<span style="font-size:11px;color:var(--text-muted,#9ca3af);flex-shrink:0;width:14px">${isExpanded?'▼':'▶'}</span>`}
+          <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);word-break:break-word">${esc(g.nome)}${temCortesia?' <span style="font-size:11px;font-weight:500;color:#7c3aed;background:rgba(124,58,237,.1);border-radius:6px;padding:1px 5px">🎁 cortesia</span>':''}</div>
+          <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${nCob} cobrança${nCob>1?'s':''}${totPend>0?' · <b style="color:#d97706">'+fmt(totPend)+' em aberto</b>':''}${totPago>0?' · <b style="color:#059669">'+fmt(totPago)+' recebido</b>':''}${temCortesia&&totPend===0&&totPago===0?' · <span style="color:#7c3aed">cortesia</span>':''}</div>
         </div>
-        ${selMode?'':itensSorted.map(itemRow).join('')}
+        <div class="cr-items" data-key="${esc(gKey)}" style="display:${isExpanded?'block':'none'}">
+          ${itensSorted.map(itemRow).join('')}
+          ${!selMode&&temAglut?`<div style="padding:8px 14px 12px"><button class="cr-des-aglut" data-key="${esc(gKey)}" style="background:#6366f115;border:1.5px solid #6366f144;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#6366f1;width:100%">✂ Separar cobranças</button></div>`:
+            !selMode&&gPend.length>=2?`<div style="padding:8px 14px 12px"><button class="cr-aglut" data-key="${esc(gKey)}" style="background:#05966915;border:1.5px solid #05966944;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#059669;width:100%">🔗 Aglutinar em uma fatura</button></div>`:''}
+        </div>
       </div>`;
     }).join('');
     el.innerHTML=`
@@ -1213,29 +1258,25 @@ _['receber']=async function(el){
       if(!chk)return;
       chk.checked=!chk.checked;chk.dispatchEvent(new Event('change'));
     }));
-    el.querySelectorAll('.cr-toggle').forEach(b=>b.addEventListener('click',async()=>{
+    // ── Expand/Collapse por cliente ──
+    el.querySelectorAll('.cr-head').forEach(b=>b.addEventListener('click',e=>{
+      if(e.target.type==='checkbox')return;
+      const key=b.dataset.key;
+      const items=el.querySelector('.cr-items[data-key="'+key+'"]');
+      if(!items)return;
+      const arrow=b.querySelector('span');
+      if(expandedKeys.has(key)){expandedKeys.delete(key);items.style.display='none';if(arrow)arrow.textContent='▶';}
+      else{expandedKeys.add(key);items.style.display='block';if(arrow)arrow.textContent='▼';}
+    }));
+    // ── Aglutinar ──
+    el.querySelectorAll('.cr-aglut').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();
       const key=b.dataset.key;
       const grupo=[...grupos.values()].find(g=>String(g.itens[0].clienteId||g.nome)===key);
       if(!grupo)return;
-      const merged=grupo.itens.find(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
+      const pend=grupo.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
+      if(pend.length<2)return;
       try{
-        if(merged){
-          // ── Expandir: restaura as originais e remove a fatura única ──
-          const orig=todosCache.filter(x=>x.aglutinadoEm===merged.id);
-          for(const x of orig){
-            const {id,...d}=x;
-            delete d.inativo;delete d.aglutinadoEm;
-            const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
-            if(error)throw error;
-          }
-          const {error:eDel}=await sb.from('lancamentos').delete().eq('id',merged.id).eq('user_id',uid);
-          if(eDel)throw eDel;
-          toast.ok('Expandido: '+orig.length+' cobranças separadas de volta');render();
-          return;
-        }
-        const pend=grupo.itens.filter(l=>l.status!=='pago'&&l.status!=='recebido');
-        if(pend.length<2)return;
-        // ── Aglutinar ──
         const total=pend.reduce((s,l)=>s+(Number(l.valor)||0),0);
         const rotulos=pend.map(l=>l.plano||String(l.descricao||'').split(' — ')[0]);
         const base=pend[0];
@@ -1257,6 +1298,27 @@ _['receber']=async function(el){
         toast.ok('Aglutinado em uma fatura de '+fmt(total)+' ✅');render();
       }catch(err){toast.err('Erro: '+err.message);}
     }));
+    // ── Separar cobranças (desfazer aglutinado) ──
+    el.querySelectorAll('.cr-des-aglut').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const key=b.dataset.key;
+      const grupo=[...grupos.values()].find(g=>String(g.itens[0].clienteId||g.nome)===key);
+      if(!grupo)return;
+      const merged=grupo.itens.find(l=>l.aglutinado&&l.status!=='pago'&&l.status!=='recebido');
+      if(!merged)return;
+      try{
+        const orig=todosCache.filter(x=>x.aglutinadoEm===merged.id);
+        for(const x of orig){
+          const {id,...d}=x;
+          delete d.inativo;delete d.aglutinadoEm;
+          const {error}=await sb.from('lancamentos').update({dados:d,updated_at:new Date().toISOString()}).eq('id',x.id).eq('user_id',uid);
+          if(error)throw error;
+        }
+        const {error:eDel}=await sb.from('lancamentos').delete().eq('id',merged.id).eq('user_id',uid);
+        if(eDel)throw eDel;
+        toast.ok('Expandido: '+orig.length+' cobranças separadas de volta');render();
+      }catch(err){toast.err('Erro: '+err.message);}
+    }));
     el.querySelectorAll('.cr-ok').forEach(b=>b.addEventListener('click',()=>{
       const l=doMes.find(x=>x.id===b.dataset.id);if(!l)return;
       marcarRecebido(l);
@@ -1275,6 +1337,7 @@ _['receber']=async function(el){
       pop.className='cr-pop';
       pop.style.cssText='position:fixed;z-index:3500;top:'+Math.min(r.bottom+4,window.innerHeight-160)+'px;right:14px;background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:hidden;min-width:220px';
       pop.innerHTML='<div class="cr-pop-i" data-a="editar" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111)">✏️ Editar</div>'
+        +'<div class="cr-pop-i" data-a="cortesia" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#7c3aed;border-top:1px solid var(--border,#e5e7eb)">'+(l.cortesia?'↩ Remover cortesia':'🎁 Marcar como cortesia')+'</div>'
         +'<div class="cr-pop-i" data-a="portal" style="padding:12px 16px;font-size:14px;cursor:pointer;color:var(--text,#111);border-top:1px solid var(--border,#e5e7eb)">'+(l.ocultarPortal?'👁 Mostrar no portal':'🙈 Ocultar do portal')+'</div>'
         +'<div class="cr-pop-i" data-a="del" style="padding:12px 16px;font-size:14px;cursor:pointer;color:#dc2626;border-top:1px solid var(--border,#e5e7eb)">🗑️ Excluir</div>'
         ;
@@ -1284,6 +1347,7 @@ _['receber']=async function(el){
         pop.remove();
         const a=it.dataset.a;
         if(a==='editar')return editLanc(l);
+        if(a==='cortesia')return toggleCortesia(l);
         if(a==='portal'){
           // Vale para a série inteira: todos os lançamentos do mesmo grupo de
           // recorrência (ou só este, se for avulso)
