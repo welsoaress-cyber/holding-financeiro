@@ -2,6 +2,13 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.48 — 2026-08-31
+
+### Alterado — Resumo
+- **Navegação infinita**: › avança quantos meses quiser (provisão futura sem limite)
+- **Botão "Hoje"**: aparece ao lado do mês quando você sai do mês atual — um clique volta
+- **Cards com barra de progresso**: Contas a Receber/Pagar mostram % realizado sobre o previsto e quanto falta
+
 ## v2.9.47 — 2026-08-31
 
 ### Alterado

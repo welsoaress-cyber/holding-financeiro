@@ -1,5 +1,5 @@
 import{c as H}from"./supabase-DthfXWp1.js";
-const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.47",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
+const G="https://lkymiclirksgqkeiglyw.supabase.co",U="sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM",mt="2.9.48",xt="GrupoTom",O=new Set(["contas","categorias","negocios"]),V=100,W=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],x=H(G,U,{auth:{persistSession:!0,autoRefreshToken:!0,detectSessionInUrl:!0}}),u={},$={};window.GT_VERSION=mt;
 function L(t){($[t]||new Set).forEach(e=>{try{e(u[t])}catch(o){console.error("[store notify]",t,o)}})}
 const N={get(t){return u[t]},set(t,e){u[t]=e,L(t)},patch(t,e,o){const a=Array.isArray(u[t])?u[t]:[],n=a.findIndex(r=>r.id===e);n>=0?a[n]={...a[n],...o}:a.push({id:e,...o}),u[t]=a,L(t)},remove(t,e){const o=Array.isArray(u[t])?u[t]:[];u[t]=o.filter(a=>a.id!==e),L(t)},subscribe(t,e){return $[t]||($[t]=new Set),$[t].add(e),u[t]!==void 0&&e(u[t]),()=>this.unsubscribe(t,e)},unsubscribe(t,e){var o;(o=$[t])==null||o.delete(e)}};
 const h={view:"dashboard",user:null,mesNav:{ano:new Date().getFullYear(),mes:new Date().getMonth()}};
@@ -535,7 +535,8 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
   const hoje = ht();
   const mesKey = `${mesNav.ano}-${String(mesNav.mes+1).padStart(2,"0")}`;
   const mesLabel = `${W[mesNav.mes]} ${mesNav.ano}`;
-  const ehFuturo = mesKey > ot();
+  const ehFuturo = false; // navegação livre para provisão futura
+  const noMesAtual = mesKey === ot();
 
   const recEf = rSum(lancRec.filter(l=>l.status==="pago"||l.status==="recebido"), l=>l.valor);
   const despEf = rSum(lancDesp.filter(l=>l.status==="pago"||l.status==="recebido"), l=>l.valor);
@@ -555,8 +556,8 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
     <!-- Header / Month Nav -->
     <div class="rsm-hd">
       <button class="rsm-nav-btn" id="rsm-prev" title="Mês anterior">‹</button>
-      <span class="rsm-month-title">${mesLabel}</span>
-      <button class="rsm-nav-btn" id="rsm-next" title="Próximo mês" ${ehFuturo?"disabled style='opacity:.3'":""}>›</button>
+      <span class="rsm-month-title">${mesLabel} ${noMesAtual?"":`<button id="rsm-hoje" style="margin-left:8px;background:var(--rsm-pri)18;border:1px solid var(--rsm-pri);color:var(--rsm-pri);border-radius:999px;font-size:11px;font-weight:700;padding:3px 12px;cursor:pointer;vertical-align:middle">Hoje</button>`}</span>
+      <button class="rsm-nav-btn" id="rsm-next" title="Próximo mês">›</button>
     </div>
 
     <!-- Dash único -->
@@ -571,21 +572,32 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
       </div>
     </div>
 
-    <div class="rsm-sec" id="rsm-card-rec" style="cursor:pointer">
-      <div class="rsm-sec-hd"><span class="rsm-sec-title">📥 Contas a Receber</span><span class="rsm-sec-link">Abrir →</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px 14px;gap:8px">
-        <div><div class="rsm-metric-lbl">Previsto</div><div style="font-size:18px;font-weight:800;color:#d97706">${w(recEf+recPend)}</div></div>
-        <div><div class="rsm-metric-lbl">Realizado</div><div style="font-size:18px;font-weight:800;color:#059669">${w(recEf)}</div></div>
-      </div>
-    </div>
-
-    <div class="rsm-sec" id="rsm-card-pag" style="cursor:pointer">
-      <div class="rsm-sec-hd"><span class="rsm-sec-title">📤 Contas a Pagar</span><span class="rsm-sec-link">Abrir →</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px 14px;gap:8px">
-        <div><div class="rsm-metric-lbl">Previsto</div><div style="font-size:18px;font-weight:800;color:#d97706">${w(despEf+despPend)}</div></div>
-        <div><div class="rsm-metric-lbl">Realizado</div><div style="font-size:18px;font-weight:800;color:#dc2626">${w(despEf)}</div></div>
-      </div>
-    </div>
+    ${(()=>{
+      const prevRec=recEf+recPend, prevPag=despEf+despPend;
+      const pctRec=prevRec>0?Math.min(100,Math.round(recEf/prevRec*100)):0;
+      const pctPag=prevPag>0?Math.min(100,Math.round(despEf/prevPag*100)):0;
+      const cardFin=(id,icone,titulo,prev,real,pct,corReal)=>`
+      <div class="rsm-sec" id="${id}" style="cursor:pointer">
+        <div class="rsm-sec-hd">
+          <span class="rsm-sec-title">${icone} ${titulo}</span>
+          <span class="rsm-sec-link">Abrir →</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;padding:10px 14px 4px;gap:8px">
+          <div><div class="rsm-metric-lbl">Previsto</div><div style="font-size:19px;font-weight:800;color:var(--rsm-txt)">${w(prev)}</div></div>
+          <div style="text-align:right"><div class="rsm-metric-lbl">Realizado</div><div style="font-size:19px;font-weight:800;color:${corReal}">${w(real)}</div></div>
+        </div>
+        <div style="padding:2px 14px 13px">
+          <div style="height:7px;background:rgba(128,128,128,.15);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${corReal};border-radius:4px;transition:width .5s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--rsm-mut);margin-top:4px">
+            <span>${pct}% realizado</span><span>falta ${w(Math.max(0,prev-real))}</span>
+          </div>
+        </div>
+      </div>`;
+      return cardFin("rsm-card-rec","📥","Contas a Receber",prevRec,recEf,pctRec,"#059669")
+           + cardFin("rsm-card-pag","📤","Contas a Pagar",prevPag,despEf,pctPag,"#dc2626");
+    })()}
 
     <!-- FAB lançamento rápido -->
     <div class="rsm-fab-wrap">
@@ -603,8 +615,13 @@ function renderResumoDashboard(container, {contas, lancRec, lancDesp, lancAll, m
     initDashboard(container);
   });
   container.querySelector("#rsm-next")?.addEventListener("click",()=>{
-    if(ehFuturo)return;
     h.mesNav.mes++; if(h.mesNav.mes>11){h.mesNav.mes=0;h.mesNav.ano++;}
+    initDashboard(container);
+  });
+  container.querySelector("#rsm-hoje")?.addEventListener("click",e=>{
+    e.stopPropagation();
+    const t=new Date();
+    h.mesNav={ano:t.getFullYear(),mes:t.getMonth()};
     initDashboard(container);
   });
   container.querySelector("#rsm-card-rec")?.addEventListener("click",()=>{typeof window.openModule=="function"&&window.openModule("receber","Contas a Receber","📥","#059669")});
