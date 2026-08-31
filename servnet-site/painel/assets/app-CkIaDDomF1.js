@@ -475,6 +475,13 @@ _['clientes']=async function(el){
             <option${c.status==='Cancelado'?' selected':''}>Cancelado</option>
           </select>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:rgba(128,128,128,.08);border-radius:10px;border:1.5px solid var(--border,#e5e7eb)">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text,#111)">📲 Receber lembretes WhatsApp</div>
+            <div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:2px">Desative para clientes que não querem receber cobranças automáticas</div>
+          </div>
+          <input type="checkbox" name="receberLembretes" style="width:22px;height:22px;accent-color:#0ea5e9;cursor:pointer;flex-shrink:0" ${c.receberLembretes===false?'':'checked'}>
+        </div>
         <button type="submit" style="width:100%;padding:13px;border-radius:12px;border:none;background:#0ea5e9;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Salvar cliente</button>
       </form>
     </div>`;
@@ -528,6 +535,7 @@ _['clientes']=async function(el){
         numero:(fd.get('numero')||'').trim(),referencia:(fd.get('referencia')||'').trim(),
         endereco:[(fd.get('logradouro')||'').trim(),(fd.get('numero')||'').trim()].filter(Boolean).join(', '),
         status:fd.get('status'),
+        receberLembretes:fd.get('receberLembretes')==='on',
         servicos:servs,
         negocioId:(servs[0]||{}).negocioId||null,
         negocio:(servs[0]||{}).negocio||null,

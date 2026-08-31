@@ -500,10 +500,18 @@ serve(async (req) => {
       continue
     }
 
-    const cliDados = cliente.dados as Record<string, string>
-    const nome = cliDados?.nome || 'Cliente'
+    const cliDados = cliente.dados as Record<string, unknown>
+    const nome = String(cliDados?.nome || 'Cliente')
 
-    const telRaw = cliDados?.whatsapp || cliDados?.celular || cliDados?.telefone || ''
+    // Respeita a preferência do cliente: receberLembretes=false → não enviar
+    // (modo manual ?clienteId ignora a trava — o clique é intencional)
+    if (!filtroClienteId && cliDados?.receberLembretes === false) {
+      console.log(`⏭️ ${nome}: optou por não receber lembretes`)
+      resultados.push({ cliente: nome, numero: '-', status: 'pulado', motivo: 'cliente optou por não receber lembretes' })
+      continue
+    }
+
+    const telRaw = String(cliDados?.whatsapp || cliDados?.celular || cliDados?.telefone || '')
     const telefone = normalizarTelefone(telRaw)
 
     if (!telefone) {
@@ -544,7 +552,7 @@ serve(async (req) => {
     const mensagem = montarMensagem(saudacao, nome, valorFormatado, dataFormatada, diasRestantes, linkPix)
 
     // Roteia pelo negócio: Servidor → instância própria; Provedor/demais → servnet
-    const negocio = dados?.negocio || cliDados?.negocio || ''
+    const negocio = String(dados?.negocio || cliDados?.negocio || '')
     const instancia = instanciaPorNegocio(negocio)
     const instState = await instanciaDisponivel(instancia)
     if (!instState.ok) {

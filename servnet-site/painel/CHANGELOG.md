@@ -2,6 +2,10 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.64 — 2026-08-31
+- **Clientes**: toggle "📲 Receber lembretes WhatsApp" no cadastro (ativado por padrão); desativado = cliente não recebe cobranças automáticas
+- **Edge Function**: respeita o flag `receberLembretes=false` — pula o cliente no envio automático; botão manual 📲 Cobrar ignora o flag (clique é intencional)
+
 ## v2.9.63 — 2026-08-31
 - **Editar cobrança**: agora exibe e permite alterar Tipo de Negócio e Plano; ao trocar o negócio, a lista de planos filtra automaticamente
 
