@@ -2,6 +2,11 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.58 — 2026-08-31
+
+### Alterado — Importar Planilha
+- **Etapa de mapeamento de colunas**: após ler o arquivo, o sistema mostra os títulos encontrados e você indica qual coluna é Cliente, Descrição, Valor, Vencimento, Recorrência e Destino (com pré-seleção automática quando reconhecida) — funciona com qualquer planilha, sem exigir títulos padronizados
+
 ## v2.9.57 — 2026-08-31
 
 ### Novo

@@ -1437,6 +1437,7 @@ _['importar']=async function(el){
   if(!uid){el.innerHTML='<div style="padding:24px;color:#f87171">Não autenticado.</div>';return;}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let linhas=[]; // {cliente,descricao,valor,vencimento,recorrencia,repeticoes,destino}
+  let rawRows=[],headers=[];
 
   // ── Normalização de datas: serial Excel, DD/MM/AAAA ou ISO ──
   function normData(v){
@@ -1478,6 +1479,21 @@ _['importar']=async function(el){
     });
   }
 
+  function palpite(headers,...nomes){
+    for(const h of headers){const hl=h.toLowerCase().trim();for(const n of nomes)if(hl.includes(n))return h;}
+    return'';
+  }
+  function aplicarMapa(rows,mapa){
+    return rows.map(r=>({
+      cliente:String(mapa.cliente?r[mapa.cliente]:'').trim(),
+      descricao:String(mapa.descricao?r[mapa.descricao]:'').trim(),
+      valor:normValor(mapa.valor?r[mapa.valor]:0),
+      vencimento:normData(mapa.vencimento?r[mapa.vencimento]:''),
+      recorrencia:normRec(mapa.recorrencia?r[mapa.recorrencia]:''),
+      repeticoes:parseInt(mapa.repeticoes?r[mapa.repeticoes]:12)||12,
+      destino:String(mapa.destino?r[mapa.destino]:'').toLowerCase().includes('pag')?'pagar':'receber'
+    })).filter(l=>l.descricao||l.cliente||l.valor);
+  }
   function mapearLinhas(rows){
     // rows = array de objetos com cabeçalhos da 1ª linha
     const achar=(obj,...nomes)=>{
@@ -1642,15 +1658,46 @@ _['importar']=async function(el){
     el.querySelector('#imp-file').addEventListener('change',async e=>{
       const file=e.target.files[0];if(!file)return;
       try{
-        const rows=await lerArquivo(file);
-        linhas=mapearLinhas(rows);
-        if(!linhas.length){toast.err('Nenhuma linha reconhecida — confira os títulos das colunas.');return;}
-        toast.ok(linhas.length+' linha(s) lidas — revise antes de importar');
-        el.querySelector('#imp-area').hidden=false;
-        el.querySelector('#imp-vazio').hidden=true;
-        renderTabela();
+        rawRows=await lerArquivo(file);
+        if(!rawRows.length){toast.err('Arquivo vazio ou sem linhas de dados.');return;}
+        headers=Object.keys(rawRows[0]);
+        mostrarMapeamento();
       }catch(err){toast.err('Erro ao ler arquivo: '+err.message,6000);}
     });
+    function mostrarMapeamento(){
+      const campos=[
+        ['cliente','Cliente',['cliente','nome','assinante','razao','razão']],
+        ['descricao','Descrição / Serviço',['descri','servi','plano','item','produto','mensalidade']],
+        ['valor','Valor',['valor','preço','preco','r$','mensalidade']],
+        ['vencimento','Vencimento',['venc','data','dia']],
+        ['recorrencia','Recorrência',['recorr','period','frequ','mensal']],
+        ['destino','Destino (receber/pagar)',['destino','tipo']]
+      ];
+      const opts=h=>'<option value="">— ignorar —</option>'+headers.map(x=>`<option value="${esc(x)}"${x===h?' selected':''}>${esc(x)}</option>`).join('');
+      el.querySelector('#imp-vazio').hidden=true;
+      const area=el.querySelector('#imp-area');
+      area.hidden=false;
+      area.insertAdjacentHTML('afterbegin',`<div id="imp-mapa" style="background:var(--bg-card,#fff);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+        <div style="font-size:14px;font-weight:700;color:var(--text,#111);margin-bottom:4px">🔗 Mapear colunas da planilha</div>
+        <div style="font-size:12px;color:var(--text-muted,#9ca3af);margin-bottom:10px">${rawRows.length} linha(s) lidas. Diga qual coluna corresponde a cada campo (pré-selecionei o que reconheci):</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
+          ${campos.map(([k,lbl,pals])=>`<div><label class="cl-lbl" style="font-size:10px;font-weight:700;color:var(--text-muted,#6b7280);text-transform:uppercase;display:block;margin-bottom:4px">${lbl}</label>
+            <select class="imp-inp imp-mapa-sel" data-k="${k}">${opts(palpite(headers,...pals))}</select></div>`).join('')}
+        </div>
+        <button id="imp-aplicar" style="margin-top:12px;background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer">Aplicar mapeamento →</button>
+      </div>`);
+      el.querySelector('#imp-aplicar').addEventListener('click',()=>{
+        const mapa={};
+        el.querySelectorAll('.imp-mapa-sel').forEach(s=>mapa[s.dataset.k]=s.value);
+        if(!mapa.descricao&&!mapa.cliente){toast.err('Mapeie pelo menos Cliente ou Descrição.');return;}
+        if(!mapa.valor){toast.err('Mapeie a coluna de Valor.');return;}
+        linhas=aplicarMapa(rawRows,mapa);
+        if(!linhas.length){toast.err('Nenhuma linha com dados após o mapeamento.');return;}
+        el.querySelector('#imp-mapa').remove();
+        toast.ok(linhas.length+' linha(s) prontas — revise antes de importar');
+        renderTabela();
+      });
+    }
     el.querySelector('#imp-go').addEventListener('click',importar);
     if(linhas.length)renderTabela();
   }
