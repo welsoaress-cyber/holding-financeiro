@@ -749,6 +749,10 @@ _['receber']=async function(el){
   const mesKey=()=>nav.ano+'-'+String(nav.mes+1).padStart(2,'0');
   let todosCache=[];
   const dtBr=s=>{if(!s)return'—';const[a,m,d]=String(s).slice(0,10).split('-');return d+'/'+m;};
+  // ── Seleção em lote ──
+  let selMode=false;
+  const selKeys=new Set(); // keys dos grupos selecionados
+  let gruposRef=new Map(); // referência ao mapa de grupos do último render
 
   async function marcar(id,dados,novoStatus){
     const d={...dados,status:novoStatus};
@@ -966,6 +970,49 @@ _['receber']=async function(el){
     });
   }
 
+  function atualizarBarraLote(){
+    const bar=el.querySelector('#cr-sel-bar');if(!bar)return;
+    const n=selKeys.size;
+    if(!selMode||n===0){bar.style.display='none';return;}
+    bar.style.display='flex';
+    bar.querySelector('#cr-sel-count').textContent=n+' selecionado'+(n>1?'s':'');
+  }
+
+  async function excluirLote(){
+    if(!selKeys.size)return;
+    const grupos=gruposRef;
+    const ids=[];
+    for(const key of selKeys){
+      const g=grupos.get(key);if(!g)continue;
+      g.itens.forEach(l=>ids.push(l.id));
+      todosCache.filter(x=>ids.includes(x.aglutinadoEm)).forEach(x=>ids.push(x.id));
+    }
+    const uniq=[...new Set(ids)];
+    if(!confirm('Excluir '+uniq.length+' cobrança(s) de '+selKeys.size+' cliente(s)? Não pode ser desfeito.'))return;
+    const {error}=await sb.from('lancamentos').delete().in('id',uniq).eq('user_id',uid);
+    if(error){toast.err('Erro: '+error.message);return;}
+    toast.ok(uniq.length+' cobrança(s) excluída(s) ✅');
+    selKeys.clear();selMode=false;render();
+  }
+
+  async function toggleWhatsLote(ativar){
+    if(!selKeys.size)return;
+    const grupos=gruposRef;
+    const cliIds=[...new Set([...selKeys].map(k=>{const g=grupos.get(k);return g&&g.itens[0]?.clienteId;}).filter(Boolean))];
+    if(!cliIds.length){toast.err('Nenhum cliente com ID encontrado.');return;}
+    const {data:clis}=await sb.from('cli_clientes').select('id,dados').in('id',cliIds).eq('user_id',uid);
+    let errs=0;
+    for(const c of (clis||[])){
+      const nd={...(c.dados||{})};
+      if(ativar)delete nd.receberLembretes;else nd.receberLembretes=false;
+      const {error}=await sb.from('cli_clientes').update({dados:nd,updated_at:new Date().toISOString()}).eq('id',c.id).eq('user_id',uid);
+      if(error)errs++;
+    }
+    if(errs)toast.err(errs+' cliente(s) falharam');
+    else toast.ok((ativar?'✅ WhatsApp ativado':'🔕 WhatsApp desativado')+' para '+cliIds.length+' cliente(s)');
+    selKeys.clear();selMode=false;render();
+  }
+
   async function render(){
     el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted,#6b7280)">Carregando…</div>';
     let raw=[];
@@ -989,6 +1036,9 @@ _['receber']=async function(el){
       }
       grupos.get(key).itens.push(l);
     }
+    gruposRef=grupos;
+    // limpa seleções que já não existem
+    for(const k of selKeys){if(!grupos.has(k))selKeys.delete(k);}
     const itemRow=l=>{
       const ok=l.status==='pago'||l.status==='recebido';
       const atrasado=!ok&&l.data_vencimento&&l.data_vencimento<hoje;
@@ -1024,13 +1074,16 @@ _['receber']=async function(el){
         if(vA!==vB)return vA.localeCompare(vB);
         return String(a.plano||a.descricao||'').localeCompare(String(b.plano||b.descricao||''));
       });
-      return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-        <div class="cr-toggle" data-key="${esc(g.itens[0].clienteId||g.nome)}" title="${temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
-          <span style="font-size:16px">👤</span>
+      const gKey=String(g.itens[0].clienteId||g.nome);
+      const isSel=selKeys.has(gKey);
+      return `<div style="background:var(--bg-card,#fff);border-radius:14px;margin:10px 12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);${isSel?'outline:2px solid #0ea5e9;':''}">
+        <div class="${selMode?'cr-sel-card':'cr-toggle'}" data-key="${esc(gKey)}" title="${selMode?'Selecionar':'('+temAglut?'Clique para expandir as cobranças':'Clique para aglutinar em uma fatura única'+')'}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
+          ${selMode?`<input type="checkbox" class="cr-chk" data-key="${esc(gKey)}" ${isSel?'checked':''} style="width:20px;height:20px;accent-color:#0ea5e9;flex-shrink:0;cursor:pointer">`:
+            `<span style="font-size:16px">👤</span>`}
           <div style="flex:1;font-size:14px;font-weight:700;color:var(--text,#111);word-break:break-word">${esc(g.nome)}</div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af)">${nCob} cobrança${nCob>1?'s':''} · <b style="color:#d97706">${fmt(totPend)} em aberto</b> · <b style="color:#059669">${fmt(totPago)} recebido</b></div>
         </div>
-        ${itensSorted.map(itemRow).join('')}
+        ${selMode?'':itensSorted.map(itemRow).join('')}
       </div>`;
     }).join('');
     el.innerHTML=`
@@ -1044,7 +1097,15 @@ _['receber']=async function(el){
           <div style="font-size:18px;font-weight:700;color:var(--text,#111)">Contas a Receber</div>
           <div style="font-size:12px;color:var(--text-muted,#6b7280)">A receber: <b style="color:#d97706">${fmt(soma(pend))}</b> · Recebido: <b style="color:#059669">${fmt(soma(receb))}</b></div>
         </div>
-        <button id="cr-novo" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Cobrança</button>
+        <button id="cr-sel-toggle" style="background:${selMode?'#0ea5e9':'rgba(14,165,233,.12)'};color:${selMode?'#fff':'#0ea5e9'};border:1.5px solid #0ea5e9;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer">${selMode?'✕ Cancelar':'☑ Selecionar'}</button>
+        ${!selMode?'<button id="cr-novo" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ Cobrança</button>':''}
+      </div>
+      <div id="cr-sel-bar" style="display:${selMode&&selKeys.size>0?'flex':'none'};position:sticky;top:0;z-index:200;align-items:center;gap:8px;padding:10px 14px;background:#0ea5e9;color:#fff;flex-wrap:wrap">
+        <span id="cr-sel-count" style="font-size:13px;font-weight:700;flex:1">${selKeys.size} selecionado${selKeys.size!==1?'s':''}</span>
+        <button id="cr-sel-all" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">Todos (${grupos.size})</button>
+        <button id="cr-sel-wats-on" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">📲 Ativar WhatsApp</button>
+        <button id="cr-sel-wats-off" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🔕 Desativar WhatsApp</button>
+        <button id="cr-sel-del" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑 Excluir</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--border,#e5e7eb)">
         <button id="cr-prev" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted,#6b7280)">‹</button>
@@ -1057,7 +1118,38 @@ _['receber']=async function(el){
     el.querySelector('#cr-prev').addEventListener('click',()=>{nav.mes--;if(nav.mes<0){nav.mes=11;nav.ano--;}render();});
     el.querySelector('#cr-next').addEventListener('click',()=>{nav.mes++;if(nav.mes>11){nav.mes=0;nav.ano++;}render();});
     el.querySelector('#cr-hoje')?.addEventListener('click',()=>{const t=new Date();nav={ano:t.getFullYear(),mes:t.getMonth()};render();});
-    el.querySelector('#cr-novo').addEventListener('click',()=>formCobranca());
+    el.querySelector('#cr-novo')?.addEventListener('click',()=>formCobranca());
+    // ── Seleção em lote ──
+    el.querySelector('#cr-sel-toggle').addEventListener('click',()=>{selMode=!selMode;if(!selMode)selKeys.clear();render();});
+    el.querySelector('#cr-sel-all')?.addEventListener('click',()=>{
+      if(selKeys.size===grupos.size){selKeys.clear();}
+      else{grupos.forEach((_,k)=>selKeys.add(k));}
+      // re-render cards sem resetar mode
+      el.querySelectorAll('[data-key]').forEach(el2=>{
+        const k=el2.dataset.key;
+        const chk=el2.querySelector('.cr-chk')||el2;
+        if(chk.type==='checkbox'){chk.checked=selKeys.has(k);}
+        el2.closest('[style*="border-radius:14px"]')&&(el2.closest('[style*="border-radius:14px"]').style.outline=selKeys.has(k)?'2px solid #0ea5e9':'');
+      });
+      atualizarBarraLote();
+    });
+    el.querySelector('#cr-sel-del')?.addEventListener('click',()=>excluirLote());
+    el.querySelector('#cr-sel-wats-on')?.addEventListener('click',()=>toggleWhatsLote(true));
+    el.querySelector('#cr-sel-wats-off')?.addEventListener('click',()=>toggleWhatsLote(false));
+    el.querySelectorAll('.cr-chk').forEach(chk=>chk.addEventListener('change',()=>{
+      const k=chk.dataset.key;
+      if(chk.checked)selKeys.add(k);else selKeys.delete(k);
+      const card=chk.closest('[style*="border-radius:14px"]');
+      if(card)card.style.outline=chk.checked?'2px solid #0ea5e9':'';
+      atualizarBarraLote();
+    }));
+    el.querySelectorAll('.cr-sel-card').forEach(b=>b.addEventListener('click',e=>{
+      if(e.target.type==='checkbox')return; // handled by chk listener
+      const k=b.dataset.key;
+      const chk=b.querySelector('.cr-chk');
+      if(!chk)return;
+      chk.checked=!chk.checked;chk.dispatchEvent(new Event('change'));
+    }));
     el.querySelectorAll('.cr-toggle').forEach(b=>b.addEventListener('click',async()=>{
       const key=b.dataset.key;
       const grupo=[...grupos.values()].find(g=>String(g.itens[0].clienteId||g.nome)===key);
