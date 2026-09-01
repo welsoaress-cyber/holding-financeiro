@@ -951,7 +951,7 @@ _['receber']=async function(el){
       if(!cli){toast.err('Cliente não encontrado — digite e escolha um nome da lista.');return;}
       if(!pl){toast.err('Selecione o plano.');return;}
       const dv=fd.get('data_v'),rec=fd.get('recorrencia');
-      const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const nrep=rec==='unica'?1:rec==='fixa'?120:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
       const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
       const grupo=nrep>1?crypto.randomUUID():null;
       const entries=[];
@@ -1573,7 +1573,7 @@ _['pagar']=async function(el){
       e.preventDefault();
       const fd=new FormData(e.target);
       const dv=fd.get('data_v'),rec=fd.get('recorrencia');
-      const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
+      const nrep=rec==='unica'?1:rec==='fixa'?120:Math.min(Math.max(parseInt(fd.get('repeticoes'))||12,2),60);
       const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
       const grupo=nrep>1?crypto.randomUUID():null;
       const entries=[];
@@ -1945,7 +1945,7 @@ _['importar']=async function(el){
           }
         }
         const rec=l.recorrencia;
-        const nrep=rec==='unica'?1:rec==='fixa'?24:Math.min(Math.max(l.repeticoes||12,2),60);
+        const nrep=rec==='unica'?1:rec==='fixa'?120:Math.min(Math.max(l.repeticoes||12,2),60);
         const step=rec==='anual'?12:rec==='semestral'?6:rec==='trimestral'?3:rec==='bimestral'?2:1;
         const grupo=nrep>1?crypto.randomUUID():null;
         for(let i=0;i<nrep;i++){

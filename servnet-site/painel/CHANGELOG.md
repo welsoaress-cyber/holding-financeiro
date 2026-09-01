@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.74 — 2026-09-01
+- **Recorrência Fixa**: opção "Fixa (mensal, sem prazo)" agora gera 120 meses (10 anos) em vez de 24 — ideal para serviços de internet sem data de término definida
+
 ## v2.9.73 — 2026-08-31
 - **Fix Clientes**: formulário de edição agora carrega CPF dos clientes importados via Provedor (`cpf` → fallback de `cpfCnpj`); nascimento deixou de ser campo obrigatório
 
