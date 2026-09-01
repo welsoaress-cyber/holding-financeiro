@@ -2,6 +2,10 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.75 — 2026-09-01
+- **Fix Novo Cliente**: CPF deixou de ser campo obrigatório (label: "CPF (opcional)"); modal fecha ao clicar fora e é limpo ao navegar entre módulos (`data-gm-modal`)
+- **Receitas/Despesas**: adicionada opção "Fixa (mensal, sem prazo)" na periodicidade — campo Parcelas é ocultado; ao criar, gera 120 lançamentos mensais automaticamente
+
 ## v2.9.74 — 2026-09-01
 - **Recorrência Fixa**: opção "Fixa (mensal, sem prazo)" agora gera 120 meses (10 anos) em vez de 24 — ideal para serviços de internet sem data de término definida
 

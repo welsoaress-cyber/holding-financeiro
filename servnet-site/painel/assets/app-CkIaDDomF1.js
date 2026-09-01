@@ -430,8 +430,11 @@ _['clientes']=async function(el){
     }catch(e){}
     const optNeg=negs.map(n=>`<option value="${n.id}"${c.negocioId===n.id?' selected':''}>${esc(n.nome)}</option>`).join('');
     const optPlano=negId=>planosAll.filter(p=>!negId||p.negocioId===negId).map(p=>`<option value="${p.id}"${c.planoId===p.id?' selected':''}>${esc(p.nome)} — R$ ${p.valor}</option>`).join('');
+    document.querySelectorAll('[data-gm-modal]').forEach(m=>m.remove());
     const ov=document.createElement('div');
+    ov.setAttribute('data-gm-modal','1');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
     ov.innerHTML=`<div style="background:var(--bg-card,#fff);border-radius:20px;width:100%;max-width:480px;padding:22px 20px 30px;max-height:88vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-size:17px;font-weight:700;color:#0ea5e9">${cli?'✏️ Editar cliente':'👥 Novo cliente'}</span>
@@ -440,7 +443,7 @@ _['clientes']=async function(el){
       <form id="cl-form" style="display:flex;flex-direction:column;gap:11px">
         <div><label class="cl-lbl">Nome completo</label><input class="cl-inp" name="nome" required value="${esc(c.nome||'')}" placeholder="Ex: João da Silva"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="cl-lbl">CPF</label><input class="cl-inp" name="cpfCnpj" required value="${esc(c.cpfCnpj||c.cpf||'')}" placeholder="000.000.000-00" inputmode="numeric"></div>
+          <div><label class="cl-lbl">CPF (opcional)</label><input class="cl-inp" name="cpfCnpj" value="${esc(c.cpfCnpj||c.cpf||'')}" placeholder="000.000.000-00" inputmode="numeric"></div>
           <div><label class="cl-lbl">Nascimento</label><input class="cl-inp" name="dataNascimento" type="date" value="${esc(c.dataNascimento||'')}"></div>
         </div>
         <div><label class="cl-lbl">Telefone / WhatsApp</label><input class="cl-inp" name="telefone" value="${esc(c.telefone||'')}" placeholder="(11) 90000-0000" inputmode="tel"></div>
