@@ -224,7 +224,7 @@ Layout: barra lateral fixa à esquerda, cabeçalho com seletor de período (mês
 | Etapa | Entrega | Critério de pronto |
 |---|---|---|
 | 1 | Arquitetura (este documento) | Aprovação sua |
-| 2 | Fundação: projeto Supabase novo, app Vite, auth, `organizacoes`, `auditoria`, layout com menu, migration inicial | Login funciona; menu vazio profissional |
+| 2 | Fundação: projeto Supabase novo, app Vite, auth, `organizacoes`, `auditoria`, layout com menu, migration inicial | **Concluída em código (02/09/2026).** Pendente: projeto Supabase e conexão Cloudflare Pages |
 | 3 | Contas | CRUD, inativação, saldo calculado por view (com saldo inicial) |
 | 4 | Categorias | CRUD hierárquico, categorias padrão iniciais (semente) |
 | 5 | Lançamentos | Receita, despesa, transferência atômica, previsto/efetivado, cancelamento auditado, filtros, aviso de duplicidade |
@@ -340,6 +340,12 @@ Usuários internos (você, futuros membros) e clientes de portal são populaçõ
 
 ### 11.8 O que muda no que já foi aprovado/construído
 
-1. **Renomear** `entidades` → `organizacoes` e `entidade_membros` → `organizacao_membros` (migration e app da Fundação). Motivo: "entidade" passará a ser usado no sentido de pessoa/cliente; manter os dois sentidos geraria confusão permanente. Custo hoje: minutos, nenhum dado existe. Custo depois: migração com dados.
+1. **Renomear** `entidades` → `organizacoes` e `entidade_membros` → `organizacao_membros`. **Aprovado e aplicado em 02/09/2026** (migration, testes e app; zero ocorrências antigas).
 2. Nenhuma outra alteração na Fundação. Nenhuma tabela nova agora.
 3. O MVP (Etapas 3–6) permanece exatamente igual.
+
+### 11.9 Decisões fechadas (02/09/2026)
+- Os dois pilares — **Organização → Projetos → Pessoas → Vínculos → Contratos/Planos/Serviços** e **Lançamento → Movimentos → Saldo** — são independentes e integráveis. **Nunca haverá um segundo motor financeiro** para projetos; projetos geram lançamentos no motor único.
+- **Módulos de operação** (SERVNET, SERVIDOR, Navalha, PRECAUTEC, PORTO ODONTO), pessoas, vínculos, contratos, planos, faturas, boletos, Mercado Pago, WhatsApp, Oracle Code, portais, automações e integrações são **roadmap**. Não devem ser antecipados em nenhuma etapa do MVP.
+- Hospedagem: **Cloudflare Pages, plano Free**, aprovado. Nenhum recurso pago sem autorização.
+- Supabase: **plano gratuito**, sem upgrade automático, projeto novo separado do legado; nenhum projeto é excluído sem autorização explícita.

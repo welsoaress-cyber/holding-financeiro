@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { BarraLateral } from './BarraLateral'
 import { BarraSuperior } from './BarraSuperior'
-import { EntidadeProvider } from '../entidade/EntidadeProvider'
+import { OrganizacaoProvider } from '../organizacao/OrganizacaoProvider'
 import { ErrorBoundary } from '../erros/ErrorBoundary'
 import type { DefinicaoModulo } from '../modulos/tipos'
 
@@ -10,7 +10,7 @@ export function AppShell({ modulos }: { modulos: DefinicaoModulo[] }) {
   const [menuAberto, setMenuAberto] = useState(false)
 
   return (
-    <EntidadeProvider>
+    <OrganizacaoProvider>
       <div className="flex h-screen overflow-hidden">
         <aside className="hidden w-60 shrink-0 md:block">
           <BarraLateral modulos={modulos} />
@@ -34,6 +34,6 @@ export function AppShell({ modulos }: { modulos: DefinicaoModulo[] }) {
           </main>
         </div>
       </div>
-    </EntidadeProvider>
+    </OrganizacaoProvider>
   )
 }

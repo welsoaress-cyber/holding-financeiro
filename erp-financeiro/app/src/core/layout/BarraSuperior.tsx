@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/useAuth'
-import { useEntidade } from '../entidade/useEntidade'
+import { useOrganizacao } from '../organizacao/useOrganizacao'
 import { Icone } from '../ui/Icone'
 
 export function BarraSuperior({ aoAbrirMenu }: { aoAbrirMenu: () => void }) {
   const { usuario, sair } = useAuth()
-  const { entidade } = useEntidade()
+  const { organizacao } = useOrganizacao()
   const [saindo, setSaindo] = useState(false)
 
   async function encerrar() {
@@ -20,7 +20,7 @@ export function BarraSuperior({ aoAbrirMenu }: { aoAbrirMenu: () => void }) {
           <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
         <div>
-          <p className="text-sm font-medium leading-tight">{entidade.nome}</p>
+          <p className="text-sm font-medium leading-tight">{organizacao.nome}</p>
           <p className="text-xs text-ink-muted">{usuario?.email}</p>
         </div>
       </div>

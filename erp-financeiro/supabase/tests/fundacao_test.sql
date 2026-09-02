@@ -8,48 +8,48 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-1111-1111-111111111111', 'ana@teste.dev',   '{"nome":"Ana"}'),
   ('22222222-2222-2222-2222-222222222222', 'bruno@teste.dev', '{}');
 
--- T1: signup cria entidade + membro proprietário + auditoria
+-- T1: signup cria organizacao + membro proprietário + auditoria
 do $$
 declare n int;
 begin
-  select count(*) into n from public.entidades; assert n = 2, 'T1 entidades';
-  select count(*) into n from public.entidade_membros where papel = 'proprietario'; assert n = 2, 'T1 membros';
-  select count(*) into n from public.entidades where nome = 'Ana'; assert n = 1, 'T1 nome via metadata';
-  select count(*) into n from public.entidades where nome = 'bruno'; assert n = 1, 'T1 nome via email';
+  select count(*) into n from public.organizacoes; assert n = 2, 'T1 organizacoes';
+  select count(*) into n from public.organizacao_membros where papel = 'proprietario'; assert n = 2, 'T1 membros';
+  select count(*) into n from public.organizacoes where nome = 'Ana'; assert n = 1, 'T1 nome via metadata';
+  select count(*) into n from public.organizacoes where nome = 'bruno'; assert n = 1, 'T1 nome via email';
   select count(*) into n from public.auditoria where acao = 'INSERT'; assert n = 4, 'T1 auditoria insert';
 end $$;
 
--- T2: usuária Ana enxerga apenas a própria entidade
+-- T2: usuária Ana enxerga apenas a própria organizacao
 set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 do $$
 declare n int;
 begin
-  select count(*) into n from public.entidades; assert n = 1, 'T2 entidades visíveis';
-  select count(*) into n from public.entidades where nome = 'Ana'; assert n = 1, 'T2 entidade correta';
-  select count(*) into n from public.entidade_membros; assert n = 1, 'T2 membros visíveis';
-  select count(*) into n from public.auditoria; assert n = 2, 'T2 auditoria visível (1 entidade + 1 membro)';
+  select count(*) into n from public.organizacoes; assert n = 1, 'T2 organizacoes visíveis';
+  select count(*) into n from public.organizacoes where nome = 'Ana'; assert n = 1, 'T2 organizacao correta';
+  select count(*) into n from public.organizacao_membros; assert n = 1, 'T2 membros visíveis';
+  select count(*) into n from public.auditoria; assert n = 2, 'T2 auditoria visível (1 organizacao + 1 membro)';
 end $$;
 
--- T3: proprietária edita a própria entidade; auditoria registra com usuario_id
+-- T3: proprietária edita a própria organizacao; auditoria registra com usuario_id
 -- atualizado_em enviado pelo cliente deve ser sobrescrito pelo trigger
-update public.entidades set nome = 'Ana Editada', atualizado_em = '2000-01-01' where nome = 'Ana';
+update public.organizacoes set nome = 'Ana Editada', atualizado_em = '2000-01-01' where nome = 'Ana';
 do $$
 declare n int;
 begin
-  select count(*) into n from public.entidades where nome = 'Ana Editada'; assert n = 1, 'T3 update';
+  select count(*) into n from public.organizacoes where nome = 'Ana Editada'; assert n = 1, 'T3 update';
   select count(*) into n from public.auditoria
     where acao = 'UPDATE' and usuario_id = '11111111-1111-1111-1111-111111111111'
       and dados_antes ->> 'nome' = 'Ana' and dados_depois ->> 'nome' = 'Ana Editada';
   assert n = 1, 'T3 auditoria update';
-  select count(*) into n from public.entidades where atualizado_em >= criado_em and atualizado_em > '2000-01-02'; assert n = 1, 'T3 atualizado_em';
+  select count(*) into n from public.organizacoes where atualizado_em >= criado_em and atualizado_em > '2000-01-02'; assert n = 1, 'T3 atualizado_em';
 end $$;
 
--- T4: update na entidade alheia não afeta linha alguma (RLS filtra)
+-- T4: update na organizacao alheia não afeta linha alguma (RLS filtra)
 do $$
 declare n int;
 begin
-  update public.entidades set nome = 'Invasao' where nome = 'bruno';
+  update public.organizacoes set nome = 'Invasao' where nome = 'bruno';
   get diagnostics n = row_count; assert n = 0, 'T4 update alheio';
 end $$;
 
@@ -57,18 +57,18 @@ end $$;
 do $$
 begin
   begin
-    insert into public.entidades (nome) values ('x');
-    raise exception 'T5 insert entidades deveria falhar';
+    insert into public.organizacoes (nome) values ('x');
+    raise exception 'T5 insert organizacoes deveria falhar';
   exception when insufficient_privilege then null;
   end;
   begin
-    delete from public.entidades;
-    raise exception 'T5 delete entidades deveria falhar';
+    delete from public.organizacoes;
+    raise exception 'T5 delete organizacoes deveria falhar';
   exception when insufficient_privilege then null;
   end;
   begin
-    insert into public.entidade_membros (entidade_id, usuario_id)
-      select id, '22222222-2222-2222-2222-222222222222' from public.entidades;
+    insert into public.organizacao_membros (organizacao_id, usuario_id)
+      select id, '22222222-2222-2222-2222-222222222222' from public.organizacoes;
     raise exception 'T5 insert membros deveria falhar';
   exception when insufficient_privilege then null;
   end;
@@ -90,8 +90,8 @@ set local role anon;
 do $$
 begin
   begin
-    perform * from public.entidades;
-    raise exception 'T6 anon select entidades deveria falhar';
+    perform * from public.organizacoes;
+    raise exception 'T6 anon select organizacoes deveria falhar';
   exception when insufficient_privilege then null;
   end;
   begin
@@ -100,8 +100,8 @@ begin
   exception when insufficient_privilege then null;
   end;
   begin
-    perform public.minhas_entidades();
-    raise exception 'T6 anon minhas_entidades deveria falhar';
+    perform public.minhas_organizacoes();
+    raise exception 'T6 anon minhas_organizacoes deveria falhar';
   exception when insufficient_privilege then null;
   end;
 end $$;

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- ERP Financeiro Pessoal — Migration 0001: FUNDAÇÃO
--- Escopo: entidades, membros, auditoria, RLS, criação automática no signup.
+-- Escopo: organizacoes, membros, auditoria, RLS, criação automática no signup.
 -- Nenhuma tabela financeira é criada aqui (Etapas 3+).
 -- =============================================================================
 
@@ -8,32 +8,32 @@
 -- 1. Tabelas
 -- -----------------------------------------------------------------------------
 
--- Entidade = "pessoa financeira" dona dos dados. Chave de escopo de todo o sistema.
-create table public.entidades (
+-- Organização = escopo raiz dos dados (a holding). Chave de escopo de todo o sistema.
+create table public.organizacoes (
   id            uuid primary key default gen_random_uuid(),
   nome          text not null check (char_length(btrim(nome)) between 1 and 120),
   criado_em     timestamptz not null default now(),
   atualizado_em timestamptz not null default now()
 );
-comment on table public.entidades is 'Escopo de dados: cada registro financeiro pertence a exatamente uma entidade.';
+comment on table public.organizacoes is 'Escopo raiz: cada registro financeiro pertence a exatamente uma organização.';
 
 create type public.papel_membro as enum ('proprietario', 'membro');
 
-create table public.entidade_membros (
-  entidade_id uuid not null references public.entidades (id) on delete cascade,
+create table public.organizacao_membros (
+  organizacao_id uuid not null references public.organizacoes (id) on delete cascade,
   usuario_id  uuid not null references auth.users (id) on delete cascade,
   papel       public.papel_membro not null default 'membro',
   criado_em   timestamptz not null default now(),
-  primary key (entidade_id, usuario_id)
+  primary key (organizacao_id, usuario_id)
 );
-create index entidade_membros_usuario_idx on public.entidade_membros (usuario_id);
-comment on table public.entidade_membros is 'Vínculo usuário (auth.users) × entidade, com papel.';
+create index organizacao_membros_usuario_idx on public.organizacao_membros (usuario_id);
+comment on table public.organizacao_membros is 'Vínculo usuário (auth.users) × organização, com papel.';
 
--- Auditoria: trilha imutável. Sem FK para entidades de propósito: o histórico
+-- Auditoria: trilha imutável. Sem FK para organizacoes de propósito: o histórico
 -- precisa sobreviver a qualquer remoção futura.
 create table public.auditoria (
   id           bigint generated always as identity primary key,
-  entidade_id  uuid,
+  organizacao_id  uuid,
   tabela       text not null,
   registro_id  text not null,
   acao         text not null check (acao in ('INSERT', 'UPDATE', 'DELETE')),
@@ -42,7 +42,7 @@ create table public.auditoria (
   usuario_id   uuid,
   quando       timestamptz not null default now()
 );
-create index auditoria_entidade_idx on public.auditoria (entidade_id, quando desc);
+create index auditoria_organizacao_idx on public.auditoria (organizacao_id, quando desc);
 create index auditoria_registro_idx on public.auditoria (tabela, registro_id);
 comment on table public.auditoria is 'Trilha de auditoria preenchida exclusivamente por trigger. Somente leitura para clientes.';
 
@@ -81,15 +81,15 @@ begin
   v_ref := coalesce(v_depois, v_antes);
 
   v_ent := case
-    when tg_table_name = 'entidades' then (v_ref ->> 'id')::uuid
-    else (v_ref ->> 'entidade_id')::uuid
+    when tg_table_name = 'organizacoes' then (v_ref ->> 'id')::uuid
+    else (v_ref ->> 'organizacao_id')::uuid
   end;
 
-  insert into public.auditoria (entidade_id, tabela, registro_id, acao, dados_antes, dados_depois, usuario_id)
+  insert into public.auditoria (organizacao_id, tabela, registro_id, acao, dados_antes, dados_depois, usuario_id)
   values (
     v_ent,
     tg_table_name,
-    coalesce(v_ref ->> 'id', concat_ws(':', v_ref ->> 'entidade_id', v_ref ->> 'usuario_id')),
+    coalesce(v_ref ->> 'id', concat_ws(':', v_ref ->> 'organizacao_id', v_ref ->> 'usuario_id')),
     tg_op,
     v_antes,
     v_depois,
@@ -100,19 +100,19 @@ begin
 end;
 $$;
 
--- Entidades às quais o usuário autenticado pertence. SECURITY DEFINER para que
+-- Organizacoes às quais o usuário autenticado pertence. SECURITY DEFINER para que
 -- as policies possam consultá-la sem recursão de RLS.
-create or replace function public.minhas_entidades()
+create or replace function public.minhas_organizacoes()
 returns setof uuid
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select entidade_id from public.entidade_membros where usuario_id = auth.uid();
+  select organizacao_id from public.organizacao_membros where usuario_id = auth.uid();
 $$;
 
-create or replace function public.sou_proprietario(p_entidade uuid)
+create or replace function public.sou_proprietario(p_organizacao uuid)
 returns boolean
 language sql
 stable
@@ -120,12 +120,12 @@ security definer
 set search_path = public
 as $$
   select exists (
-    select 1 from public.entidade_membros
-    where entidade_id = p_entidade and usuario_id = auth.uid() and papel = 'proprietario'
+    select 1 from public.organizacao_membros
+    where organizacao_id = p_organizacao and usuario_id = auth.uid() and papel = 'proprietario'
   );
 $$;
 
--- Ao criar usuário no Auth, cria a entidade dele e o torna proprietário.
+-- Ao criar usuário no Auth, cria a organização dele e o torna proprietário.
 create or replace function public.tg_novo_usuario()
 returns trigger
 language plpgsql
@@ -139,12 +139,12 @@ begin
   v_nome := coalesce(
     nullif(btrim(new.raw_user_meta_data ->> 'nome'), ''),
     split_part(coalesce(new.email, ''), '@', 1),
-    'Minha entidade'
+    'Minha organizacao'
   );
-  if char_length(v_nome) = 0 then v_nome := 'Minha entidade'; end if;
+  if char_length(v_nome) = 0 then v_nome := 'Minha organizacao'; end if;
 
-  insert into public.entidades (nome) values (left(v_nome, 120)) returning id into v_id;
-  insert into public.entidade_membros (entidade_id, usuario_id, papel)
+  insert into public.organizacoes (nome) values (left(v_nome, 120)) returning id into v_id;
+  insert into public.organizacao_membros (organizacao_id, usuario_id, papel)
   values (v_id, new.id, 'proprietario');
 
   return new;
@@ -154,16 +154,16 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 3. Triggers
 -- -----------------------------------------------------------------------------
-create trigger entidades_atualizado_em
-  before update on public.entidades
+create trigger organizacoes_atualizado_em
+  before update on public.organizacoes
   for each row execute function public.tg_atualizado_em();
 
-create trigger entidades_auditoria
-  after insert or update or delete on public.entidades
+create trigger organizacoes_auditoria
+  after insert or update or delete on public.organizacoes
   for each row execute function public.tg_auditoria();
 
-create trigger entidade_membros_auditoria
-  after insert or update or delete on public.entidade_membros
+create trigger organizacao_membros_auditoria
+  after insert or update or delete on public.organizacao_membros
   for each row execute function public.tg_auditoria();
 
 create trigger on_auth_user_created
@@ -173,46 +173,46 @@ create trigger on_auth_user_created
 -- -----------------------------------------------------------------------------
 -- 4. Privilégios (defesa em profundidade, além do RLS)
 -- -----------------------------------------------------------------------------
-revoke all on public.entidades        from anon, authenticated;
-revoke all on public.entidade_membros from anon, authenticated;
+revoke all on public.organizacoes        from anon, authenticated;
+revoke all on public.organizacao_membros from anon, authenticated;
 revoke all on public.auditoria        from anon, authenticated;
 
-grant select, update on public.entidades        to authenticated;
-grant select         on public.entidade_membros to authenticated;
+grant select, update on public.organizacoes        to authenticated;
+grant select         on public.organizacao_membros to authenticated;
 grant select         on public.auditoria        to authenticated;
 
 revoke all on function public.tg_atualizado_em()   from public, anon, authenticated;
 revoke all on function public.tg_auditoria()       from public, anon, authenticated;
 revoke all on function public.tg_novo_usuario()    from public, anon, authenticated;
-revoke all on function public.minhas_entidades()   from public, anon;
+revoke all on function public.minhas_organizacoes()   from public, anon;
 revoke all on function public.sou_proprietario(uuid) from public, anon;
-grant execute on function public.minhas_entidades()     to authenticated;
+grant execute on function public.minhas_organizacoes()     to authenticated;
 grant execute on function public.sou_proprietario(uuid) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 5. RLS
 -- -----------------------------------------------------------------------------
-alter table public.entidades        enable row level security;
-alter table public.entidade_membros enable row level security;
+alter table public.organizacoes        enable row level security;
+alter table public.organizacao_membros enable row level security;
 alter table public.auditoria        enable row level security;
 
--- entidades: membro lê; proprietário edita. Sem insert/delete via cliente
+-- organizacoes: membro lê; proprietário edita. Sem insert/delete via cliente
 -- (criação só pelo trigger de signup; exclusão não existe nesta etapa).
-create policy entidades_select on public.entidades
+create policy organizacoes_select on public.organizacoes
   for select to authenticated
-  using (id in (select public.minhas_entidades()));
+  using (id in (select public.minhas_organizacoes()));
 
-create policy entidades_update on public.entidades
+create policy organizacoes_update on public.organizacoes
   for update to authenticated
   using (public.sou_proprietario(id))
   with check (public.sou_proprietario(id));
 
--- entidade_membros: membro vê os membros da sua entidade. Sem escrita via cliente.
-create policy entidade_membros_select on public.entidade_membros
+-- organizacao_membros: membro vê os membros da sua organização. Sem escrita via cliente.
+create policy organizacao_membros_select on public.organizacao_membros
   for select to authenticated
-  using (entidade_id in (select public.minhas_entidades()));
+  using (organizacao_id in (select public.minhas_organizacoes()));
 
--- auditoria: membro lê a trilha da sua entidade. Sem escrita via cliente.
+-- auditoria: membro lê a trilha da sua organização. Sem escrita via cliente.
 create policy auditoria_select on public.auditoria
   for select to authenticated
-  using (entidade_id in (select public.minhas_entidades()));
+  using (organizacao_id in (select public.minhas_organizacoes()));

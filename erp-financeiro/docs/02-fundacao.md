@@ -1,29 +1,27 @@
 # Etapa 2 — Fundação
 
-Status: **implementada e testada localmente; aguardando validação e 2 decisões suas** (ver seção 6).
-
-> **Pendência aprovada em documentação, ainda não aplicada no código:** renomear `entidades` → `organizacoes` e `entidade_membros` → `organizacao_membros` (ver `01-arquitetura.md`, seção 11.8). Será feito na retomada da Fundação, antes de aplicar a migration no Supabase.
+Status: **CONCLUÍDA em código e testada localmente (02/09/2026).** Rename `entidades` → `organizacoes` / `entidade_membros` → `organizacao_membros` **aplicado** em migration, testes e app, com zero ocorrências antigas restantes. Pendências externas: criação do projeto Supabase (seção 6) e conexão do Cloudflare Pages (seção 5). Nenhum módulo de operação foi antecipado; eles pertencem ao roadmap (`01-arquitetura.md`, seção 11).
 
 ## 1. O que existe
 
 ### Banco (`supabase/migrations/20260902000001_fundacao.sql`)
 | Objeto | Função |
 |---|---|
-| `entidades` | Escopo de dados. Toda tabela financeira futura terá `entidade_id`. |
-| `entidade_membros` | Vínculo `auth.users` × entidade, com papel `proprietario` / `membro`. |
+| `organizacoes` | Escopo raiz (a holding). Toda tabela financeira futura terá `organizacao_id`. |
+| `organizacao_membros` | Vínculo `auth.users` × organização, com papel `proprietario` / `membro`. |
 | `auditoria` | Trilha imutável: tabela, registro, ação, antes/depois (JSON), usuário, quando. |
 | `tg_auditoria()` | Trigger genérico. Basta anexar a qualquer tabela nova. Grava via `security definer` porque clientes não têm permissão de escrita na auditoria. |
 | `tg_atualizado_em()` | Mantém `atualizado_em`, ignorando valor enviado pelo cliente. |
-| `tg_novo_usuario()` | Ao criar usuário no Auth, cria a entidade dele e o vincula como proprietário. |
-| `minhas_entidades()` / `sou_proprietario()` | Helpers `security definer` usados nas policies (evitam recursão de RLS). |
+| `tg_novo_usuario()` | Ao criar usuário no Auth, cria a organização dele e o vincula como proprietário. |
+| `minhas_organizacoes()` / `sou_proprietario()` | Helpers `security definer` usados nas policies (evitam recursão de RLS). |
 
 Sem extensões adicionais: `gen_random_uuid()` é nativo do Postgres 13+.
 
 ### RLS e privilégios
 - RLS habilitado nas 3 tabelas.
-- `entidades`: membro lê; **só proprietário edita**; sem insert/delete pelo cliente.
-- `entidade_membros`: membro lê os membros da própria entidade; sem escrita pelo cliente.
-- `auditoria`: membro lê a trilha da própria entidade; **nenhuma escrita pelo cliente**.
+- `organizacoes`: membro lê; **só proprietário edita**; sem insert/delete pelo cliente.
+- `organizacao_membros`: membro lê os membros da própria organização; sem escrita pelo cliente.
+- `auditoria`: membro lê a trilha da própria organização; **nenhuma escrita pelo cliente**.
 - `anon` não tem acesso a nada. Grants revogados explicitamente além do RLS (defesa em profundidade).
 - Todas as funções têm `search_path` fixo.
 
@@ -34,7 +32,7 @@ src/
 ├── core/
 │   ├── supabase/   cliente único; tela de erro se .env ausente
 │   ├── auth/       AuthProvider, useAuth, RequireAuth / SomenteAnonimo
-│   ├── entidade/   EntidadeProvider, useEntidade (entidade atual = escopo de todas as consultas futuras)
+│   ├── organizacao/ OrganizacaoProvider, useOrganizacao (organização atual = escopo de todas as consultas futuras)
 │   ├── modulos/    contrato DefinicaoModulo
 │   ├── layout/     AppShell, BarraLateral, BarraSuperior (responsivo)
 │   ├── ui/         Botao, Campo, Alerta, Carregando, Cartao, CabecalhoPagina, ModuloEmBreve, Icone
@@ -48,26 +46,28 @@ src/
 1. **Tailwind v4** via plugin do Vite; tokens de cor em `src/index.css`.
 2. **TanStack Query** já na fundação: única forma de consultar dados nos módulos futuros (cache, loading, erro padronizados).
 3. **Ícones inline** (SVG próprio) em vez de biblioteca: 6 ícones não justificam dependência.
-4. **Nome da entidade** no signup = nome informado no cadastro (metadata `nome`); fallback = parte local do e-mail.
+4. **Nome da organização** no signup = nome informado no cadastro (metadata `nome`); fallback = parte local do e-mail.
 5. **Chaves**: usar a chave *publishable* (`sb_publishable_...`) do projeto, nunca a `service_role`.
-6. **Auditoria sem FK** para `entidades`: histórico sobrevive a qualquer remoção futura.
-7. Hooks separados dos providers (`useAuth.ts`, `useEntidade.ts`) por exigência do Fast Refresh.
+6. **Auditoria sem FK** para `organizacoes`: histórico sobrevive a qualquer remoção futura.
+7. Hooks separados dos providers (`useAuth.ts`, `useOrganizacao.ts`) por exigência do Fast Refresh.
+8. **Rename aprovado e aplicado** (02/09/2026): `entidades` → `organizacoes`, `entidade_membros` → `organizacao_membros`, `minhas_entidades()` → `minhas_organizacoes()`, `auditoria.entidade_id` → `organizacao_id`. Motivo: liberar o termo "entidade" e evitar colisão com "pessoa/cliente" da visão de plataforma.
 
 ## 3. Testes realizados
 | Teste | Como | Resultado |
 |---|---|---|
 | Migration + RLS + auditoria (`supabase/tests/fundacao_test.sql`, T1–T6) | Postgres 16 local com shim do `auth` (`00_shim_local.sql`) | OK |
-| T1 signup cria entidade, membro proprietário e auditoria | SQL | OK |
-| T2 usuário vê somente a própria entidade/membros/auditoria | `set role authenticated` + claim `sub` | OK |
+| T1 signup cria organização, membro proprietário e auditoria | SQL | OK |
+| T2 usuário vê somente a própria organização/membros/auditoria | `set role authenticated` + claim `sub` | OK |
 | T3 proprietário edita; auditoria grava antes/depois e `usuario_id`; `atualizado_em` sobrescrito | SQL | OK |
-| T4 update em entidade alheia afeta 0 linhas | SQL | OK |
-| T5 insert/delete em entidades, membros e auditoria negados ao cliente | SQL (`insufficient_privilege`) | OK |
+| T4 update em organização alheia afeta 0 linhas | SQL | OK |
+| T5 insert/delete em organizacoes, membros e auditoria negados ao cliente | SQL (`insufficient_privilege`) | OK |
 | T6 `anon` sem acesso a tabelas e funções | SQL | OK |
 | Typecheck + build (`tsc -b && vite build`) | npm | OK |
 | Lint (`oxlint`) | npm | 0 avisos |
 | Sem `.env`: tela "Supabase não configurado" | Chromium headless | OK |
 | `/entrar`, `/cadastro` renderizam; `/` e `/contas` sem sessão redirecionam ao login | Chromium headless | OK |
-| Shell autenticado: menu, nome da entidade, e-mail, botão Sair, placeholders, Configurações | Chromium headless + mock local da API REST + sessão simulada | OK |
+| Shell autenticado: menu, nome da organização, e-mail, botão Sair, placeholders, Configurações | Chromium headless + mock local da API REST + sessão simulada | OK |
+| Pós-rename: todos os itens acima reexecutados; busca por `entidade` em `supabase/` e `app/src` = 0 ocorrências | grep + rerun | OK |
 
 **Não testado ainda** (depende do projeto Supabase real): signup/login/logout ponta a ponta contra o Auth.
 
@@ -86,25 +86,39 @@ npm install
 npm run dev
 ```
 
-## 5. Hospedagem / deploy — NÃO configurado (aguardando autorização)
-Recomendação: **Cloudflare Pages**.
-- Serviço: hospedagem de site estático (o build do Vite é 100% estático).
-- Por quê: sem Netlify; plano gratuito sem cartão; 500 builds/mês; banda e requisições ilimitadas; SPA fallback nativo.
-- Cobrança: **nenhuma** no plano Free. Só há custo se você contratar manualmente o plano Workers Paid (US$ 5/mês) para recursos que este projeto não usa.
-- Alternativa: GitHub Pages (gratuito; em repositório privado exige GitHub Pro).
+## 5. Hospedagem / deploy — Cloudflare Pages (APROVADO, plano Free)
+Aprovado em 02/09/2026. Regra permanente: nenhum recurso pago habilitado.
 
-Nada foi criado, conectado ou configurado. Configuro após seu OK.
+**Por que não gera cobrança:** Pages Free não exige cartão; inclui 500 builds/mês, banda e requisições ilimitadas para conteúdo estático. Só existe custo se você contratar manualmente o plano Workers Paid, que este projeto não usa. Não usar: Workers, D1, KV, R2, Access, domínios pagos.
 
-## 6. Bloqueio: criação do projeto Supabase
-A API retornou custo **US$ 0/mês** e a criação foi tentada, mas foi **recusada**: o plano gratuito permite **2 projetos ativos por conta** e a conta já tem `navalha-app` e `holding-financeiro`.
+**Estado:** ainda **não conectado**. Este ambiente não possui credencial Cloudflare e o conector disponível não expõe deploy de Pages, então a conexão é feita uma vez no painel (integração Git, sem CI extra):
 
-Opções (decisão sua; não executei nenhuma):
-| Opção | Custo | Efeito |
-|---|---|---|
-| A. Pausar um projeto legado (`holding-financeiro` ou `navalha-app`) | R$ 0 | Reversível; o projeto pausado fica fora do ar até ser restaurado |
-| B. Excluir um projeto legado | R$ 0 | Irreversível |
-| C. Supabase Pro | US$ 25/mês + US$ 10/mês por projeto extra | Não recomendado para uso pessoal |
+1. Cloudflare Dashboard → *Workers & Pages* → *Create* → *Pages* → *Connect to Git* → repositório `welsoaress-cyber/holding-financeiro`.
+2. Build settings:
+   - Production branch: `main` (ou o branch de trabalho enquanto o PR não for mesclado)
+   - Root directory: `erp-financeiro/app`
+   - Build command: `npm run build`
+   - Build output directory: `dist`
+3. Environment variables (Production e Preview): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (chave *publishable*).
+4. SPA: Pages serve `index.html` para rotas não encontradas quando não existe `404.html` — nada a configurar.
 
-Limitações conhecidas do plano Free do Supabase: projeto **pausa após 7 dias sem uso** (restauração manual no painel, sem perda de dados); e-mails de confirmação pelo remetente padrão têm limite de poucos envios por hora, suficiente para uso pessoal.
+Sem o projeto Supabase, o deploy exibirá a tela "Supabase não configurado" (comportamento esperado).
 
-Assim que o projeto existir: aplicar a migration, preencher `.env.local`, testar signup/login/logout ponta a ponta.
+## 6. Supabase — plano gratuito, projeto novo ainda não criado (BLOQUEIO)
+Decisão sua (02/09/2026): **sem plano pago; projeto novo totalmente separado do legado; nada é excluído sem sua autorização.**
+
+A criação foi recusada pela API: o plano Free permite **2 projetos ativos por conta** e ambos já existem. Inventário feito em 02/09/2026 (somente leitura):
+
+| Projeto | Região | Conteúdo | Descartável? |
+|---|---|---|---|
+| `holding-financeiro` (lkymiclirksgqkeiglyw) | us-east-1 | Sistema legado em uso: 2.338 lançamentos, 101 clientes SERVNET, 8 planos, negócios, estoque, RH, leads do site, 113.690 logs de auditoria, tabelas `fin_*` | **Não** |
+| `navalha-app` (txmdehfleltpqokhyzex) | sa-east-1 | SaaS Navalha no Bigode: 4 barbearias, 4 barbeiros, 7 serviços, 24 disponibilidades, 1 agendamento, 3 convites de trial | **Não** (pré-lançamento/ativo) |
+
+Caminhos possíveis, todos sem custo, nenhum executado:
+- **A.** Criar o projeto novo em **outra conta Supabase** (outro e-mail) no plano Free. Mantém o legado intocado. O conector deste ambiente não alcança essa conta; a migration seria aplicada pelo SQL Editor (copiar/colar) ou pela CLI com token que você me forneceria.
+- **B.** **Pausar** temporariamente `navalha-app` se ele não estiver em uso real ainda (reversível no painel; enquanto pausado fica fora do ar).
+- **C.** Pausar `holding-financeiro` — **não recomendado**, é o sistema em produção.
+
+Limitações do plano Free a ter em mente: projeto pausa após 7 dias sem uso (restauração manual, sem perda de dados); e-mail de confirmação pelo remetente padrão limitado a poucos envios por hora.
+
+Assim que o projeto existir: aplicar `supabase/migrations/20260902000001_fundacao.sql`, preencher `.env.local`, testar signup/login/logout ponta a ponta, conectar o Cloudflare Pages.
