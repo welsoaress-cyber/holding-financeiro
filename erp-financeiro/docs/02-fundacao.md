@@ -104,24 +104,19 @@ Aprovado em 02/09/2026. Regra permanente: nenhum recurso pago habilitado.
 
 Sem o projeto Supabase, o deploy exibirá a tela "Supabase não configurado" (comportamento esperado).
 
-## 6. Supabase — plano gratuito, projeto novo ainda não criado (BLOQUEIO)
-Decisão sua (02/09/2026): **sem plano pago; projeto novo totalmente separado do legado; nada é excluído sem sua autorização.**
+## 6. Supabase — projeto novo criado (conta exclusiva, plano Free)
+Projeto criado pelo proprietário em 02/09/2026 na nova conta (Opção A). URL: `https://sldhspnovzubiyccnxk.supabase.co`. A chave *publishable* fica apenas em `app/.env.local` (ignorado pelo git) e nas variáveis do Cloudflare Pages; nunca no repositório.
 
-A criação foi recusada pela API: o plano Free permite **2 projetos ativos por conta** e ambos já existem. Inventário feito em 02/09/2026 (somente leitura):
+**Limitação do ambiente de desenvolvimento assistido:** a rede do ambiente remoto bloqueia o host do novo projeto e o conector Supabase está vinculado à conta antiga. Portanto, aplicar a migration, verificar o banco e rodar o teste ponta a ponta são executados **pelo proprietário**, com os artefatos prontos abaixo.
 
-| Projeto | Região | Conteúdo | Descartável? |
-|---|---|---|---|
-| `holding-financeiro` (lkymiclirksgqkeiglyw) | us-east-1 | Sistema legado em uso: 2.338 lançamentos, 101 clientes SERVNET, 8 planos, negócios, estoque, RH, leads do site, 113.690 logs de auditoria, tabelas `fin_*` | **Não** |
-| `navalha-app` (txmdehfleltpqokhyzex) | sa-east-1 | SaaS Navalha no Bigode: 4 barbearias, 4 barbeiros, 7 serviços, 24 disponibilidades, 1 agendamento, 3 convites de trial | **Não** (pré-lançamento/ativo) |
+| Passo | Como | Artefato |
+|---|---|---|
+| 1. Aplicar migration | SQL Editor → colar → Run | `supabase/migrations/20260902000001_fundacao.sql` |
+| 2. Verificar tabelas, functions, triggers, policies e grants | SQL Editor → colar → Run; esperado `27 de 27 verificações OK` | `supabase/tests/verificar_fundacao.sql` (somente leitura; validado localmente) |
+| 3. Variáveis do app | `app/.env.local` já criado com URL e chave publishable | — |
+| 4. Teste ponta a ponta | `cd app && npm install && npm run dev` → cadastro → confirmar e-mail (se exigido) → login → navegar → sair | — |
+| 5. Confirmar no banco | SQL Editor: `select nome from organizacoes;` e `select acao, tabela from auditoria order by id;` → 1 organização, 2 auditorias INSERT | — |
 
-**Decisão oficial (02/09/2026): OPÇÃO A — nova conta Supabase, plano Free, exclusiva para o ERP.**
-- `holding-financeiro` e `navalha-app` permanecem ativos e **intocados**. Nenhuma alteração, pausa ou exclusão.
-- A conta e o projeto novos são criados pelo proprietário; o assistente recebe apenas URL e chave *publishable* quando existirem.
-- **Nenhuma credencial, token ou secret** é armazenada no código ou na documentação. Configuração local somente em `.env.local` (ignorado pelo git).
-- Cloudflare Pages: conexão feita pelo proprietário no painel, no momento oportuno. Parâmetros fixados na seção 5.
+Auth: manter e-mail + senha (padrão). "Confirm email" pode ficar ligado; o remetente padrão do Supabase é gratuito e limitado a poucos envios por hora, suficiente para uso pessoal. Nenhum provedor de e-mail pago deve ser configurado.
 
-Sequência ao existir o projeto: configurar → aplicar migration → verificar tabelas, functions e policies/RLS → configurar variáveis do app → signup → login → logout → teste ponta a ponta → **parar** e aguardar autorização para a Etapa 3.
-
-Limitações do plano Free a ter em mente: projeto pausa após 7 dias sem uso (restauração manual, sem perda de dados); e-mail de confirmação pelo remetente padrão limitado a poucos envios por hora.
-
-Assim que o projeto existir: aplicar `supabase/migrations/20260902000001_fundacao.sql`, preencher `.env.local`, testar signup/login/logout ponta a ponta, conectar o Cloudflare Pages.
+Limitação do plano Free: projeto pausa após 7 dias sem uso (restauração manual, sem perda de dados).
