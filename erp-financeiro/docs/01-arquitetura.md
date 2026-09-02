@@ -348,4 +348,5 @@ Usuários internos (você, futuros membros) e clientes de portal são populaçõ
 - Os dois pilares — **Organização → Projetos → Pessoas → Vínculos → Contratos/Planos/Serviços** e **Lançamento → Movimentos → Saldo** — são independentes e integráveis. **Nunca haverá um segundo motor financeiro** para projetos; projetos geram lançamentos no motor único.
 - **Módulos de operação** (SERVNET, SERVIDOR, Navalha, PRECAUTEC, PORTO ODONTO), pessoas, vínculos, contratos, planos, faturas, boletos, Mercado Pago, WhatsApp, Oracle Code, portais, automações e integrações são **roadmap**. Não devem ser antecipados em nenhuma etapa do MVP.
 - Hospedagem: **Cloudflare Pages, plano Free**, aprovado. Nenhum recurso pago sem autorização.
-- Supabase: **plano gratuito**, sem upgrade automático, projeto novo separado do legado; nenhum projeto é excluído sem autorização explícita.
+- Supabase: **plano gratuito**, sem upgrade automático, em **conta Supabase nova e exclusiva** (Opção A, 02/09/2026); nenhum projeto legado é alterado, pausado ou excluído.
+- **Regra permanente de isolamento:** NOVO ERP = NOVO PROJETO + NOVO SUPABASE + BANCO ISOLADO. Integração futura com os sistemas existentes será por API, eventos ou mecanismo equivalente — **nunca** por compartilhamento direto de banco, tabelas ou migrations. Banco local serve apenas para testes, nunca como substituto definitivo.

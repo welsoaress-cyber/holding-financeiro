@@ -114,10 +114,13 @@ A criação foi recusada pela API: o plano Free permite **2 projetos ativos por 
 | `holding-financeiro` (lkymiclirksgqkeiglyw) | us-east-1 | Sistema legado em uso: 2.338 lançamentos, 101 clientes SERVNET, 8 planos, negócios, estoque, RH, leads do site, 113.690 logs de auditoria, tabelas `fin_*` | **Não** |
 | `navalha-app` (txmdehfleltpqokhyzex) | sa-east-1 | SaaS Navalha no Bigode: 4 barbearias, 4 barbeiros, 7 serviços, 24 disponibilidades, 1 agendamento, 3 convites de trial | **Não** (pré-lançamento/ativo) |
 
-Caminhos possíveis, todos sem custo, nenhum executado:
-- **A.** Criar o projeto novo em **outra conta Supabase** (outro e-mail) no plano Free. Mantém o legado intocado. O conector deste ambiente não alcança essa conta; a migration seria aplicada pelo SQL Editor (copiar/colar) ou pela CLI com token que você me forneceria.
-- **B.** **Pausar** temporariamente `navalha-app` se ele não estiver em uso real ainda (reversível no painel; enquanto pausado fica fora do ar).
-- **C.** Pausar `holding-financeiro` — **não recomendado**, é o sistema em produção.
+**Decisão oficial (02/09/2026): OPÇÃO A — nova conta Supabase, plano Free, exclusiva para o ERP.**
+- `holding-financeiro` e `navalha-app` permanecem ativos e **intocados**. Nenhuma alteração, pausa ou exclusão.
+- A conta e o projeto novos são criados pelo proprietário; o assistente recebe apenas URL e chave *publishable* quando existirem.
+- **Nenhuma credencial, token ou secret** é armazenada no código ou na documentação. Configuração local somente em `.env.local` (ignorado pelo git).
+- Cloudflare Pages: conexão feita pelo proprietário no painel, no momento oportuno. Parâmetros fixados na seção 5.
+
+Sequência ao existir o projeto: configurar → aplicar migration → verificar tabelas, functions e policies/RLS → configurar variáveis do app → signup → login → logout → teste ponta a ponta → **parar** e aguardar autorização para a Etapa 3.
 
 Limitações do plano Free a ter em mente: projeto pausa após 7 dias sem uso (restauração manual, sem perda de dados); e-mail de confirmação pelo remetente padrão limitado a poucos envios por hora.
 
