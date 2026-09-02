@@ -466,7 +466,7 @@ _['clientes']=async function(el){
               <option value="bimestral">Bimestral</option><option value="trimestral">Trimestral</option>
               <option value="semestral">Semestral</option><option value="anual">Anual</option>
             </select>
-            <input id="cl-sv-dia" class="cl-inp" type="number" min="1" max="28" value="10" title="Dia de vencimento">
+            <input id="cl-sv-dia" class="cl-inp" type="number" min="1" max="31" value="10" title="Dia de vencimento">
             <button type="button" id="cl-sv-add" style="background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:0 14px;font-weight:700;cursor:pointer">+</button>
           </div>
           <div style="font-size:11px;color:var(--text-muted,#9ca3af);margin-top:4px">Escolha negócio → plano → periodicidade → dia de vencimento e toque em +. As cobranças usam esses serviços.</div>

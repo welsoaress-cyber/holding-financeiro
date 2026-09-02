@@ -2,6 +2,9 @@
 
 Toda alteração no painel exige atualização de versão e registro aqui.
 
+## v2.9.76 — 2026-09-02
+- **Fix Clientes**: campo "Dia de vencimento" nos serviços contratados agora aceita até 31 (antes limitava a 28)
+
 ## v2.9.75 — 2026-09-01
 - **Fix Novo Cliente**: CPF deixou de ser campo obrigatório (label: "CPF (opcional)"); modal fecha ao clicar fora e é limpo ao navegar entre módulos (`data-gm-modal`)
 - **Receitas/Despesas**: adicionada opção "Fixa (mensal, sem prazo)" na periodicidade — campo Parcelas é ocultado; ao criar, gera 120 lançamentos mensais automaticamente
