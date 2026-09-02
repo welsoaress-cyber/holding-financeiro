@@ -1,6 +1,6 @@
 # ERP Financeiro Pessoal — Etapa 1: Arquitetura
 
-Status: **aguardando aprovação**. Projeto novo, independente do sistema legado deste repositório (nada é reaproveitado).
+Status: **aprovado em 02/09/2026; revisado em 02/09/2026 para a visão de plataforma multi-projeto (seção 11)**. Projeto novo, independente do sistema legado deste repositório (nada é reaproveitado).
 
 ---
 
@@ -62,7 +62,7 @@ Cada módulo contém suas telas, consultas, tipos e regras de apresentação. Um
 
 | # | Módulo | Prioridade | Depende de | Observação |
 |---|---|---|---|---|
-| 1 | **Núcleo** (auth, entidade, auditoria) | Essencial | — | Invisível ao usuário |
+| 1 | **Núcleo** (auth, organização, auditoria) | Essencial | — | Invisível ao usuário |
 | 2 | **Contas** | Essencial (MVP) | Núcleo | Contas bancárias, dinheiro, carteira |
 | 3 | **Categorias** | Essencial (MVP) | Núcleo | Hierárquicas desde o início |
 | 4 | **Lançamentos** | Essencial (MVP) — **coração** | Contas, Categorias | Receita, despesa, transferência |
@@ -125,11 +125,11 @@ No MVP, o formulário preenche as três com a mesma data por padrão; o usuário
 
 ## 4. Banco de dados (entidades principais)
 
-Convenções: chave `uuid`; `criado_em`, `atualizado_em` em tudo; valores em `numeric(14,2)`; toda tabela de negócio tem `entidade_id` protegido por RLS.
+Convenções: chave `uuid`; `criado_em`, `atualizado_em` em tudo; valores em `numeric(14,2)`; toda tabela de negócio tem `organizacao_id` protegido por RLS.
 
 ### 4.1 Núcleo
-- **entidades** — a "pessoa financeira" dona dos dados (hoje: você). Existe desde o início para permitir, no futuro, família/holding/segundo usuário **sem migrar dados**. Não é multiempresa; é apenas a chave de escopo.
-- **entidade_membros** — `entidade_id`, `usuario_id` (auth), `papel`.
+- **organizacoes** — o escopo raiz dos dados: a sua holding. Tudo (finanças pessoais e, no futuro, cada projeto/operação) vive dentro de **uma** organização. Existe desde o início para permitir múltiplos usuários **sem migrar dados**. *(Nome revisado na seção 11: antes chamava-se `entidades`; o termo foi liberado para não colidir com "entidade central de pessoa/cliente".)*
+- **organizacao_membros** — `organizacao_id`, `usuario_id` (auth), `papel`.
 - **auditoria** — `tabela`, `registro_id`, `acao`, `dados_antes`, `dados_depois`, `usuario_id`, `quando`. Preenchida por trigger.
 
 ### 4.2 Cadastros
@@ -152,14 +152,14 @@ Convenções: chave `uuid`; `criado_em`, `atualizado_em` em tudo; valores em `nu
 ### 4.5 Relacionamentos
 
 ```
-entidades 1──n contas
-entidades 1──n categorias (categorias n──1 categorias  [pai])
-entidades 1──n lancamentos n──1 categorias
+organizacoes 1──n contas
+organizacoes 1──n categorias (categorias n──1 categorias  [pai])
+organizacoes 1──n lancamentos n──1 categorias
 lancamentos 1──n movimentos n──1 contas
 ```
 
 ### 4.6 Reservado para fases futuras (não criado agora)
-`cartoes_faturas`, `centros_custo`, `orcamentos`, `recorrencias`, `extratos_importados`, `conciliacoes`, `contratos_emprestimo`, `bens_patrimonio`, `posicoes_investimento`, `anexos`, `tags`. Todos se ligam a `lancamentos`/`contas` existentes; nenhum exige alterar o núcleo.
+`cartoes_faturas`, `centros_custo`, `orcamentos`, `recorrencias`, `extratos_importados`, `conciliacoes`, `contratos_emprestimo`, `bens_patrimonio`, `posicoes_investimento`, `anexos`, `tags`. Todos se ligam a `lancamentos`/`contas` existentes; nenhum exige alterar o núcleo. As tabelas da plataforma multi-projeto (`projetos`, `pessoas`, `pessoa_projeto_vinculos`, `canais`, `integracoes`) estão na seção 11.
 
 ---
 
@@ -213,7 +213,7 @@ Layout: barra lateral fixa à esquerda, cabeçalho com seletor de período (mês
 - **Migrations versionadas:** cada etapa = uma migration numerada; nunca se edita migration aplicada.
 - **Módulos registrados:** o menu e as rotas são montados a partir de um registro (`app/modules.ts`). Adicionar módulo = adicionar pasta + uma linha no registro.
 - **Contratos públicos por módulo:** um módulo expõe `index.ts`; outros só consomem isso.
-- **Campos reservados já previstos:** `origem` no lançamento, tipo `cartao_credito` na conta, `entidade_id` em tudo — evitam migrações de dados nas fases 2–3.
+- **Campos reservados já previstos:** `origem` no lançamento, tipo `cartao_credito` na conta, `organizacao_id` em tudo — evitam migrações de dados nas fases 2–3. Os campos de dimensão da plataforma (`projeto_id`, `pessoa_id`, `documento_tipo/documento_id`) são **colunas nulas adicionadas depois**, sem quebrar nada (seção 11.4).
 - **Views como API de leitura:** relatórios e dashboards leem views; mudar a implementação interna não quebra telas.
 - **Testes de regra no banco:** cada regra da seção 5 ganha um teste SQL (pgTAP) antes de o módulo ser considerado pronto.
 
@@ -224,7 +224,7 @@ Layout: barra lateral fixa à esquerda, cabeçalho com seletor de período (mês
 | Etapa | Entrega | Critério de pronto |
 |---|---|---|
 | 1 | Arquitetura (este documento) | Aprovação sua |
-| 2 | Fundação: projeto Supabase novo, app Vite, auth, `entidades`, `auditoria`, layout com menu, migration inicial | Login funciona; menu vazio profissional |
+| 2 | Fundação: projeto Supabase novo, app Vite, auth, `organizacoes`, `auditoria`, layout com menu, migration inicial | Login funciona; menu vazio profissional |
 | 3 | Contas | CRUD, inativação, saldo calculado por view (com saldo inicial) |
 | 4 | Categorias | CRUD hierárquico, categorias padrão iniciais (semente) |
 | 5 | Lançamentos | Receita, despesa, transferência atômica, previsto/efetivado, cancelamento auditado, filtros, aviso de duplicidade |
@@ -249,8 +249,97 @@ Sequência mantida como você propôs. Única troca sugerida: **Etapa 2 (Fundaç
 
 ## 10. Decisões que precisam da sua confirmação
 
-1. **Projeto Supabase novo** (separado do legado). Recomendado; evita contaminação de esquema e RLS.
+1. **Projeto Supabase novo** (separado do legado). Recomendado; evita contaminação de esquema e RLS. *(Aprovado.)*
 2. **Pasta `erp-financeiro/` neste repositório** por enquanto. Se preferir, migro para repositório próprio na Etapa 2.
 3. **Stack**: React + TypeScript + Vite + Supabase + Netlify.
 4. **Modelo Lançamento + Movimentos** com transferência = 2 movimentos.
 5. **Sem exclusão física** de lançamento efetivado (cancelamento auditado).
+
+---
+
+## 11. Revisão: plataforma central multi-projeto (02/09/2026)
+
+Contexto recebido após a aprovação: o ERP deverá, no futuro, administrar várias operações (SERVNET, SERVIDOR, Navalha no Bigode, PRECAUTEC, PORTO ODONTO, outras) com um **cadastro central de pessoas**, financeiro centralizado e também separado por projeto, canais/telefones por projeto, integrações de pagamento e automações por projeto e portais por projeto. **Nada disso é implementado agora.** Esta seção fixa os conceitos e garante que a fundação não bloqueie essa evolução.
+
+### 11.1 Conceitos (vocabulário definitivo)
+
+| Conceito | Significado | Pertence a |
+|---|---|---|
+| **Organização** | Escopo raiz: a sua holding. Uma só, hoje. Contém finanças pessoais e todos os projetos. | Núcleo |
+| **Projeto / Operação** | Uma unidade de negócio: SERVNET, SERVIDOR, Navalha… Cada um é um **módulo de operação** plugado ao núcleo. | Núcleo (o cadastro) / Módulo (as regras) |
+| **Pessoa** | Cadastro único de pessoa física ou jurídica (cliente, fornecedor, contato). João existe **uma vez**. | Núcleo |
+| **Vínculo** | Relação de uma pessoa com um projeto e um papel (João é *cliente* da SERVNET e do SERVIDOR). | Núcleo (o vínculo) |
+| **Contrato / Plano / Serviço / Fatura** | O que a pessoa tem dentro de um projeto. Específico de cada operação. | Módulo de operação |
+| **Canal** | Meio de comunicação identificado (número WhatsApp, e-mail, telefone) ligado a um projeto. | Núcleo (cadastro) / Comunicação (uso) |
+| **Lançamento / Movimento / Conta** | Motor financeiro único, já aprovado. | Financeiro (núcleo) |
+
+Regras: **o núcleo nunca depende de um projeto**; um projeto depende do núcleo; um projeto nunca depende de outro projeto; qualquer projeto pode ser removido sem tocar no núcleo.
+
+### 11.2 Camadas da plataforma
+
+```
+┌─────────────────────────── MÓDULOS DE OPERAÇÃO (futuro) ───────────────────────────┐
+│  servnet/        servidor/       navalha/        precautec/       portoodonto/       │
+│  contratos       serviços        (integração)    …                …                  │
+│  planos          faturas                                                             │
+│  portal          portal                                                              │
+└──────────────┬──────────────────────┬──────────────────────────────┬─────────────────┘
+               │ usam                 │ geram lançamentos             │ usam
+┌──────────────▼──────────────────────▼──────────────────────────────▼─────────────────┐
+│ NÚCLEO DA PLATAFORMA                                                                 │
+│  Organização · Projetos (cadastro) · Pessoas · Vínculos · Canais · Auditoria · Auth  │
+│  FINANCEIRO: Contas · Categorias · Lançamentos · Movimentos                          │
+│  (futuro) Comunicação · Integrações de pagamento · Automações · Conciliação          │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.3 Entidades futuras do núcleo (não criar agora)
+
+- **projetos** — `organizacao_id`, `nome`, `codigo` (ex.: `servnet`), `ativo`. O cadastro fica no núcleo; as regras ficam no módulo. Um projeto pode ter suas próprias contas bancárias (`contas.projeto_id`) ou usar contas centrais.
+- **pessoas** — `organizacao_id`, `tipo` (física/jurídica), `nome`, `documento` (CPF/CNPJ, único por organização), `usuario_id` (nulo; preenchido quando a pessoa tiver login em um portal). Contatos (telefones, e-mails, endereços) em tabelas filhas.
+- **pessoa_projeto_vinculos** — `pessoa_id`, `projeto_id`, `papel` (cliente, fornecedor, parceiro…), `status`, `desde`. Uma pessoa, N projetos.
+- **canais** — `projeto_id`, `tipo` (whatsapp, email, telefone, site), `identificador` (o número/endereço), `ativo`. Responde "qual telefone pertence a qual projeto".
+- **integracoes** — `projeto_id`, `provedor` (mercadopago, …), configuração. Eventos recebidos (pagamentos) entram numa tabela própria e são **conciliados** com lançamentos; nunca criam saldo por fora.
+- **comunicacoes** — `projeto_id`, `pessoa_id`, `canal_id`, `referencia` (documento que originou), conteúdo, direção, status. Base para automações "3 dias antes / no dia / 3 dias depois".
+
+### 11.4 Extensões do motor financeiro (colunas nulas, adicionadas quando o módulo chegar)
+
+| Tabela | Coluna futura | Significado | Impacto |
+|---|---|---|---|
+| `lancamentos` | `projeto_id` (nulo) | A qual operação a receita/despesa pertence. Nulo = pessoal/central. | Dimensão de relatório; nenhuma regra de saldo muda |
+| `lancamentos` | `pessoa_id` (nulo) | Contraparte (quem pagou / quem recebeu). | Contas a receber por cliente |
+| `lancamentos` | `documento_tipo` + `documento_id` (nulos) | Documento gerador (fatura SERVNET, parcela de contrato…). Referência genérica, sem FK direta a tabelas de módulo. | Rastreabilidade sem acoplar o núcleo a um projeto |
+| `contas` | `projeto_id` (nulo) | Conta bancária de uma operação. Nulo = central/pessoal. | Saldo por projeto = soma das contas do projeto |
+
+Com isso: **financeiro centralizado** = todos os lançamentos da organização; **financeiro por projeto** = filtro por `projeto_id`; transferência entre conta pessoal e conta de projeto = transferência comum (2 movimentos), visível como aporte/retirada nos relatórios por projeto. O modelo Lançamento → Movimentos → Saldo **não muda**.
+
+### 11.5 Portais e RLS
+
+Usuários internos (você, futuros membros) e clientes de portal são populações diferentes. Regra: dados expostos a um portal ficam em **views dedicadas por projeto** (ex.: `servnet_portal.faturas`) com policies baseadas em `pessoas.usuario_id = auth.uid()`. As tabelas do núcleo continuam protegidas por `organizacao_membros`. Um cliente de portal **nunca** recebe policy nas tabelas do núcleo.
+
+### 11.6 Organização do código por operação
+
+- Banco: núcleo no schema `public`; cada operação em **schema próprio** (`servnet`, `servidor`, …) com FKs para `public.pessoas` / `public.projetos`. Remover um projeto = remover um schema.
+- App: `src/modules/<nome>` para módulos do núcleo; `src/operacoes/<nome>` para módulos de operação, registrados no mesmo registro de módulos. Portais são **apps separados** (`portais/<nome>`), compartilhando o mesmo banco e o mesmo motor.
+
+### 11.7 Verificação dos 11 requisitos
+
+| # | Requisito | Situação |
+|---|---|---|
+| 1 | Múltiplos projetos/operações | `projetos` no núcleo + schema por operação. Permite. |
+| 2 | Pessoa cliente de vários projetos | `pessoas` única + `pessoa_projeto_vinculos`. Permite. |
+| 3 | Pessoa com vários contratos | Contratos no módulo da operação, N por vínculo. Permite. |
+| 4 | Pessoa com vários planos/serviços | Idem, dentro do módulo. Permite. |
+| 5 | Telefones/canais por projeto | `canais` com `projeto_id`. Permite. |
+| 6 | Financeiro centralizado | Um ledger por organização. Já é assim. |
+| 7 | Financeiro por projeto | `lancamentos.projeto_id` + `contas.projeto_id`. Permite. |
+| 8 | Integrações de pagamento por projeto | `integracoes` por projeto + conciliação com lançamentos. Permite. |
+| 9 | Automações por projeto | `comunicacoes` + regras por projeto. Permite. |
+| 10 | Portais por projeto | Views/RLS dedicadas + app separado. Permite. |
+| 11 | Novos projetos no futuro | Cadastro em `projetos` + novo schema + novo módulo registrado. Permite. |
+
+### 11.8 O que muda no que já foi aprovado/construído
+
+1. **Renomear** `entidades` → `organizacoes` e `entidade_membros` → `organizacao_membros` (migration e app da Fundação). Motivo: "entidade" passará a ser usado no sentido de pessoa/cliente; manter os dois sentidos geraria confusão permanente. Custo hoje: minutos, nenhum dado existe. Custo depois: migração com dados.
+2. Nenhuma outra alteração na Fundação. Nenhuma tabela nova agora.
+3. O MVP (Etapas 3–6) permanece exatamente igual.

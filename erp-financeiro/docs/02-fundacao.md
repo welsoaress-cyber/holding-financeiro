@@ -2,6 +2,8 @@
 
 Status: **implementada e testada localmente; aguardando validação e 2 decisões suas** (ver seção 6).
 
+> **Pendência aprovada em documentação, ainda não aplicada no código:** renomear `entidades` → `organizacoes` e `entidade_membros` → `organizacao_membros` (ver `01-arquitetura.md`, seção 11.8). Será feito na retomada da Fundação, antes de aplicar a migration no Supabase.
+
 ## 1. O que existe
 
 ### Banco (`supabase/migrations/20260902000001_fundacao.sql`)
