@@ -105,7 +105,7 @@ Aprovado em 02/09/2026. Regra permanente: nenhum recurso pago habilitado.
 Sem o projeto Supabase, o deploy exibirá a tela "Supabase não configurado" (comportamento esperado).
 
 ## 6. Supabase — projeto novo criado (conta exclusiva, plano Free)
-Projeto criado pelo proprietário em 02/09/2026 na nova conta (Opção A). URL: `https://sldhspnovzubiyccnxk.supabase.co`. A chave *publishable* fica apenas em `app/.env.local` (ignorado pelo git) e nas variáveis do Cloudflare Pages; nunca no repositório.
+Projeto criado pelo proprietário em 02/09/2026 na nova conta (Opção A). URL: `https://slrdhspnovzubiyccnnk.supabase.co`. A chave *publishable* fica apenas em `app/.env.local` (ignorado pelo git) e nas variáveis do Cloudflare Pages; nunca no repositório.
 
 **Limitação do ambiente de desenvolvimento assistido:** a rede do ambiente remoto bloqueia o host do novo projeto e o conector Supabase está vinculado à conta antiga. Portanto, aplicar a migration, verificar o banco e rodar o teste ponta a ponta são executados **pelo proprietário**, com os artefatos prontos abaixo.
 
