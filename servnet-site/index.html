@@ -1,213 +1,1682 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800;12..96,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18397898966"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18397898966');
+</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ServNet — Internet Fibra Óptica em Lençóis Paulista</title>
-<meta name="description" content="ServNet: Internet fibra óptica 100% no Jardim Moraes Prado. Planos a partir de R$60/mês. Velocidade real, suporte local.">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600;700;900&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Internet fibra óptica 100% no Jardim Moraes Prado a partir de R$ 60/mês. Instalação grátis, Wi-Fi incluso e suporte local via WhatsApp. Assine a Servnet!">
+<meta property="og:title" content="Servnet — Internet Fibra no Jardim Moraes Prado">
+<meta property="og:description" content="Planos de 100 a 300 Mbps a partir de R$ 60/mês. Instalação grátis, Wi-Fi incluso e atendimento de vizinho pra vizinho.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://servnet.net.br/">
+<meta property="og:image" content="https://servnet.net.br/faisca.png">
+<meta property="og:locale" content="pt_BR">
+<link rel="icon" type="image/svg+xml" href="/favicon-site.svg" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TelecommunicationService",
+  "@id": "https://servnet.net.br/#business",
+  "name": "Servnet",
+  "description": "Provedor de internet fibra óptica no Jardim Moraes Prado. Planos de 100 a 300 Mbps a partir de R$ 60/mês, instalação grátis e suporte via WhatsApp.",
+  "url": "https://servnet.net.br",
+  "telephone": "+55-11-96696-1138",
+  "priceRange": "R$60–R$120",
+  "image": "https://servnet.net.br/faisca.png",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Jardim Moraes Prado",
+    "addressLocality": "São Paulo",
+    "addressRegion": "SP",
+    "addressCountry": "BR"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": -23.6,
+    "longitude": -46.7
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+    "opens": "08:00",
+    "closes": "18:00"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "+55-11-96696-1138",
+    "contactType": "customer support",
+    "availableLanguage": "Portuguese",
+    "contactOption": "TollFree"
+  },
+  "sameAs": ["https://wa.me/5511966961138"]
+}
+</script>
+<link rel="canonical" href="https://servnet.net.br/">
+<title>Servnet — Internet Fibra no Jardim Moraes Prado</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{font-family:'Inter',system-ui,sans-serif;background:#030F18;color:#CDEAF2;overflow-x:hidden;}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+/* ===== TOKENS (dark-only brand) ===== */
+:root {
+  --pool:      #00C4D8;
+  --pool-hi:   #2DDAE8;
+  --pool-dim:  rgba(0,196,216,0.1);
+  --ember:     #FFB829;
+  --bg:        #020B12;
+  --surface:   #071826;
+  --card:      #0C2135;
+  --text:      #CCE8F2;
+  --text-2:    #557F90;
+  --text-3:    #2B4E5C;
+  --border:    rgba(0,196,216,0.12);
+  --nav-bg:    rgba(2,11,18,0.92);
+}
 
-/* Canvas fixo — fundo do site inteiro */
-#bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none;}
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.6; overflow-x: hidden;
+}
+a { color: inherit; }
+button, input, select { font-family: inherit; font-size: inherit; }
+:focus-visible { outline: 2px solid var(--pool); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
 
-/* Todo conteúdo fica sobre o canvas */
-.nav,.hero,.section{position:relative;z-index:1;}
+/* ===== NAV ===== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 62px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 max(5vw, 1.5rem);
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-size: 1.4rem; font-weight: 900; letter-spacing: 0.06em;
+  text-decoration: none; color: var(--pool);
+  text-shadow: 0 0 20px rgba(0,196,216,0.4);
+}
+.nav-logo span { color: var(--text); font-weight: 700; opacity: 0.55; }
+.nav-links { display: flex; gap: 2.25rem; list-style: none; }
+.nav-links a {
+  text-decoration: none; font-size: 0.95rem; font-weight: 500;
+  color: var(--text-2); transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--pool); }
+.nav-actions { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.nav-portal-btn {
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--pool); border-radius: 5px;
+  color: var(--pool); font-weight: 600; font-size: 0.85rem;
+  text-decoration: none; transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-portal-btn:hover { background: rgba(0,196,216,0.1); }
+.nav-btn {
+  padding: 0.5rem 1.25rem;
+  background: var(--pool); color: #fff;
+  border-radius: 5px; font-weight: 700; font-size: 0.9rem;
+  text-decoration: none; transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.nav-btn:hover { opacity: 0.84; }
 
-/* ── NAV ── */
-.nav{position:fixed;top:0;left:0;right:0;z-index:100;height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 max(5vw,1.5rem);background:rgba(3,15,24,0.82);backdrop-filter:blur(22px);border-bottom:1px solid rgba(0,196,216,0.08);}
-.nav-logo{font-size:1.35rem;font-weight:900;letter-spacing:.09em;color:#00C4D8;}
-.nav-logo span{color:#CDEAF2;font-weight:600;opacity:.50;}
-.nav-links{display:flex;gap:2.25rem;list-style:none;}
-.nav-links a{text-decoration:none;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4A8898;transition:color .15s;}
-.nav-links a:hover{color:#00C4D8;}
-.nav-actions{display:flex;align-items:center;gap:.75rem;}
-.nav-portal{padding:.42rem 1rem;border:1.5px solid rgba(0,196,216,0.40);border-radius:4px;color:#00C4D8;font-weight:600;font-size:.82rem;text-decoration:none;}
-.nav-cta{padding:.5rem 1.25rem;background:#00C4D8;color:#000;border-radius:4px;font-weight:800;font-size:.85rem;border:none;cursor:pointer;font-family:inherit;}
-.nav-cta:hover{opacity:.84;}
+/* ===== HERO — always dark ===== */
+.hero {
+  position: relative;
+  display: grid; grid-template-columns: 1fr 1fr;
+  align-items: center; gap: 3rem;
+  min-height: 100vh;
+  padding: 100px max(5vw, 1.5rem) 80px;
+  background: radial-gradient(ellipse 60% 80% at 15% 50%, rgba(0,196,216,0.08) 0%, transparent 65%), rgba(2,11,18,0.82);
+  overflow: hidden;
+}
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; padding-bottom: 3rem; }
+  .hero-dashboard { display: none; }
+}
+#hero-canvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero-inner { position: relative; z-index: 1; }
+/* hero mobile handled above */
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--pool-hi);
+  border: 1px solid rgba(0,196,216,0.32);
+  border-radius: 100px; padding: 0.28rem 0.88rem;
+  margin-bottom: 1.8rem;
+}
+.hero-tag-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--pool); flex-shrink: 0;
+  animation: blink 2.2s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-size: clamp(2.6rem, 5.5vw, 4.8rem);
+  font-weight: 900; line-height: 1.03; letter-spacing: -0.04em;
+  color: #CCE8F2; text-wrap: balance; margin-bottom: 1.4rem;
+}
+.hero h1 em { font-style: normal; color: var(--pool); text-shadow: 0 0 38px rgba(0,196,216,0.45); }
+.hero-lead {
+  font-size: 1.1rem; line-height: 1.8; color: #4A8898;
+  max-width: 460px; margin-bottom: 2.5rem;
+}
+.hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.btn {
+  display: inline-block; text-decoration: none;
+  padding: 0.82rem 2rem; border-radius: 5px;
+  font-weight: 700; font-size: 0.9rem; border: none;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  cursor: pointer;
+}
+.btn-fill {
+  background: var(--pool); color: #fff;
+  box-shadow: 0 0 28px rgba(0,196,216,0.35);
+}
+.btn-fill:hover { transform: translateY(-2px); box-shadow: 0 0 44px rgba(0,196,216,0.55); }
+.btn-line {
+  background: transparent; color: #C5E8F2;
+  border: 1.5px solid rgba(0,196,216,0.38);
+}
+.btn-line:hover { border-color: var(--pool); color: var(--pool-hi); }
 
-/* ── HERO — fundo transparente, canvas aparece ── */
-.hero{min-height:100vh;display:flex;align-items:center;padding:96px max(5vw,1.5rem) 80px;background:transparent;}
-.hero-inner{max-width:580px;}
+/* ===== HERO DASHBOARD PANEL ===== */
+.hero-dashboard {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;
+}
+.dash-panel {
+  position: relative; width: 100%; max-width: 380px;
+  background: rgba(7,24,38,0.88);
+  border: 1px solid rgba(0,196,216,0.22);
+  border-radius: 12px; padding: 1.5rem 1.5rem 1.4rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 60px rgba(0,196,216,0.10), inset 0 1px 0 rgba(0,196,216,0.08);
+  --dl-w: 0%; --ul-w: 0%;
+}
+.dash-panel::before, .dash-panel::after {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  border-color: rgba(0,196,216,0.4); border-style: solid;
+  pointer-events: none;
+}
+.dash-panel::before { top: 0; left: 0; border-width: 1.5px 0 0 1.5px; border-radius: 4px 0 0 0; }
+.dash-panel::after  { bottom: 0; right: 0; border-width: 0 1.5px 1.5px 0; border-radius: 0 0 4px 0; }
+.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem; }
+.dash-status { display: flex; align-items: center; gap: .5rem; font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--pool); }
+.dash-dot-live { width: 6px; height: 6px; border-radius: 50%; background: #25D366; box-shadow: 0 0 6px #25D366; animation: blink 2s ease-in-out infinite; }
+.dash-loc { font-size: .68rem; color: var(--text-2); letter-spacing: .04em; }
+.dash-row { display: grid; grid-template-columns: 1.8rem 1fr auto; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.dash-ico { font-size: .9rem; font-weight: 900; color: var(--pool); font-family: monospace; }
+.dash-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-2); margin-bottom: .35rem; }
+.dash-bar { height: 4px; background: rgba(0,196,216,0.1); border-radius: 2px; overflow: hidden; }
+.dash-fill { height: 100%; background: linear-gradient(90deg, #00C4D8, #2DDAE8); border-radius: 2px; width: var(--dl-w); transition: width 1.8s cubic-bezier(.22,.61,.36,1); }
+.dash-fill.up-fill { background: linear-gradient(90deg, #00A8D8, #00C4D8); width: var(--ul-w); }
+.dash-val { font-family: 'DM Sans', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dash-val small { font-size: .62rem; font-weight: 400; color: var(--text-2); }
+.dash-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: .5rem; margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+.dash-metric { text-align: center; }
+.dash-metric-val { font-family: 'DM Sans', monospace; font-size: 1rem; font-weight: 700; color: var(--pool); font-variant-numeric: tabular-nums; }
+.dash-metric-key { font-size: .62rem; color: var(--text-2); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
+/* speed cards strip in hero */
+.hero-speeds { display: flex; gap: .6rem; }
+.speed-chip {
+  padding: .3rem .8rem; background: rgba(0,196,216,0.07);
+  border: 1px solid rgba(0,196,216,0.18); border-radius: 100px;
+  font-size: .78rem; font-weight: 700; color: var(--pool); letter-spacing: .02em;
+  white-space: nowrap;
+}
+.speed-chip.active { background: rgba(0,196,216,0.14); border-color: rgba(0,196,216,0.40); }
 
-/* sombra suave atrás do texto para legibilidade */
-.hero-inner::before{content:'';position:absolute;inset:-2rem -3rem;background:radial-gradient(ellipse 80% 80% at 40% 50%,rgba(3,15,24,0.70) 0%,transparent 100%);border-radius:8px;z-index:-1;pointer-events:none;}
-.hero-inner{position:relative;}
+/* ===== TRUST STRIP ===== */
+.trust-strip {
+  position: relative; z-index: 1;
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 0;
+  background: rgba(0,196,216,0.06);
+  border-top: 1px solid rgba(0,196,216,0.12);
+  border-bottom: 1px solid rgba(0,196,216,0.12);
+  padding: .9rem max(5vw,1.5rem);
+}
+.trust-item {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .3rem 1.5rem;
+  font-size: .82rem; font-weight: 600; color: var(--text-2);
+  border-right: 1px solid rgba(0,196,216,0.12);
+}
+.trust-item:last-child { border-right: none; }
+.trust-icon { font-size: 1rem; }
+@media (max-width: 600px) {
+  .trust-strip { gap: 0; padding: .6rem 1rem; }
+  .trust-item { padding: .3rem .8rem; font-size: .76rem; border-right: none; }
+}
 
-.tag{display:inline-flex;align-items:center;gap:.55rem;font-size:.72rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#2DDAE8;border:1px solid rgba(0,196,216,0.28);border-radius:100px;padding:.26rem .88rem;margin-bottom:2rem;}
-.tag-dot{width:6px;height:6px;border-radius:50%;background:#00C4D8;flex-shrink:0;animation:blink 2.4s ease-in-out infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-h1{font-size:clamp(2.6rem,5.5vw,4.8rem);font-weight:900;line-height:1.02;letter-spacing:-0.045em;color:#fff;text-wrap:balance;margin-bottom:1.5rem;text-shadow:0 2px 40px rgba(0,0,0,0.5);}
-h1 em{font-style:normal;color:#00C4D8;}
-.lead{font-size:1.05rem;line-height:1.85;font-weight:300;color:#7AAAB8;max-width:440px;margin-bottom:2.5rem;}
-.cta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;}
-.btn{display:inline-block;text-decoration:none;padding:.8rem 1.85rem;border-radius:4px;font-weight:700;font-size:.88rem;border:none;transition:transform .15s,opacity .15s;cursor:pointer;font-family:inherit;}
-.btn-f{background:#00C4D8;color:#000;}
-.btn-f:hover{opacity:.84;transform:translateY(-1px);}
-.btn-g{border:1.5px solid rgba(0,196,216,0.38);color:#00C4D8;background:transparent;}
-.btn-g:hover{background:rgba(0,196,216,0.07);}
-.stat-row{display:flex;gap:2.5rem;margin-top:2.8rem;padding-top:2.5rem;border-top:1px solid rgba(0,196,216,0.10);}
-.stat-v{font-size:1.9rem;font-weight:900;color:#00C4D8;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;}
-.stat-l{font-size:.72rem;color:#4A8898;text-transform:uppercase;letter-spacing:.12em;margin-top:.28rem;}
+/* ===== SECTION BASE ===== */
+.section { padding: 5.5rem max(5vw, 1.5rem); }
+.section-head { max-width: 680px; margin-bottom: 3.25rem; }
+.eyebrow {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--pool);
+  display: flex; align-items: center; gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+.eyebrow::before {
+  content: ''; display: block; width: 22px; height: 1.5px; background: var(--pool);
+}
+.section-title {
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem); font-weight: 800;
+  line-height: 1.1; letter-spacing: -0.03em; text-wrap: balance;
+  margin-bottom: 0.8rem;
+}
+.section-sub { font-size: 1.05rem; color: var(--text-2); line-height: 1.8; }
 
-/* ── SEÇÕES — fundo escuro semi-transparente deixa canvas transparecer ── */
-.section{padding:5rem max(5vw,1.5rem);background:rgba(3,15,24,0.88);border-top:1px solid rgba(0,196,216,0.06);}
-.section-alt{background:rgba(6,21,32,0.90);}
-.section-head{text-align:center;margin-bottom:3.5rem;}
-.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#2DDAE8;display:block;margin-bottom:.9rem;}
-.section-head h2{font-size:clamp(1.8rem,4vw,3rem);font-weight:900;letter-spacing:-0.035em;color:#fff;}
+/* ===== PLANS ===== */
+.plans-section { background: var(--bg); }
+.plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.plan-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.75rem 1.5rem 1.5rem;
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.plan-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 10%, var(--pool) 50%, transparent 90%);
+  opacity: 0.35;
+}
+.plan-card.hot {
+  border-color: rgba(0,196,216,0.65);
+  background: linear-gradient(170deg, rgba(0,196,216,0.13) 0%, var(--card) 48%);
+  box-shadow:
+    0 0 0 1px rgba(0,196,216,0.5),
+    0 0 48px rgba(0,196,216,0.28),
+    0 0 110px rgba(0,196,216,0.1);
+  transform: translateY(-12px); z-index: 2; padding-top: 2.25rem;
+}
+.plan-card.hot::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 230px;
+  background: radial-gradient(ellipse 85% 100% at 50% 0%,
+    rgba(0,196,216,0.22) 0%, rgba(0,196,216,0.06) 50%, transparent 100%);
+  pointer-events: none;
+}
+.plan-card.hot::after {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent 5%, var(--pool) 50%, transparent 95%);
+  box-shadow: 0 0 22px rgba(0,196,216,0.85), 0 0 6px #fff;
+}
+.plan-card.hot .plan-mbps {
+  font-size: clamp(2.9rem, 4vw, 3.8rem);
+  text-shadow: 0 0 40px rgba(0,196,216,0.65), 0 0 12px rgba(0,196,216,0.4);
+}
+.plan-card.hot .plan-val { text-shadow: 0 0 28px rgba(0,196,216,0.28); }
+.plan-card:hover { transform: translateY(-5px); box-shadow: 0 14px 48px rgba(0,196,216,0.13); }
+.plan-card.hot:hover { transform: translateY(-17px); }
+@media (max-width: 560px) {
+  .plan-card.hot { transform: none; }
+  .plan-card.hot:hover { transform: translateY(-5px); }
+}
+.plan-badge {
+  position: absolute; top: 0.9rem; right: 0.9rem;
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #030F18;
+  background: var(--pool); border-radius: 100px;
+  padding: 0.22rem 0.65rem;
+  box-shadow: 0 0 12px rgba(0,196,216,0.55); white-space: nowrap;
+}
+.plan-name-badge {
+  font-size: 0.78rem; font-weight: 700; color: var(--text-2);
+  margin-bottom: 0.5rem; letter-spacing: 0.04em;
+}
+.plan-mbps {
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-size: clamp(2.8rem, 4vw, 3.6rem);
+  font-weight: 900; line-height: 1; color: var(--pool); letter-spacing: -0.03em;
+}
+.plan-speed-bar { height: 3px; background: rgba(0,196,216,0.1); border-radius: 2px; margin: .8rem 0 .4rem; overflow: hidden; }
+.plan-speed-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #00C4D8, #2DDAE8); transition: width 1s ease; }
+.plan-card.hot .plan-speed-fill { background: linear-gradient(90deg, #00C4D8, #2DDAE8, #FFB829); }
+.plan-unit { font-size: 0.88rem; font-weight: 400; color: var(--text-2); margin-left: 0.1em; }
+.plan-fiber {
+  font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-2); margin-top: 0.3rem; margin-bottom: 1.4rem;
+}
+.plan-por-apenas { font-size: 0.88rem; color: var(--text-2); margin-bottom: 0.2rem; }
+.plan-pricing { display: flex; align-items: baseline; gap: 0.2rem; }
+.plan-r { font-size: 0.9rem; color: var(--text-2); margin-top: 3px; }
+.plan-val {
+  font-size: clamp(1.9rem, 2.8vw, 2.5rem); font-weight: 900;
+  letter-spacing: -0.04em; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.plan-mo { font-size: 0.88rem; color: var(--text-2); }
+.plan-sep { height: 1px; background: var(--border); margin: 1.4rem 0; }
+.plan-features {
+  list-style: none; display: flex; flex-direction: column; gap: 0.55rem;
+  flex: 1; margin-bottom: 1.6rem;
+}
+.plan-features li {
+  font-size: 0.92rem; color: var(--text-2);
+  display: flex; align-items: center; gap: 0.55rem;
+}
+.feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pool); flex-shrink: 0; }
+.plan-action {
+  width: 100%; padding: 0.8rem 1rem;
+  border-radius: 5px; font-weight: 700; font-size: 1rem;
+  cursor: pointer; text-align: center; text-decoration: none;
+  display: block; transition: all 0.15s;
+}
+.action-line { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+.action-line:hover { border-color: var(--pool); color: var(--pool); }
+.action-fill {
+  background: var(--pool); color: #fff; border: none;
+  box-shadow: 0 0 20px rgba(0,196,216,0.3);
+}
+.action-fill:hover { opacity: 0.88; box-shadow: 0 0 32px rgba(0,196,216,0.48); }
+.plan-fine {
+  font-size: 0.78rem; color: var(--text-2);
+  text-align: center; margin-top: 0.7rem; line-height: 1.5; opacity: 0.8;
+}
 
-/* Planos */
-.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;max-width:980px;margin:0 auto;}
-.plan{background:rgba(9,28,42,0.80);border:1.5px solid rgba(0,196,216,0.12);border-radius:10px;padding:2rem 1.75rem;}
-.plan.hot{border-color:rgba(0,196,216,0.40);}
-.plan-name{font-size:.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#4A8898;margin-bottom:.6rem;}
-.plan-speed{font-size:2.6rem;font-weight:900;color:#00C4D8;letter-spacing:-0.04em;line-height:1;}
-.plan-speed span{font-size:1rem;font-weight:400;color:#4A8898;}
-.plan-price{font-size:1.5rem;font-weight:700;color:#fff;margin:1rem 0 1.5rem;letter-spacing:-0.02em;}
-.plan-price small{font-size:.78rem;font-weight:400;color:#4A8898;}
-.plan-btn{display:block;text-align:center;padding:.7rem;border-radius:4px;font-weight:700;font-size:.85rem;text-decoration:none;border:1.5px solid rgba(0,196,216,0.35);color:#00C4D8;transition:background .15s;}
-.plan.hot .plan-btn{background:#00C4D8;color:#000;border-color:#00C4D8;}
-.plan-btn:hover{background:rgba(0,196,216,0.08);}
-.plan.hot .plan-btn:hover{opacity:.84;}
+/* ===== DIFERENCIAIS ===== */
+.diffs-section { background: var(--surface); }
+.diff-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+}
+@media (max-width: 640px) { .diff-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 400px) { .diff-grid { grid-template-columns: 1fr; } }
+.diff-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.75rem 1.5rem 1.5rem;
+  display: flex; flex-direction: column;
+  align-items: flex-start; text-align: left; gap: .5rem;
+  transition: border-color 0.18s, transform 0.18s;
+}
+.diff-card:hover { border-color: rgba(0,196,216,0.40); transform: translateY(-3px); }
+.diff-ico { width: 38px; height: 38px; color: var(--pool); margin-bottom: .35rem; }
+.diff-ico svg { width: 100%; height: 100%; }
+.diff-label { font-size: 0.95rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+.diff-desc { font-size: 0.82rem; color: var(--text-2); line-height: 1.6; }
 
-/* Cobertura */
-.cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;max-width:900px;margin:0 auto;align-items:center;}
-.cover-text p{font-size:1.05rem;line-height:1.8;color:#4A8898;margin-bottom:1.5rem;}
-.cover-list{list-style:none;display:flex;flex-direction:column;gap:.6rem;}
-.cover-list li{display:flex;align-items:center;gap:.7rem;font-size:.92rem;color:#CDEAF2;}
-.cover-list li::before{content:'';width:7px;height:7px;border-radius:50%;background:#00C4D8;flex-shrink:0;}
+@media (max-width: 900px) { .diff-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px) { .diff-grid { grid-template-columns: repeat(2, 1fr); } }
 
-/* Footer */
-footer{background:rgba(3,15,24,0.95);border-top:1px solid rgba(0,196,216,0.08);padding:2.5rem max(5vw,1.5rem);display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;}
-footer .logo{font-size:1.1rem;font-weight:900;letter-spacing:.09em;color:#00C4D8;}
-footer .logo span{color:#CDEAF2;font-weight:600;opacity:.4;}
-footer p{font-size:.78rem;color:#4A8898;}
+/* ===== CTA BANNER ===== */
+.cta-banner {
+  position: relative; overflow: hidden;
+  padding: 5rem max(5vw, 1.5rem);
+  background: linear-gradient(135deg, #004D5C 0%, #007A90 45%, #00A8BC 100%);
+  text-align: center;
+}
+.cta-banner::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    -55deg, transparent, transparent 38px,
+    rgba(255,255,255,0.04) 38px, rgba(255,255,255,0.04) 39px);
+  pointer-events: none;
+}
+.cta-banner::after {
+  content: ''; position: absolute;
+  top: -60px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-banner-inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 1.25rem;
+  max-width: 680px; margin: 0 auto;
+}
+.cta-banner-tag {
+  display: inline-block;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 100px; padding: 0.28rem 0.9rem;
+}
+.cta-banner h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 900; line-height: 1.1; letter-spacing: -0.03em;
+  color: #fff; text-wrap: balance;
+}
+.cta-banner p { font-size: 1.05rem; color: rgba(255,255,255,0.82); line-height: 1.75; max-width: 500px; }
+.cta-banner-actions {
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem;
+}
+.btn-wa {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.9rem 2rem; background: #fff; color: #007A90;
+  border-radius: 6px; font-weight: 800; font-size: 1rem;
+  text-decoration: none;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-wa:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.24); }
+.btn-wa svg { flex-shrink: 0; }
+.btn-planos {
+  display: inline-flex; align-items: center;
+  padding: 0.9rem 2rem; background: transparent; color: #fff;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 6px; font-weight: 700; font-size: 1rem;
+  text-decoration: none; transition: border-color 0.15s, background 0.15s;
+}
+.btn-planos:hover { border-color: #fff; background: rgba(255,255,255,0.08); }
 
-@media(max-width:680px){.nav-links{display:none;}.stat-row{gap:1.5rem;}.cover-grid{grid-template-columns:1fr;}h1{font-size:2.2rem;}}
+/* ===== ABOUT / MVV ===== */
+.about-section { background: var(--surface); padding-bottom: 2.25rem; }
+.about-intro {
+  font-size: 1.05rem; color: var(--text-2); line-height: 1.8;
+  max-width: 640px;
+  border-left: 2px solid var(--pool); padding-left: 1.25rem;
+}
+.mvv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; max-width: 980px; }
+.mvv-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 2rem 1.75rem;
+  position: relative; overflow: hidden;
+}
+.mvv-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 10%, var(--pool) 50%, transparent 90%);
+  opacity: 0.35;
+}
+.mvv-ico {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: var(--pool-dim); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; margin-bottom: 1.25rem;
+}
+.mvv-label {
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--pool); margin-bottom: 0.6rem;
+}
+.mvv-text { font-size: 0.97rem; color: var(--text-2); line-height: 1.75; }
+.mvv-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.mvv-list li {
+  font-size: 0.97rem; color: var(--text-2); display: flex; align-items: center; gap: 0.6rem;
+}
+.mvv-list li::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--pool); flex-shrink: 0;
+}
+@media (max-width: 720px) { .mvv-grid { grid-template-columns: 1fr; } }
+
+/* ===== COVERAGE ===== */
+.coverage-section { background: var(--surface); padding-top: 2.25rem; }
+.city-list { display: flex; flex-wrap: wrap; gap: 0.6rem; max-width: 820px; }
+.city-tag {
+  padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 5px;
+  font-size: 0.92rem; color: var(--text-2); background: var(--card);
+  display: flex; align-items: center; gap: 0.44rem;
+}
+.city-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pool); flex-shrink: 0; }
+.coverage-note { margin-top: 2rem; font-size: 0.92rem; color: var(--text-2); max-width: 500px; line-height: 1.65; }
+
+/* ===== CONTACT ===== */
+.contact-section { background: var(--bg); }
+.contact-layout { display: grid; grid-template-columns: 1fr 1.6fr; gap: 5rem; max-width: 900px; }
+.contact-channels { display: flex; flex-direction: column; gap: 1.75rem; }
+.channel { display: flex; align-items: flex-start; gap: 1rem; }
+.ch-ico {
+  width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--card); display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.ch-key { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--pool); margin-bottom: 0.18rem; }
+.ch-val { font-size: 1rem; color: var(--text); font-weight: 500; }
+.c-form { display: flex; flex-direction: column; gap: 1rem; }
+.f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.f-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.f-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-2); }
+.f-input, .f-select {
+  padding: 0.8rem 1rem; font-size: 1rem;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--card); color: var(--text);
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.f-input:focus, .f-select:focus { border-color: var(--pool); box-shadow: 0 0 0 3px rgba(0,196,216,0.12); }
+.f-submit {
+  align-self: flex-start; padding: 0.9rem 2.5rem; font-size: 1rem;
+  background: var(--pool); color: #fff;
+  border: none; border-radius: 5px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s; margin-top: 0.4rem;
+}
+.f-submit:hover { opacity: 0.85; }
+.f-submit:disabled { opacity: 0.65; cursor: default; }
+
+
+/* ===== WHATSAPP FLOAT ===== */
+.wa-float {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
+  display: flex; align-items: center; gap: 0.6rem;
+  background: #25D366; color: #fff;
+  padding: 0.65rem 1.1rem 0.65rem 0.9rem; border-radius: 100px;
+  font-weight: 700; font-size: 0.82rem; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(37,211,102,0.45); transition: transform 0.15s, box-shadow 0.15s;
+}
+.wa-float:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(37,211,102,0.55); }
+.wa-float svg { flex-shrink: 0; }
+
+/* ===== FOOTER ===== */
+.footer {
+  background: rgba(2,11,18,0.96); border-top: 1px solid var(--border);
+  padding: 3.5rem max(5vw,1.5rem) 2rem; position: relative; z-index: 1;
+}
+.footer-grid {
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 2.5rem; margin-bottom: 2.5rem;
+}
+@media (max-width: 760px) { .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; } }
+@media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer-col-head {
+  font-size: .72rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--pool); margin-bottom: .9rem;
+}
+.footer-logo {
+  font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  font-size: 1.3rem; font-weight: 900; letter-spacing: 0.06em; color: var(--pool);
+  margin-bottom: .75rem; display: block;
+}
+.footer-brand-desc { font-size: .85rem; color: var(--text-2); line-height: 1.7; margin-bottom: 1.2rem; max-width: 220px; }
+.footer-col-links { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+.footer-col-links a { font-size: .88rem; color: var(--text-2); text-decoration: none; transition: color .15s; }
+.footer-col-links a:hover { color: var(--pool); }
+.footer-contact-item { display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; color: var(--text-2); margin-bottom: .5rem; line-height: 1.5; }
+.footer-contact-ico { color: var(--pool); flex-shrink: 0; margin-top: .12em; }
+.footer-bottom { border-top: 1px solid var(--border); padding-top: 1.4rem; font-size: .78rem; color: var(--text-2); text-align: center; }
+/* Back to top */
+.back-top { position: fixed; bottom: 5rem; right: 1.25rem; z-index: 99;
+  width: 40px; height: 40px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--pool); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s;
+  font-family: inherit;
+}
+.back-top.visible { opacity: 1; transform: translateY(0); }
+.back-top:hover { background: rgba(0,196,216,0.1); }
+
+/* ===== MODAL LEAD ===== */
+.modal-ov{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(3,15,24,0.88);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:1.25rem;
+  opacity:0;pointer-events:none;transition:opacity 0.22s;
+}
+.modal-ov.open{opacity:1;pointer-events:auto;}
+.modal-box{
+  background:#0A1E2E;border:1px solid rgba(0,196,216,0.22);
+  border-radius:16px;padding:2rem 1.75rem 1.75rem;
+  width:100%;max-width:440px;position:relative;
+  transform:translateY(18px);transition:transform 0.22s;
+  max-height:90vh;overflow-y:auto;
+}
+.modal-ov.open .modal-box{transform:translateY(0);}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  background:transparent;border:none;color:rgba(0,196,216,0.45);
+  font-size:1.15rem;cursor:pointer;padding:0.25rem 0.5rem;
+  border-radius:5px;line-height:1;transition:color 0.15s;font-family:inherit;
+}
+.modal-close:hover{color:#2DDAE8;}
+.modal-tag{
+  display:inline-block;font-size:0.62rem;font-weight:800;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:#030F18;background:#00C4D8;border-radius:100px;
+  padding:0.2rem 0.75rem;margin-bottom:0.9rem;
+}
+.modal-h{
+  font-size:1.45rem;font-weight:800;color:#C5E8F2;
+  letter-spacing:-0.02em;line-height:1.15;margin-bottom:0.4rem;
+}
+.modal-sub{font-size:0.88rem;color:#4A8898;margin-bottom:1.5rem;line-height:1.6;}
+.modal-form{display:flex;flex-direction:column;gap:0.9rem;}
+.modal-form .f-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:#4A8898;}
+.modal-form .f-input,.modal-form .f-select{
+  padding:0.82rem 1rem;background:#091C2A;border:1px solid rgba(0,196,216,0.15);
+  border-radius:7px;color:#CDEAF2;font-size:0.97rem;font-family:inherit;outline:none;
+  transition:border-color 0.15s,box-shadow 0.15s;width:100%;
+}
+.modal-form .f-input:focus,.modal-form .f-select:focus{
+  border-color:#00C4D8;box-shadow:0 0 0 3px rgba(0,196,216,0.12);
+}
+.modal-form .f-input::placeholder{color:#4A8898;opacity:0.7;}
+.modal-err{
+  font-size:0.83rem;color:#FCA5A5;
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);
+  border-radius:6px;padding:0.6rem 0.9rem;display:none;
+}
+.modal-btn{
+  width:100%;padding:0.92rem;margin-top:0.25rem;
+  background:#00C4D8;color:#fff;border:none;border-radius:8px;
+  font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:opacity 0.15s,transform 0.12s;
+  display:flex;align-items:center;justify-content:center;gap:0.55rem;
+}
+.modal-btn:hover:not(:disabled){opacity:0.87;transform:translateY(-1px);}
+.modal-btn:disabled{opacity:0.55;cursor:default;transform:none;}
+.modal-ok{display:none;text-align:center;padding:0.5rem 0 0.25rem;}
+.modal-ok-ico{
+  width:58px;height:58px;border-radius:50%;margin:0 auto 1rem;
+  background:rgba(16,185,129,0.12);border:2px solid rgba(16,185,129,0.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;color:#34D399;
+}
+.modal-ok-txt{font-size:1rem;color:#C5E8F2;line-height:1.65;}
+.modal-ok-sub{font-size:0.84rem;color:#4A8898;margin-top:0.4rem;}
+/* plano badge no card */
+.plan-promo-badge{
+  display:inline-flex;align-items:center;gap:0.35rem;
+  font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:#34D399;border:1px solid rgba(16,185,129,0.3);
+  border-radius:100px;padding:0.18rem 0.6rem;margin-bottom:0.6rem;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 820px) {
+  .plans-grid { grid-template-columns: repeat(1, 1fr); }
+  .contact-layout { grid-template-columns: 1fr; gap: 2.5rem; }
+}
+/* hamburguer */
+.ham-btn{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:transparent;border:none;cursor:pointer;padding:4px;border-radius:5px;transition:background 0.15s;}
+.ham-btn:hover{background:rgba(0,196,216,0.08);}
+.ham-btn span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:transform 0.25s,opacity 0.2s;}
+.ham-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.ham-btn.open span:nth-child(2){opacity:0;}
+.ham-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* mobile nav drawer */
+.mobile-nav{display:none;position:fixed;top:62px;left:0;right:0;z-index:199;
+  background:var(--nav-bg);backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--border);
+  padding:1.25rem max(5vw,1.5rem) 1.5rem;
+  flex-direction:column;gap:0;}
+.mobile-nav.open{display:flex;}
+.mobile-nav a{display:block;padding:0.75rem 0;font-size:1rem;font-weight:500;color:var(--text-2);text-decoration:none;border-bottom:1px solid var(--border);transition:color 0.15s;}
+.mobile-nav a:last-child{border-bottom:none;}
+.mobile-nav a:hover{color:var(--pool);}
+.mobile-nav .mob-portal{color:var(--pool);font-weight:600;}
+.mobile-nav .mob-assinar{display:inline-block;margin-top:0.75rem;padding:0.65rem 1.5rem;background:var(--pool);color:#fff;border-radius:6px;font-weight:700;text-align:center;}
+
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+  .ham-btn { display: flex; }
+  .section { padding: 4rem 1.25rem; }
+}
+@media (max-width: 560px) {
+  .plans-grid { grid-template-columns: 1fr; }
+  .f-row { grid-template-columns: 1fr; }
+  .f-submit { width: 100%; align-self: stretch; text-align: center; }
+  .footer { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 480px) {
+  .nav { padding: 0 1rem; }
+  .nav-logo { font-size: 1.1rem; }
+  .nav-portal-btn { display: none; } /* só "Assinar agora" no mobile */
+  .nav-btn { font-size: 0.75rem; padding: 0.38rem 0.85rem; }
+  .hero { padding: 78px 1.25rem 44px; }
+  .hero h1 { font-size: clamp(1.9rem, 9vw, 2.5rem); }
+  .hero-lead { font-size: 0.95rem; margin-bottom: 2rem; }
+  .btn { padding: 0.75rem 1.4rem; font-size: 0.85rem; }
+  .hero-cta { flex-direction: column; align-items: stretch; }
+  .hero-cta .btn { text-align: center; }
+  .section { padding: 3.25rem 1.25rem; }
+  .section-head { margin-bottom: 2rem; }
+}
+
+/* ===== Fundo animado — mapa conexões globais ===== */
+#bg-net { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main, section, nav, footer, header { position: relative; z-index: 1; }
+/* Seções semi-transparentes para o mapa aparecer sempre */
+.plans-section, .contact-section { background: rgba(3,15,24,0.62); }
+.diffs-section, .about-section, .coverage-section, .promos-section { background: rgba(6,21,32,0.64); }
+.referral-section { background: rgba(6,21,32,0.64); }
+.cta-banner { background: linear-gradient(135deg,rgba(0,77,92,0.82) 0%,rgba(0,122,144,0.82) 45%,rgba(0,168,188,0.82) 100%); }
+@media (prefers-reduced-motion: reduce){ #bg-net { display:none; } }
+
+/* ===== INDICAÇÃO ===== */
+.referral-section { background: var(--surface); }
+.ref-steps {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem; margin-bottom: 2.75rem; max-width: 820px;
+}
+.ref-step {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.5rem 1.25rem;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.ref-num {
+  font-family: 'Courier New', monospace;
+  font-size: 1.7rem; font-weight: 700; color: var(--pool); line-height: 1;
+}
+.ref-step-title { font-size: 0.96rem; font-weight: 700; color: var(--text); }
+.ref-step-txt { font-size: 0.88rem; color: var(--text-2); line-height: 1.65; }
+.ref-generator {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.75rem 1.75rem 1.5rem;
+  max-width: 560px;
+}
+.ref-gen-label {
+  font-size: 0.76rem; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-2); margin-bottom: 0.6rem;
+}
+.ref-gen-row { display: flex; gap: 0.7rem; }
+.ref-gen-input {
+  flex: 1; padding: 0.78rem 1rem; font-size: 1rem;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--bg); color: var(--text); outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s; font-family: inherit;
+}
+.ref-gen-input:focus { border-color: var(--pool); box-shadow: 0 0 0 3px rgba(0,196,216,0.12); }
+.ref-gen-btn {
+  padding: 0.78rem 1.4rem; background: var(--pool); color: #fff;
+  border: none; border-radius: 5px; font-weight: 700; font-size: 0.9rem;
+  cursor: pointer; white-space: nowrap; transition: opacity 0.15s; font-family: inherit;
+}
+.ref-gen-btn:hover { opacity: 0.85; }
+.ref-result { margin-top: 1.1rem; display: none; flex-direction: column; gap: 0.75rem; }
+.ref-result.show { display: flex; }
+.ref-link-box {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; padding: 0.6rem 0.9rem;
+}
+.ref-link-txt {
+  flex: 1; font-size: 0.84rem; color: var(--pool);
+  font-family: 'Courier New', monospace; word-break: break-all;
+}
+.ref-copy-btn {
+  padding: 0.32rem 0.8rem; border: 1px solid var(--border);
+  border-radius: 4px; background: transparent; color: var(--text-2);
+  font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s; font-family: inherit;
+}
+.ref-copy-btn:hover { border-color: var(--pool); color: var(--pool); }
+.ref-wa-share {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.75rem 1.5rem; background: #25D366; color: #fff;
+  border-radius: 5px; font-weight: 700; font-size: 0.9rem;
+  text-decoration: none; transition: opacity 0.15s; width: fit-content;
+}
+.ref-wa-share:hover { opacity: 0.88; }
+.ref-disclaimer { font-size: 0.78rem; color: var(--text-2); line-height: 1.6; margin-top: 0.25rem; }
+@media (max-width: 640px) {
+  .ref-steps { grid-template-columns: 1fr; }
+  .ref-gen-row { flex-direction: column; }
+  .ref-gen-btn { text-align: center; }
+}
 </style>
-</head>
-<body>
 
+<!-- BANNER INDICAÇÃO (oculto por padrão, aparece via JS quando ?ref= detectado) -->
+<div id="refBanner" style="display:none;background:linear-gradient(90deg,rgba(0,196,216,0.12),rgba(0,196,216,0.06));border-bottom:1px solid rgba(0,196,216,0.25);padding:0.6rem 1.25rem;text-align:center;font-size:0.85rem;color:var(--text-1,#e2f0f5);">
+  🎁 <strong>Você foi indicado por um amigo!</strong> Cadastre-se agora e a Servnet cuida do resto.
+  <button onclick="openModal()" style="margin-left:0.75rem;background:var(--pool,#00C4D8);color:#03111a;border:none;border-radius:5px;padding:0.28rem 0.8rem;font-size:0.8rem;font-weight:700;cursor:pointer;">Quero assinar</button>
+</div>
+
+<!-- NAV -->
 <nav class="nav">
-  <div class="nav-logo">SERV<span>NET</span></div>
+  <a href="#inicio" class="nav-logo">SERV<span>NET</span></a>
   <ul class="nav-links">
-    <li><a href="#planos">Planos</a></li><li><a href="#cobertura">Cobertura</a></li>
+    <li><a href="#planos">Planos</a></li>
+    <li><a href="#quem-somos">Quem somos</a></li>
+    <li><a href="#cobertura">Cobertura</a></li>
     <li><a href="#contato">Contato</a></li>
   </ul>
   <div class="nav-actions">
-    <a href="portal.html" class="nav-portal">Área do Cliente</a>
-    <button class="nav-cta" onclick="document.getElementById('contato').scrollIntoView({behavior:'smooth'})">Assinar agora</button>
+    <a href="portal.html" class="nav-portal-btn">Área do Cliente</a>
+    <button class="nav-btn" onclick="openModal()" style="border:none;cursor:pointer;">Assinar agora</button>
+    <button class="ham-btn" id="hamBtn" aria-label="Menu" onclick="toggleMobileNav()">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
-<!-- Canvas fixo — site inteiro -->
-<canvas id="bg"></canvas>
+<!-- MOBILE NAV DRAWER -->
+<div class="mobile-nav" id="mobileNav">
+  <a href="#planos"     onclick="closeMobileNav()">Planos</a>
+  <a href="#quem-somos" onclick="closeMobileNav()">Quem somos</a>
+  <a href="#cobertura"  onclick="closeMobileNav()">Cobertura</a>
+  <a href="#contato"    onclick="closeMobileNav()">Contato</a>
+  <a href="portal.html" class="mob-portal">Área do Cliente</a>
+  <a href="#" class="mob-assinar" onclick="closeMobileNav();openModal();return false;">Assinar agora</a>
+</div>
 
-<section class="hero">
+<!-- HERO -->
+<section class="hero" id="inicio" aria-label="Banner principal">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
-    <div class="tag"><span class="tag-dot"></span>Internet 100% Fibra Óptica</div>
-    <h1>Conectados<br><em>ao mundo.</em></h1>
-    <p class="lead">Fibra óptica 100% no Jardim Moraes Prado. Conexão local com infraestrutura global.</p>
-    <div class="cta">
-      <a href="#planos" class="btn btn-f">Ver nossos planos</a>
-      <a href="#contato" class="btn btn-g">Falar com a gente</a>
+    <div class="hero-tag">
+      <span class="hero-tag-dot"></span>
+      Internet 100% Fibra Óptica
     </div>
-    <div class="stat-row">
-      <div><div class="stat-v">300</div><div class="stat-l">Mbps disponível</div></div>
-      <div><div class="stat-v">&lt;1ms</div><div class="stat-l">Latência fibra</div></div>
-      <div><div class="stat-v">R$60</div><div class="stat-l">A partir de / mês</div></div>
+    <h1>A internet<br><em>do seu bairro.</em></h1>
+    <p class="hero-lead">Fibra óptica 100% no Jardim Moraes Prado. Sem franquia, sem travamento, sem enrolação — velocidade real para quem mora aqui.</p>
+    <div class="hero-cta">
+      <a href="#planos" class="btn btn-fill">Ver nossos planos</a>
+      <a href="#contato" class="btn btn-line">Falar com a gente</a>
+    </div>
+  </div>
+  <!-- Dashboard panel — desktop only -->
+  <div class="hero-dashboard">
+    <div class="dash-panel" id="dashPanel">
+      <div class="dash-header">
+        <span class="dash-status"><span class="dash-dot-live"></span>SERVNET — ATIVO</span>
+        <span class="dash-loc">Jardim Moraes Prado · SP</span>
+      </div>
+      <div class="dash-row">
+        <span class="dash-ico">↓</span>
+        <div class="dash-info">
+          <div class="dash-label">Download</div>
+          <div class="dash-bar"><div class="dash-fill" id="dlBar"></div></div>
+        </div>
+        <div class="dash-val"><span id="dlNum">0</span> <small>Mbps</small></div>
+      </div>
+      <div class="dash-row">
+        <span class="dash-ico">↑</span>
+        <div class="dash-info">
+          <div class="dash-label">Upload</div>
+          <div class="dash-bar"><div class="dash-fill up-fill" id="ulBar"></div></div>
+        </div>
+        <div class="dash-val"><span id="ulNum">0</span> <small>Mbps</small></div>
+      </div>
+      <div class="dash-metrics">
+        <div class="dash-metric"><div class="dash-metric-val">2ms</div><div class="dash-metric-key">Ping</div></div>
+        <div class="dash-metric"><div class="dash-metric-val">100%</div><div class="dash-metric-key">Fibra</div></div>
+        <div class="dash-metric"><div class="dash-metric-val">∞</div><div class="dash-metric-key">Franquia</div></div>
+      </div>
+    </div>
+    <div class="hero-speeds">
+      <span class="speed-chip">100 Mbps — R$60</span>
+      <span class="speed-chip active">200 Mbps — R$80</span>
+      <span class="speed-chip">300 Mbps — R$100</span>
     </div>
   </div>
 </section>
 
-<section class="section" id="planos">
+<!-- TRUST STRIP -->
+<div class="trust-strip" aria-hidden="true">
+  <div class="trust-item"><span class="trust-icon">⚡</span><span>Fibra óptica 100%</span></div>
+  <div class="trust-item"><span class="trust-icon">📶</span><span>Wi-Fi incluso</span></div>
+  <div class="trust-item"><span class="trust-icon">✅</span><span>Sem fidelidade</span></div>
+  <div class="trust-item"><span class="trust-icon">🔧</span><span>Instalação grátis</span></div>
+</div>
+
+<!-- PLANS -->
+<section class="section plans-section" id="planos" aria-labelledby="plans-h">
   <div class="section-head">
-    <span class="eyebrow">Planos</span>
-    <h2>Escolha sua velocidade</h2>
+    <div class="eyebrow">Planos residenciais</div>
+    <h2 class="section-title" id="plans-h">Escolha a sua velocidade</h2>
+    <p class="section-sub">Todos os planos incluem fibra óptica 100%, roteador Wi-Fi, instalação e suporte técnico — sem cobranças extras.</p>
   </div>
-  <div class="plans">
-    <div class="plan">
-      <div class="plan-name">Básico</div>
-      <div class="plan-speed">50<span> Mbps</span></div>
-      <div class="plan-price">R$60<small>/mês</small></div>
-      <a href="#contato" class="plan-btn">Contratar</a>
-    </div>
-    <div class="plan hot">
-      <div class="plan-name">Popular ★</div>
-      <div class="plan-speed">100<span> Mbps</span></div>
-      <div class="plan-price">R$80<small>/mês</small></div>
-      <a href="#contato" class="plan-btn">Contratar</a>
-    </div>
-    <div class="plan">
-      <div class="plan-name">Turbo</div>
-      <div class="plan-speed">200<span> Mbps</span></div>
-      <div class="plan-price">R$110<small>/mês</small></div>
-      <a href="#contato" class="plan-btn">Contratar</a>
-    </div>
-    <div class="plan">
-      <div class="plan-name">Fibra Max</div>
-      <div class="plan-speed">300<span> Mbps</span></div>
-      <div class="plan-price">R$140<small>/mês</small></div>
-      <a href="#contato" class="plan-btn">Contratar</a>
-    </div>
+  <div class="plans-grid">
+
+    <article class="plan-card" aria-label="Plano Bronze 100 Mbps">
+      <div class="plan-name-badge">🥉 Plano Bronze</div>
+      <div class="plan-mbps">100<span class="plan-unit">Mbps</span></div>
+      <div class="plan-speed-bar"><div class="plan-speed-fill" style="width:33%"></div></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">60,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+      </ul>
+      <button class="plan-action action-line" onclick="openModal('Plano Bronze — 100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
+    <article class="plan-card hot" aria-label="Plano Prata 200 Mbps, mais popular">
+      <div class="plan-badge">Mais popular</div>
+      <div class="plan-name-badge">🥈 Plano Prata</div>
+      <div class="plan-mbps">200<span class="plan-unit">Mbps</span></div>
+      <div class="plan-speed-bar"><div class="plan-speed-fill" style="width:66%"></div></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">80,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+      </ul>
+      <button class="plan-action action-fill" onclick="openModal('Plano Prata — 200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
+    <article class="plan-card" aria-label="Plano Ouro 300 Mbps">
+      <div class="plan-name-badge">🥇 Plano Ouro</div>
+      <div class="plan-mbps">300<span class="plan-unit">Mbps</span></div>
+      <div class="plan-speed-bar"><div class="plan-speed-fill" style="width:100%"></div></div>
+      <div class="plan-fiber">Fibra 100%</div>
+      <div class="plan-por-apenas">Por apenas</div>
+      <div class="plan-pricing">
+        <span class="plan-r">R$</span>
+        <span class="plan-val">100,00</span>
+        <span class="plan-mo">/mês</span>
+      </div>
+      <div class="plan-sep"></div>
+      <ul class="plan-features">
+        <li><span class="feat-dot"></span>Suporte técnico grátis</li>
+        <li><span class="feat-dot"></span>Internet ilimitada</li>
+        <li><span class="feat-dot"></span>Wi-Fi incluso</li>
+        <li><span class="feat-dot"></span>Instalação grátis</li>
+      </ul>
+      <button class="plan-action action-line" onclick="openModal('Plano Ouro — 300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
+      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+    </article>
+
   </div>
 </section>
 
-<section class="section section-alt" id="cobertura">
-  <div class="cover-grid">
-    <div class="cover-text">
-      <span class="eyebrow">Cobertura</span>
-      <h2 style="font-size:clamp(1.6rem,3vw,2.4rem);font-weight:900;letter-spacing:-0.03em;color:#fff;margin-bottom:1.2rem;">Jardim Moraes Prado<br>e região</h2>
-      <p>Infraestrutura 100% fibra óptica própria, sem revendas, sem compartilhamento. Velocidade real do modem até a internet.</p>
-      <a href="#contato" class="btn btn-g" style="display:inline-block;margin-top:.5rem;">Verificar endereço</a>
-    </div>
-    <ul class="cover-list">
-      <li>Fibra óptica até a residência (FTTH)</li>
-      <li>Sem limite de franquia de dados</li>
-      <li>IP fixo disponível</li>
-      <li>Suporte local — tempo real</li>
-      <li>Instalação em até 48 horas</li>
-      <li>Sem fidelidade</li>
-    </ul>
-  </div>
-</section>
-
-<section class="section" id="contato">
+<!-- DIFERENCIAIS -->
+<section class="section diffs-section" aria-label="Nossos diferenciais">
   <div class="section-head">
-    <span class="eyebrow">Contato</span>
-    <h2>Fale com a ServNet</h2>
+    <div class="eyebrow">Por que a Servnet?</div>
+    <h2 class="section-title">O que nos diferencia</h2>
   </div>
-  <div style="text-align:center;max-width:500px;margin:0 auto;">
-    <p style="color:#4A8898;line-height:1.8;margin-bottom:2rem;">Atendimento pelo WhatsApp, das 8h às 22h. Resposta rápida, suporte humano.</p>
-    <a href="https://wa.me/5514999999999" class="btn btn-f" style="font-size:1rem;padding:.9rem 2.5rem;">
-      WhatsApp ↗
-    </a>
+  <div class="diff-grid">
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div class="diff-label">Fibra Óptica 100%</div>
+      <div class="diff-desc">Cabo de fibra do nosso hub até a sua casa. Sem coaxial, sem degradação de sinal.</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="diff-label">Wi-Fi Premium</div>
+      <div class="diff-desc">Roteador dual-band incluso — cobertura para cada cômodo, configurado pela nossa equipe.</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </div>
+      <div class="diff-label">Suporte Local</div>
+      <div class="diff-desc">WhatsApp direto com a equipe técnica. Sem robô, sem 0800 — respondemos de verdade.</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="diff-label">Instalação Rápida</div>
+      <div class="diff-desc">Agendamento na mesma semana. Nossa equipe chega e resolve em até 2 horas.</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13" stroke-width="2.5"/><line x1="18" y1="11" x2="18.01" y2="11" stroke-width="2.5"/><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+      </div>
+      <div class="diff-label">Ótima para Jogos</div>
+      <div class="diff-desc">Latência baixa e QoS priorizado — ping estável mesmo durante horário de pico.</div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      </div>
+      <div class="diff-label">Melhor Custo-Benefício</div>
+      <div class="diff-desc">A melhor relação preço/velocidade da região. Sem fidelidade e sem letra miúda.</div>
+    </div>
   </div>
 </section>
 
-<footer>
-  <div class="logo">SERV<span>NET</span></div>
-  <p>© 2025 ServNet · Jardim Moraes Prado · Lençóis Paulista, SP</p>
+<!-- CTA BANNER -->
+<section class="cta-banner" aria-label="Chamada para ação">
+  <div class="cta-banner-inner">
+    <span class="cta-banner-tag">Jardim Moraes Prado</span>
+    <h2>Sua fibra está<br>esperando por você</h2>
+    <p>Instalação rápida, sem burocracia e sem fidelidade. Ligue agora e comece a usar ainda esta semana.</p>
+    <div class="cta-banner-actions">
+      <a href="https://wa.me/5511966961138" class="btn-wa" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Falar no WhatsApp
+      </a>
+      <a href="#planos" class="btn-planos">Ver planos</a>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="section about-section" id="quem-somos" aria-labelledby="about-h">
+  <div class="section-head">
+    <div class="eyebrow">Quem somos</div>
+    <h2 class="section-title" id="about-h">Nascemos aqui, crescemos com você</h2>
+  </div>
+  <p class="about-intro">A Servnet é um provedor de internet local focado em oferecer conexão de qualidade com o atendimento humano que as grandes operadoras não conseguem dar. Somos do Jardim Moraes Prado — e isso faz toda a diferença.</p>
+</section>
+
+<!-- COVERAGE -->
+<section class="section coverage-section" id="cobertura" aria-labelledby="cov-h">
+  <div class="section-head">
+    <div class="eyebrow">Área de cobertura</div>
+    <h2 class="section-title" id="cov-h">Onde a Servnet chega</h2>
+    <p class="section-sub">Nossa rede de fibra óptica atende o Jardim Moraes Prado e está sempre crescendo.</p>
+  </div>
+  <div class="city-list" role="list">
+    <div class="city-tag" role="listitem"><span class="city-dot"></span>Jardim Moraes Prado</div>
+  </div>
+  <p class="coverage-note">Não encontrou seu bairro? Fale com a gente — verificamos a disponibilidade no seu endereço e estamos expandindo a rede constantemente.</p>
+</section>
+
+<!-- CONTACT -->
+<section class="section contact-section" id="contato" aria-labelledby="contact-h">
+  <div class="section-head">
+    <div class="eyebrow">Contato e suporte</div>
+    <h2 class="section-title" id="contact-h">Pronto para se conectar?</h2>
+    <p class="section-sub">Fale com nosso time — respondemos rápido por WhatsApp ou pelo formulário abaixo.</p>
+  </div>
+  <div class="contact-layout">
+    <div class="contact-channels">
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">📞</div>
+        <div>
+          <div class="ch-key">Telefone</div>
+          <div class="ch-val"><a href="tel:+5511966961138" style="color:inherit;text-decoration:none;">(11) 96696-1138</a></div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">💬</div>
+        <div>
+          <div class="ch-key">WhatsApp</div>
+          <div class="ch-val"><a href="https://wa.me/5511966961138" style="color:inherit;text-decoration:none;">(11) 96696-1138 ↗</a></div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">✉️</div>
+        <div>
+          <div class="ch-key">E-mail</div>
+          <div class="ch-val">contato@servnet.com.br</div>
+        </div>
+      </div>
+      <div class="channel">
+        <div class="ch-ico" aria-hidden="true">📍</div>
+        <div>
+          <div class="ch-key">Atendimento</div>
+          <div class="ch-val">Jardim Moraes Prado e região</div>
+        </div>
+      </div>
+    </div>
+    <form class="c-form" aria-label="Formulário de contato" onsubmit="handleSubmit(event)">
+      <div class="f-row">
+        <div class="f-group">
+          <label class="f-label" for="f-nome">Nome completo</label>
+          <input class="f-input" type="text" id="f-nome" name="nome" autocomplete="name" placeholder="Seu nome" required>
+        </div>
+        <div class="f-group">
+          <label class="f-label" for="f-tel">Telefone</label>
+          <input class="f-input" type="tel" id="f-tel" name="tel" autocomplete="tel" placeholder="(XX) 9XXXX-XXXX" required>
+        </div>
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="f-end">Endereço (rua, bairro)</label>
+        <input class="f-input" type="text" id="f-end" name="end" placeholder="Rua Exemplo, 100 — Bairro">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="f-plano">Plano de interesse</label>
+        <select class="f-select" id="f-plano" name="plano">
+          <option value="">Selecione um plano</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
+        </select>
+      </div>
+      <!-- honeypot: invisível para humanos, bots preenchem -->
+      <input type="text" name="empresa" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px">
+      <button type="submit" class="f-submit">Solicitar contato</button>
+    </form>
+  </div>
+</section>
+
+<!-- INDICAÇÃO -->
+<section class="section referral-section" id="indicacao" aria-labelledby="ref-h">
+  <div class="section-head">
+    <div class="eyebrow">Programa de indicação</div>
+    <h2 class="section-title" id="ref-h">Indique e ganhe até <em style="font-style:normal;color:var(--ember)">R$100</em> por indicação</h2>
+    <p class="section-sub">Quer ter uma renda extra indicando internet banda larga? Cada vizinho ou familiar que contratar pelo seu link vale até R$100 pra você — sem burocracia.</p>
+  </div>
+
+  <div class="ref-steps">
+    <div class="ref-step">
+      <div class="ref-num">01</div>
+      <div class="ref-step-title">Gere seu link</div>
+      <div class="ref-step-txt">Coloque seu apelido ou nome abaixo e receba um link personalizado com seu código.</div>
+    </div>
+    <div class="ref-step">
+      <div class="ref-num">02</div>
+      <div class="ref-step-title">Mande pro vizinho</div>
+      <div class="ref-step-txt">Compartilhe pelo WhatsApp, Instagram ou como preferir. Sem complicação.</div>
+    </div>
+    <div class="ref-step">
+      <div class="ref-num">03</div>
+      <div class="ref-step-title">Ganhe até R$100</div>
+      <div class="ref-step-txt">Quando o vizinho contratar pelo seu link, você recebe até R$100 — direto no seu WhatsApp.</div>
+    </div>
+  </div>
+
+  <div class="ref-generator">
+    <div class="ref-gen-label">Seu nome ou apelido</div>
+    <div class="ref-gen-row">
+      <input class="ref-gen-input" id="refNomeInput" type="text"
+        placeholder="Ex: João da Rua das Flores" maxlength="40" autocomplete="off"
+        onkeydown="if(event.key==='Enter')gerarLinkIndicacao()">
+      <button class="ref-gen-btn" onclick="gerarLinkIndicacao()">Gerar meu link</button>
+    </div>
+    <div class="ref-result" id="refResult">
+      <div class="ref-link-box">
+        <span class="ref-link-txt" id="refLinkTxt"></span>
+        <button class="ref-copy-btn" id="refCopyBtn" onclick="copiarLink()">Copiar</button>
+      </div>
+      <a class="ref-wa-share" id="refWaBtn" href="#" target="_blank" rel="noopener noreferrer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Compartilhar no WhatsApp
+      </a>
+      <p class="ref-disclaimer">* O valor de R$100 é aplicado após confirmação da instalação do indicado. Válido para indicações de novos clientes. Sem limite de indicações!</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL LEAD -->
+<div class="modal-ov" id="leadOv" role="dialog" aria-modal="true" aria-labelledby="modalH" onmousedown="this._downFora=(event.target===this)" onclick="if(this._downFora&&event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
+    <div class="modal-tag" id="modalTag">Quero assinar</div>
+    <h2 class="modal-h" id="modalH">Vamos te conectar!</h2>
+    <p class="modal-sub">Informe seus dados e nosso time entrará em contato pelo WhatsApp em instantes.</p>
+
+    <form class="modal-form" id="leadForm" onsubmit="submitLead(event)" novalidate>
+      <div class="f-group">
+        <label class="f-label" for="lNome">Nome completo *</label>
+        <input class="f-input" type="text" id="lNome" placeholder="Seu nome" required autocomplete="name">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="lTel">WhatsApp / Telefone *</label>
+        <input class="f-input" type="text" id="lTel" placeholder="(11) 99999-9999" required inputmode="tel" maxlength="15" autocomplete="tel">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="lPlano">Plano de interesse</label>
+        <select class="f-select" id="lPlano">
+          <option value="">Escolha um plano</option>
+          <option value="Plano Bronze — 100 Mbps — R$ 60,00/mês">🥉 Plano Bronze — 100 Mbps — R$ 60,00/mês</option>
+          <option value="Plano Prata — 200 Mbps — R$ 80,00/mês">🥈 Plano Prata — 200 Mbps — R$ 80,00/mês</option>
+          <option value="Plano Ouro — 300 Mbps — R$ 100,00/mês">🥇 Plano Ouro — 300 Mbps — R$ 100,00/mês</option>
+        </select>
+      </div>
+      <div class="f-group" style="display:grid;grid-template-columns:1fr 100px;gap:10px">
+        <div>
+          <label class="f-label" for="lCep">CEP</label>
+          <input class="f-input" type="text" id="lCep" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="postal-code">
+        </div>
+        <div>
+          <label class="f-label" for="lNum">Número</label>
+          <input class="f-input" type="text" id="lNum" placeholder="Nº" inputmode="numeric" maxlength="10">
+        </div>
+      </div>
+      <div class="f-group" id="lEndWrap" style="display:none">
+        <input class="f-input" type="text" id="lEnd" readonly style="background:rgba(255,255,255,0.04);color:var(--text-muted);cursor:default">
+      </div>
+      <!-- honeypot: invisível para humanos, bots preenchem -->
+      <input type="text" name="empresa" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px">
+      <div class="modal-err" id="leadErr"></div>
+      <button type="submit" class="modal-btn" id="leadBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Enviar e falar no WhatsApp
+      </button>
+    </form>
+
+    <div class="modal-ok" id="leadOk">
+      <div class="modal-ok-ico">✓</div>
+      <p class="modal-ok-txt">Cadastro recebido! Estamos te redirecionando para o WhatsApp.</p>
+      <p class="modal-ok-sub">Caso não abra automaticamente, fale com a gente pelo (11) 96696-1138.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- WHATSAPP FLOAT -->
+<a class="wa-float" href="https://wa.me/5511966961138" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp da Servnet" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+  WhatsApp
+</a>
+
+<!-- FOOTER -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-grid">
+    <div>
+      <a href="#inicio" class="footer-logo">SERVNET</a>
+      <p class="footer-brand-desc">Internet fibra óptica 100% no Jardim Moraes Prado. Atendimento de vizinho pra vizinho.</p>
+      <a href="https://wa.me/5511966961138" class="btn btn-fill" style="font-size:.82rem;padding:.55rem 1.25rem;display:inline-block;">WhatsApp ↗</a>
+    </div>
+    <div>
+      <div class="footer-col-head">Planos</div>
+      <ul class="footer-col-links">
+        <li><a href="#planos">Bronze — 100 Mbps</a></li>
+        <li><a href="#planos">Prata — 200 Mbps</a></li>
+        <li><a href="#planos">Ouro — 300 Mbps</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-head">Empresa</div>
+      <ul class="footer-col-links">
+        <li><a href="#quem-somos">Quem somos</a></li>
+        <li><a href="#cobertura">Cobertura</a></li>
+        <li><a href="#indicacao">Indicação</a></li>
+        <li><a href="privacidade.html">Privacidade</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-head">Contato</div>
+      <div class="footer-contact-item"><span class="footer-contact-ico">📞</span><a href="tel:+5511966961138" style="color:inherit;text-decoration:none;">(11) 96696-1138</a></div>
+      <div class="footer-contact-item"><span class="footer-contact-ico">✉️</span>contato@servnet.com.br</div>
+      <div class="footer-contact-item"><span class="footer-contact-ico">⏰</span>Seg–Sáb 8h–18h</div>
+      <div class="footer-contact-item"><span class="footer-contact-ico">📍</span>Jardim Moraes Prado, SP</div>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Servnet. Todos os direitos reservados. · <a href="privacidade.html" style="color:inherit;">Política de Privacidade</a></div>
 </footer>
 
-<script>
-(function(){
-  const C=document.getElementById('bg');if(!C)return;
-  const X=C.getContext('2d');
-  const rq=matchMedia('(prefers-reduced-motion:reduce)');
-  const dpr=Math.min(devicePixelRatio||1,2);
-  const W=window.innerWidth,H=window.innerHeight;
-  C.width=W*dpr;C.height=H*dpr;X.scale(dpr,dpr);
+<!-- BACK TO TOP -->
+<button class="back-top" id="backTop" aria-label="Voltar ao topo" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-  // Projeção equiretangular lat 80→-60
+<script>
+/* ── Dashboard panel — countUp animation ── */
+(function(){
+  const panel = document.getElementById('dashPanel');
+  if(!panel) return;
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function countUp(el, target, dur){
+    if(mq.matches){ el.textContent = target; return; }
+    const start = performance.now();
+    (function step(now){
+      const t = Math.min((now-start)/dur, 1);
+      const e = 1 - Math.pow(1-t, 3);
+      el.textContent = Math.round(e*target);
+      if(t<1) requestAnimationFrame(step);
+      else el.textContent = target;
+    })(start);
+  }
+  setTimeout(function(){
+    panel.classList.add('loaded');
+    panel.style.setProperty('--dl-w','100%');
+    panel.style.setProperty('--ul-w','100%');
+    setTimeout(function(){ countUp(document.getElementById('dlNum'),300,1800); }, 200);
+    setTimeout(function(){ countUp(document.getElementById('ulNum'),300,1800); }, 500);
+  }, 500);
+})();
+
+/* ── Back to top button ── */
+(function(){
+  const btn = document.getElementById('backTop');
+  if(!btn) return;
+  window.addEventListener('scroll', function(){
+    btn.classList.toggle('visible', window.scrollY > 400);
+  }, {passive:true});
+})();
+</script>
+<script>
+/* ── Hero background — floating network ── */
+(function () {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const N = 45, DIST = 110;
+  let W, H, nodes, raf;
+  function mkNode() {
+    return { x: Math.random()*W, y: Math.random()*H,
+             vx:(Math.random()-0.5)*0.28, vy:(Math.random()-0.5)*0.28,
+             r: Math.random()*1.1+0.5 };
+  }
+  function init() {
+    const r = canvas.parentElement.getBoundingClientRect();
+    W = canvas.width = r.width; H = canvas.height = r.height;
+    nodes = Array.from({length:N}, mkNode);
+  }
+  function tick() {
+    ctx.clearRect(0,0,W,H);
+    for (let i=0;i<nodes.length;i++) for (let j=i+1;j<nodes.length;j++) {
+      const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y, d=Math.hypot(dx,dy);
+      if (d<DIST) { const t=1-d/DIST; ctx.beginPath(); ctx.moveTo(nodes[i].x,nodes[i].y);
+        ctx.lineTo(nodes[j].x,nodes[j].y); ctx.strokeStyle=`rgba(0,196,216,${(t*0.13).toFixed(3)})`;
+        ctx.lineWidth=t*0.7; ctx.stroke(); }
+    }
+    for (const n of nodes) {
+      ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,196,216,0.45)'; ctx.fill();
+      n.x+=n.vx; n.y+=n.vy;
+      if(n.x<-20)n.x=W+20; else if(n.x>W+20)n.x=-20;
+      if(n.y<-20)n.y=H+20; else if(n.y>H+20)n.y=-20;
+    }
+    if(!mq.matches) raf=requestAnimationFrame(tick);
+  }
+  const ro=new ResizeObserver(()=>{cancelAnimationFrame(raf);init();tick();});
+  init(); tick(); ro.observe(canvas.parentElement);
+})();
+
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn  = form.querySelector('.f-submit');
+  // Honeypot: se bot preencheu o campo oculto, ignora silenciosamente
+  if (form.querySelector('[name="empresa"]').value) return;
+  const nome = document.getElementById('f-nome').value.trim();
+  const tel  = document.getElementById('f-tel').value.replace(/\D/g,'');
+  const end  = document.getElementById('f-end').value.trim();
+  const plano= document.getElementById('f-plano').value;
+  if (tel.length < 10) {
+    document.getElementById('f-tel').focus();
+    btn.textContent = 'Informe um telefone válido com DDD';
+    setTimeout(() => { btn.textContent = 'Solicitar contato'; }, 2500);
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/site_lead_cadastrar`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` },
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel||null, p_plano: plano||null, p_endereco: end||null, p_codigo_indicacao: refCode||null })
+    });
+    if (!res.ok) throw new Error('status ' + res.status);
+    // Conversão Google Ads
+    if (typeof gtag === 'function') gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});
+    btn.textContent = '✓ Recebido! Em breve entraremos em contato.';
+  } catch(err) {
+    console.warn('[contato]', err);
+    btn.textContent = 'Erro ao enviar. Tente novamente.';
+    btn.disabled = false;
+  }
+}
+
+// ===== REFERRAL — captura ?ref= da URL =====
+const SB_URL = 'https://lkymiclirksgqkeiglyw.supabase.co';
+const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
+let refCode = null;
+(function(){
+  const p = new URLSearchParams(window.location.search);
+  const r = p.get('ref');
+  if(r){
+    refCode = r.trim().toUpperCase();
+    sessionStorage.setItem('sn_ref', refCode);
+    document.getElementById('refBanner').style.display = 'block';
+    // Scroll suave até os planos após 600ms
+    setTimeout(()=> document.getElementById('planos')?.scrollIntoView({behavior:'smooth'}), 600);
+  } else {
+    // Recupera do sessionStorage se o usuário navegar dentro do site
+    const saved = sessionStorage.getItem('sn_ref');
+    if(saved){ refCode = saved; document.getElementById('refBanner').style.display = 'block'; }
+  }
+})();
+
+function toggleMobileNav(){
+  const btn = document.getElementById('hamBtn');
+  const nav = document.getElementById('mobileNav');
+  const open = nav.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open);
+}
+function closeMobileNav(){
+  document.getElementById('hamBtn').classList.remove('open');
+  document.getElementById('mobileNav').classList.remove('open');
+}
+// fecha o drawer ao clicar fora
+document.addEventListener('click', e => {
+  const nav = document.getElementById('mobileNav');
+  const btn = document.getElementById('hamBtn');
+  if(nav && nav.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)){
+    closeMobileNav();
+  }
+});
+
+function openModal(planName, opts) {
+  const ov   = document.getElementById('leadOv');
+  const tag  = document.getElementById('modalTag');
+  const sel  = document.getElementById('lPlano');
+  const form = document.getElementById('leadForm');
+  const ok   = document.getElementById('leadOk');
+  const err  = document.getElementById('leadErr');
+  const btn  = document.getElementById('leadBtn');
+
+  sessionStorage.setItem('sn_popup_seen', '1'); // marca como visto — previne auto-popup duplo
+
+  // Reset
+  form.reset();
+  form.style.display = 'flex';
+  ok.style.display   = 'none';
+  err.style.display  = 'none';
+  btn.disabled       = false;
+  btn.innerHTML      = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar e falar no WhatsApp';
+
+  // Pré-seleciona o plano / aplica variante do popup
+  if (planName) {
+    tag.textContent = planName;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === planName) { sel.value = planName; break; }
+    }
+  } else {
+    tag.textContent = (opts && opts.tag) ? opts.tag : 'Quero assinar';
+  }
+  document.getElementById('modalH').textContent    = (opts && opts.title) ? opts.title : 'Vamos te conectar!';
+  document.querySelector('.modal-sub').textContent = (opts && opts.sub)   ? opts.sub   : 'Informe seus dados e nosso time entrará em contato pelo WhatsApp em instantes.';
+
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('lNome').focus(), 200);
+}
+
+function closeModal() {
+  document.getElementById('leadOv').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Máscara de telefone
+document.getElementById('lTel').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 10) v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+  else if (v.length > 6) v = '(' + v.slice(0,2) + ') ' + v.slice(2,6) + '-' + v.slice(6);
+  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else if (v.length > 0) v = '(' + v;
+  e.target.value = v;
+});
+
+// Máscara de CEP + busca automática via ViaCEP
+document.getElementById('lCep').addEventListener('input', async e => {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  e.target.value = v;
+
+  const digits = v.replace(/\D/g, '');
+  const endWrap = document.getElementById('lEndWrap');
+  const endEl   = document.getElementById('lEnd');
+
+  if (digits.length === 8) {
+    endEl.value = '🔍 Buscando endereço...';
+    endWrap.style.display = 'block';
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json();
+      if (d.erro) {
+        endEl.value = 'CEP não encontrado.';
+      } else {
+        const partes = [d.logradouro, d.bairro, d.localidade + (d.uf ? '/' + d.uf : '')].filter(Boolean);
+        endEl.value = partes.join(', ');
+        document.getElementById('lNum').focus();
+      }
+    } catch {
+      endEl.value = 'Não foi possível buscar o endereço.';
+    }
+  } else {
+    endWrap.style.display = 'none';
+    endEl.value = '';
+  }
+});
+
+async function submitLead(e) {
+  e.preventDefault();
+  const form   = e.target;
+  // Honeypot: se bot preencheu o campo oculto, ignora silenciosamente
+  if (form.querySelector('[name="empresa"]').value) return;
+  const nome   = document.getElementById('lNome').value.trim();
+  const telRaw = document.getElementById('lTel').value;
+  const tel    = telRaw.replace(/\D/g, '');
+  const plano  = document.getElementById('lPlano').value;
+  const cep    = document.getElementById('lCep').value.trim();
+  const num    = document.getElementById('lNum').value.trim();
+  const rua    = document.getElementById('lEnd').value.trim();
+  const errEl  = document.getElementById('leadErr');
+  const btn    = document.getElementById('leadBtn');
+
+  // Monta endereço completo (evita textos de estado do ViaCEP)
+  const ruaValida = rua && rua.length > 5 && !/buscando|não foi|não encontrado/i.test(rua);
+  const end = ruaValida
+    ? (num ? rua.replace(/^([^,]+)/, '$1, ' + num) : rua) + (cep ? ' — CEP ' + cep : '')
+    : '';
+
+  errEl.style.display = 'none';
+  if (!nome)            { errEl.textContent = 'Informe seu nome completo.'; errEl.style.display = 'block'; return; }
+  if (tel.length < 10)  { errEl.textContent = 'Informe um telefone válido com DDD.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  // Salva no Supabase
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/site_lead_cadastrar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`
+      },
+      body: JSON.stringify({ p_nome: nome, p_telefone: tel, p_plano: plano || null, p_endereco: end || null, p_codigo_indicacao: refCode || null })
+    });
+    if (!res.ok) throw new Error('status ' + res.status);
+  } catch(err2) {
+    console.warn('[lead]', err2);
+    errEl.textContent = 'Erro ao enviar. Tente novamente.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar e falar no WhatsApp';
+    return;
+  }
+
+  // Mostra tela de sucesso
+  document.getElementById('leadForm').style.display = 'none';
+  document.getElementById('leadOk').style.display   = 'block';
+
+  // Monta mensagem para WhatsApp — voz do próprio cliente
+  const msg = encodeURIComponent(
+    `Olá! Vi os planos de vocês no site e tenho interesse em contratar.` +
+    `\n\nMeu nome é *${nome}*` +
+    (plano ? `, tenho interesse no plano de *${plano}*` : '') +
+    (end   ? `. Meu endereço é ${end}` : '') +
+    `. Gostaria de agendar a instalação! 😊`
+  );
+
+  // Página de obrigado (conversão Google Ads) — ela abre o WhatsApp com a mensagem
+  if (typeof gtag === 'function') {
+    gtag('event', 'conversion_lead_whatsapp', { event_category: 'lead', event_label: plano || 'sem-plano' });
+    // conversão Google Ads — dispara antes de redirecionar para obrigado.html
+    gtag('event', 'conversion', { 'send_to': 'AW-18397898966/OWZeCLb2uuUcENbR5sRE' });
+  }
+  const msgTxt = decodeURIComponent(msg);
+  setTimeout(() => { window.location.href = 'obrigado.html?m=' + encodeURIComponent(msgTxt); }, 900);
+}
+
+// ── Auto-popup após 10 s (uma vez por sessão) ──
+setTimeout(function() {
+  if (sessionStorage.getItem('sn_popup_seen')) return;
+  if (document.getElementById('leadOv').classList.contains('open')) return;
+  openModal(null, {
+    tag:   '🎁 Oferta para o bairro',
+    title: 'Fibra chegou até você?',
+    sub:   'Sem fidelidade e sem taxa de instalação. Cadastre-se e nossa equipe liga ainda hoje!'
+  });
+}, 10000);
+
+// ── Programa de Indicação — gera link personalizado ──
+function gerarLinkIndicacao() {
+  const input = document.getElementById('refNomeInput');
+  const nome  = input.value.trim();
+  if (!nome) { input.focus(); return; }
+  const codigo = nome
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')
+    .toUpperCase().slice(0, 20);
+  const link = 'https://servnet.net.br?ref=' + codigo;
+  document.getElementById('refLinkTxt').textContent = link;
+  const msgWa = encodeURIComponent(
+    '🔥 Oi! Contratei a Servnet aqui no Jardim Moraes Prado e está ótimo.\n' +
+    'Fibra 100%, sem franquia e o suporte responde no WhatsApp!\n' +
+    'Olha o link: ' + link
+  );
+  document.getElementById('refWaBtn').href = 'https://wa.me/?text=' + msgWa;
+  document.getElementById('refResult').classList.add('show');
+}
+
+function copiarLink() {
+  const txt = document.getElementById('refLinkTxt').textContent;
+  const btn = document.getElementById('refCopyBtn');
+  const ok  = function() { btn.textContent = 'Copiado ✓'; setTimeout(function() { btn.textContent = 'Copiar'; }, 2000); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok).catch(ok);
+  } else {
+    try {
+      const el = document.createElement('textarea');
+      el.value = txt; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el); ok();
+    } catch(e) { /* silencia */ }
+  }
+}
+
+</script>
+
+<canvas id="bg-net" aria-hidden="true"></canvas>
+<script>
+/* ── Mapa de conexões globais de internet ── */
+(function(){
+  const C=document.getElementById('bg-net');
+  if(!C||matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  const X=C.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2);
+  let W,H,OFF,snRings=[],t=0,scanY=0,raf;
+
   function proj(lat,lon){return[(lon+180)/360*W,(80-lat)/140*H];}
 
-  // Cidades [name,lat,lon,type,sz]  type: 0=city 1=hub 2=servnet
   const CD=[
     ['NY',40.7,-74.0,1,5],['Miami',25.8,-80.2,1,4],
     ['LA',34.0,-118.2,1,4],['Seattle',47.6,-122.3,0,3],
@@ -231,11 +1700,6 @@ footer p{font-size:.78rem;color:#4A8898;}
     ['ServNet',-22.6,-48.8,2,5],
   ];
 
-  const nodes=CD.map(([name,lat,lon,type,sz])=>{
-    const[x,y]=proj(lat,lon);return{name,lat,lon,type,sz,x,y};
-  });
-
-  // Links [a,b,traffic]
   const LD=[
     [0,9,3],[0,11,2],[1,9,2],[1,6,2],[1,8,1],[8,2,1],
     [2,29,3],[2,27,2],[2,33,2],[3,29,1],
@@ -261,115 +1725,120 @@ footer p{font-size:.78rem;color:#4A8898;}
     const u=1-t;return[u*u*x1+2*u*t*cx+t*t*x2,u*u*y1+2*u*t*cy+t*t*y2];
   }
 
+  let nodes,arcs;
   const PCOL=['45,218,232','0,196,216','128,82,255','200,240,255'];
 
-  const arcs=LD.map(([a,b,tr])=>{
-    const n=nodes[a],m=nodes[b];
-    const[cx,cy]=ctrlPt(n.x,n.y,m.x,m.y);
-    const isSN=(a===35||b===35);
-    const nPar=1+tr;
-    return{
-      a,b,tr,x1:n.x,y1:n.y,cx,cy,x2:m.x,y2:m.y,isSN,
-      particles:Array.from({length:nPar},(_,i)=>({
-        t:i/nPar,
-        speed:.0022+Math.random()*.003,
-        col:isSN?'255,184,41':PCOL[Math.floor(Math.random()*PCOL.length)],
-        sz:.8+Math.random()*.8,
-      })),
-    };
-  });
-
-  // Pontos de continente — offscreen canvas estático, muito tênue
-  const OFF=document.createElement('canvas');
-  OFF.width=W*dpr;OFF.height=H*dpr;
-  const OX=OFF.getContext('2d');OX.scale(dpr,dpr);
-  OX.fillStyle='rgba(0,196,216,0.022)';
-  const LAND=[
-    [72,25,-140,-55,200],[12,-56,-82,-33,150],[72,36,-15,42,180],
-    [38,-36,-20,55,220],[42,15,38,65,60],[38,5,65,90,90],
-    [28,-10,92,145,120],[55,20,100,148,160],[72,38,42,145,130],
-    [-10,-45,113,180,80],[25,5,-92,-60,40],
-  ];
-  for(const[la,lb,lo0,lo1,n]of LAND){
-    for(let i=0;i<n;i++){
-      const lat=lb+Math.random()*(la-lb),lon=lo0+Math.random()*(lo1-lo0);
-      const[px,py]=proj(lat,lon);
-      OX.beginPath();OX.arc(px,py,.6,0,Math.PI*2);OX.fill();
+  function buildOffscreen(){
+    const o=document.createElement('canvas');
+    o.width=W*dpr;o.height=H*dpr;
+    const ox=o.getContext('2d');ox.scale(dpr,dpr);
+    ox.fillStyle='rgba(0,196,216,0.025)';
+    const LAND=[
+      [72,25,-140,-55,200],[12,-56,-82,-33,150],[72,36,-15,42,180],
+      [38,-36,-20,55,220],[42,15,38,65,60],[38,5,65,90,90],
+      [28,-10,92,145,120],[55,20,100,148,160],[72,38,42,145,130],
+      [-10,-45,113,180,80],[25,5,-92,-60,40],
+    ];
+    for(const[la,lb,lo0,lo1,n]of LAND){
+      for(let i=0;i<n;i++){
+        const lat=lb+Math.random()*(la-lb),lon=lo0+Math.random()*(lo1-lo0);
+        const[px,py]=proj(lat,lon);
+        ox.beginPath();ox.arc(px,py,.7,0,Math.PI*2);ox.fill();
+      }
     }
+    return o;
   }
 
-  let snRings=[{r:0,al:.35}];
-  let t=0,scanY=0;
+  function init(){
+    W=innerWidth;H=innerHeight;
+    C.width=W*dpr;C.height=H*dpr;X.scale(dpr,dpr);
+    nodes=CD.map(([name,lat,lon,type,sz])=>{
+      const[x,y]=proj(lat,lon);return{name,lat,lon,type,sz,x,y};
+    });
+    arcs=LD.map(([a,b,tr])=>{
+      const n=nodes[a],m=nodes[b];
+      const[cx,cy]=ctrlPt(n.x,n.y,m.x,m.y);
+      const isSN=(a===35||b===35);
+      return{
+        a,b,tr,x1:n.x,y1:n.y,cx,cy,x2:m.x,y2:m.y,isSN,
+        particles:Array.from({length:1+tr},(_,i)=>({
+          t:i/(1+tr),speed:.0022+Math.random()*.003,
+          col:isSN?'255,184,41':PCOL[Math.floor(Math.random()*PCOL.length)],
+          sz:.8+Math.random()*.8,
+        })),
+      };
+    });
+    OFF=buildOffscreen();
+    snRings=[{r:0,al:.35}];
+  }
 
   function frame(){
+    if(document.hidden)return;
+    /* fundo sólido + continentes */
     X.fillStyle='#030F18';X.fillRect(0,0,W,H);
     X.drawImage(OFF,0,0,W,H);
 
-    // Scan line — muito sutil
-    scanY=(scanY+1.0)%H;
+    /* scan line sutil */
+    scanY=(scanY+.9)%H;
     const sg=X.createLinearGradient(0,scanY-40,0,scanY+4);
     sg.addColorStop(0,'rgba(0,196,216,0)');
-    sg.addColorStop(.8,'rgba(0,196,216,0.012)');
-    sg.addColorStop(1,'rgba(0,196,216,0.038)');
+    sg.addColorStop(.8,'rgba(0,196,216,0.015)');
+    sg.addColorStop(1,'rgba(0,196,216,0.045)');
     X.fillStyle=sg;X.fillRect(0,scanY-40,W,44);
 
-    // Arcos — muito tênues
+    /* arcos */
     for(const arc of arcs){
       const{x1,y1,cx,cy,x2,y2,tr,isSN}=arc;
       const bc=isSN?'255,184,41':'0,196,216';
-      // Glow
       X.beginPath();X.moveTo(x1,y1);X.quadraticCurveTo(cx,cy,x2,y2);
-      X.strokeStyle=`rgba(${bc},${(.012+tr*.008).toFixed(3)})`;
+      X.strokeStyle=`rgba(${bc},${(.014+tr*.010).toFixed(3)})`;
       X.lineWidth=2+tr;X.stroke();
-      // Linha
       X.beginPath();X.moveTo(x1,y1);X.quadraticCurveTo(cx,cy,x2,y2);
-      X.strokeStyle=`rgba(${bc},${(.028+tr*.014).toFixed(3)})`;
-      X.lineWidth=.4+tr*.15;X.stroke();
-      // Partículas
-      if(!rq.matches){
-        for(const p of arc.particles){
-          p.t+=p.speed;if(p.t>1)p.t=0;
-          const[px,py]=bz(p.t,x1,y1,cx,cy,x2,y2);
-          const fade=p.t<.1?p.t*10:(p.t>.9?(1-p.t)*10:1);
-          const al=(fade*.40).toFixed(3);
-          X.beginPath();X.arc(px,py,p.sz,0,Math.PI*2);
-          X.fillStyle=`rgba(${p.col},${al})`;X.fill();
-        }
+      X.strokeStyle=`rgba(${bc},${(.035+tr*.018).toFixed(3)})`;
+      X.lineWidth=.5+tr*.18;X.stroke();
+      for(const p of arc.particles){
+        p.t+=p.speed;if(p.t>1)p.t=0;
+        const[px,py]=bz(p.t,x1,y1,cx,cy,x2,y2);
+        const fade=p.t<.1?p.t*10:(p.t>.9?(1-p.t)*10:1);
+        X.beginPath();X.arc(px,py,p.sz,0,Math.PI*2);
+        X.fillStyle=`rgba(${p.col},${(fade*.50).toFixed(3)})`;X.fill();
       }
     }
 
-    // Nós
+    /* nós */
     for(const nd of nodes){
       const isSN=nd.type===2,isH=nd.type===1;
       const col=isSN?'255,184,41':isH?'0,196,216':'45,218,232';
-      const r=nd.sz;
-      // Glow
-      const gR=r*(isSN?6:isH?5:3);
+      const gR=nd.sz*(isSN?6:isH?5:3);
       const g=X.createRadialGradient(nd.x,nd.y,0,nd.x,nd.y,gR);
-      g.addColorStop(0,`rgba(${col},${isSN?.12:isH?.08:.05})`);
+      g.addColorStop(0,`rgba(${col},${isSN?.15:isH?.10:.06})`);
       g.addColorStop(1,`rgba(${col},0)`);
       X.beginPath();X.arc(nd.x,nd.y,gR,0,Math.PI*2);X.fillStyle=g;X.fill();
-      // Dot
-      X.beginPath();X.arc(nd.x,nd.y,r*.5,0,Math.PI*2);
-      X.fillStyle=`rgba(${col},${isSN?.70:isH?.55:.35})`;X.fill();
+      X.beginPath();X.arc(nd.x,nd.y,nd.sz*.55,0,Math.PI*2);
+      X.fillStyle=`rgba(${col},${isSN?.80:isH?.62:.40})`;X.fill();
     }
 
-    // ServNet — anéis pulsantes âmbar
+    /* ServNet — anéis âmbar */
     const sn=nodes[35];
-    if(!rq.matches){
-      snRings=snRings.map(r=>({r:r.r+.7,al:r.al*.974})).filter(r=>r.al>.015);
-      if(t%80===0)snRings.push({r:0,al:.32});
-    }
+    snRings=snRings.map(r=>({r:r.r+.7,al:r.al*.974})).filter(r=>r.al>.015);
+    if(t%80===0)snRings.push({r:0,al:.35});
     for(const r of snRings){
       X.beginPath();X.arc(sn.x,sn.y,r.r,0,Math.PI*2);
       X.strokeStyle=`rgba(255,184,41,${r.al.toFixed(3)})`;
       X.lineWidth=1;X.stroke();
     }
 
-    t++;requestAnimationFrame(frame);
+    t++;raf=requestAnimationFrame(frame);
   }
-  frame();
+
+  init();frame();
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)cancelAnimationFrame(raf);else frame();
+  });
+  addEventListener('resize',()=>{
+    cancelAnimationFrame(raf);
+    X.setTransform(1,0,0,1,0,0);
+    init();frame();
+  });
 })();
 </script>
-</body>
-</html>
