@@ -838,12 +838,283 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
   .ref-gen-row { flex-direction: column; }
   .ref-gen-btn { text-align: center; }
 }
+
+/* ═══════════════════════════════════════════════════
+   SERVNET — ANIMATION SYSTEM v2
+   Timing: micro 150ms | hover 250ms | enter 650ms
+   Easing: cubic-bezier(0.22,0.61,0.36,1) [ease-out-quint]
+═══════════════════════════════════════════════════ */
+
+/* ── 1. LOADER ───────────────────────────────────── */
+#sn-loader {
+  display: none; /* JS adds sn-js to html; then flex */
+  position: fixed; inset: 0; z-index: 9999;
+  background: #020B12;
+  align-items: center; justify-content: center; flex-direction: column; gap: 1.5rem;
+  transition: opacity 0.42s ease 0.08s, visibility 0.42s ease 0.08s;
+}
+.sn-js #sn-loader { display: flex; }
+#sn-loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.sn-loader-logo {
+  font-family: 'Bricolage Grotesque','DM Sans',system-ui,sans-serif;
+  font-size: 1.85rem; font-weight: 900; letter-spacing: 0.06em; color: var(--pool);
+  animation: sn-lo-glow 0.9s ease-in-out infinite alternate;
+}
+.sn-loader-logo span { color: var(--text); opacity: 0.5; font-weight: 700; }
+@keyframes sn-lo-glow {
+  from { text-shadow: 0 0 12px rgba(0,196,216,0.3); }
+  to   { text-shadow: 0 0 38px rgba(0,196,216,0.7), 0 0 70px rgba(0,196,216,0.28); }
+}
+.sn-loader-bar { width: 110px; height: 2px; background: rgba(0,196,216,0.12); border-radius: 2px; overflow: hidden; }
+.sn-loader-fill { width: 36%; height: 100%; background: var(--pool); border-radius: 2px; animation: sn-lo-slide 0.88s ease-in-out infinite; }
+@keyframes sn-lo-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(370%); }
+}
+
+/* ── 2. HERO ENTRANCE ────────────────────────────── */
+.sn-js .hero-inner .hero-tag,
+.sn-js .hero-inner h1,
+.sn-js .hero-inner .hero-lead,
+.sn-js .hero-inner .hero-cta,
+.sn-js .hero-dashboard { opacity: 0; }
+
+.sn-js .hero-inner.sn-hero-active .hero-tag {
+  animation: sn-fade-up 0.60s cubic-bezier(0.22,0.61,0.36,1) 0.05s forwards;
+}
+.sn-js .hero-inner.sn-hero-active h1 {
+  animation: sn-fade-up 0.72s cubic-bezier(0.22,0.61,0.36,1) 0.19s forwards;
+}
+.sn-js .hero-inner.sn-hero-active .hero-lead {
+  animation: sn-fade-up 0.65s cubic-bezier(0.22,0.61,0.36,1) 0.33s forwards;
+}
+.sn-js .hero-inner.sn-hero-active .hero-cta {
+  animation: sn-fade-up 0.60s cubic-bezier(0.22,0.61,0.36,1) 0.46s forwards;
+}
+.sn-js .hero-dashboard.sn-hero-active {
+  animation: sn-fade-right 0.80s cubic-bezier(0.22,0.61,0.36,1) 0.30s forwards;
+}
+@keyframes sn-fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sn-fade-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── 3. SCROLL REVEALS (fade-up) ─────────────────── */
+.sn-js .sn-reveal {
+  opacity: 0; transform: translateY(26px);
+  transition:
+    opacity  0.65s cubic-bezier(0.22,0.61,0.36,1) var(--sn-d,0ms),
+    transform 0.65s cubic-bezier(0.22,0.61,0.36,1) var(--sn-d,0ms);
+}
+.sn-js .sn-reveal.sn-in { opacity: 1; transform: translateY(0); }
+
+/* Plan cards: fade-only (they have their own CSS transforms) */
+.sn-js .sn-reveal-o {
+  opacity: 0;
+  transition: opacity 0.65s cubic-bezier(0.22,0.61,0.36,1) var(--sn-d,0ms);
+}
+.sn-js .sn-reveal-o.sn-in { opacity: 1; }
+
+/* ── 4. NAV SCROLL COMPACT ───────────────────────── */
+.nav {
+  transition: height 0.3s cubic-bezier(0.22,0.61,0.36,1),
+              box-shadow 0.3s ease, border-bottom-color 0.3s ease;
+}
+.nav.sn-scrolled {
+  height: 52px;
+  box-shadow: 0 4px 28px rgba(0,0,0,0.38);
+  border-bottom-color: rgba(0,196,216,0.24);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+}
+.nav-links a { position: relative; }
+.nav-links a::after {
+  content: ''; position: absolute; bottom: -3px; left: 0;
+  width: 0; height: 1.5px; background: var(--pool); border-radius: 1px;
+  transition: width 0.22s ease;
+}
+.nav-links a:hover::after { width: 100%; }
+
+/* ── 5. PLAN CARDS ───────────────────────────────── */
+.plan-card { transform-style: preserve-3d; will-change: transform; }
+
+/* Hot card breathe animation */
+.plan-card.hot { animation: hot-breathe 4s ease-in-out infinite; }
+@keyframes hot-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(0,196,216,0.50), 0 0 48px rgba(0,196,216,0.28), 0 0 110px rgba(0,196,216,0.10);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(0,196,216,0.72), 0 0 72px rgba(0,196,216,0.42), 0 0 150px rgba(0,196,216,0.18);
+  }
+}
+
+/* Shine overlay (injected by JS) */
+.plan-shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.065) 50%, transparent 70%);
+  transform: translateX(-120%) skewX(-14deg);
+  pointer-events: none; z-index: 10; border-radius: inherit;
+}
+.plan-card:hover .plan-shine { animation: sn-shine 0.55s cubic-bezier(0.22,0.61,0.36,1) forwards; }
+@keyframes sn-shine {
+  from { transform: translateX(-120%) skewX(-14deg); }
+  to   { transform: translateX(250%)  skewX(-14deg); }
+}
+
+/* Ripple on CTA click */
+.plan-action { position: relative; overflow: hidden; }
+.sn-ripple {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  transform: scale(0); animation: sn-ripple-go 0.55s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes sn-ripple-go { to { transform: scale(4.5); opacity: 0; } }
+
+/* ── 6. BUTTON SHINE (primary) ────────────────────── */
+.btn-fill { position: relative; overflow: hidden; }
+.btn-fill::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: translateX(-100%) skewX(-18deg); pointer-events: none;
+}
+.btn-fill:hover::before { animation: btn-shine 0.55s ease forwards; }
+@keyframes btn-shine { to { transform: translateX(210%) skewX(-18deg); } }
+.btn-line {
+  transition: border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+}
+.btn-line:hover { box-shadow: 0 0 18px rgba(0,196,216,0.14) inset; }
+
+.action-fill { position: relative; overflow: hidden; }
+.action-fill::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  transform: translateX(-100%) skewX(-18deg); pointer-events: none;
+}
+.action-fill:hover::before { animation: btn-shine 0.55s ease forwards; }
+
+/* ── 7. DIFF CARDS ───────────────────────────────── */
+.diff-card { transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.22,0.61,0.36,1), box-shadow 0.25s ease; }
+.diff-card:hover { border-color: rgba(0,196,216,0.48); transform: translateY(-6px); box-shadow: 0 14px 42px rgba(0,196,216,0.10); }
+.diff-ico { transition: transform 0.30s cubic-bezier(0.34,1.56,0.64,1), filter 0.25s ease; }
+.diff-card:hover .diff-ico { transform: scale(1.10) rotate(-4deg); filter: drop-shadow(0 0 8px rgba(0,196,216,0.55)); }
+
+/* ── 8. MVV CARDS ─────────────────────────────────── */
+.mvv-card { transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.22,0.61,0.36,1); }
+.mvv-card:hover { border-color: rgba(0,196,216,0.38); transform: translateY(-5px); }
+.mvv-ico { transition: background 0.22s ease, border-color 0.22s ease, transform 0.28s cubic-bezier(0.34,1.56,0.64,1); }
+.mvv-card:hover .mvv-ico { background: rgba(0,196,216,0.16); border-color: rgba(0,196,216,0.38); transform: scale(1.10) rotate(-5deg); }
+
+/* ── 9. WHATSAPP FLOAT ────────────────────────────── */
+.wa-float { position: relative; }
+.wa-float::before {
+  content: ''; position: absolute; inset: 0; border-radius: 100px;
+  background: rgba(37,211,102,0.35);
+  animation: wa-ring 3.8s ease-out infinite; pointer-events: none;
+}
+@keyframes wa-ring {
+  0%   { transform: scale(1); opacity: 0.55; }
+  70%  { transform: scale(1.60); opacity: 0; }
+  100% { transform: scale(1.60); opacity: 0; }
+}
+
+/* ── 10. FORM FIELDS ──────────────────────────────── */
+.f-input, .f-select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+}
+.f-input:focus, .f-select:focus { transform: translateY(-1px); }
+.modal-form .f-input, .modal-form .f-select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+}
+.modal-form .f-input:focus, .modal-form .f-select:focus { transform: translateY(-1px); }
+
+/* ── 11. REFERRAL STEPS ───────────────────────────── */
+.ref-step { transition: transform 0.25s cubic-bezier(0.22,0.61,0.36,1), border-color 0.25s ease, box-shadow 0.25s ease; }
+.ref-step:hover { transform: translateY(-5px); border-color: rgba(0,196,216,0.42); box-shadow: 0 10px 36px rgba(0,196,216,0.10); }
+.ref-num { transition: text-shadow 0.25s ease; }
+.ref-step:hover .ref-num { text-shadow: 0 0 20px rgba(0,196,216,0.60); }
+@media (min-width: 641px) {
+  .ref-steps { position: relative; }
+  .sn-ref-line {
+    position: absolute; top: 1.8rem; left: 34%; right: 34%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0,196,216,0.6), rgba(255,184,41,0.6));
+    transform-origin: left; transform: scaleX(0);
+    transition: transform 1.15s cubic-bezier(0.22,0.61,0.36,1) 0.35s;
+    pointer-events: none;
+  }
+  .ref-steps.sn-conn-in .sn-ref-line { transform: scaleX(1); }
+}
+
+/* ── 12. COVERAGE ─────────────────────────────────── */
+.city-tag { transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease; }
+.city-tag:hover { border-color: rgba(0,196,216,0.58); transform: translateY(-3px); box-shadow: 0 5px 18px rgba(0,196,216,0.10); }
+.city-dot { animation: dot-blink 2.4s ease-in-out infinite; }
+@keyframes dot-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; transform: scale(1.6); } }
+
+/* ── 13. TRUST STRIP ITEMS ────────────────────────── */
+.trust-item { transition: color 0.22s ease, transform 0.22s ease; cursor: default; }
+.trust-item:hover { color: var(--pool); transform: translateY(-2px); }
+
+/* ── 14. SPEED CHIPS ──────────────────────────────── */
+.speed-chip { transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+.speed-chip:hover { background: rgba(0,196,216,0.16); border-color: rgba(0,196,216,0.55); transform: translateY(-2px); }
+
+/* ── 15. FOOTER LINKS ─────────────────────────────── */
+.footer-col-links a { transition: color 0.18s ease, padding-left 0.18s ease; }
+.footer-col-links a:hover { padding-left: 0.22rem; }
+
+/* ── 16. BACK-TO-TOP ──────────────────────────────── */
+.back-top:hover { background: rgba(0,196,216,0.14); transform: translateY(-3px) !important; }
+
+/* ── 17. CHANNEL HOVER ────────────────────────────── */
+.ch-ico { transition: border-color 0.22s ease, background 0.22s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+.channel:hover .ch-ico { border-color: rgba(0,196,216,0.48); background: rgba(0,196,216,0.10); transform: scale(1.10); }
+
+/* ── 18. CTA BANNER BG DRIFT ─────────────────────── */
+@keyframes cta-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 120px 0; }
+}
+.cta-banner::before { animation: cta-drift 10s linear infinite; }
+
+/* ── 19. COVERAGE DECORATIVE RINGS ───────────────── */
+@keyframes sn-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* ── 20. REDUCED MOTION OVERRIDES ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sn-js .hero-inner .hero-tag,
+  .sn-js .hero-inner h1,
+  .sn-js .hero-inner .hero-lead,
+  .sn-js .hero-inner .hero-cta,
+  .sn-js .hero-dashboard,
+  .sn-js .sn-reveal,
+  .sn-js .sn-reveal-o { opacity: 1 !important; animation: none !important; transform: none !important; transition: none !important; }
+  .plan-card.hot { animation: none !important; }
+  .wa-float::before, .city-dot { animation: none !important; }
+  .sn-loader-fill, .sn-loader-logo { animation: none !important; }
+  #sn-loader { display: none !important; }
+  .diff-ico, .mvv-ico, .ch-ico { transition: none !important; }
+  .cta-banner::before { animation: none !important; }
+  .sn-ref-line { transition: none !important; transform: scaleX(1) !important; }
+}
 </style>
 
 <!-- BANNER INDICAÇÃO (oculto por padrão, aparece via JS quando ?ref= detectado) -->
 <div id="refBanner" style="display:none;background:linear-gradient(90deg,rgba(0,196,216,0.12),rgba(0,196,216,0.06));border-bottom:1px solid rgba(0,196,216,0.25);padding:0.6rem 1.25rem;text-align:center;font-size:0.85rem;color:var(--text-1,#e2f0f5);">
   🎁 <strong>Você foi indicado por um amigo!</strong> Cadastre-se agora e a Servnet cuida do resto.
   <button onclick="openModal()" style="margin-left:0.75rem;background:var(--pool,#00C4D8);color:#03111a;border:none;border-radius:5px;padding:0.28rem 0.8rem;font-size:0.8rem;font-weight:700;cursor:pointer;">Quero assinar</button>
+</div>
+
+<!-- LOADER -->
+<div id="sn-loader" aria-hidden="true">
+  <div class="sn-loader-logo">SERV<span>NET</span></div>
+  <div class="sn-loader-bar"><div class="sn-loader-fill"></div></div>
 </div>
 
 <!-- NAV -->
@@ -1862,5 +2133,196 @@ function copiarLink() {
     X.setTransform(1,0,0,1,0,0);
     init();frame();
   });
+})();
+</script>
+<!-- SERVNET ANIMATION SYSTEM v2 -->
+<script>
+(function(){
+  /* ── 0. REDUCED MOTION GUARD ─────────────────────────────────── */
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── 1. JS FLAG — gates all animation CSS ────────────────────── */
+  document.documentElement.classList.add('sn-js');
+
+  /* ── 2. LOADER ────────────────────────────────────────────────── */
+  var loader = document.getElementById('sn-loader');
+  var loaderDone = false;
+
+  function dismissLoader(){
+    if(loaderDone) return;
+    loaderDone = true;
+    if(loader){ loader.classList.add('done'); }
+    setTimeout(triggerHero, 420);
+  }
+
+  if(reducedMotion){
+    /* Skip loader entirely on reduced-motion */
+    document.documentElement.classList.remove('sn-js');
+  } else {
+    /* Failsafe: always dismiss within 2500ms */
+    var failsafe = setTimeout(dismissLoader, 2500);
+    window.addEventListener('load', function(){
+      clearTimeout(failsafe);
+      setTimeout(dismissLoader, 380);
+    });
+  }
+
+  /* ── 3. HERO ENTRANCE ─────────────────────────────────────────── */
+  function triggerHero(){
+    var hi = document.querySelector('.hero-inner');
+    var hd = document.querySelector('.hero-dashboard');
+    if(hi) hi.classList.add('sn-hero-active');
+    if(hd) hd.classList.add('sn-hero-active');
+  }
+
+  /* ── 4. SCROLL REVEALS (IntersectionObserver) ─────────────────── */
+  if(!reducedMotion && 'IntersectionObserver' in window){
+    var revealObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          e.target.classList.add('sn-in');
+          revealObs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    /* Add reveal classes and stagger to sections */
+    var revealSelectors = [
+      '.trust-strip .trust-item',
+      '.diff-card',
+      '.mvv-card',
+      '.ref-step',
+      '.coverage-city',
+      '.footer-col',
+      '.section-eyebrow',
+      '.section-lead',
+    ];
+
+    revealSelectors.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el, i){
+        if(!el.classList.contains('sn-reveal') && !el.classList.contains('sn-reveal-o')){
+          el.classList.add('sn-reveal');
+          el.style.setProperty('--sn-d', (i * 80) + 'ms');
+        }
+        revealObs.observe(el);
+      });
+    });
+
+    /* Plan cards: use fade-only (sn-reveal-o) to avoid transform conflicts */
+    document.querySelectorAll('.plan-card').forEach(function(el, i){
+      el.classList.add('sn-reveal-o');
+      el.style.setProperty('--sn-d', (i * 100) + 'ms');
+      revealObs.observe(el);
+    });
+
+    /* Generic elements already marked with reveal classes */
+    document.querySelectorAll('.sn-reveal, .sn-reveal-o').forEach(function(el){
+      revealObs.observe(el);
+    });
+  }
+
+  /* ── 5. NAV COMPACT ON SCROLL ─────────────────────────────────── */
+  var nav = document.querySelector('.nav');
+  if(nav){
+    window.addEventListener('scroll', function(){
+      nav.classList.toggle('sn-scrolled', window.scrollY > 55);
+    }, { passive: true });
+  }
+
+  /* ── 6. PLAN CARD 3D TILT + SHINE INJECTION ──────────────────── */
+  if(!reducedMotion){
+    var isDesktop = window.innerWidth > 900;
+
+    document.querySelectorAll('.plan-card').forEach(function(card){
+      /* Inject shine overlay */
+      var shine = document.createElement('span');
+      shine.className = 'plan-shine';
+      card.appendChild(shine);
+
+      if(!isDesktop) return;
+
+      var isHot = card.classList.contains('hot');
+      var baseY = isHot ? -12 : 0;
+      var RAF = null;
+
+      card.addEventListener('mousemove', function(e){
+        cancelAnimationFrame(RAF);
+        RAF = requestAnimationFrame(function(){
+          var r = card.getBoundingClientRect();
+          var cx = r.left + r.width / 2;
+          var cy = r.top + r.height / 2;
+          var dx = (e.clientX - cx) / (r.width / 2);
+          var dy = (e.clientY - cy) / (r.height / 2);
+          var rx = -dy * 5.5;
+          var ry = dx * 5.5;
+          card.style.transform = 'perspective(720px) translateY(' + baseY + 'px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg) scale(1.025)';
+          card.style.transition = 'transform 0.1s linear';
+        });
+      });
+
+      card.addEventListener('mouseleave', function(){
+        cancelAnimationFrame(RAF);
+        card.style.transform = 'perspective(720px) translateY(' + baseY + 'px) rotateX(0deg) rotateY(0deg) scale(1)';
+        card.style.transition = 'transform 0.55s cubic-bezier(0.22,0.61,0.36,1)';
+      });
+    });
+  }
+
+  /* ── 7. PLAN CTA RIPPLE ───────────────────────────────────────── */
+  document.querySelectorAll('.plan-cta .btn-fill, .plan-cta .action-fill').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var rip = document.createElement('span');
+      rip.className = 'sn-ripple';
+      var r = btn.getBoundingClientRect();
+      var size = Math.max(r.width, r.height) * 2;
+      rip.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + (e.clientX - r.left - size/2) + 'px;top:' + (e.clientY - r.top - size/2) + 'px;';
+      btn.appendChild(rip);
+      setTimeout(function(){ rip.remove(); }, 700);
+    });
+  });
+
+  /* ── 8. REFERRAL CONNECTOR LINE ───────────────────────────────── */
+  if(!reducedMotion){
+    var refSteps = document.querySelector('.ref-steps');
+    if(refSteps){
+      var line = document.createElement('div');
+      line.className = 'sn-ref-line';
+      refSteps.appendChild(line);
+
+      if('IntersectionObserver' in window){
+        var connObs = new IntersectionObserver(function(entries){
+          if(entries[0].isIntersecting){
+            line.classList.add('sn-conn-in');
+            connObs.disconnect();
+          }
+        }, { threshold: 0.3 });
+        connObs.observe(refSteps);
+      }
+    }
+  }
+
+  /* ── 9. COVERAGE DECORATIVE RINGS ─────────────────────────────── */
+  if(!reducedMotion){
+    var covMap = document.querySelector('.coverage-map');
+    if(covMap){
+      var svgRings = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svgRings.setAttribute('class','sn-cov-rings');
+      svgRings.setAttribute('viewBox','0 0 300 300');
+      svgRings.setAttribute('aria-hidden','true');
+      svgRings.innerHTML =
+        '<circle cx="150" cy="150" r="60"  fill="none" stroke="rgba(0,196,216,0.15)" stroke-width="1.5" stroke-dasharray="6 4"/>' +
+        '<circle cx="150" cy="150" r="100" fill="none" stroke="rgba(0,196,216,0.09)" stroke-width="1"   stroke-dasharray="4 6"/>' +
+        '<circle cx="150" cy="150" r="135" fill="none" stroke="rgba(0,196,216,0.05)" stroke-width="1"   stroke-dasharray="3 8"/>';
+      svgRings.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;pointer-events:none;z-index:0;animation:sn-spin 32s linear infinite;';
+      covMap.style.position = covMap.style.position || 'relative';
+      covMap.insertBefore(svgRings, covMap.firstChild);
+    }
+  }
+
+  /* ── 10. CITY DOT BLINK STAGGER ──────────────────────────────── */
+  document.querySelectorAll('.city-dot').forEach(function(dot, i){
+    dot.style.animationDelay = (i * 0.4) + 's';
+  });
+
 })();
 </script>
