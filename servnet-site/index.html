@@ -288,6 +288,11 @@ button, input, select { font-family: inherit; font-size: inherit; }
 /* ===== PLANS ===== */
 .plans-section { background: var(--bg); }
 .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+@media (max-width: 680px) {
+  .plans-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .plan-card.hot { transform: none; margin: 0; }
+  .plan-card.hot:hover { transform: translateY(-5px); }
+}
 .plan-card {
   background: var(--card); border: 1px solid var(--border);
   border-radius: 10px; padding: 1.75rem 1.5rem 1.5rem;
@@ -390,6 +395,20 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .plan-fine {
   font-size: 0.78rem; color: var(--text-2);
   text-align: center; margin-top: 0.7rem; line-height: 1.5; opacity: 0.8;
+}
+.plan-fidelidade {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: 0.8rem; font-weight: 600;
+  color: var(--text-2);
+  background: rgba(0,196,216,0.05);
+  border: 1px solid rgba(0,196,216,0.14);
+  border-radius: 6px; padding: .4rem .7rem;
+  margin-bottom: .9rem;
+}
+.plan-fidelidade.no-fid {
+  color: #25D366;
+  border-color: rgba(37,211,102,0.28);
+  background: rgba(37,211,102,0.06);
 }
 
 /* ===== DIFERENCIAIS ===== */
@@ -911,8 +930,8 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 <div class="trust-strip" aria-hidden="true">
   <div class="trust-item"><span class="trust-icon">⚡</span><span>Fibra óptica 100%</span></div>
   <div class="trust-item"><span class="trust-icon">📶</span><span>Wi-Fi incluso</span></div>
-  <div class="trust-item"><span class="trust-icon">✅</span><span>Sem fidelidade</span></div>
-  <div class="trust-item"><span class="trust-icon">🔧</span><span>Instalação grátis</span></div>
+  <div class="trust-item"><span class="trust-icon">♾️</span><span>Internet ilimitada</span></div>
+  <div class="trust-item"><span class="trust-icon">💬</span><span>Suporte via WhatsApp</span></div>
 </div>
 
 <!-- PLANS -->
@@ -936,6 +955,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <span class="plan-mo">/mês</span>
       </div>
       <div class="plan-sep"></div>
+      <div class="plan-fidelidade">📋 Fidelidade: 12 meses</div>
       <ul class="plan-features">
         <li><span class="feat-dot"></span>Suporte técnico grátis</li>
         <li><span class="feat-dot"></span>Internet ilimitada</li>
@@ -943,7 +963,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <li><span class="feat-dot"></span>Instalação grátis</li>
       </ul>
       <button class="plan-action action-line" onclick="openModal('Plano Bronze — 100 Mbps — R$ 60,00/mês')">Quero esse plano</button>
-      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+      <p class="plan-fine">*Fidelidade 12 meses · Multa de R$150 em caso de cancelamento antecipado</p>
     </article>
 
     <article class="plan-card hot" aria-label="Plano Prata 200 Mbps, mais popular">
@@ -959,14 +979,15 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <span class="plan-mo">/mês</span>
       </div>
       <div class="plan-sep"></div>
+      <div class="plan-fidelidade">📋 Fidelidade: 6 meses</div>
       <ul class="plan-features">
         <li><span class="feat-dot"></span>Suporte técnico grátis</li>
         <li><span class="feat-dot"></span>Internet ilimitada</li>
         <li><span class="feat-dot"></span>Wi-Fi incluso</li>
-        <li><span class="feat-dot"></span>Instalação grátis</li>
+        <li><span class="feat-dot"></span>Taxa de instalação: R$80</li>
       </ul>
       <button class="plan-action action-fill" onclick="openModal('Plano Prata — 200 Mbps — R$ 80,00/mês')">Quero esse plano</button>
-      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+      <p class="plan-fine">*Instalação R$80 · Fidelidade 6 meses · Atendimento via WhatsApp</p>
     </article>
 
     <article class="plan-card" aria-label="Plano Ouro 300 Mbps">
@@ -981,6 +1002,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <span class="plan-mo">/mês</span>
       </div>
       <div class="plan-sep"></div>
+      <div class="plan-fidelidade no-fid">✅ Sem fidelidade</div>
       <ul class="plan-features">
         <li><span class="feat-dot"></span>Suporte técnico grátis</li>
         <li><span class="feat-dot"></span>Internet ilimitada</li>
@@ -988,7 +1010,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <li><span class="feat-dot"></span>Instalação grátis</li>
       </ul>
       <button class="plan-action action-line" onclick="openModal('Plano Ouro — 300 Mbps — R$ 100,00/mês')">Quero esse plano</button>
-      <p class="plan-fine">*Instalação inclusa · Atendimento via WhatsApp</p>
+      <p class="plan-fine">*Instalação inclusa · Sem fidelidade · Atendimento via WhatsApp</p>
     </article>
 
   </div>
@@ -1041,7 +1063,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
       </div>
       <div class="diff-label">Melhor Custo-Benefício</div>
-      <div class="diff-desc">A melhor relação preço/velocidade da região. Sem fidelidade e sem letra miúda.</div>
+      <div class="diff-desc">A melhor relação preço/velocidade da região. Internet ilimitada e sem letra miúda.</div>
     </div>
   </div>
 </section>
@@ -1051,7 +1073,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
   <div class="cta-banner-inner">
     <span class="cta-banner-tag">Jardim Moraes Prado</span>
     <h2>Sua fibra está<br>esperando por você</h2>
-    <p>Instalação rápida, sem burocracia e sem fidelidade. Ligue agora e comece a usar ainda esta semana.</p>
+    <p>Instalação rápida, sem burocracia e internet ilimitada. Ligue agora e comece a usar ainda esta semana.</p>
     <div class="cta-banner-actions">
       <a href="https://wa.me/5511966961138" class="btn-wa" onclick="if(typeof gtag==='function')gtag('event','conversion',{'send_to':'AW-18397898966/OWZeCLb2uuUcENbR5sRE'});">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -1624,7 +1646,7 @@ setTimeout(function() {
   openModal(null, {
     tag:   '🎁 Oferta para o bairro',
     title: 'Fibra chegou até você?',
-    sub:   'Sem fidelidade e sem taxa de instalação. Cadastre-se e nossa equipe liga ainda hoje!'
+    sub:   'Internet ilimitada e suporte local via WhatsApp. Cadastre-se e nossa equipe liga ainda hoje!'
   });
 }, 10000);
 
