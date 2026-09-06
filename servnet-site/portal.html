@@ -27,33 +27,129 @@ html{scroll-behavior:smooth;}
 body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
 a{color:inherit;}
 
-/* ===== LOGIN ===== */
+/* ===== LOGIN — Split Panel ===== */
 .login-screen{
   min-height:100vh;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:2rem 1rem;
-  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,196,216,0.08) 0%,transparent 70%);
+  align-items:center;justify-content:center;padding:1.5rem;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,196,216,0.07) 0%,transparent 70%),
+             var(--bg);
 }
-.login-logo{font-size:1.8rem;font-weight:900;letter-spacing:0.1em;color:var(--pool);text-shadow:0 0 20px rgba(0,196,216,0.4);margin-bottom:0.3rem;}
-.login-logo span{color:var(--text);opacity:0.7;font-weight:700;}
-.login-sub{font-size:0.82rem;color:var(--text-2);text-transform:uppercase;letter-spacing:0.18em;margin-bottom:2.5rem;}
-.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2.5rem 2rem;}
-.login-card h2{font-size:1.1rem;font-weight:700;margin-bottom:0.4rem;}
-.login-card p{font-size:0.88rem;color:var(--text-2);margin-bottom:1.75rem;}
+/* Split card */
+.auth-card{
+  position:relative;width:min(820px,98vw);
+  display:flex;border-radius:18px;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(0,196,216,0.12);
+  min-height:490px;
+}
+/* Left: form */
+.auth-form-pane{
+  flex:1;padding:3rem 2.5rem;
+  background:var(--surface);
+  display:flex;flex-direction:column;
+  position:relative;z-index:1;
+}
+/* Right: welcome */
+.auth-welcome-pane{
+  width:42%;flex-shrink:0;
+  background:linear-gradient(148deg,#041c30 0%,#06283e 55%,#031520 100%);
+  border-left:1px solid rgba(0,196,216,0.15);
+  display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;
+  padding:3rem 2.5rem;position:relative;overflow:hidden;
+}
+.auth-welcome-pane::before{
+  content:'';position:absolute;top:-80px;right:-80px;
+  width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.2) 0%,transparent 70%);
+  pointer-events:none;
+}
+.auth-welcome-pane::after{
+  content:'';position:absolute;bottom:-60px;left:-60px;
+  width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,196,216,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.auth-welcome-eyebrow{
+  font-size:0.62rem;font-weight:900;letter-spacing:0.32em;
+  text-transform:uppercase;color:rgba(0,196,216,0.55);
+  margin-bottom:1.4rem;position:relative;z-index:1;
+}
+.auth-welcome-pane h3{
+  font-size:clamp(1.7rem,3.2vw,2.3rem);font-weight:800;line-height:1.15;
+  color:var(--text);margin-bottom:1rem;position:relative;z-index:1;
+}
+.auth-welcome-pane h3 em{
+  display:block;font-style:italic;color:var(--pool);font-size:1.1em;
+  text-shadow:0 0 32px rgba(0,196,216,0.5);
+}
+.auth-welcome-pane p{
+  font-size:0.88rem;color:var(--text-2);line-height:1.75;
+  position:relative;z-index:1;
+}
+/* Blade sweep — loading animation */
+.auth-blade{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:1.25rem;
+  background:linear-gradient(135deg,#031b2e 0%,#041e33 40%,#020e18 100%);
+  clip-path:polygon(0 0,0 0,0 100%,0 100%);
+  transition:clip-path 0.55s cubic-bezier(0.22,0.61,0.36,1);
+  pointer-events:none;z-index:20;
+}
+.auth-blade.blade-in{
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%);
+  pointer-events:auto;
+}
+.auth-blade.blade-out{
+  clip-path:polygon(100% 0,100% 0,100% 100%,100% 100%);
+}
+.auth-blade-logo{
+  font-size:2rem;font-weight:900;letter-spacing:0.12em;
+  color:#fff;text-shadow:0 0 32px rgba(0,196,216,0.85);
+}
+.auth-blade-logo span{color:rgba(255,255,255,0.45);font-weight:700;}
+/* Form elements */
+.auth-back{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  font-size:0.8rem;color:var(--text-2);text-decoration:none;
+  margin-bottom:1.75rem;transition:color 0.15s;
+}
+.auth-back:hover{color:var(--pool);}
+.auth-logo{
+  font-size:1.5rem;font-weight:900;letter-spacing:0.09em;
+  color:var(--pool);text-shadow:0 0 18px rgba(0,196,216,0.4);
+  margin-bottom:0.15rem;
+}
+.auth-logo span{color:var(--text);opacity:0.55;font-weight:700;}
+.auth-sub{
+  font-size:0.7rem;text-transform:uppercase;letter-spacing:0.2em;
+  color:var(--text-2);margin-bottom:1.8rem;
+}
+.auth-form-pane h2{font-size:1.1rem;font-weight:700;margin-bottom:0.3rem;color:var(--text);}
+.auth-form-pane>p{font-size:0.85rem;color:var(--text-2);margin-bottom:1.6rem;line-height:1.65;}
+/* reuse existing f-group, f-label, f-input, login-btn, login-err, login-help */
 .f-group{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1.2rem;}
-.f-label{font-size:0.74rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-2);}
-.f-input{padding:0.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.f-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-2);}
+.f-input{padding:0.82rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:0.96rem;font-family:inherit;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
 .f-input:focus{border-color:var(--pool);box-shadow:0 0 0 3px rgba(0,196,216,0.12);}
-.f-input::placeholder{color:var(--text-2);opacity:0.6;}
-/* date text input — sem calendário nativo */
-.login-btn{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:0.4rem;font-family:inherit;}
+.f-input::placeholder{color:var(--text-2);opacity:0.55;}
+.login-btn{width:100%;padding:0.9rem;background:var(--pool);color:#fff;border:none;border-radius:7px;font-size:0.98rem;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:0.35rem;font-family:inherit;}
 .login-btn:hover:not(:disabled){opacity:0.88;transform:translateY(-1px);}
 .login-btn:disabled{opacity:0.55;cursor:default;}
-.login-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:0.75rem 1rem;color:#FCA5A5;font-size:0.88rem;margin-top:1rem;display:none;}
+.login-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:7px;padding:0.7rem 1rem;color:#FCA5A5;font-size:0.86rem;margin-top:0.9rem;display:none;}
 .login-err.show{display:block;}
-.login-help{text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--text-2);}
+.login-help{text-align:center;margin-top:1.4rem;font-size:0.8rem;color:var(--text-2);}
 .login-help a{color:var(--pool);text-decoration:none;}
-.login-back{display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-2);text-decoration:none;margin-bottom:1.5rem;transition:color 0.15s;}
-.login-back:hover{color:var(--pool);}
+/* Mobile: stack */
+@media(max-width:620px){
+  .auth-card{flex-direction:column-reverse;min-height:auto;}
+  .auth-welcome-pane{width:100%;padding:1.8rem 1.8rem 1.4rem;flex-direction:row;align-items:center;gap:1.2rem;}
+  .auth-welcome-pane::before,.auth-welcome-pane::after{display:none;}
+  .auth-welcome-pane h3{font-size:1.3rem;margin-bottom:0;white-space:nowrap;}
+  .auth-welcome-pane p{display:none;}
+  .auth-form-pane{padding:2rem 1.5rem 2.5rem;}
+  .auth-back{margin-bottom:1.25rem;}
+}
 
 /* ===== DASHBOARD ===== */
 .dash-screen{display:none;}
@@ -440,23 +536,37 @@ a{color:inherit;}
 
 <!-- ===== LOGIN ===== -->
 <div class="login-screen" id="loginScreen">
-  <a href="index.html" class="login-back">← Voltar ao site</a>
-  <div class="login-logo">SERV<span>NET</span></div>
-  <div class="login-sub">Área do Cliente</div>
-  <div class="login-card">
-    <h2>Acesso ao portal</h2>
-    <p>Informe seu CPF e data de nascimento para entrar.</p>
-    <div class="f-group">
-      <label class="f-label" for="cpf">CPF</label>
-      <input class="f-input" type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" autocomplete="off" inputmode="numeric">
+  <div class="auth-card">
+    <!-- Left: form pane -->
+    <div class="auth-form-pane">
+      <a href="index.html" class="auth-back">← Voltar ao site</a>
+      <div class="auth-logo">SERV<span>NET</span></div>
+      <div class="auth-sub">Área do Cliente</div>
+      <h2>Acesso ao portal</h2>
+      <p>Informe seu CPF e data de nascimento para entrar.</p>
+      <div class="f-group">
+        <label class="f-label" for="cpf">CPF</label>
+        <input class="f-input" type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" autocomplete="off" inputmode="numeric">
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="nasc">Data de nascimento</label>
+        <input class="f-input" type="text" id="nasc" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric" autocomplete="bday">
+      </div>
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-help">Problemas? <a href="whatsapp://send?phone=5511966961138">Fale pelo WhatsApp</a></div>
     </div>
-    <div class="f-group">
-      <label class="f-label" for="nasc">Data de nascimento</label>
-      <input class="f-input" type="text" id="nasc" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric" autocomplete="bday">
+    <!-- Right: welcome pane -->
+    <div class="auth-welcome-pane">
+      <div class="auth-welcome-eyebrow">SERVNET</div>
+      <h3>Bem-vindo<br><em>de volta.</em></h3>
+      <p>Seu plano, suas faturas e seu histórico estão te esperando.</p>
     </div>
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
-    <div class="login-err" id="loginErr"></div>
-    <div class="login-help">Problemas para acessar? <a href="whatsapp://send?phone=5511966961138">Fale pelo WhatsApp</a></div>
+    <!-- Blade sweep overlay (loading) -->
+    <div class="auth-blade" id="authBlade">
+      <div class="auth-blade-logo">SERV<span>NET</span></div>
+      <span class="spin"></span>
+    </div>
   </div>
   <div style="text-align:center;margin-top:1rem;font-size:0.68rem;color:#aaa;opacity:0.6;letter-spacing:0.04em;">v2026.08.17</div>
 </div>
@@ -613,6 +723,18 @@ const SB_KEY = 'sb_publishable_0peTquB1iqmsYTBMLwH2JA_eOwz2yTM';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 let session = null;
+
+// Reset blade after out-sweep so it doesn't block interactions
+(function(){
+  var b = document.getElementById('authBlade');
+  if(!b) return;
+  b.addEventListener('transitionend', function(){
+    if(b.classList.contains('blade-out')){
+      b.classList.remove('blade-out');
+    }
+  });
+})();
+
 let faturasList = [];        // todas as faturas do cliente, de todos os contratos
 let contratos = [];          // contratos ativos de Provedor
 let faturasPorContrato = {}; // chave do contrato → faturas daquele contrato
@@ -697,16 +819,19 @@ async function doLogin(){
   const nascRaw = document.getElementById('nasc').value.replace(/\D/g,'');
   const btn = document.getElementById('loginBtn');
   const err = document.getElementById('loginErr');
+  const blade = document.getElementById('authBlade');
   err.classList.remove('show');
   if(cpf.length!==11){ showErr('Informe um CPF válido.'); return; }
   if(nascRaw.length!==8){ showErr('Informe uma data de nascimento válida (DD/MM/AAAA).'); return; }
   // converte DD/MM/AAAA → AAAA-MM-DD para o Supabase
   const nasc = `${nascRaw.slice(4,8)}-${nascRaw.slice(2,4)}-${nascRaw.slice(0,2)}`;
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  if(blade) blade.classList.add('blade-in');
   try{
     const {data,error} = await sb.rpc('portal_servnet_login',{p_cpf:cpf,p_nascimento:nasc});
     if(error) throw error;
     if(!data||!data.ok){
+      if(blade){ blade.classList.add('blade-out'); blade.classList.remove('blade-in'); }
       const baseMsg = data?.msg || 'CPF ou data de nascimento incorretos.';
       showErr(baseMsg + ' Se você se cadastrou recentemente, <a href="whatsapp://send?phone=5511966961138" style="color:inherit;text-decoration:underline">fale pelo WhatsApp</a> para ativar seu acesso.');
       return;
@@ -715,6 +840,7 @@ async function doLogin(){
     sessionStorage.setItem('sn_sess',JSON.stringify(data));
     enterDash(data);
   }catch(e){
+    if(blade){ blade.classList.add('blade-out'); blade.classList.remove('blade-in'); }
     showErr('Erro de conexão — tente novamente em instantes.');
     console.error(e);
   }finally{
