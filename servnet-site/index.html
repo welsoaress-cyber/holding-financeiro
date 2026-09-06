@@ -188,6 +188,29 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
+/* ── Hero Dog mascot ───────────────────────────────── */
+.hero-dog {
+  position: absolute;
+  bottom: 0; right: max(5vw, 1.5rem);
+  width: 220px; height: 264px;
+  z-index: 2; pointer-events: none;
+  overflow: hidden;
+  filter: drop-shadow(0 18px 36px rgba(0,0,0,0.6));
+  opacity: 0; animation: dog-enter 0.9s cubic-bezier(0.22,0.61,0.36,1) 1.4s forwards;
+}
+@keyframes dog-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-dog-sprite {
+  position: absolute; top: 0; left: 0;
+  width: 10560px; height: 264px; /* 48 × 220px */
+  background-image: url('./dog-sprite.jpg');
+  background-repeat: no-repeat;
+  background-size: 10560px 264px;
+  will-change: background-position;
+}
+@media (max-width: 860px) { .hero-dog { display: none; } }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
 .hero-tag {
@@ -1239,7 +1262,10 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 <!-- HERO -->
 <section class="hero" id="inicio" aria-label="Banner principal">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
-  <div class="hero-grid" aria-hidden="true"></div></canvas>
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-dog" id="heroDog" aria-hidden="true">
+    <div class="hero-dog-sprite" id="heroDogSprite"></div>
+  </div>
   <div class="hero-inner">
     <div class="hero-tag">
       <span class="hero-tag-dot"></span>
@@ -2581,6 +2607,77 @@ function copiarLink() {
 
     window.addEventListener('scroll', updateActive, {passive:true});
     setTimeout(updateActive, 600); // after loader clears
+  })();
+
+  /* ── 13. HERO DOG — mouse-tracking mascot ───────────────────── */
+  (function(){
+    var dog    = document.getElementById('heroDog');
+    var sprite = document.getElementById('heroDogSprite');
+    if(!dog || !sprite) return;
+
+    var N  = 48;   // total frames
+    var TW = 220;  // thumb width (matches CSS)
+
+    // Angle → frame keymap (0°=right, 90°=up, 180°=left, 270°=down)
+    var KEY = [
+      {a: 90,  f:  0},  // up / center start
+      {a: 180, f: 12},  // far left
+      {a: 225, f: 17},  // lower-left
+      {a: 135, f: 22},  // upper-left
+      {a:  90, f: 24},  // center return
+      {a:   0, f: 36},  // far right
+      {a: 315, f: 41},  // lower-right
+      {a:  45, f: 46},  // upper-right
+      {a:  90, f: 48},  // center end
+    ];
+
+    var curF = 0, targetF = 0, rafId = null;
+
+    function angleDiff(a, b){
+      var d = ((b - a) % 360 + 360) % 360;
+      return d > 180 ? d - 360 : d;
+    }
+    function angleToFrame(deg){
+      var minD = 999, minI = 0;
+      for(var i = 0; i < KEY.length - 1; i++){
+        var d = Math.abs(angleDiff(deg, KEY[i].a));
+        if(d < minD){ minD = d; minI = i; }
+      }
+      var k0 = KEY[minI], k1 = KEY[minI + 1] || KEY[0];
+      var span = Math.abs(angleDiff(k0.a, k1.a));
+      if(!span) return k0.f;
+      var t = Math.max(0, Math.min(1, Math.abs(angleDiff(deg, k0.a)) / span));
+      return k0.f + t * (k1.f - k0.f);
+    }
+    function setFrame(f){
+      f = Math.max(0, Math.min(N - 1, Math.round(f)));
+      sprite.style.backgroundPosition = (-f * TW) + 'px 0px';
+    }
+    function tick(){
+      var diff = targetF - curF;
+      if(Math.abs(diff) < 0.08){ curF = targetF; setFrame(curF); rafId = null; return; }
+      curF += diff * 0.16;
+      setFrame(curF);
+      rafId = requestAnimationFrame(tick);
+    }
+    function moveTo(f){
+      targetF = Math.max(0, Math.min(N - 1, f));
+      if(!rafId) rafId = requestAnimationFrame(tick);
+    }
+    function onMove(cx, cy){
+      var r  = dog.getBoundingClientRect();
+      var ox = cx - (r.left + r.width  / 2);
+      var oy = cy - (r.top  + r.height / 2);
+      if(Math.sqrt(ox*ox + oy*oy) < 5){ moveTo(0); return; }
+      var angle = Math.atan2(-oy, ox) * 180 / Math.PI;
+      if(angle < 0) angle += 360;
+      moveTo(angleToFrame(angle));
+    }
+
+    window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
+    window.addEventListener('mouseleave', function(){ moveTo(0); });
+
+    setFrame(0);
   })();
 
 })();
