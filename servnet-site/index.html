@@ -188,37 +188,51 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
-/* ── Hero Dog mascot ───────────────────────────────── */
+/* ── Hero Dog mascot — viewport-fixed, scroll-reactive ── */
 .hero-dog {
-  position: absolute;
-  bottom: 0; right: max(5vw, 1.5rem);
-  width: 260px;
-  z-index: 2; pointer-events: none;
-  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.65));
-  opacity: 0; animation: dog-enter 0.9s cubic-bezier(0.22,0.61,0.36,1) 1.4s forwards;
-}
-@keyframes dog-enter {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  position: fixed;
+  bottom: 0; right: max(2vw, 10px);
+  width: clamp(100px, 15vw, 240px);
+  z-index: 90; pointer-events: none;
+  filter: drop-shadow(0 14px 28px rgba(0,0,0,0.6));
+  opacity: 0;
+  /* position transitions — spring-ish */
+  transition:
+    bottom  0.65s cubic-bezier(0.34,1.36,0.64,1),
+    right   0.65s cubic-bezier(0.34,1.36,0.64,1),
+    left    0.65s cubic-bezier(0.34,1.36,0.64,1),
+    transform 0.55s cubic-bezier(0.34,1.36,0.64,1),
+    opacity 0.5s;
 }
 .hero-dog img { width: 100%; height: auto; display: block; }
-/* Eye overlay — positioned as % of container, scales with image */
-.hero-dog-eyes {
-  position: absolute; inset: 0; pointer-events: none;
-}
+/* Eye overlay */
+.hero-dog-eyes { position: absolute; inset: 0; pointer-events: none; }
 .eye-pupil {
   position: absolute;
-  /* size = sclera diameter ~8% of container */
   width: 8%; height: 0; padding-bottom: 8%;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%, #1f1f3a 0%, #000 70%);
   transform: translate(-50%, -50%);
-  will-change: left, top;
+  will-change: transform;
 }
-/* Default eye centres (% of image, from pixel detection scaled) */
 .eye-pupil-l { left: 37.4%; top: 30.5%; }
 .eye-pupil-r { left: 61.5%; top: 28.5%; }
-@media (max-width: 860px) { .hero-dog { display: none; } }
+/* ── Dog state animations ── */
+.hero-dog.dog-hop {
+  animation: dog-hop 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes dog-hop {
+  0%   { translate: 0 0; }
+  45%  { translate: 0 -28px; }
+  100% { translate: 0 0; }
+}
+.hero-dog.dog-excited {
+  animation: dog-excited 0.65s ease-in-out infinite alternate;
+}
+@keyframes dog-excited {
+  from { translate: 0 0;    rotate: -4deg; }
+  to   { translate: 0 -16px; rotate:  4deg; }
+}
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
 .hero-tag {
@@ -2621,70 +2635,157 @@ function copiarLink() {
     setTimeout(updateActive, 600); // after loader clears
   })();
 
-  /* ── 13. HERO DOG — pupil eye tracking ──────────────────────── */
+  /* ── 13. HERO DOG — eye tracking + scroll states ───────────── */
   (function(){
     var dog  = document.getElementById('heroDog');
     var eyeL = document.getElementById('eyeL');
     var eyeR = document.getElementById('eyeR');
-    if(!dog || !eyeL || !eyeR) return;
+    if(!dog) return;
 
-    // Eye centres as fraction of container (from image analysis)
+    /* Appear after load */
+    setTimeout(function(){ dog.style.opacity = '1'; }, 1400);
+
+    /* ── Eye tracking (desktop / mouse only) ── */
     var EYES = [
       { el: eyeL, cx: 0.374, cy: 0.305 },
       { el: eyeR, cx: 0.615, cy: 0.285 },
     ];
-    // Max pupil travel as fraction of container width
-    var MAX_R = 0.030;
-
-    var curL = {x:0,y:0}, curR = {x:0,y:0}; // current offsets (px)
+    var MAX_R = 0.028;
+    var curL = {x:0,y:0}, curR = {x:0,y:0};
     var tgtL = {x:0,y:0}, tgtR = {x:0,y:0};
-    var rafId = null;
+    var eyeRaf = null;
 
-    function pupilTarget(eye, mx, my) {
-      var r   = dog.getBoundingClientRect();
-      var W   = r.width, H = r.height;
-      // Eye centre in screen pixels
-      var ex  = r.left + eye.cx * W;
-      var ey  = r.top  + eye.cy * H;
-      var dx  = mx - ex, dy = my - ey;
-      var dist = Math.sqrt(dx*dx + dy*dy);
-      var maxPx = MAX_R * W;
-      if(dist < 1) return {x:0, y:0};
-      var scale = Math.min(1, maxPx / dist);
-      return { x: dx * scale, y: dy * scale };
+    function pupilTarget(eye, mx, my){
+      var r = dog.getBoundingClientRect();
+      var W = r.width, H = r.height;
+      var ex = r.left + eye.cx * W, ey = r.top + eye.cy * H;
+      var dx = mx - ex, dy = my - ey;
+      var d = Math.sqrt(dx*dx + dy*dy), maxPx = MAX_R * W;
+      if(d < 1) return {x:0,y:0};
+      var s = Math.min(1, maxPx / d);
+      return {x: dx*s, y: dy*s};
     }
-
-    function lerp(a, b, t) { return a + (b-a)*t; }
-
-    function tick() {
-      var dx, dy, moving = false;
-      EYES.forEach(function(eye){
-        var cur = eye === EYES[0] ? curL : curR;
-        var tgt = eye === EYES[0] ? tgtL : tgtR;
-        dx = tgt.x - cur.x; dy = tgt.y - cur.y;
-        if(Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) moving = true;
-        cur.x += dx * 0.14;
-        cur.y += dy * 0.14;
-        // Apply as offset from CSS default position
-        eye.el.style.transform =
-          'translate(calc(-50% + ' + cur.x.toFixed(2) + 'px), calc(-50% + ' + cur.y.toFixed(2) + 'px))';
+    function eyeTick(){
+      var moving = false;
+      EYES.forEach(function(eye, i){
+        var cur = i===0 ? curL : curR, tgt = i===0 ? tgtL : tgtR;
+        var dx = tgt.x-cur.x, dy = tgt.y-cur.y;
+        if(Math.abs(dx)>0.05||Math.abs(dy)>0.05) moving=true;
+        cur.x += dx*0.14; cur.y += dy*0.14;
+        if(eye.el) eye.el.style.transform =
+          'translate(calc(-50% + '+cur.x.toFixed(2)+'px),calc(-50% + '+cur.y.toFixed(2)+'px))';
       });
-      rafId = moving ? requestAnimationFrame(tick) : null;
+      eyeRaf = moving ? requestAnimationFrame(eyeTick) : null;
+    }
+    function moveEyes(mx, my){
+      tgtL = pupilTarget(EYES[0],mx,my);
+      tgtR = pupilTarget(EYES[1],mx,my);
+      if(!eyeRaf) eyeRaf = requestAnimationFrame(eyeTick);
+    }
+    function resetEyes(){
+      tgtL={x:0,y:0}; tgtR={x:0,y:0};
+      if(!eyeRaf) eyeRaf = requestAnimationFrame(eyeTick);
+    }
+    window.addEventListener('mousemove', function(e){ moveEyes(e.clientX,e.clientY); });
+    window.addEventListener('mouseleave', resetEyes);
+
+    /* ── Scroll-reactive states ── */
+    var state = 'hero';
+
+    function hop(){
+      dog.classList.remove('dog-hop');
+      void dog.offsetWidth; // reflow
+      dog.classList.add('dog-hop');
+      dog.addEventListener('animationend', function(){ dog.classList.remove('dog-hop'); }, {once:true});
     }
 
-    function onMove(mx, my) {
-      tgtL = pupilTarget(EYES[0], mx, my);
-      tgtR = pupilTarget(EYES[1], mx, my);
-      if(!rafId) rafId = requestAnimationFrame(tick);
+    // Hero: bottom-right corner
+    function toHero(){
+      if(state==='hero') return; state='hero';
+      dog.classList.remove('dog-excited');
+      dog.style.bottom = '0px';
+      dog.style.right  = 'max(2vw, 10px)';
+      dog.style.left   = 'auto';
+      dog.style.transform = 'none';
+      hop();
     }
 
-    function onLeave() {
-      tgtL = {x:0, y:0}; tgtR = {x:0, y:0};
-      if(!rafId) rafId = requestAnimationFrame(tick);
+    // Plans: sit on top of the carousel, centred
+    function toPlans(){
+      state = 'plans';
+      dog.classList.remove('dog-excited');
+      var outer = document.querySelector('.plans-carousel-outer');
+      if(outer){
+        var r = outer.getBoundingClientRect();
+        var dW = dog.offsetWidth, dH = dog.offsetHeight;
+        var cardTop = Math.max(70, Math.min(window.innerHeight*0.55, r.top));
+        dog.style.bottom    = Math.max(0, window.innerHeight - cardTop - dH*0.18) + 'px';
+        dog.style.left      = ((window.innerWidth/2) - dW/2) + 'px';
+        dog.style.right     = 'auto';
+        dog.style.transform = 'rotate(-7deg)';
+      }
+    }
+    function enterPlans(){
+      if(state==='plans'){ toPlans(); return; } // just update pos
+      toPlans(); hop();
     }
 
-    window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
-    window.addEventListener('mouseleave', onLeave);
+    // Features (quem-somos / cobertura): bottom-left, mirrored
+    function toFeatures(){
+      if(state==='features') return; state='features';
+      dog.classList.remove('dog-excited');
+      dog.style.bottom    = '0px';
+      dog.style.left      = 'max(2vw, 10px)';
+      dog.style.right     = 'auto';
+      dog.style.transform = 'scaleX(-1) rotate(8deg)';
+      hop();
+    }
+
+    // Contact: bottom-right, excited bounce
+    function toContact(){
+      if(state==='contact') return; state='contact';
+      dog.style.bottom    = '0px';
+      dog.style.right     = 'max(2vw, 10px)';
+      dog.style.left      = 'auto';
+      dog.style.transform = 'none';
+      dog.classList.add('dog-excited');
+    }
+
+    function checkState(){
+      var mid = window.scrollY + window.innerHeight * 0.45;
+      var secPlanos   = document.getElementById('planos');
+      var secQuem     = document.getElementById('quem-somos');
+      var secContato  = document.getElementById('contato');
+      var topPlanos  = secPlanos  ? secPlanos.offsetTop  : Infinity;
+      var topQuem    = secQuem    ? secQuem.offsetTop    : Infinity;
+      var topContato = secContato ? secContato.offsetTop : Infinity;
+
+      if(mid < topPlanos){
+        toHero();
+      } else if(mid < topQuem){
+        enterPlans(); // also repositions while scrolling through plans
+      } else if(mid < topContato){
+        toFeatures();
+      } else {
+        toContact();
+      }
+    }
+
+    window.addEventListener('scroll', checkState, {passive:true});
+    setTimeout(checkState, 1500); // after entrance
+
+    /* ── Carousel hook: dog hops on plan card change ── */
+    var prevBtn = document.getElementById('plansPrev');
+    var nextBtn = document.getElementById('plansNext');
+    var dots    = document.getElementById('plansDots');
+    function onCardChange(){ if(state==='plans') setTimeout(hop, 100); }
+    if(prevBtn) prevBtn.addEventListener('click', onCardChange);
+    if(nextBtn) nextBtn.addEventListener('click', onCardChange);
+    if(dots)    dots.addEventListener('click',    onCardChange);
+    // Also hook keyboard arrows
+    document.addEventListener('keydown', function(e){
+      if((e.key==='ArrowLeft'||e.key==='ArrowRight') && state==='plans') setTimeout(hop, 100);
+    });
   })();
 
 })();
