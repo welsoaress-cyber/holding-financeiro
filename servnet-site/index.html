@@ -192,24 +192,32 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .hero-dog {
   position: absolute;
   bottom: 0; right: max(5vw, 1.5rem);
-  width: 220px; height: 264px;
+  width: 260px;
   z-index: 2; pointer-events: none;
-  overflow: hidden;
-  filter: drop-shadow(0 18px 36px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.65));
   opacity: 0; animation: dog-enter 0.9s cubic-bezier(0.22,0.61,0.36,1) 1.4s forwards;
 }
 @keyframes dog-enter {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.hero-dog-sprite {
-  position: absolute; top: 0; left: 0;
-  width: 10560px; height: 264px; /* 48 × 220px */
-  background-image: url('./dog-sprite.jpg');
-  background-repeat: no-repeat;
-  background-size: 10560px 264px;
-  will-change: background-position;
+.hero-dog img { width: 100%; height: auto; display: block; }
+/* Eye overlay — positioned as % of container, scales with image */
+.hero-dog-eyes {
+  position: absolute; inset: 0; pointer-events: none;
 }
+.eye-pupil {
+  position: absolute;
+  /* size = sclera diameter ~8% of container */
+  width: 8%; height: 0; padding-bottom: 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #1f1f3a 0%, #000 70%);
+  transform: translate(-50%, -50%);
+  will-change: left, top;
+}
+/* Default eye centres (% of image, from pixel detection scaled) */
+.eye-pupil-l { left: 37.4%; top: 30.5%; }
+.eye-pupil-r { left: 61.5%; top: 28.5%; }
 @media (max-width: 860px) { .hero-dog { display: none; } }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
@@ -1264,7 +1272,11 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-grid" aria-hidden="true"></div>
   <div class="hero-dog" id="heroDog" aria-hidden="true">
-    <div class="hero-dog-sprite" id="heroDogSprite"></div>
+    <img src="./dog-mascot.png" alt="" draggable="false">
+    <div class="hero-dog-eyes">
+      <div class="eye-pupil eye-pupil-l" id="eyeL"></div>
+      <div class="eye-pupil eye-pupil-r" id="eyeR"></div>
+    </div>
   </div>
   <div class="hero-inner">
     <div class="hero-tag">
@@ -2609,75 +2621,70 @@ function copiarLink() {
     setTimeout(updateActive, 600); // after loader clears
   })();
 
-  /* ── 13. HERO DOG — mouse-tracking mascot ───────────────────── */
+  /* ── 13. HERO DOG — pupil eye tracking ──────────────────────── */
   (function(){
-    var dog    = document.getElementById('heroDog');
-    var sprite = document.getElementById('heroDogSprite');
-    if(!dog || !sprite) return;
+    var dog  = document.getElementById('heroDog');
+    var eyeL = document.getElementById('eyeL');
+    var eyeR = document.getElementById('eyeR');
+    if(!dog || !eyeL || !eyeR) return;
 
-    var N  = 48;   // total frames
-    var TW = 220;  // thumb width (matches CSS)
-
-    // Angle → frame keymap (0°=right, 90°=up, 180°=left, 270°=down)
-    var KEY = [
-      {a: 90,  f:  0},  // up / center start
-      {a: 180, f: 12},  // far left
-      {a: 225, f: 17},  // lower-left
-      {a: 135, f: 22},  // upper-left
-      {a:  90, f: 24},  // center return
-      {a:   0, f: 36},  // far right
-      {a: 315, f: 41},  // lower-right
-      {a:  45, f: 46},  // upper-right
-      {a:  90, f: 48},  // center end
+    // Eye centres as fraction of container (from image analysis)
+    var EYES = [
+      { el: eyeL, cx: 0.374, cy: 0.305 },
+      { el: eyeR, cx: 0.615, cy: 0.285 },
     ];
+    // Max pupil travel as fraction of container width
+    var MAX_R = 0.030;
 
-    var curF = 0, targetF = 0, rafId = null;
+    var curL = {x:0,y:0}, curR = {x:0,y:0}; // current offsets (px)
+    var tgtL = {x:0,y:0}, tgtR = {x:0,y:0};
+    var rafId = null;
 
-    function angleDiff(a, b){
-      var d = ((b - a) % 360 + 360) % 360;
-      return d > 180 ? d - 360 : d;
+    function pupilTarget(eye, mx, my) {
+      var r   = dog.getBoundingClientRect();
+      var W   = r.width, H = r.height;
+      // Eye centre in screen pixels
+      var ex  = r.left + eye.cx * W;
+      var ey  = r.top  + eye.cy * H;
+      var dx  = mx - ex, dy = my - ey;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      var maxPx = MAX_R * W;
+      if(dist < 1) return {x:0, y:0};
+      var scale = Math.min(1, maxPx / dist);
+      return { x: dx * scale, y: dy * scale };
     }
-    function angleToFrame(deg){
-      var minD = 999, minI = 0;
-      for(var i = 0; i < KEY.length - 1; i++){
-        var d = Math.abs(angleDiff(deg, KEY[i].a));
-        if(d < minD){ minD = d; minI = i; }
-      }
-      var k0 = KEY[minI], k1 = KEY[minI + 1] || KEY[0];
-      var span = Math.abs(angleDiff(k0.a, k1.a));
-      if(!span) return k0.f;
-      var t = Math.max(0, Math.min(1, Math.abs(angleDiff(deg, k0.a)) / span));
-      return k0.f + t * (k1.f - k0.f);
+
+    function lerp(a, b, t) { return a + (b-a)*t; }
+
+    function tick() {
+      var dx, dy, moving = false;
+      EYES.forEach(function(eye){
+        var cur = eye === EYES[0] ? curL : curR;
+        var tgt = eye === EYES[0] ? tgtL : tgtR;
+        dx = tgt.x - cur.x; dy = tgt.y - cur.y;
+        if(Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) moving = true;
+        cur.x += dx * 0.14;
+        cur.y += dy * 0.14;
+        // Apply as offset from CSS default position
+        eye.el.style.transform =
+          'translate(calc(-50% + ' + cur.x.toFixed(2) + 'px), calc(-50% + ' + cur.y.toFixed(2) + 'px))';
+      });
+      rafId = moving ? requestAnimationFrame(tick) : null;
     }
-    function setFrame(f){
-      f = Math.max(0, Math.min(N - 1, Math.round(f)));
-      sprite.style.backgroundPosition = (-f * TW) + 'px 0px';
-    }
-    function tick(){
-      var diff = targetF - curF;
-      if(Math.abs(diff) < 0.08){ curF = targetF; setFrame(curF); rafId = null; return; }
-      curF += diff * 0.16;
-      setFrame(curF);
-      rafId = requestAnimationFrame(tick);
-    }
-    function moveTo(f){
-      targetF = Math.max(0, Math.min(N - 1, f));
+
+    function onMove(mx, my) {
+      tgtL = pupilTarget(EYES[0], mx, my);
+      tgtR = pupilTarget(EYES[1], mx, my);
       if(!rafId) rafId = requestAnimationFrame(tick);
     }
-    function onMove(cx, cy){
-      var r  = dog.getBoundingClientRect();
-      var ox = cx - (r.left + r.width  / 2);
-      var oy = cy - (r.top  + r.height / 2);
-      if(Math.sqrt(ox*ox + oy*oy) < 5){ moveTo(0); return; }
-      var angle = Math.atan2(-oy, ox) * 180 / Math.PI;
-      if(angle < 0) angle += 360;
-      moveTo(angleToFrame(angle));
+
+    function onLeave() {
+      tgtL = {x:0, y:0}; tgtR = {x:0, y:0};
+      if(!rafId) rafId = requestAnimationFrame(tick);
     }
 
     window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
-    window.addEventListener('mouseleave', function(){ moveTo(0); });
-
-    setFrame(0);
+    window.addEventListener('mouseleave', onLeave);
   })();
 
 })();
