@@ -112,12 +112,23 @@ button, input, select { font-family: inherit; font-size: inherit; }
   text-shadow: 0 0 20px rgba(0,196,216,0.4);
 }
 .nav-logo span { color: var(--text); font-weight: 700; opacity: 0.55; }
-.nav-links { display: flex; gap: 2.25rem; list-style: none; }
+.nav-links { position: relative; display: flex; gap: 2.25rem; list-style: none; }
 .nav-links a {
   text-decoration: none; font-size: 0.95rem; font-weight: 500;
   color: var(--text-2); transition: color 0.15s;
+  position: relative; z-index: 1;
 }
-.nav-links a:hover { color: var(--pool); }
+.nav-links a:hover, .nav-links a.sn-nav-active { color: var(--pool); }
+/* Bead indicator */
+.nav-bead {
+  position: absolute; top: 50%; height: 30px;
+  background: rgba(0,196,216,0.1); border: 1px solid rgba(0,196,216,0.25);
+  border-radius: 100px; pointer-events: none; z-index: 0;
+  left: 0; width: 60px; opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.2s;
+}
+@media (max-width: 720px) { .nav-bead { display: none; } }
 .nav-actions { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
 .nav-portal-btn {
   padding: 0.45rem 1rem;
@@ -152,6 +163,31 @@ button, input, select { font-family: inherit; font-size: inherit; }
   .hero .hero-dashboard, .hero-dashboard { display: none !important; }
 }
 #hero-canvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* ── Hero perspective grid (synthwave floor) ─────────────── */
+.hero-grid {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 52%; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.hero-grid::before {
+  content: '';
+  position: absolute; bottom: 0; left: -50%;
+  width: 200%; height: 140%;
+  background-image:
+    linear-gradient(rgba(0,196,216,0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,196,216,0.1) 1px, transparent 1px);
+  background-size: 88px 88px;
+  transform: perspective(900px) rotateX(68deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.35) 45%, transparent 75%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.35) 45%, transparent 75%);
+}
+.hero-grid::after {
+  content: '';
+  position: absolute; bottom: 52%; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 5%, var(--pool) 30%, var(--pool-hi) 50%, var(--pool) 70%, transparent 95%);
+  opacity: 0.45;
+  box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
+}
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
 .hero-tag {
@@ -286,13 +322,67 @@ button, input, select { font-family: inherit; font-size: inherit; }
 }
 .section-sub { font-size: 1.05rem; color: var(--text-2); line-height: 1.8; }
 
-/* ===== PLANS ===== */
+/* ===== PLANS CAROUSEL ===== */
 .plans-section { background: var(--bg); }
-.plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
-@media (max-width: 680px) {
-  .plans-grid { grid-template-columns: 1fr; gap: 1rem; }
-  .plan-card.hot { transform: none; margin: 0; }
-  .plan-card.hot:hover { transform: translateY(-5px); }
+.plans-carousel-outer {
+  position: relative; overflow: hidden;
+  margin: 0 calc(-1 * max(5vw, 1.5rem));
+  padding: 1.5rem 0 2rem;
+}
+.plans-track {
+  display: flex; gap: 1.25rem;
+  padding: 0.5rem 0 0.5rem;
+  transition: transform 0.5s cubic-bezier(0.22,0.61,0.36,1);
+  cursor: grab; user-select: none; will-change: transform;
+}
+.plans-track.sn-dragging { transition: none; cursor: grabbing; }
+.plans-carousel-outer .plan-card {
+  flex: 0 0 clamp(280px, 72vw, 480px);
+  opacity: 0.52; transform: scale(0.87); pointer-events: none;
+  transition: opacity 0.45s, transform 0.45s cubic-bezier(0.22,0.61,0.36,1), box-shadow 0.3s;
+}
+.plans-carousel-outer .plan-card.hot {
+  transform: scale(0.87) !important; animation: none !important;
+}
+.plans-carousel-outer .plan-card.pc-active {
+  opacity: 1; transform: scale(1); pointer-events: auto;
+}
+.plans-carousel-outer .plan-card.pc-active.hot {
+  transform: scale(1) translateY(-12px) !important;
+  animation: hot-breathe 4s ease-in-out infinite !important;
+}
+.plans-carousel-outer .plan-card.pc-active:hover { transform: scale(1) translateY(-5px); }
+.plans-carousel-outer .plan-card.pc-active.hot:hover { transform: scale(1) translateY(-17px) !important; }
+.plans-nav {
+  display: flex; align-items: center; justify-content: center; gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+.plans-prev, .plans-next {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--pool); font-size: 1.4rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  flex-shrink: 0; padding: 0; line-height: 1;
+}
+.plans-prev:hover, .plans-next:hover {
+  background: rgba(0,196,216,0.12); border-color: rgba(0,196,216,0.45);
+  transform: scale(1.1);
+}
+.plans-dots { display: flex; gap: 0.5rem; align-items: center; }
+.plans-dot {
+  height: 3px; border-radius: 2px; background: var(--text-3);
+  transition: width 0.35s, background 0.35s; width: 22px; cursor: pointer;
+}
+.plans-dot.active { background: var(--pool); width: 40px; }
+.plans-counter {
+  text-align: center; font-size: 0.72rem; letter-spacing: 0.2em;
+  color: var(--pool); font-weight: 700; margin-top: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+.plans-hint {
+  text-align: center; font-size: 0.6rem; letter-spacing: 0.24em;
+  color: var(--text-3); margin-top: 0.2rem; text-transform: uppercase;
 }
 .plan-card {
   background: var(--card); border: 1px solid var(--border);
@@ -333,10 +423,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .plan-card.hot .plan-val { text-shadow: 0 0 28px rgba(0,196,216,0.28); }
 .plan-card:hover { transform: translateY(-5px); box-shadow: 0 14px 48px rgba(0,196,216,0.13); }
 .plan-card.hot:hover { transform: translateY(-17px); }
-@media (max-width: 560px) {
-  .plan-card.hot { transform: none; }
-  .plan-card.hot:hover { transform: translateY(-5px); }
-}
 .plan-badge {
   position: absolute; top: 0.9rem; right: 0.9rem;
   font-size: 0.58rem; font-weight: 800; letter-spacing: 0.1em;
@@ -707,7 +793,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 820px) {
-  .plans-grid { grid-template-columns: repeat(1, 1fr); }
   .contact-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .ref-steps { grid-template-columns: 1fr; }
   .diff-grid { grid-template-columns: 1fr 1fr; }
@@ -739,7 +824,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
   .section { padding: 4rem 1.25rem; }
 }
 @media (max-width: 560px) {
-  .plans-grid { grid-template-columns: 1fr; }
   .f-row { grid-template-columns: 1fr; }
   .f-submit { width: 100%; align-self: stretch; text-align: center; }
   .footer { flex-direction: column; align-items: flex-start; }
@@ -1127,6 +1211,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 <nav class="nav">
   <a href="#inicio" class="nav-logo">SERV<span>NET</span></a>
   <ul class="nav-links">
+    <span class="nav-bead" id="navBead" aria-hidden="true"></span>
     <li><a href="#planos">Planos</a></li>
     <li><a href="#quem-somos">Quem somos</a></li>
     <li><a href="#cobertura">Cobertura</a></li>
@@ -1154,6 +1239,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 <!-- HERO -->
 <section class="hero" id="inicio" aria-label="Banner principal">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-grid" aria-hidden="true"></div></canvas>
   <div class="hero-inner">
     <div class="hero-tag">
       <span class="hero-tag-dot"></span>
@@ -1218,7 +1304,8 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
     <h2 class="section-title" id="plans-h">Escolha a sua velocidade</h2>
     <p class="section-sub">Todos os planos incluem fibra óptica 100%, roteador Wi-Fi e suporte técnico. Taxa de instalação cobrada na adesão — equivalente à mensalidade do plano escolhido.</p>
   </div>
-  <div class="plans-grid">
+  <div class="plans-carousel-outer">
+    <div class="plans-track" id="plansTrack">
 
     <article class="plan-card" aria-label="Plano Bronze 100 Mbps">
       <div class="plan-name-badge">🥉 Plano Bronze</div>
@@ -1290,7 +1377,15 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
       <p class="plan-fine">*Instalação R$100 · Sem fidelidade · Atendimento via WhatsApp</p>
     </article>
 
-  </div>
+    </div><!-- /plans-track -->
+    <div class="plans-nav">
+      <button class="plans-prev" id="plansPrev" aria-label="Plano anterior">‹</button>
+      <div class="plans-dots" id="plansDots"></div>
+      <button class="plans-next" id="plansNext" aria-label="Próximo plano">›</button>
+    </div>
+    <p class="plans-counter" id="plansCounter">02 / 03</p>
+    <p class="plans-hint">Arrastar · Setas</p>
+  </div><!-- /plans-carousel-outer -->
 </section>
 
 <!-- DIFERENCIAIS -->
@@ -2215,12 +2310,9 @@ function copiarLink() {
       });
     });
 
-    /* Plan cards: use fade-only (sn-reveal-o) to avoid transform conflicts */
-    document.querySelectorAll('.plan-card').forEach(function(el, i){
-      el.classList.add('sn-reveal-o');
-      el.style.setProperty('--sn-d', (i * 100) + 'ms');
-      revealObs.observe(el);
-    });
+    /* Plans carousel outer: fade-in as single unit */
+    var carouselOuter = document.querySelector('.plans-carousel-outer');
+    if(carouselOuter){ carouselOuter.classList.add('sn-reveal-o'); revealObs.observe(carouselOuter); }
 
     /* Generic elements already marked with reveal classes */
     document.querySelectorAll('.sn-reveal, .sn-reveal-o').forEach(function(el){
@@ -2330,6 +2422,166 @@ function copiarLink() {
   document.querySelectorAll('.city-dot').forEach(function(dot, i){
     dot.style.animationDelay = (i * 0.4) + 's';
   });
+
+  /* ── 11. PLANS CAROUSEL ────────────────────────────────────────── */
+  (function(){
+    var track = document.getElementById('plansTrack');
+    var dotsEl = document.getElementById('plansDots');
+    var counter = document.getElementById('plansCounter');
+    if(!track) return;
+    var cards = Array.from(track.querySelectorAll('.plan-card'));
+    var n = cards.length;
+    var cur = 1; // Prata starts active
+    var startX = 0, dragDelta = 0, isDragging = false;
+
+    // Build dots
+    cards.forEach(function(_, i){
+      var d = document.createElement('span');
+      d.className = 'plans-dot' + (i === cur ? ' active' : '');
+      d.addEventListener('click', function(){ go(i); });
+      if(dotsEl) dotsEl.appendChild(d);
+    });
+
+    function layout(){
+      var outer = track.parentElement;
+      var W = outer ? outer.offsetWidth : window.innerWidth;
+      var cardW = cards[0] ? cards[0].offsetWidth : 320;
+      var gap = parseInt(getComputedStyle(track).gap) || 20;
+      var offset = W / 2 - cardW / 2 - cur * (cardW + gap);
+      track.style.transform = 'translateX(' + offset + 'px)';
+      cards.forEach(function(c, i){
+        var active = i === cur;
+        c.classList.toggle('pc-active', active);
+      });
+      if(counter) counter.textContent =
+        String(cur + 1).padStart(2, '0') + ' / ' + String(n).padStart(2, '0');
+      if(dotsEl) dotsEl.querySelectorAll('.plans-dot').forEach(function(d, i){
+        d.classList.toggle('active', i === cur);
+      });
+    }
+
+    function go(idx){
+      cur = Math.max(0, Math.min(n - 1, idx));
+      track.classList.remove('sn-dragging');
+      layout();
+    }
+
+    var prevBtn = document.getElementById('plansPrev');
+    var nextBtn = document.getElementById('plansNext');
+    if(prevBtn) prevBtn.addEventListener('click', function(){ go(cur - 1); });
+    if(nextBtn) nextBtn.addEventListener('click', function(){ go(cur + 1); });
+
+    document.addEventListener('keydown', function(e){
+      var focus = document.activeElement;
+      var inCarousel = track.contains(focus) || focus === prevBtn || focus === nextBtn;
+      if(inCarousel || document.querySelector('.plans-carousel-outer:hover')){
+        if(e.key === 'ArrowLeft'){ go(cur - 1); e.preventDefault(); }
+        if(e.key === 'ArrowRight'){ go(cur + 1); e.preventDefault(); }
+      }
+    });
+
+    function getEvtX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
+
+    track.addEventListener('pointerdown', function(e){
+      if(e.button !== 0 && !e.touches) return;
+      isDragging = true; startX = getEvtX(e); dragDelta = 0;
+      track.classList.add('sn-dragging');
+      track.setPointerCapture && track.setPointerCapture(e.pointerId);
+    });
+    track.addEventListener('pointermove', function(e){
+      if(!isDragging) return;
+      dragDelta = getEvtX(e) - startX;
+      var W = track.parentElement.offsetWidth;
+      var cardW = cards[0].offsetWidth;
+      var gap = parseInt(getComputedStyle(track).gap) || 20;
+      var base = W / 2 - cardW / 2 - cur * (cardW + gap);
+      track.style.transform = 'translateX(' + (base + dragDelta) + 'px)';
+    });
+    track.addEventListener('pointerup', function(){
+      if(!isDragging) return;
+      isDragging = false;
+      if(dragDelta < -60) go(cur + 1);
+      else if(dragDelta > 60) go(cur - 1);
+      else go(cur);
+    });
+
+    window.addEventListener('resize', layout);
+    layout();
+  })();
+
+  /* ── 12. NAV BEAD (spring-elastic) ─────────────────────────────── */
+  (function(){
+    var navLinks = document.querySelector('.nav-links');
+    var bead = document.getElementById('navBead');
+    if(!navLinks || !bead) return;
+
+    var lx=0, rx=0, vl=0, vr=0, tlx=0, trx=0, inited=false, rafId=null;
+
+    function spr(cur, vel, target, k, d){
+      var f=(target-cur)*k; vel=vel*d+f; return [cur+vel, vel];
+    }
+
+    function tick(){
+      var kL = (tlx<lx) ? 0.22 : 0.13;
+      var kR = (trx>rx) ? 0.22 : 0.13;
+      var rl=spr(lx,vl,tlx,kL,0.73);
+      var rr=spr(rx,vr,trx,kR,0.73);
+      lx=rl[0]; vl=rl[1]; rx=rr[0]; vr=rr[1];
+      bead.style.left = lx + 'px';
+      bead.style.width = Math.max(0, rx - lx) + 'px';
+      if(Math.abs(vl)>0.04||Math.abs(vr)>0.04||Math.abs(lx-tlx)>0.04||Math.abs(rx-trx)>0.04){
+        rafId=requestAnimationFrame(tick);
+      } else { rafId=null; }
+    }
+
+    function moveTo(el){
+      var r=el.getBoundingClientRect();
+      var nr=navLinks.getBoundingClientRect();
+      var newL=r.left-nr.left-10;
+      var newR=newL+r.width+20;
+      if(!inited){ lx=newL; rx=newR; inited=true; bead.style.opacity='1'; }
+      tlx=newL; trx=newR;
+      if(!rafId) rafId=requestAnimationFrame(tick);
+    }
+
+    var links = Array.from(navLinks.querySelectorAll('a'));
+    var lastHover = null;
+
+    links.forEach(function(a){
+      a.addEventListener('mouseenter', function(){ lastHover=a; moveTo(a); });
+    });
+    navLinks.addEventListener('mouseleave', function(){
+      lastHover=null;
+      var active = navLinks.querySelector('a.sn-nav-active');
+      if(active) moveTo(active); else { bead.style.opacity='0'; inited=false; }
+    });
+
+    // Active section tracking
+    var ids = ['inicio','planos','quem-somos','cobertura','contato'];
+    var linkMap = {};
+    ids.forEach(function(id){
+      var a = navLinks.querySelector('a[href="#'+id+'"]');
+      if(a) linkMap[id] = a;
+    });
+
+    function updateActive(){
+      if(lastHover) return;
+      var y = window.scrollY + 90;
+      var cur = null;
+      ids.forEach(function(id){
+        var el = document.getElementById(id);
+        if(el && el.offsetTop <= y) cur = id;
+      });
+      links.forEach(function(a){ a.classList.remove('sn-nav-active'); });
+      if(cur && linkMap[cur]){
+        linkMap[cur].classList.add('sn-nav-active');
+        moveTo(linkMap[cur]);
+      }
+    }
+
+    window.addEventListener('scroll', updateActive, {passive:true});
+    setTimeout(updateActive, 600); // after loader clears
+  })();
 
 })();
 </script>
