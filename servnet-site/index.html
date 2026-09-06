@@ -1017,7 +1017,7 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 .mvv-card:hover .mvv-ico { background: rgba(0,196,216,0.16); border-color: rgba(0,196,216,0.38); transform: scale(1.10) rotate(-5deg); }
 
 /* ── 9. WHATSAPP FLOAT ────────────────────────────── */
-.wa-float { position: relative; }
+/* position:fixed already creates a positioning ctx — no need for relative */
 .wa-float::before {
   content: ''; position: absolute; inset: 0; border-radius: 100px;
   background: rgba(37,211,102,0.35);
