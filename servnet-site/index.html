@@ -148,7 +148,8 @@ button, input, select { font-family: inherit; font-size: inherit; }
 }
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; min-height: auto; padding-bottom: 3rem; }
-  .hero-dashboard { display: none; }
+  /* specificity 0,2,0 > base .hero-dashboard 0,1,0 — overrides source-order cascade bug */
+  .hero .hero-dashboard, .hero-dashboard { display: none !important; }
 }
 #hero-canvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .hero-inner { position: relative; z-index: 1; }
@@ -234,7 +235,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
 .dash-metric-val { font-family: 'DM Sans', monospace; font-size: 1rem; font-weight: 700; color: var(--pool); font-variant-numeric: tabular-nums; }
 .dash-metric-key { font-size: .62rem; color: var(--text-2); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
 /* speed cards strip in hero */
-.hero-speeds { display: flex; gap: .6rem; }
+.hero-speeds { display: flex; gap: .6rem; flex-wrap: wrap; }
 .speed-chip {
   padding: .3rem .8rem; background: rgba(0,196,216,0.07);
   border: 1px solid rgba(0,196,216,0.18); border-radius: 100px;
@@ -877,8 +878,15 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 .sn-js .hero-inner .hero-tag,
 .sn-js .hero-inner h1,
 .sn-js .hero-inner .hero-lead,
-.sn-js .hero-inner .hero-cta,
-.sn-js .hero-dashboard { opacity: 0; }
+.sn-js .hero-inner .hero-cta { opacity: 0; }
+
+/* dashboard entrance — desktop only (≥861px) */
+@media (min-width: 861px) {
+  .sn-js .hero-dashboard { opacity: 0; }
+  .sn-js .hero-dashboard.sn-hero-active {
+    animation: sn-fade-right 0.80s cubic-bezier(0.22,0.61,0.36,1) 0.30s forwards;
+  }
+}
 
 .sn-js .hero-inner.sn-hero-active .hero-tag {
   animation: sn-fade-up 0.60s cubic-bezier(0.22,0.61,0.36,1) 0.05s forwards;
@@ -891,9 +899,6 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 }
 .sn-js .hero-inner.sn-hero-active .hero-cta {
   animation: sn-fade-up 0.60s cubic-bezier(0.22,0.61,0.36,1) 0.46s forwards;
-}
-.sn-js .hero-dashboard.sn-hero-active {
-  animation: sn-fade-right 0.80s cubic-bezier(0.22,0.61,0.36,1) 0.30s forwards;
 }
 @keyframes sn-fade-up {
   from { opacity: 0; transform: translateY(22px); }
@@ -2173,7 +2178,8 @@ function copiarLink() {
     var hi = document.querySelector('.hero-inner');
     var hd = document.querySelector('.hero-dashboard');
     if(hi) hi.classList.add('sn-hero-active');
-    if(hd) hd.classList.add('sn-hero-active');
+    /* dashboard animation only on desktop — avoids interfering with display:none on mobile */
+    if(hd && window.innerWidth > 860) hd.classList.add('sn-hero-active');
   }
 
   /* ── 4. SCROLL REVEALS (IntersectionObserver) ─────────────────── */
