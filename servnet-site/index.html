@@ -188,37 +188,20 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
-/* ── Hero Dog mascot ───────────────────────────────── */
-.hero-dog {
-  position: absolute;
-  bottom: 0; right: max(5vw, 1.5rem);
-  width: 260px;
-  z-index: 2; pointer-events: none;
-  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.65));
-  opacity: 0; animation: dog-enter 0.9s cubic-bezier(0.22,0.61,0.36,1) 1.4s forwards;
+/* ── Dog Video Cover — fullscreen fade on scroll ───── */
+#dog-video-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  will-change: opacity;
+  background: #000;
 }
-@keyframes dog-enter {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+#dog-video-cover video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
 }
-.hero-dog img { width: 100%; height: auto; display: block; }
-/* Eye overlay — positioned as % of container, scales with image */
-.hero-dog-eyes {
-  position: absolute; inset: 0; pointer-events: none;
-}
-.eye-pupil {
-  position: absolute;
-  /* size = sclera diameter ~8% of container */
-  width: 8%; height: 0; padding-bottom: 8%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #1f1f3a 0%, #000 70%);
-  transform: translate(-50%, -50%);
-  will-change: left, top;
-}
-/* Default eye centres (% of image, from pixel detection scaled) */
-.eye-pupil-l { left: 37.4%; top: 30.5%; }
-.eye-pupil-r { left: 61.5%; top: 28.5%; }
-@media (max-width: 860px) { .hero-dog { display: none; } }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
 .hero-tag {
@@ -1268,16 +1251,15 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 </div>
 
 <!-- HERO -->
+<div id="dog-video-cover" aria-hidden="true">
+  <video autoplay loop muted playsinline>
+    <source src="./dog-video.mp4" type="video/mp4">
+  </video>
+</div>
+
 <section class="hero" id="inicio" aria-label="Banner principal">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-grid" aria-hidden="true"></div>
-  <div class="hero-dog" id="heroDog" aria-hidden="true">
-    <img src="./dog-mascot.png" alt="" draggable="false">
-    <div class="hero-dog-eyes">
-      <div class="eye-pupil eye-pupil-l" id="eyeL"></div>
-      <div class="eye-pupil eye-pupil-r" id="eyeR"></div>
-    </div>
-  </div>
   <div class="hero-inner">
     <div class="hero-tag">
       <span class="hero-tag-dot"></span>
@@ -2621,70 +2603,23 @@ function copiarLink() {
     setTimeout(updateActive, 600); // after loader clears
   })();
 
-  /* ── 13. HERO DOG — pupil eye tracking ──────────────────────── */
+  /* ── 13. DOG VIDEO COVER — scroll fade ──────────────────────── */
   (function(){
-    var dog  = document.getElementById('heroDog');
-    var eyeL = document.getElementById('eyeL');
-    var eyeR = document.getElementById('eyeR');
-    if(!dog || !eyeL || !eyeR) return;
-
-    // Eye centres as fraction of container (from image analysis)
-    var EYES = [
-      { el: eyeL, cx: 0.374, cy: 0.305 },
-      { el: eyeR, cx: 0.615, cy: 0.285 },
-    ];
-    // Max pupil travel as fraction of container width
-    var MAX_R = 0.030;
-
-    var curL = {x:0,y:0}, curR = {x:0,y:0}; // current offsets (px)
-    var tgtL = {x:0,y:0}, tgtR = {x:0,y:0};
-    var rafId = null;
-
-    function pupilTarget(eye, mx, my) {
-      var r   = dog.getBoundingClientRect();
-      var W   = r.width, H = r.height;
-      // Eye centre in screen pixels
-      var ex  = r.left + eye.cx * W;
-      var ey  = r.top  + eye.cy * H;
-      var dx  = mx - ex, dy = my - ey;
-      var dist = Math.sqrt(dx*dx + dy*dy);
-      var maxPx = MAX_R * W;
-      if(dist < 1) return {x:0, y:0};
-      var scale = Math.min(1, maxPx / dist);
-      return { x: dx * scale, y: dy * scale };
+    var cover = document.getElementById('dog-video-cover');
+    if(!cover) return;
+    var FADE_PX = window.innerHeight * 0.85;
+    function onScroll() {
+      var ratio = Math.max(0, 1 - window.scrollY / FADE_PX);
+      cover.style.opacity = ratio;
+      // disable once invisible so content below is fully interactive
+      cover.style.visibility = ratio === 0 ? 'hidden' : 'visible';
     }
-
-    function lerp(a, b, t) { return a + (b-a)*t; }
-
-    function tick() {
-      var dx, dy, moving = false;
-      EYES.forEach(function(eye){
-        var cur = eye === EYES[0] ? curL : curR;
-        var tgt = eye === EYES[0] ? tgtL : tgtR;
-        dx = tgt.x - cur.x; dy = tgt.y - cur.y;
-        if(Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) moving = true;
-        cur.x += dx * 0.14;
-        cur.y += dy * 0.14;
-        // Apply as offset from CSS default position
-        eye.el.style.transform =
-          'translate(calc(-50% + ' + cur.x.toFixed(2) + 'px), calc(-50% + ' + cur.y.toFixed(2) + 'px))';
-      });
-      rafId = moving ? requestAnimationFrame(tick) : null;
-    }
-
-    function onMove(mx, my) {
-      tgtL = pupilTarget(EYES[0], mx, my);
-      tgtR = pupilTarget(EYES[1], mx, my);
-      if(!rafId) rafId = requestAnimationFrame(tick);
-    }
-
-    function onLeave() {
-      tgtL = {x:0, y:0}; tgtR = {x:0, y:0};
-      if(!rafId) rafId = requestAnimationFrame(tick);
-    }
-
-    window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
-    window.addEventListener('mouseleave', onLeave);
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', function(){
+      FADE_PX = window.innerHeight * 0.85;
+      onScroll();
+    }, {passive: true});
+    onScroll();
   })();
 
 })();
