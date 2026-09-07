@@ -188,7 +188,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
-/* ── Dog Video Cover — fullscreen fade on scroll ───── */
+/* ── Dog Video Cover — fullscreen fade + cursor follow ─ */
 #dog-video-cover {
   position: fixed;
   inset: 0;
@@ -196,11 +196,16 @@ button, input, select { font-family: inherit; font-size: inherit; }
   pointer-events: none;
   will-change: opacity;
   background: #000;
+  overflow: hidden;
 }
 #dog-video-cover video {
-  width: 100%; height: 100%;
+  /* 8% oversized so panning never reveals black edges */
+  width: 108%; height: 108%;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   object-fit: cover;
-  display: block;
+  will-change: transform;
 }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
@@ -2603,15 +2608,17 @@ function copiarLink() {
     setTimeout(updateActive, 600); // after loader clears
   })();
 
-  /* ── 13. DOG VIDEO COVER — scroll fade ──────────────────────── */
+  /* ── 13. DOG VIDEO COVER — scroll fade + cursor follow ──────── */
   (function(){
     var cover = document.getElementById('dog-video-cover');
-    if(!cover) return;
+    var vid   = cover && cover.querySelector('video');
+    if(!cover || !vid) return;
+
+    /* ─ scroll fade ─ */
     var FADE_PX = window.innerHeight * 0.85;
     function onScroll() {
       var ratio = Math.max(0, 1 - window.scrollY / FADE_PX);
       cover.style.opacity = ratio;
-      // disable once invisible so content below is fully interactive
       cover.style.visibility = ratio === 0 ? 'hidden' : 'visible';
     }
     window.addEventListener('scroll', onScroll, {passive: true});
@@ -2620,6 +2627,38 @@ function copiarLink() {
       onScroll();
     }, {passive: true});
     onScroll();
+
+    /* ─ cursor follow (parallax pan) ─ */
+    var MAX_PX = 32; // max travel each axis in px
+    var curX = 0, curY = 0, tgtX = 0, tgtY = 0;
+    var rafId = null;
+
+    function tick() {
+      curX += (tgtX - curX) * 0.07;
+      curY += (tgtY - curY) * 0.07;
+      vid.style.transform =
+        'translate(calc(-50% + ' + curX.toFixed(2) + 'px), calc(-50% + ' + curY.toFixed(2) + 'px))';
+      var still = Math.abs(tgtX - curX) < 0.08 && Math.abs(tgtY - curY) < 0.08;
+      rafId = still ? null : requestAnimationFrame(tick);
+    }
+
+    window.addEventListener('mousemove', function(e) {
+      var cx = window.innerWidth  / 2;
+      var cy = window.innerHeight / 2;
+      tgtX = ((e.clientX - cx) / cx) * MAX_PX;
+      tgtY = ((e.clientY - cy) / cy) * MAX_PX;
+      if(!rafId) rafId = requestAnimationFrame(tick);
+    });
+
+    /* touch: use finger position as cursor equivalent */
+    window.addEventListener('touchmove', function(e) {
+      if(!e.touches.length) return;
+      var cx = window.innerWidth  / 2;
+      var cy = window.innerHeight / 2;
+      tgtX = ((e.touches[0].clientX - cx) / cx) * MAX_PX;
+      tgtY = ((e.touches[0].clientY - cy) / cy) * MAX_PX;
+      if(!rafId) rafId = requestAnimationFrame(tick);
+    }, {passive: true});
   })();
 
 })();
