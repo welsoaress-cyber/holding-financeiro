@@ -202,35 +202,24 @@ button, input, select { font-family: inherit; font-size: inherit; }
   object-fit: cover;
   display: block;
 }
-/* Eye overlays — rotate toward cursor (Math.atan2 technique) */
+/* Eye overlay — invisible container that clips the moving pupil */
 .dog-eye {
   position: fixed;
   border-radius: 50%;
   overflow: hidden;
   z-index: 101;
   pointer-events: none;
+  background: transparent;
+}
+/* Moving pupil — dark circle that translates toward cursor */
+.dog-pupil {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(6,2,2,0.86);
+  width: 36%; height: 36%;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
   will-change: transform;
-  /* Dark amber iris matching dachshund */
-  background: radial-gradient(circle at 42% 38%, #7a4520 0%, #3d1f0a 55%, #0d0500 100%);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.55), inset 0 2px 6px rgba(0,0,0,0.6);
-}
-/* Pupil — offset to 12-o'clock so rotation sweeps it toward cursor */
-.dog-eye::before {
-  content: '';
-  position: absolute;
-  width: 46%; height: 46%;
-  top: 7%; left: 27%;
-  border-radius: 50%;
-  background: #060202;
-}
-/* Glint */
-.dog-eye::after {
-  content: '';
-  position: absolute;
-  width: 16%; height: 16%;
-  top: 9%; right: 22%;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.75);
 }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
@@ -1285,8 +1274,8 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
   <video autoplay loop muted playsinline>
     <source src="./dog-video.mp4" type="video/mp4">
   </video>
-  <div class="dog-eye" id="dogEyeL" aria-hidden="true"></div>
-  <div class="dog-eye" id="dogEyeR" aria-hidden="true"></div>
+  <div class="dog-eye" id="dogEyeL" aria-hidden="true"><div class="dog-pupil"></div></div>
+  <div class="dog-eye" id="dogEyeR" aria-hidden="true"><div class="dog-pupil"></div></div>
 </div>
 
 <section class="hero" id="inicio" aria-label="Banner principal">
@@ -2655,93 +2644,123 @@ function copiarLink() {
     }, {passive: true});
     onScroll();
 
-    /* ─ Eye tracking — Math.atan2 rotation technique ─────────────
-       Each .dog-eye element is a circle with pupil at 12-o'clock (::before).
-       We rotate the entire element so the pupil sweeps toward the cursor.
-       Formula: atan2(cursor-eye_center) → degrees → CSS rotate()
-       Same technique used in: codepen.io/whipcat/pen/ExKPQqZ
+    /* ─ Eye tracking — pupil translate per video frame ─────────────
+       Per-frame white-sclera centroids extracted from the 1920×1080
+       video via imageio[pyav] + NumPy. Overlay invisible .dog-eye
+       containers track the dog's actual eyes as the video plays;
+       the inner .dog-pupil translates toward the cursor.
     ─────────────────────────────────────────────────────────────── */
     var eyeL = document.getElementById('dogEyeL');
     var eyeR = document.getElementById('dogEyeR');
     if(!eyeL || !eyeR) return;
 
-    // Dog eye positions in native 1920×1080 video frame (pixel analysis)
-    var NATIVE_W = 1920, NATIVE_H = 1080;
-    var EYE_DEFS = [
-      { el: eyeL, fx: 920,  fy: 409 },
-      { el: eyeR, fx: 1152, fy: 420 }
+    var NATIVE_W = 1920, NATIVE_H = 1080, VIDEO_FPS = 24, VIDEO_FRAMES = 121;
+
+    // [lx,ly,rx,ry] centroids for every frame (0-120) — 24 fps, 5.04 s loop
+    var EYE_KF = [
+      [860,357,1113,341],[859,358,1114,341],[859,358,1114,341],[859,358,1114,341],[859,356,1114,340],[862,349,1107,336],
+      [862,348,1106,336],[862,348,1107,336],[862,348,1107,336],[862,348,1107,335],[862,347,1107,335],[862,347,1107,335],
+      [862,347,1107,335],[863,347,1107,335],[863,346,1106,335],[865,345,1105,335],[868,344,1103,336],[869,344,1103,338],
+      [869,345,1103,341],[868,348,1104,345],[864,356,1103,355],[855,367,1096,370],[857,375,1085,382],[876,381,1078,392],
+      [892,384,1072,398],[908,388,1069,404],[918,392,1066,407],[925,395,1064,408],[930,398,1062,410],[933,400,1060,411],
+      [935,401,1059,413],[936,403,1058,414],[936,404,1057,415],[937,405,1056,416],[941,408,1056,416],[974,417,1056,416],
+      [979,417,1056,416],[972,423,1056,416],[951,410,1056,416],[944,395,1056,416],[947,381,1056,416],[951,372,1056,416],
+      [950,366,1056,416],[953,361,1056,416],[957,356,1056,416],[962,353,1056,416],[966,350,1056,416],[969,348,1056,416],
+      [972,346,1056,416],[973,344,1056,416],[974,343,1056,416],[975,342,1056,416],[976,342,1056,416],[977,342,1056,416],
+      [976,341,1056,416],[975,342,1056,416],[944,344,1057,349],[924,341,1063,360],[913,332,1072,374],[916,325,1078,384],
+      [915,316,1072,369],[892,302,1077,360],[901,297,1092,360],[913,295,1103,361],[922,295,1113,363],[933,297,1125,367],
+      [942,305,1135,373],[953,316,1143,383],[966,334,1143,383],[985,352,1143,383],[1009,364,1233,413],[1020,363,1088,395],
+      [1025,359,1080,390],[1028,357,1070,386],[1029,355,1086,382],[1028,354,1085,380],[1027,353,1082,378],[1025,353,1083,377],
+      [1024,353,1083,376],[1022,353,1084,375],[1021,353,1081,375],[1020,352,1081,374],[1019,352,1078,374],[1018,352,1079,373],
+      [1017,351,1079,373],[1017,351,1078,373],[1015,352,1083,372],[1010,354,1121,361],[1004,357,1171,334],[997,359,1173,333],
+      [990,360,1165,334],[980,359,1151,334],[971,357,1193,319],[960,355,1193,311],[949,353,1182,309],[936,352,1170,311],
+      [923,350,1160,310],[908,349,1150,308],[897,347,1139,305],[886,346,1128,301],[877,345,1120,296],[869,343,1111,288],
+      [870,341,1107,288],[869,341,1104,291],[866,343,1102,295],[863,347,1099,299],[861,350,1097,303],[859,353,1096,307],
+      [858,356,1095,310],[857,358,1095,313],[856,361,1094,315],[855,363,1094,317],[854,364,1095,319],[854,365,1095,320],
+      [853,365,1095,321],[853,366,1095,322],[853,366,1095,323],[853,366,1095,324],[853,367,1095,324],[853,367,1096,324],
+      [852,367,1096,325]
     ];
 
-    // object-fit:cover screen position for a point in the native video frame
+    // object-fit:cover — native (fx,fy) → screen (x,y)
     function toScreen(fx, fy) {
       var vw = window.innerWidth, vh = window.innerHeight;
-      var scale = Math.max(vw / NATIVE_W, vh / NATIVE_H);
-      return {
-        x: fx * scale + (vw - NATIVE_W * scale) / 2,
-        y: fy * scale + (vh - NATIVE_H * scale) / 2
-      };
+      var sc = Math.max(vw / NATIVE_W, vh / NATIVE_H);
+      return { x: fx * sc + (vw - NATIVE_W * sc) / 2,
+               y: fy * sc + (vh - NATIVE_H * sc) / 2 };
     }
 
-    // Eye size: ~5% of native frame height, scaled with viewport
-    function setEyeSize() {
-      var vw = window.innerWidth, vh = window.innerHeight;
-      var scale = Math.max(vw / NATIVE_W, vh / NATIVE_H);
-      var sz = Math.max(16, Math.min(Math.round(NATIVE_H * 0.05 * scale), 58));
-      EYE_DEFS.forEach(function(d){ d.el.style.width = sz+'px'; d.el.style.height = sz+'px'; });
+    // Eye overlay size: matches the dog's sclera (~12% of native height)
+    function eyeSize() {
+      var sc = Math.max(window.innerWidth / NATIVE_W, window.innerHeight / NATIVE_H);
+      return Math.max(24, Math.min(Math.round(NATIVE_H * 0.12 * sc), 130));
     }
-    setEyeSize();
 
-    // Place eyes at their static screen positions
-    function placeEyes() {
+    var EYE_DEFS = [
+      { el: eyeL, pupil: eyeL.querySelector('.dog-pupil'), ki: 0, cpx:0, cpy:0, tpx:0, tpy:0 },
+      { el: eyeR, pupil: eyeR.querySelector('.dog-pupil'), ki: 2, cpx:0, cpy:0, tpx:0, tpy:0 }
+    ];
+
+    function setSize() {
+      var sz = eyeSize() + 'px';
+      EYE_DEFS.forEach(function(d){ d.el.style.width = sz; d.el.style.height = sz; });
+    }
+    setSize();
+
+    // Get interpolated native eye position from keyframe table
+    function kfPos(t, ki) {
+      var f = (t * VIDEO_FPS) % VIDEO_FRAMES;
+      var f0 = Math.floor(f) % VIDEO_FRAMES;
+      var f1 = (f0 + 1) % VIDEO_FRAMES;
+      var frac = f - Math.floor(f);
+      return EYE_KF[f0][ki] + (EYE_KF[f1][ki] - EYE_KF[f0][ki]) * frac;
+    }
+
+    var rafId = null;
+    function tick() {
+      var t = vid.currentTime || 0;
+      var sz = eyeSize();
+      var maxTravel = sz * 0.30;
+
       EYE_DEFS.forEach(function(d) {
-        var s = toScreen(d.fx, d.fy);
+        // Eye center follows actual video position
+        var nx = kfPos(t, d.ki),   ny = kfPos(t, d.ki + 1);
+        var s  = toScreen(nx, ny);
         d.el.style.left = s.x + 'px';
         d.el.style.top  = s.y + 'px';
-        d.el.style.transform = 'translate(-50%,-50%) rotate(0deg)';
-      });
-    }
-    placeEyes();
+        d.el.style.transform = 'translate(-50%,-50%)';
 
-    // Smooth rotation state
-    var curDeg = [0, 0], tgtDeg = [0, 0];
-    var rafId = null;
-
-    function tick() {
-      var moving = false;
-      EYE_DEFS.forEach(function(d, i) {
-        // Lerp angle (handle wrap-around)
-        var diff = tgtDeg[i] - curDeg[i];
-        // Normalize diff to [-180, 180] to always take shortest arc
-        while(diff >  180) diff -= 360;
-        while(diff < -180) diff += 360;
-        curDeg[i] += diff * 0.10;
-        d.el.style.transform = 'translate(-50%,-50%) rotate(' + curDeg[i].toFixed(2) + 'deg)';
-        if(Math.abs(diff) > 0.2) moving = true;
+        // Pupil lerps toward cursor offset
+        d.cpx += (d.tpx - d.cpx) * 0.12;
+        d.cpy += (d.tpy - d.cpy) * 0.12;
+        d.pupil.style.transform =
+          'translate(calc(-50% + ' + d.cpx.toFixed(2) + 'px), calc(-50% + ' + d.cpy.toFixed(2) + 'px))';
       });
-      rafId = moving ? requestAnimationFrame(tick) : null;
+      rafId = requestAnimationFrame(tick);
     }
 
-    function updateEyes(mx, my) {
-      EYE_DEFS.forEach(function(d, i) {
-        var s = toScreen(d.fx, d.fy);
-        // atan2 from eye center to cursor → rotation degrees
-        var angle = Math.atan2(mx - s.x, my - s.y);
-        tgtDeg[i] = angle * (180 / Math.PI) * -1 + 270;
+    function updateCursor(mx, my) {
+      var sz = eyeSize();
+      var maxTravel = sz * 0.30;
+      EYE_DEFS.forEach(function(d) {
+        var t  = vid.currentTime || 0;
+        var nx = kfPos(t, d.ki), ny = kfPos(t, d.ki + 1);
+        var s  = toScreen(nx, ny);
+        var angle = Math.atan2(my - s.y, mx - s.x);
+        d.tpx = Math.cos(angle) * maxTravel;
+        d.tpy = Math.sin(angle) * maxTravel;
       });
-      if(!rafId) rafId = requestAnimationFrame(tick);
     }
 
-    window.addEventListener('mousemove', function(e){ updateEyes(e.clientX, e.clientY); });
+    rafId = requestAnimationFrame(tick);
+
+    window.addEventListener('mousemove', function(e){ updateCursor(e.clientX, e.clientY); });
     window.addEventListener('touchmove', function(e){
-      if(e.touches.length) updateEyes(e.touches[0].clientX, e.touches[0].clientY);
+      if(e.touches.length) updateCursor(e.touches[0].clientX, e.touches[0].clientY);
     }, {passive:true});
     window.addEventListener('mouseleave', function(){
-      tgtDeg[0] = 0; tgtDeg[1] = 0;
-      if(!rafId) rafId = requestAnimationFrame(tick);
+      EYE_DEFS.forEach(function(d){ d.tpx = 0; d.tpy = 0; });
     });
-    window.addEventListener('resize', function(){
-      setEyeSize(); placeEyes();
-    }, {passive:true});
+    window.addEventListener('resize', setSize, {passive:true});
   })();
 
 })();
