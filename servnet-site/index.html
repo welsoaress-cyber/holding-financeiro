@@ -188,20 +188,6 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
-/* ── Dog Video Cover — fullscreen fade + eye tracking ── */
-#dog-video-cover {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  pointer-events: none;
-  will-change: opacity;
-  background: #000;
-}
-#dog-video-cover video {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-}
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
 .hero-tag {
@@ -1251,11 +1237,6 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
 </div>
 
 <!-- HERO -->
-<div id="dog-video-cover" aria-hidden="true">
-  <video autoplay loop muted playsinline>
-    <source src="./dog-video.mp4" type="video/mp4">
-  </video>
-</div>
 
 <section class="hero" id="inicio" aria-label="Banner principal">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
@@ -2603,27 +2584,6 @@ function copiarLink() {
     setTimeout(updateActive, 600); // after loader clears
   })();
 
-  /* ── 13. DOG VIDEO COVER — scroll fade + cursor follow ──────── */
-  (function(){
-    var cover = document.getElementById('dog-video-cover');
-    var vid   = cover && cover.querySelector('video');
-    if(!cover || !vid) return;
-
-    /* ─ scroll fade ─ */
-    var FADE_PX = window.innerHeight * 0.85;
-    function onScroll() {
-      var ratio = Math.max(0, 1 - window.scrollY / FADE_PX);
-      cover.style.opacity = ratio;
-      cover.style.visibility = ratio === 0 ? 'hidden' : 'visible';
-    }
-    window.addEventListener('scroll', onScroll, {passive: true});
-    window.addEventListener('resize', function(){
-      FADE_PX = window.innerHeight * 0.85;
-      onScroll();
-    }, {passive: true});
-    onScroll();
-
-  })();
 
 })();
 </script>
