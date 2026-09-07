@@ -202,16 +202,35 @@ button, input, select { font-family: inherit; font-size: inherit; }
   object-fit: cover;
   display: block;
 }
-/* Pupil overlays — positioned via JS over dog's eyes */
-.dog-pupil {
+/* Eye overlays — rotate toward cursor (Math.atan2 technique) */
+.dog-eye {
   position: fixed;
   border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #1a1a2e 0%, #000 80%);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  overflow: hidden;
   z-index: 101;
-  will-change: left, top;
-  box-shadow: 0 0 6px rgba(0,0,0,0.9);
+  pointer-events: none;
+  will-change: transform;
+  /* Dark amber iris matching dachshund */
+  background: radial-gradient(circle at 42% 38%, #7a4520 0%, #3d1f0a 55%, #0d0500 100%);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.55), inset 0 2px 6px rgba(0,0,0,0.6);
+}
+/* Pupil — offset to 12-o'clock so rotation sweeps it toward cursor */
+.dog-eye::before {
+  content: '';
+  position: absolute;
+  width: 46%; height: 46%;
+  top: 7%; left: 27%;
+  border-radius: 50%;
+  background: #060202;
+}
+/* Glint */
+.dog-eye::after {
+  content: '';
+  position: absolute;
+  width: 16%; height: 16%;
+  top: 9%; right: 22%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.75);
 }
 .hero-inner { position: relative; z-index: 1; }
 /* hero mobile handled above */
@@ -1266,8 +1285,8 @@ main, section, nav, footer, header { position: relative; z-index: 1; }
   <video autoplay loop muted playsinline>
     <source src="./dog-video.mp4" type="video/mp4">
   </video>
-  <div class="dog-pupil" id="dogEyeL" aria-hidden="true"></div>
-  <div class="dog-pupil" id="dogEyeR" aria-hidden="true"></div>
+  <div class="dog-eye" id="dogEyeL" aria-hidden="true"></div>
+  <div class="dog-eye" id="dogEyeR" aria-hidden="true"></div>
 </div>
 
 <section class="hero" id="inicio" aria-label="Banner principal">
@@ -2636,99 +2655,92 @@ function copiarLink() {
     }, {passive: true});
     onScroll();
 
-    /* ─ Eye tracking — pupils follow the cursor ─ */
+    /* ─ Eye tracking — Math.atan2 rotation technique ─────────────
+       Each .dog-eye element is a circle with pupil at 12-o'clock (::before).
+       We rotate the entire element so the pupil sweeps toward the cursor.
+       Formula: atan2(cursor-eye_center) → degrees → CSS rotate()
+       Same technique used in: codepen.io/whipcat/pen/ExKPQqZ
+    ─────────────────────────────────────────────────────────────── */
     var eyeL = document.getElementById('dogEyeL');
     var eyeR = document.getElementById('dogEyeR');
     if(!eyeL || !eyeR) return;
 
-    // Dog eye positions inside the native 1920×1080 video frame
-    // (measured from pixel analysis of frame at t=2.5s)
+    // Dog eye positions in native 1920×1080 video frame (pixel analysis)
     var NATIVE_W = 1920, NATIVE_H = 1080;
-    var EYE_L = { fx: 920,  fy: 409 };
-    var EYE_R = { fx: 1152, fy: 420 };
-    var MAX_TRAVEL = 0.034; // max pupil movement as fraction of rendered dog width
+    var EYE_DEFS = [
+      { el: eyeL, fx: 920,  fy: 409 },
+      { el: eyeR, fx: 1152, fy: 420 }
+    ];
 
-    // Compute actual screen position of an eye for object-fit:cover video
-    function eyeScreenPos(eye) {
+    // object-fit:cover screen position for a point in the native video frame
+    function toScreen(fx, fy) {
       var vw = window.innerWidth, vh = window.innerHeight;
       var scale = Math.max(vw / NATIVE_W, vh / NATIVE_H);
-      var ox = (vw - NATIVE_W * scale) / 2;
-      var oy = (vh - NATIVE_H * scale) / 2;
       return {
-        x: eye.fx * scale + ox,
-        y: eye.fy * scale + oy,
-        maxPx: MAX_TRAVEL * NATIVE_W * scale
+        x: fx * scale + (vw - NATIVE_W * scale) / 2,
+        y: fy * scale + (vh - NATIVE_H * scale) / 2
       };
     }
 
-    // Pupil size tied to rendered dog face (~10% of frame height scaled)
-    function setPupilSize() {
+    // Eye size: ~5% of native frame height, scaled with viewport
+    function setEyeSize() {
       var vw = window.innerWidth, vh = window.innerHeight;
       var scale = Math.max(vw / NATIVE_W, vh / NATIVE_H);
-      var sz = Math.round(NATIVE_H * 0.048 * scale);
-      sz = Math.max(14, Math.min(sz, 52));
-      [eyeL, eyeR].forEach(function(el){ el.style.width = sz+'px'; el.style.height = sz+'px'; });
+      var sz = Math.max(16, Math.min(Math.round(NATIVE_H * 0.05 * scale), 58));
+      EYE_DEFS.forEach(function(d){ d.el.style.width = sz+'px'; d.el.style.height = sz+'px'; });
     }
-    setPupilSize();
+    setEyeSize();
 
-    // Spring state for each pupil (screen-space offset from rest)
-    var stL = {cx:0,cy:0,tx:0,ty:0}, stR = {cx:0,cy:0,tx:0,ty:0};
+    // Place eyes at their static screen positions
+    function placeEyes() {
+      EYE_DEFS.forEach(function(d) {
+        var s = toScreen(d.fx, d.fy);
+        d.el.style.left = s.x + 'px';
+        d.el.style.top  = s.y + 'px';
+        d.el.style.transform = 'translate(-50%,-50%) rotate(0deg)';
+      });
+    }
+    placeEyes();
+
+    // Smooth rotation state
+    var curDeg = [0, 0], tgtDeg = [0, 0];
     var rafId = null;
 
-    function lerp(a,b,t){ return a+(b-a)*t; }
-
     function tick() {
-      var moved = false;
-      [
-        { st: stL, eye: EYE_L, el: eyeL },
-        { st: stR, eye: EYE_R, el: eyeR }
-      ].forEach(function(d) {
-        d.st.cx = lerp(d.st.cx, d.st.tx, 0.10);
-        d.st.cy = lerp(d.st.cy, d.st.ty, 0.10);
-        var pos = eyeScreenPos(d.eye);
-        d.el.style.left = (pos.x + d.st.cx).toFixed(1) + 'px';
-        d.el.style.top  = (pos.y + d.st.cy).toFixed(1) + 'px';
-        if(Math.abs(d.st.tx - d.st.cx) > 0.1 || Math.abs(d.st.ty - d.st.cy) > 0.1) moved = true;
+      var moving = false;
+      EYE_DEFS.forEach(function(d, i) {
+        // Lerp angle (handle wrap-around)
+        var diff = tgtDeg[i] - curDeg[i];
+        // Normalize diff to [-180, 180] to always take shortest arc
+        while(diff >  180) diff -= 360;
+        while(diff < -180) diff += 360;
+        curDeg[i] += diff * 0.10;
+        d.el.style.transform = 'translate(-50%,-50%) rotate(' + curDeg[i].toFixed(2) + 'deg)';
+        if(Math.abs(diff) > 0.2) moving = true;
       });
-      rafId = moved ? requestAnimationFrame(tick) : null;
+      rafId = moving ? requestAnimationFrame(tick) : null;
     }
 
-    function updatePupils(mx, my) {
-      [
-        { st: stL, eye: EYE_L },
-        { st: stR, eye: EYE_R }
-      ].forEach(function(d) {
-        var pos = eyeScreenPos(d.eye);
-        var dx = mx - pos.x, dy = my - pos.y;
-        var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        var cap = Math.min(dist, pos.maxPx);
-        d.st.tx = (dx / dist) * cap;
-        d.st.ty = (dy / dist) * cap;
+    function updateEyes(mx, my) {
+      EYE_DEFS.forEach(function(d, i) {
+        var s = toScreen(d.fx, d.fy);
+        // atan2 from eye center to cursor → rotation degrees
+        var angle = Math.atan2(mx - s.x, my - s.y);
+        tgtDeg[i] = angle * (180 / Math.PI) * -1 + 270;
       });
       if(!rafId) rafId = requestAnimationFrame(tick);
     }
 
-    // Place pupils at rest on load
-    (function placeAtRest() {
-      [{ st: stL, eye: EYE_L, el: eyeL },{ st: stR, eye: EYE_R, el: eyeR }]
-        .forEach(function(d){
-          var pos = eyeScreenPos(d.eye);
-          d.el.style.left = pos.x + 'px';
-          d.el.style.top  = pos.y + 'px';
-        });
-    })();
-
-    window.addEventListener('mousemove', function(e){ updatePupils(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', function(e){ updateEyes(e.clientX, e.clientY); });
     window.addEventListener('touchmove', function(e){
-      if(e.touches.length) updatePupils(e.touches[0].clientX, e.touches[0].clientY);
+      if(e.touches.length) updateEyes(e.touches[0].clientX, e.touches[0].clientY);
     }, {passive:true});
     window.addEventListener('mouseleave', function(){
-      stL.tx = 0; stL.ty = 0; stR.tx = 0; stR.ty = 0;
+      tgtDeg[0] = 0; tgtDeg[1] = 0;
       if(!rafId) rafId = requestAnimationFrame(tick);
     });
     window.addEventListener('resize', function(){
-      setPupilSize();
-      if(!rafId) rafId = requestAnimationFrame(tick);
+      setEyeSize(); placeEyes();
     }, {passive:true});
   })();
 
