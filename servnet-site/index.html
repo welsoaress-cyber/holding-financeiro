@@ -188,7 +188,7 @@ button, input, select { font-family: inherit; font-size: inherit; }
   opacity: 0.45;
   box-shadow: 0 0 28px rgba(0,196,216,0.55), 0 0 60px rgba(0,196,216,0.18);
 }
-/* ── Dog Video Cover — fullscreen fade + cursor follow ─ */
+/* ── Dog Video Cover — fullscreen fade + 3D cursor look ─ */
 #dog-video-cover {
   position: fixed;
   inset: 0;
@@ -197,13 +197,15 @@ button, input, select { font-family: inherit; font-size: inherit; }
   will-change: opacity;
   background: #000;
   overflow: hidden;
+  perspective: 900px;       /* 3D depth for rotation */
 }
 #dog-video-cover video {
-  /* 8% oversized so panning never reveals black edges */
-  width: 108%; height: 108%;
+  /* 12% oversized so edges never show when tilted */
+  width: 112%; height: 112%;
   position: absolute;
   top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
+  transform-origin: center center;
   object-fit: cover;
   will-change: transform;
 }
@@ -2628,37 +2630,52 @@ function copiarLink() {
     }, {passive: true});
     onScroll();
 
-    /* ─ cursor follow (parallax pan) ─ */
-    var MAX_PX = 32; // max travel each axis in px
-    var curX = 0, curY = 0, tgtX = 0, tgtY = 0;
+    /* ─ 3D cursor look — perspective rotateX/rotateY ─ */
+    // Technique: CSS-Tricks / armandocanals.com — rotate element in 3D
+    // toward cursor using perspective + rotateX + rotateY
+    var MAX_DEG = 18;   // max rotation each axis
+    var LERP    = 0.06; // spring smoothness (lower = laggier)
+    var curRX = 0, curRY = 0, tgtRX = 0, tgtRY = 0;
     var rafId = null;
 
-    function tick() {
-      curX += (tgtX - curX) * 0.07;
-      curY += (tgtY - curY) * 0.07;
+    function applyTransform() {
+      // base: centered; rotation makes dog "turn" toward cursor
       vid.style.transform =
-        'translate(calc(-50% + ' + curX.toFixed(2) + 'px), calc(-50% + ' + curY.toFixed(2) + 'px))';
-      var still = Math.abs(tgtX - curX) < 0.08 && Math.abs(tgtY - curY) < 0.08;
+        'translate(-50%, -50%) rotateX(' + curRX.toFixed(3) + 'deg) rotateY(' + curRY.toFixed(3) + 'deg)';
+    }
+
+    function tick() {
+      curRX += (tgtRX - curRX) * LERP;
+      curRY += (tgtRY - curRY) * LERP;
+      applyTransform();
+      var still = Math.abs(tgtRX - curRX) < 0.02 && Math.abs(tgtRY - curRY) < 0.02;
       rafId = still ? null : requestAnimationFrame(tick);
     }
 
-    window.addEventListener('mousemove', function(e) {
+    function updateFromXY(mx, my) {
       var cx = window.innerWidth  / 2;
       var cy = window.innerHeight / 2;
-      tgtX = ((e.clientX - cx) / cx) * MAX_PX;
-      tgtY = ((e.clientY - cy) / cy) * MAX_PX;
+      // cursor right → rotateY positive (dog turns right to face right)
+      tgtRY =  ((mx - cx) / cx) * MAX_DEG;
+      // cursor up    → rotateX positive (dog tilts up to look up)
+      tgtRX = -((my - cy) / cy) * MAX_DEG;
       if(!rafId) rafId = requestAnimationFrame(tick);
+    }
+
+    window.addEventListener('mousemove', function(e) {
+      updateFromXY(e.clientX, e.clientY);
     });
 
-    /* touch: use finger position as cursor equivalent */
+    // Mobile: gyroscope feel via touch position
     window.addEventListener('touchmove', function(e) {
-      if(!e.touches.length) return;
-      var cx = window.innerWidth  / 2;
-      var cy = window.innerHeight / 2;
-      tgtX = ((e.touches[0].clientX - cx) / cx) * MAX_PX;
-      tgtY = ((e.touches[0].clientY - cy) / cy) * MAX_PX;
-      if(!rafId) rafId = requestAnimationFrame(tick);
+      if(e.touches.length) updateFromXY(e.touches[0].clientX, e.touches[0].clientY);
     }, {passive: true});
+
+    // Reset to neutral when mouse leaves window
+    window.addEventListener('mouseleave', function() {
+      tgtRX = 0; tgtRY = 0;
+      if(!rafId) rafId = requestAnimationFrame(tick);
+    });
   })();
 
 })();
