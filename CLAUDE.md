@@ -79,12 +79,12 @@
 - **Resposta iFood:** Alega ser "mero intermediário", pediu prazo extra, não ofereceu reembolso dos R$ 18,00
 - **Próxima ação:** Gerar termo no portal + submeter resposta marcando NÃO resolvido antes de 31/08/2026
 
-### 2. Amazon — Protocolo 1732435/2026
+### 2. Amazon — Protocolo 1732435/2026 ✅ RESOLVIDO
 - **Fornecedor:** Amazon Serviços de Varejo do Brasil Ltda
-- **Prazo:** 28/12/2026
-- **Status:** Aguardando resposta do fornecedor
-- **Fato:** Livro não entregue (disponível na Estante Virtual). Amazon não entregou nem reembolsou.
-- **Próxima ação:** Responder no portal marcando NÃO resolvido — prazo era 27/08/2026
+- **Status:** RESOLVIDO em 09/09/2026
+- **Resolução:** Reembolso de R$ 35,59 (PIX) + gift card de R$ 649,00 creditado na conta Amazon (welsoaress@gmail.com)
+- **Fato:** Livro "Robando o Fogo" não entregue. Amazon não conseguiu entregar e ofereceu gift card no valor atual do produto.
+- **Próxima ação:** Nenhuma — marcar como "Resolvido / Conforme solicitado" no portal
 
 ### 3. Óticas Gassi — Protocolo 1710550/2026
 - **Fornecedor:** Lunettes Optical Ltda (Óticas Gassi)
@@ -114,4 +114,4 @@
 
 ---
 
-*Atualizado em: 26/08/2026*
+*Atualizado em: 09/09/2026*
