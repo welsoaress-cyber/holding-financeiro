@@ -32,9 +32,12 @@
 
 ### 3. 99 Tecnologia — Processo 4059607-59.2026.8.26.0002
 - **Réu:** 99 Tecnologia Ltda.
-- **Status:** Conclusos para julgamento (desde 25/08/2026)
-- **Contestação apresentada:** 24/08/2026 — defesa pela Lee Brock Camargo Advogados (Fábio Rivelli). Argumento: intermediária tecnológica, fato de terceiro, sem dano moral.
-- **Réplica gerada e protocolada:** `replica_99.docx` ✅ — protocolada em 26/08/2026
+- **Juiz:** Jonas Ferreira Angelo de Deus
+- **Status:** SENTENÇA PROFERIDA em 11/09/2026 — PARCIALMENTE PROCEDENTE ✅
+- **Resultado:** Condenação ao pagamento de R$ 181,91 (dano material — 6 corridas fraudulentas no RJ) + correção monetária desde cada desembolso + juros desde a citação
+- **Negado:** devolução em dobro (CDC art. 42) e danos morais
+- **Prazo de recurso:** até ~21/09/2026 — Wellington optou por NÃO recorrer
+- **Próxima ação:** aguardar trânsito em julgado → 99 tem 15 dias para pagar espontaneamente → se não pagar, requerer execução no JEC
 - **Fatos:** 6 corridas em RJ (28/02–03/03/2025), R$ 181,91, Wellington nunca esteve no RJ
 
 ---
@@ -114,4 +117,4 @@
 
 ---
 
-*Atualizado em: 09/09/2026*
+*Atualizado em: 11/09/2026*
