@@ -11,13 +11,13 @@
 
 ---
 
-### 1. Banco PAN — Processo 4059613-66.2026.8.26.0002
+### 1. Banco PAN — Processo 4059613-66.2026.8.26.0002 ❌ ENCERRADO
 - **Réu:** Banco PAN S.A.
 - **Juíza:** Debora Romano Menezes
-- **Status:** AGUARDA SENTENÇA
-- **Réplica protocolada:** 24/08/2026 ✅
-- **Argumento central:** Contradição interna na contestação — e-mail ao autor diz "desinteresse comercial", mas §59 da contestação revela "movimentações atípicas". PIX bloqueado 7 dias ANTES da notificação de encerramento. Violação da Resolução BACEN 2.025/93.
-- **Pedido:** Indenização por danos morais
+- **Status:** IMPROCEDENTE — sentença em 11/09/2026, assinada em 14/09/2026
+- **Resultado:** Pedido negado integralmente. Juíza entendeu que rescisão unilateral com aviso de 30 dias é lícita; bloqueio do PIX classificado como monitoramento de risco pelo BACEN; danos morais negados por ausência de negativação ou prejuízo patrimonial.
+- **Nota:** Juíza não respondeu à contradição central (e-mail "desinteresse comercial" vs §59 admitindo "movimentações atípicas"), mas Wellington optou por NÃO recorrer.
+- **Próxima ação:** Nenhuma — processo encerrado.
 
 ---
 
@@ -117,4 +117,4 @@
 
 ---
 
-*Atualizado em: 11/09/2026*
+*Atualizado em: 15/09/2026*
