@@ -71,6 +71,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 .nav-cta:hover{opacity:.88}
 @media(max-width:720px){.nav-links{display:none}}
 @media(max-width:480px){.nav-portal{display:none}}
+@media(max-width:360px){.nav-cta{padding:.4rem .75rem;font-size:.82rem}}
 
 /* ===== HERO ===== */
 .hero{
@@ -155,14 +156,18 @@ button,input,select{font-family:inherit;font-size:inherit}
 .btn-planos:hover{border-color:var(--accent);color:var(--accent)}
 
 @media(max-width:820px){
-  .hero{grid-template-columns:1fr;min-height:auto;padding-top:84px}
+  .hero{grid-template-columns:1fr;min-height:auto;padding-top:84px;padding-bottom:52px}
   .hero-right{display:none}
-  .hero h1{font-size:clamp(2.5rem,9vw,4rem)}
+  .hero h1{font-size:clamp(2.4rem,8vw,3.8rem)}
+  .hero-content{max-width:100%}
 }
 @media(max-width:480px){
-  .hero{padding:76px 1.25rem 56px}
+  .hero{padding:76px 1.25rem 44px}
+  .hero h1{font-size:clamp(2.2rem,10vw,3.2rem)}
   .hero-btns{flex-direction:column;align-items:stretch}
-  .btn{justify-content:center}
+  .btn{justify-content:center;padding:.9rem 1.25rem}
+  .hero-price-tag{flex-wrap:wrap;gap:.25rem .4rem}
+  .hero-price-tag .extras{width:100%;margin-left:0;margin-top:.1rem;font-size:.76rem}
 }
 
 /* ===== SECTION ===== */
@@ -199,6 +204,12 @@ button,input,select{font-family:inherit;font-size:inherit}
 .trust-ico svg{width:18px;height:18px}
 .trust-label{font-size:.88rem;font-weight:600;color:var(--text-2)}
 .trust-label strong{color:var(--text);display:block;font-size:.97rem}
+@media(max-width:620px){
+  .trust-bar{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem 1rem;padding:1.5rem 1.25rem;justify-items:start}
+}
+@media(max-width:360px){
+  .trust-bar{grid-template-columns:1fr}
+}
 
 /* ===== PLANS ===== */
 .plans-sec{background:var(--bg)}
@@ -288,6 +299,10 @@ button,input,select{font-family:inherit;font-size:inherit}
 }
 .btn-wa-big:hover{transform:translateY(-3px);box-shadow:0 0 60px rgba(37,211,102,.6)}
 .btn-wa-big svg{flex-shrink:0}
+@media(max-width:640px){
+  .wa-strip{flex-direction:column;align-items:flex-start;padding:2.5rem 1.25rem;gap:1.5rem}
+  .btn-wa-big{width:100%;justify-content:center}
+}
 
 /* ===== INDICAÇÃO ===== */
 .ref-sec{background:var(--bg2)}
