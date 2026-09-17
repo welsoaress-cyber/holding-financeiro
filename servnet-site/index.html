@@ -281,10 +281,9 @@ button,input,select{font-family:inherit;font-size:inherit}
 }
 .pc-price .m{font-size:.85rem;color:rgba(255,255,255,.5)}
 .pc-body{
-  background:rgba(5,8,16,0.88);border:1px solid rgba(0,212,255,0.07);border-top:none;
+  background:rgba(5,8,16,0.92);border:1px solid rgba(0,212,255,0.07);border-top:none;
   padding:1.4rem 1.5rem;
   display:flex;flex-direction:column;gap:.9rem;flex:1;
-  backdrop-filter:blur(8px);
 }
 .pc-feats{list-style:none;display:flex;flex-direction:column;gap:.45rem;flex:1}
 .pc-feats li{font-size:.9rem;color:var(--text-2);display:flex;align-items:center;gap:.5rem}
@@ -1034,7 +1033,8 @@ button,input,select{font-family:inherit;font-size:inherit}
     }
   }
 
-  let tick=0;
+  let tick=0, rafId=null, visible=false;
+
   function draw(){
     tick++;
     ctx.clearRect(0,0,W,H);
@@ -1090,9 +1090,15 @@ button,input,select{font-family:inherit;font-size:inherit}
     ctx.font="800 72px 'Barlow Condensed',system-ui";ctx.textAlign='center';ctx.letterSpacing='0.15em';
     ctx.fillText('SERVNET',W/2,H/2+24);ctx.restore();
 
-    requestAnimationFrame(draw);
+    if(visible) rafId=requestAnimationFrame(draw);
   }
-  draw();
+
+  const obs=new IntersectionObserver(entries=>{
+    visible=entries[0].isIntersecting;
+    if(visible&&!rafId){rafId=requestAnimationFrame(draw);}
+    else if(!visible&&rafId){cancelAnimationFrame(rafId);rafId=null;}
+  },{threshold:0.01});
+  obs.observe(cv);
 })();
 
 /* ===== SUPABASE / WA ===== */
