@@ -114,10 +114,7 @@ button,input,select{font-family:inherit;font-size:inherit}
   width:400px;height:400px;bottom:-120px;left:-80px;
   background:radial-gradient(circle,rgba(255,255,255,.10) 0%,transparent 65%);
 }
-.hero-wrap{position:relative;z-index:2;display:flex;align-items:center;gap:3rem;max-width:1140px;margin:0 auto;width:100%}
-.hero-inner{flex:1;min-width:0}
-.hero-img{flex-shrink:0;width:420px;max-width:42vw;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.35)}
-.hero-img img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-wrap{position:relative;z-index:2;max-width:760px;margin:0 auto;width:100%;text-align:center}
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:.55rem;
   font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
@@ -174,18 +171,30 @@ button,input,select{font-family:inherit;font-size:inherit}
   width:min(100%,620px);opacity:.12;pointer-events:none;
 }
 
-@media(max-width:900px){
-  .hero-wrap{flex-direction:column;text-align:center}
-  .hero-img{width:100%;max-width:480px;order:-1}
-  .hero-btns{justify-content:center}
-}
 @media(max-width:560px){
   .hero{min-height:auto;padding:84px 1.25rem 52px}
   .hero-btns{flex-direction:column;align-items:center}
   .btn-assine,.btn-ver{width:100%;max-width:360px;justify-content:center}
   .hero-price .info{font-size:.73rem}
-  .hero-img{max-width:100%}
 }
+.hero-btns{justify-content:center}
+
+/* ===== BANNERS ===== */
+.banner{position:relative;width:100%;overflow:hidden;line-height:0}
+.banner img{width:100%;max-height:480px;object-fit:cover;object-position:center top;display:block}
+/* fade top → blue hero, fade bottom → white bg */
+.banner-hero::before,.banner-hero::after{
+  content:'';position:absolute;left:0;right:0;z-index:1;pointer-events:none;
+}
+.banner-hero::before{top:0;height:12%;background:linear-gradient(to bottom,#2196F3 0%,transparent 100%)}
+.banner-hero::after{bottom:0;height:12%;background:linear-gradient(to top,#FFFFFF 0%,transparent 100%)}
+/* quem somos: fade top → bg2, fade bottom → bg2 */
+.banner-quem::before,.banner-quem::after{
+  content:'';position:absolute;left:0;right:0;z-index:1;pointer-events:none;
+}
+.banner-quem::before{top:0;height:12%;background:linear-gradient(to bottom,#F0F7FF 0%,transparent 100%)}
+.banner-quem::after{bottom:0;height:12%;background:linear-gradient(to top,#F0F7FF 0%,transparent 100%)}
+@media(max-width:600px){.banner img{max-height:260px}}
 
 /* ===== TRUST BAR ===== */
 .trust-bar{
@@ -372,10 +381,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 @media(max-width:400px){.diff-grid{grid-template-columns:1fr}}
 
 /* ===== QUEM SOMOS ===== */
-.about-lay{display:flex;align-items:center;gap:3.5rem;max-width:960px}
-.about-img{flex-shrink:0;width:300px;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.12)}
-.about-img img{width:100%;display:block;object-fit:cover}
-@media(max-width:720px){.about-lay{flex-direction:column;gap:2rem}.about-img{width:100%;max-width:420px}}
+.about-lay{max-width:680px}
 .about-text{
   font-size:1.05rem;color:var(--text-2);line-height:1.85;
   padding-left:1.25rem;border-left:3px solid var(--primary);flex:1;
@@ -548,9 +554,6 @@ button,input,select{font-family:inherit;font-size:inherit}
       </div>
     </div>
 
-    <div class="hero-img">
-      <img src="img/mascote-hero.png" alt="Salsichinha conectada na internet de fibra óptica">
-    </div>
   </div>
 
   <!-- decorative wave -->
@@ -560,6 +563,11 @@ button,input,select{font-family:inherit;font-size:inherit}
     <ellipse cx="310" cy="85" rx="120" ry="24" fill="white"/>
   </svg>
 </section>
+
+<!-- BANNER MASCOTE -->
+<div class="banner banner-hero">
+  <img src="img/mascote-hero.png" alt="Salsichinha conectada — internet de qualidade">
+</div>
 
 <!-- TRUST BAR -->
 <div class="trust-bar">
@@ -756,9 +764,9 @@ button,input,select{font-family:inherit;font-size:inherit}
   </div>
   <div class="about-lay">
     <p class="about-text">A Servnet é um provedor de internet local focado em oferecer conexão de qualidade com o atendimento humano que as grandes operadoras não conseguem dar. Somos do Jardim Moraes Prado — e isso faz toda a diferença.</p>
-    <div class="about-img">
-      <img src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade">
-    </div>
+  </div>
+  <div class="banner banner-quem" style="margin-top:2.5rem">
+    <img src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade" style="max-height:360px">
   </div>
 </section>
 
