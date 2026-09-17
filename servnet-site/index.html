@@ -177,17 +177,22 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 /* ===== BANNERS ===== */
 .banner{position:relative;width:100%;overflow:hidden;line-height:0}
-.banner img{width:100%;height:auto;display:block;max-width:900px;margin:0 auto}
+.banner img{
+  width:100%;height:auto;display:block;max-width:900px;margin:0 auto;
+  mix-blend-mode:screen;
+}
+.banner-hero{background:#050810}
 .banner-hero::before,.banner-hero::after{
   content:'';position:absolute;left:0;right:0;z-index:1;pointer-events:none;
 }
-.banner-hero::before{top:0;height:12%;background:linear-gradient(to bottom,#050810 0%,transparent 100%)}
-.banner-hero::after{bottom:0;height:12%;background:linear-gradient(to top,#050810 0%,transparent 100%)}
+.banner-hero::before{top:0;height:50%;background:linear-gradient(to bottom,#050810 0%,transparent 100%)}
+.banner-hero::after{bottom:0;height:50%;background:linear-gradient(to top,#050810 0%,transparent 100%)}
+.banner-quem{background:#080C14}
 .banner-quem::before,.banner-quem::after{
   content:'';position:absolute;left:0;right:0;z-index:1;pointer-events:none;
 }
-.banner-quem::before{top:0;height:12%;background:linear-gradient(to bottom,#080C14 0%,transparent 100%)}
-.banner-quem::after{bottom:0;height:12%;background:linear-gradient(to top,#080C14 0%,transparent 100%)}
+.banner-quem::before{top:0;height:50%;background:linear-gradient(to bottom,#080C14 0%,transparent 100%)}
+.banner-quem::after{bottom:0;height:50%;background:linear-gradient(to top,#080C14 0%,transparent 100%)}
 @media(max-width:600px){.banner img{max-height:260px}}
 
 /* ===== TRUST BAR ===== */
@@ -226,13 +231,13 @@ button,input,select{font-family:inherit;font-size:inherit}
   line-height:1.05;text-wrap:balance;margin-bottom:.9rem;color:var(--text);
 }
 .sh em{font-style:normal;color:var(--primary)}
-.ss{font-size:1.05rem;color:var(--text-2);line-height:1.8;max-width:540px}
+.ss{font-size:1.05rem;color:var(--text-2);line-height:1.8;max-width:540px;margin:0 auto}
 @media(max-width:560px){.section{padding:3.75rem 1.25rem}}
 
 /* ===== PLANS ===== */
 .plans-grid{
   display:grid;grid-template-columns:repeat(3,1fr);
-  gap:1.25rem;max-width:920px;
+  gap:1.25rem;max-width:920px;margin:0 auto;
 }
 .pc{
   border-radius:16px;overflow:hidden;
@@ -325,7 +330,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 /* ===== INDICAÇÃO ===== */
 .ref-card{
-  max-width:680px;border-radius:16px;overflow:hidden;
+  max-width:680px;margin:0 auto;border-radius:16px;overflow:hidden;
   background:rgba(255,208,0,.03);
   border:1.5px solid rgba(255,208,0,.15);
   box-shadow:0 4px 20px rgba(0,0,0,.3);
@@ -355,7 +360,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 /* ===== DIFERENCIAIS ===== */
 .diff-grid{
   display:grid;grid-template-columns:repeat(3,1fr);
-  gap:1rem;max-width:820px;
+  gap:1rem;max-width:820px;margin:0 auto;
 }
 .dc{
   background:rgba(0,212,255,.02);
@@ -376,7 +381,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 @media(max-width:400px){.diff-grid{grid-template-columns:1fr}}
 
 /* ===== QUEM SOMOS ===== */
-.about-lay{max-width:680px}
+.about-lay{max-width:680px;margin:0 auto}
 .about-text{
   font-size:1.05rem;color:var(--text-2);line-height:1.85;
   padding-left:1.25rem;border-left:3px solid rgba(0,212,255,.25);flex:1;
@@ -401,7 +406,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 .cov-note{margin-top:1.5rem;text-align:center;font-size:.85rem;color:var(--text-3)}
 
 /* ===== CONTATO ===== */
-.ct-lay{display:grid;grid-template-columns:1fr 1.5fr;gap:5rem;max-width:900px}
+.ct-lay{display:grid;grid-template-columns:1fr 1.5fr;gap:5rem;max-width:900px;margin:0 auto}
 .ct-channels{display:flex;flex-direction:column;gap:1.75rem}
 .ch{display:flex;align-items:flex-start;gap:1rem}
 .ch-ico{
@@ -600,8 +605,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- PLANOS -->
 <section class="section" id="planos">
-  <div style="margin-bottom:3rem">
-    <div class="eyebrow">Planos residenciais</div>
+  <div style="margin-bottom:3rem;text-align:center">
+    <div class="eyebrow" style="justify-content:center">Planos residenciais</div>
     <h2 class="sh">Escolha a sua velocidade</h2>
     <p class="ss">Todos com fibra 100% e roteador Wi-Fi incluso. Instalação = 1 mensalidade. Fidelidade de 12 meses.</p>
   </div>
@@ -708,7 +713,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 </div>
 
 <!-- INDICAÇÃO -->
-<section class="section sec-alt" id="indicacao">
+<section class="section sec-alt" id="indicacao" style="display:flex;flex-direction:column;align-items:center">
   <div class="ref-card">
     <div class="ref-inner">
       <div class="ref-tag">Programa de indicação</div>
@@ -725,8 +730,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- DIFERENCIAIS -->
 <section class="section" id="diferenciais">
-  <div style="margin-bottom:3rem">
-    <div class="eyebrow">Por que a Servnet?</div>
+  <div style="margin-bottom:3rem;text-align:center">
+    <div class="eyebrow" style="justify-content:center">Por que a Servnet?</div>
     <h2 class="sh">O que nos diferencia</h2>
   </div>
   <div class="diff-grid">
@@ -759,8 +764,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- QUEM SOMOS -->
 <section class="section sec-alt" id="quem-somos">
-  <div style="margin-bottom:2.5rem">
-    <div class="eyebrow">Quem somos</div>
+  <div style="margin-bottom:2.5rem;text-align:center">
+    <div class="eyebrow" style="justify-content:center">Quem somos</div>
     <h2 class="sh">Nascemos aqui,<br>crescemos com você</h2>
   </div>
   <div class="about-lay">
@@ -773,8 +778,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- COBERTURA -->
 <section class="section" id="cobertura">
-  <div style="margin-bottom:2.5rem">
-    <div class="eyebrow">Área de cobertura</div>
+  <div style="margin-bottom:2.5rem;text-align:center">
+    <div class="eyebrow" style="justify-content:center">Área de cobertura</div>
     <h2 class="sh">Nossa fibra <em>chega até você</em></h2>
     <p class="ss">Rede 100% fibra óptica cobrindo o Jardim Moraes Prado e toda a região.</p>
   </div>
@@ -795,8 +800,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- CONTATO -->
 <section class="section sec-alt" id="contato">
-  <div style="margin-bottom:3rem">
-    <div class="eyebrow">Contato e suporte</div>
+  <div style="margin-bottom:3rem;text-align:center">
+    <div class="eyebrow" style="justify-content:center">Contato e suporte</div>
     <h2 class="sh">Pronto para se conectar?</h2>
     <p class="ss">Respondemos rápido por WhatsApp ou pelo formulário abaixo.</p>
   </div>
