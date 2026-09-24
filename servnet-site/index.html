@@ -180,7 +180,6 @@ button,input,select{font-family:inherit;font-size:inherit}
 .banner img{
   width:100%;height:auto;display:block;max-width:900px;margin:0 auto;
   mix-blend-mode:screen;
-  will-change:transform;
 }
 .banner-hero{background:#050810}
 .banner-hero::before,.banner-hero::after{
@@ -516,7 +515,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- BANNER MASCOTE -->
 <div class="banner banner-hero">
-  <img id="mascote-hero" src="img/mascote-hero.png" alt="Salsichinha conectada — internet de qualidade">
+  <img src="img/mascote-hero.png" alt="Salsichinha conectada — internet de qualidade">
 </div>
 
 <!-- TRUST BAR -->
@@ -687,7 +686,7 @@ button,input,select{font-family:inherit;font-size:inherit}
     <p class="about-text">A Servnet é um provedor de internet local focado em oferecer conexão de qualidade com o atendimento humano que as grandes operadoras não conseguem dar. Somos do Jardim Moraes Prado — e isso faz toda a diferença.</p>
   </div>
   <div class="banner banner-quem" style="margin-top:2.5rem">
-    <img id="mascote-sofa" src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade">
+    <img src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade">
   </div>
 </section>
 
@@ -1158,44 +1157,4 @@ async function handleSubmit(e){
   btn.textContent='✓ Recebido! Em breve entraremos em contato.';
 }
 
-/* ===== MASCOTE — VIRA O ROSTO PRO MOUSE ===== */
-/* Lógica portada do AboutSection.tsx (cinematic-portfolio):
-   useSpring({ damping:18, stiffness:220 }) + useTransform([-0.5,0.5],[-16,16])
-   Mouse normalizado relativo ao centro do elemento, ranges ±16° */
-(function(){
-  if(window.matchMedia('(pointer:coarse)').matches) return;
-  var mascotes=[
-    {el:document.getElementById('mascote-hero'),ry:0,rx:0,vy:0,vx:0},
-    {el:document.getElementById('mascote-sofa'),ry:0,rx:0,vy:0,vx:0}
-  ].filter(function(m){return !!m.el;});
-  if(!mascotes.length) return;
-
-  /* spring params do original: stiffness:220, damping:18, mass:1 */
-  var K=220, D=18, DT=1/60;
-  var mx=-1, my=-1, active=false;
-
-  document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;active=true;},{passive:true});
-  document.addEventListener('mouseleave',function(){active=false;});
-
-  function tick(){
-    requestAnimationFrame(tick);
-    mascotes.forEach(function(m){
-      var rect=m.el.getBoundingClientRect();
-      /* normaliza mouse em relação ao elemento: -0.5 (borda esq/top) a +0.5 (borda dir/bot) */
-      var nx=active?(mx-rect.left)/rect.width-0.5:0;
-      var ny=active?(my-rect.top)/rect.height-0.5:0;
-      /* clamp ao intervalo [-0.5, 0.5] como no original */
-      nx=Math.max(-0.5,Math.min(0.5,nx));
-      ny=Math.max(-0.5,Math.min(0.5,ny));
-      /* useTransform(mouseX,[-0.5,0.5],[-16,16]) e useTransform(mouseY,[-0.5,0.5],[16,-16]) */
-      var targetRY=nx*32;   /* nx*32 → range [-16,16] */
-      var targetRX=-ny*32;  /* -ny*32 → range [16,-16] */
-      /* simula useSpring com Euler: a = K*(target-pos) - D*vel */
-      var ay=K*(targetRY-m.ry)-D*m.vy; m.vy+=ay*DT; m.ry+=m.vy*DT;
-      var ax=K*(targetRX-m.rx)-D*m.vx; m.vx+=ax*DT; m.rx+=m.vx*DT;
-      m.el.style.transform='perspective(900px) rotateY('+m.ry.toFixed(2)+'deg) rotateX('+m.rx.toFixed(2)+'deg)';
-    });
-  }
-  tick();
-})();
 </script>
