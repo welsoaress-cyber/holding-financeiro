@@ -1,0 +1,392 @@
+<title>ServNet — Tereza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=DM+Sans:wght@400;600;700&display=swap">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #6d6c71;
+  cursor: none;
+}
+
+/* ── Full-screen canvas ── */
+#hero-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* ── Frosted-glass nav pill (centered, top) ── */
+.nav-pill {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.45rem 1.1rem;
+  background: rgba(40, 38, 45, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.nav-pill .pill-logo {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #fff;
+  margin-right: 0.9rem;
+  cursor: none;
+}
+.nav-pill .pill-logo span { opacity: 0.45; }
+.nav-pill a {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  padding: 0.28rem 0.7rem;
+  border-radius: 100px;
+  transition: color 0.15s, background 0.15s;
+  cursor: none;
+}
+.nav-pill a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Hero text — bottom-left ── */
+.hero-text {
+  position: fixed;
+  bottom: clamp(1.5rem, 4vh, 3.5rem);
+  left: max(1.5rem, 5vw);
+  z-index: 100;
+  max-width: 340px;
+}
+.hero-hi {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 0.25rem;
+}
+.hero-name {
+  font-family: 'Dancing Script', cursive;
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 0.7rem;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+.hero-bio {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.68;
+  margin-bottom: 1.2rem;
+}
+.hero-btns {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.btn-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.62rem 1.35rem;
+  background: #fff;
+  color: #222129;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: 5px;
+  border: none;
+  text-decoration: none;
+  cursor: none;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.btn-solid:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.62rem 1.35rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  text-decoration: none;
+  cursor: none;
+  backdrop-filter: blur(10px);
+  transition: background 0.15s;
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.18); }
+
+/* ── Custom magnetic cursor ── */
+#cursor-dot {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 22px rgba(255,255,255,0.4);
+  transition: width 0.15s, height 0.15s;
+  will-change: left, top;
+}
+#cursor-ring {
+  position: fixed;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s, height 0.2s, border-color 0.2s;
+  will-change: left, top;
+}
+#cursor-ring.hover {
+  width: 58px;
+  height: 58px;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+/* ── Loading overlay ── */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: #6d6c71;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.4);
+  transition: opacity 0.4s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+
+@media (max-width: 600px) {
+  .hero-text { left: 1.25rem; right: 1.25rem; max-width: none; }
+  .hero-name { font-size: 2.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cursor-dot, #cursor-ring { transition: none; }
+}
+</style>
+
+<canvas id="hero-canvas"></canvas>
+
+<nav class="nav-pill">
+  <span class="pill-logo">SERV<span>NET</span></span>
+  <a href="https://servnet.net.br#planos">[PLANOS]</a>
+  <a href="https://servnet.net.br#sobre">[SOBRE]</a>
+  <a href="https://servnet.net.br#contato">[CONTATO]</a>
+</nav>
+
+<div class="hero-text">
+  <p class="hero-hi">Olá! Conheça a</p>
+  <p class="hero-name">ServNet</p>
+  <p class="hero-bio">
+    Internet fibra óptica de alta velocidade<br>
+    no Jardim Moraes Prado, São Paulo.<br>
+    Velocidade real. Suporte local.
+  </p>
+  <div class="hero-btns">
+    <a href="https://servnet.net.br#planos" class="btn-solid">Ver Planos →</a>
+    <a href="https://wa.me/5511966961138" class="btn-ghost">Fale Conosco</a>
+  </div>
+</div>
+
+<div id="loading">CARREGANDO…</div>
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var BG = '#6d6c71';
+  var FRAME_COUNT = 64;
+  var LERP_FACTOR = 0.26;
+
+  // ── Canvas ──
+  var canvas = document.getElementById('hero-canvas');
+  var ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize, { passive: true });
+  resize();
+
+  // ── Preload all frames + center ──
+  var frames = new Array(FRAME_COUNT);
+  var centerImg = new Image();
+  var loaded = 0;
+  var total = FRAME_COUNT + 1;
+  var loadingEl = document.getElementById('loading');
+
+  function onImgLoad() {
+    loaded++;
+    if (loaded >= total) {
+      // All frames ready — hide loading overlay
+      loadingEl.classList.add('hidden');
+      setTimeout(function () { loadingEl.remove(); }, 500);
+    }
+  }
+
+  for (var i = 0; i < FRAME_COUNT; i++) {
+    frames[i] = new Image();
+    frames[i].onload = onImgLoad;
+    frames[i].src = 'img/frames/frame_' + String(i).padStart(3, '0') + '.webp';
+  }
+  centerImg.onload = onImgLoad;
+  centerImg.src = 'img/center.webp';
+
+  // ── Mouse state ──
+  var mx = window.innerWidth * 0.5;
+  var my = window.innerHeight * 0.5;
+  var mouseActive = false;
+
+  document.addEventListener('mousemove', function (e) {
+    mx = e.clientX;
+    my = e.clientY;
+    mouseActive = true;
+  }, { passive: true });
+
+  document.addEventListener('mouseleave', function () {
+    mouseActive = false;
+  });
+
+  // ── Shortest-path circular lerp ──
+  function lerpAngle(current, target, factor) {
+    var diff = target - current;
+    while (diff >  Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    return current + diff * factor;
+  }
+
+  // ── Draw one frame cover-filling the canvas ──
+  function drawCover(img, W, H) {
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var imgAspect = img.naturalWidth / img.naturalHeight;
+    var canvasAspect = W / H;
+    var sw, sh, dx, dy;
+    if (canvasAspect > imgAspect) {
+      sw = W;
+      sh = W / imgAspect;
+      dx = 0;
+      dy = (H - sh) * 0.5;
+    } else {
+      sh = H;
+      sw = H * imgAspect;
+      dx = (W - sw) * 0.5;
+      dy = 0;
+    }
+    ctx.drawImage(img, dx, dy, sw, sh);
+  }
+
+  // ── rAF state ──
+  var smoothAngle = 0;
+
+  function tick() {
+    requestAnimationFrame(tick);
+
+    var W = canvas.width;
+    var H = canvas.height;
+
+    // Character face center (video is 1920×1080, character is centered)
+    var faceCX = W * 0.5;
+    var faceCY = H * 0.42;
+
+    var dx = mx - faceCX;
+    var dy = my - faceCY;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Deadzone: cursor within ~12% of the shorter screen dimension
+    var deadzoneR = Math.min(W, H) * 0.12;
+    var inDeadzone = !mouseActive || dist < deadzoneR;
+
+    // Advance smooth angle only outside deadzone
+    if (!inDeadzone) {
+      var targetAngle = Math.atan2(dy, dx);
+      smoothAngle = lerpAngle(smoothAngle, targetAngle, LERP_FACTOR);
+    }
+
+    // Paint background first
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, W, H);
+
+    // Pick exactly ONE frame — no alpha blending
+    ctx.globalAlpha = 1;
+    var img;
+    if (inDeadzone) {
+      img = centerImg;
+    } else {
+      var a = smoothAngle;
+      // Normalise to [0, 2π)
+      while (a <  0)            a += 2 * Math.PI;
+      while (a >= 2 * Math.PI)  a -= 2 * Math.PI;
+      var idx = Math.round(a / (2 * Math.PI) * FRAME_COUNT) % FRAME_COUNT;
+      img = frames[idx];
+    }
+
+    drawCover(img, W, H);
+  }
+
+  tick();
+
+  // ── Custom cursor ──
+  var dot  = document.getElementById('cursor-dot');
+  var ring = document.getElementById('cursor-ring');
+  var ringX = mx, ringY = my;
+
+  document.addEventListener('mousemove', function (e) {
+    dot.style.left = e.clientX + 'px';
+    dot.style.top  = e.clientY + 'px';
+  }, { passive: true });
+
+  document.querySelectorAll('a, button').forEach(function (el) {
+    el.addEventListener('mouseenter', function () { ring.classList.add('hover'); });
+    el.addEventListener('mouseleave', function () { ring.classList.remove('hover'); });
+  });
+
+  function ringTick() {
+    requestAnimationFrame(ringTick);
+    ringX += (mx - ringX) * 0.15;
+    ringY += (my - ringY) * 0.15;
+    ring.style.left = ringX + 'px';
+    ring.style.top  = ringY + 'px';
+  }
+  ringTick();
+
+})();
+</script>
