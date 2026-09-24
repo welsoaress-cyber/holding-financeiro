@@ -346,9 +346,14 @@ html, body {
     var deadzoneR = Math.min(W, H) * 0.12;
     var inDeadzone = !mouseActive || dist < deadzoneR;
 
+    // Mirror left hemisphere: always compute angle against |dx| so frames
+    // are selected from the right-side range, then flip the canvas draw.
+    var flipX = !inDeadzone && (dx < 0);
+    var effectiveDx = flipX ? -dx : dx;
+
     // Advance smooth angle only outside deadzone
     if (!inDeadzone) {
-      var targetAngle = Math.atan2(dy, dx);
+      var targetAngle = Math.atan2(dy, effectiveDx);
       smoothAngle = lerpAngle(smoothAngle, targetAngle, LERP_FACTOR);
     }
 
@@ -370,7 +375,15 @@ html, body {
       img = frames[idx];
     }
 
-    drawCover(img, W, H);
+    if (flipX) {
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      drawCover(img, W, H);
+      ctx.restore();
+    } else {
+      drawCover(img, W, H);
+    }
   }
 
   tick();
