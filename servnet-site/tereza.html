@@ -234,7 +234,7 @@ html, body {
 
   var BG = '#6d6c71';
   var FRAME_COUNT = 64;
-  var LERP_FACTOR = 0.26;
+  var LERP_FACTOR = 0.55;
 
   // ── Canvas ──
   var canvas = document.getElementById('hero-canvas');
@@ -366,7 +366,7 @@ html, body {
       // Normalise to [0, 2π)
       while (a <  0)            a += 2 * Math.PI;
       while (a >= 2 * Math.PI)  a -= 2 * Math.PI;
-      var idx = Math.round(a / (2 * Math.PI) * FRAME_COUNT) % FRAME_COUNT;
+      var idx = (FRAME_COUNT - Math.round(a / (2 * Math.PI) * FRAME_COUNT)) % FRAME_COUNT;
       img = frames[idx];
     }
 
