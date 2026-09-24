@@ -254,22 +254,33 @@ html, body {
   var total = FRAME_COUNT + 1;
   var loadingEl = document.getElementById('loading');
 
-  function onImgLoad() {
+  function onImgSettle() {
     loaded++;
     if (loaded >= total) {
-      // All frames ready — hide loading overlay
       loadingEl.classList.add('hidden');
-      setTimeout(function () { loadingEl.remove(); }, 500);
+      setTimeout(function () {
+        if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+      }, 500);
     }
   }
 
   for (var i = 0; i < FRAME_COUNT; i++) {
     frames[i] = new Image();
-    frames[i].onload = onImgLoad;
+    frames[i].onload  = onImgSettle;
+    frames[i].onerror = onImgSettle; // count failures too so overlay always closes
     frames[i].src = 'img/frames/frame_' + String(i).padStart(3, '0') + '.webp';
   }
-  centerImg.onload = onImgLoad;
+  centerImg.onload  = onImgSettle;
+  centerImg.onerror = onImgSettle;
   centerImg.src = 'img/center.webp';
+
+  // Fallback: force-hide overlay after 5 s regardless
+  setTimeout(function () {
+    loadingEl.classList.add('hidden');
+    setTimeout(function () {
+      if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+    }, 500);
+  }, 5000);
 
   // ── Mouse state ──
   var mx = window.innerWidth * 0.5;
