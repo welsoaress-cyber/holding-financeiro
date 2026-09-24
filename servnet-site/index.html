@@ -180,6 +180,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 .banner img{
   width:100%;height:auto;display:block;max-width:900px;margin:0 auto;
   mix-blend-mode:screen;
+  transition:transform .15s cubic-bezier(.25,.46,.45,.94);
+  will-change:transform;
 }
 .banner-hero{background:#050810}
 .banner-hero::before,.banner-hero::after{
@@ -515,7 +517,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 
 <!-- BANNER MASCOTE -->
 <div class="banner banner-hero">
-  <img src="img/mascote-hero.png" alt="Salsichinha conectada — internet de qualidade">
+  <img id="mascote-hero" src="img/mascote-hero.png" alt="Salsichinha conectada — internet de qualidade">
 </div>
 
 <!-- TRUST BAR -->
@@ -686,7 +688,7 @@ button,input,select{font-family:inherit;font-size:inherit}
     <p class="about-text">A Servnet é um provedor de internet local focado em oferecer conexão de qualidade com o atendimento humano que as grandes operadoras não conseguem dar. Somos do Jardim Moraes Prado — e isso faz toda a diferença.</p>
   </div>
   <div class="banner banner-quem" style="margin-top:2.5rem">
-    <img src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade">
+    <img id="mascote-sofa" src="img/mascote-sofa.png" alt="Salsichinha relaxando com internet de qualidade">
   </div>
 </section>
 
@@ -1156,4 +1158,29 @@ async function handleSubmit(e){
   }catch(err){console.warn('[contato]',err);}
   btn.textContent='✓ Recebido! Em breve entraremos em contato.';
 }
+
+/* ===== MASCOTE — VIRA O ROSTO PRO MOUSE ===== */
+(function(){
+  if(window.matchMedia('(pointer:coarse)').matches) return; // mobile: sem efeito
+  const mascotes=[document.getElementById('mascote-hero'),document.getElementById('mascote-sofa')].filter(Boolean);
+  if(!mascotes.length) return;
+  let raf=null;
+  let mx=window.innerWidth/2, my=window.innerHeight/2;
+  document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;},{passive:true});
+  function tick(){
+    mascotes.forEach(function(img){
+      const r=img.getBoundingClientRect();
+      const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      const ry=((mx-cx)/(window.innerWidth/2))*13;   // ±13° horizontal
+      const rx=-((my-cy)/(window.innerHeight/2))*7;  // ±7° vertical
+      img.style.transform='perspective(900px) rotateY('+ry+'deg) rotateX('+rx+'deg)';
+    });
+    raf=requestAnimationFrame(tick);
+  }
+  tick();
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){cancelAnimationFrame(raf);raf=null;}
+    else if(!raf) tick();
+  });
+})();
 </script>
