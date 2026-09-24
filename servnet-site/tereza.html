@@ -371,7 +371,7 @@ html, body {
       // Normalise to [0, 2π)
       while (a <  0)            a += 2 * Math.PI;
       while (a >= 2 * Math.PI)  a -= 2 * Math.PI;
-      var idx = (Math.round(a / (2 * Math.PI) * FRAME_COUNT) + 32) % FRAME_COUNT;
+      var idx = (Math.round(a / (2 * Math.PI) * FRAME_COUNT) + 48) % FRAME_COUNT;
       img = frames[idx];
     }
 
