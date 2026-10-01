@@ -21,13 +21,12 @@
 
 ---
 
-### 2. Itaú Unibanco — Processo 4059611-96.2026.8.26.0002
+### 2. Itaú Unibanco — Processo 4059611-96.2026.8.26.0002 ❌ ENCERRADO
 - **Réu:** Itaú Unibanco S.A.
-- **Juiz:** Jonas Ferreira Angelo de Deus (mesmo juiz do caso 99 Tecnologia)
-- **Status:** AGUARDA SENTENÇA
-- **Réplica protocolada:** 24/08/2026 ✅
-- **Argumento central:** Notificação de encerramento enviada em 15/11/2024 para endereço DESATUALIZADO (Av. Eduardo Pereira Ramos, 843, Jardim São Jorge, SP — CEP 04432-000). Wellington já não residia mais lá (havia se mudado para R. Giuseppe Baretti, 843, Grajaú; e depois para R. Anacreonte, 22). Notificação não recebida = notificação ineficaz. Relacionamento de 14 anos (início 15/03/2010). Conta: Agência 2978, CC 19497-1.
-- **Pedido:** Indenização por danos morais — R$ 10.000,00
+- **Juiz:** Jonas Ferreira Angelo de Deus
+- **Status:** IMPROCEDENTE — sentença em 30/09/2026
+- **Resultado:** Pedido negado. Notificação ao endereço cadastral considerada válida — fatura de outubro/2024 anexada pelo próprio autor confirmou que o banco ainda usava aquele endereço. STJ Tema Repetitivo 1119 reafirmado. Wellington optou por NÃO recorrer.
+- **Próxima ação:** Nenhuma — processo encerrado.
 
 ---
 
@@ -118,4 +117,4 @@
 
 ---
 
-*Atualizado em: 24/09/2026*
+*Atualizado em: 01/10/2026*
